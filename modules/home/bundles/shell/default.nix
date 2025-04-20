@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,24 +6,22 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.shell;
-in
-{
+in {
   options.${namespace}.bundles.shell = with types; {
     enable = mkBoolOpt false "Enable shell bundle";
   };
 
   config = mkIf cfg.enable {
-    home.packages = with pkgs; [ yazi ];
-    zeus = {
+    home.packages = with pkgs; [yazi];
+    nixforge = {
       programs = {
         atuin = enabled;
         eza = enabled;
-        fzf = enabled;
+        fzf = disabled;
         powerlevel10k = disabled;
-        starship = enabled;
+        starship = disabled;
         zoxide = enabled;
         zsh = enabled;
       };

@@ -8,17 +8,12 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.services.stirling-pdf;
-in
-{
+in {
   options.${namespace}.services.stirling-pdf = with types; {
     enable = mkBoolOpt false "Enable stirling-pdf";
   };
-
-  disabledModules = [ "services/web-apps/stirling-pdf.nix" ];
-  imports = [ "${inputs.unstable}/nixos/modules/services/web-apps/stirling-pdf.nix" ];
 
   config = mkIf cfg.enable {
     services.stirling-pdf = {

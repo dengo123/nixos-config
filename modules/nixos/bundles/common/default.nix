@@ -29,9 +29,8 @@ in {
         networking = enabled;
       };
 
-      programs = {
-        sops = enabled;
-      };
+      # programs = {
+      # };
 
       services = {
         printing = enabled;

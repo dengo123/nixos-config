@@ -7,11 +7,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.common;
-in
-{
+in {
   options.${namespace}.bundles.common = with types; {
     enable = mkBoolOpt false "Whether or not to enable common bundle configuration.";
   };
@@ -40,7 +38,7 @@ in
       # Config formatting
       nixfmt-rfc-style
     ];
-    zeus = {
+    nixforge = {
       bundles.shell = enabled;
       config = {
         apps = enabled;
@@ -54,9 +52,8 @@ in
         brave = enabled;
         kitty = enabled;
         librewolf = enabled;
-        lazygit = enabled;
+        lazygit = disabled;
         neovim = enabled;
-        stylix = enabled;
         tmux = enabled;
         zen = enabled;
       };

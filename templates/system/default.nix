@@ -1,28 +1,53 @@
-{ config, pkgs, ... }:
 {
-  imports = [ ./hardware-configuration.nix ];
+  lib,
+  namespace,
+  ...
+}:
+with lib;
+with lib.${namespace}; {
+  imports = [./hardware.nix];
 
-  # Enable Bootloader (EFI or BIOS)
-  #system.boot.efi.enable = true;
-  #system.boot.bios.enable = true;
+  networking.hostName = "your-hostname"; # TODO: Change me!
 
-  # Better battery life on laptops
-  # system.battery.enable = true;
+  ${namespace} = {
+    config = {
+      user = {
+        name = "your-username"; # TODO: Change me!
+        extraGroups = [
+          "networkmanager"
+          "wheel"
+        ];
+      };
+    };
 
-  # suites.desktop.enable = true;
-  # suites.development.enable = true;
+    bundles = {
+      common = enabled;
+    };
 
-  # suites.server.enable = true;
+    desktop.hyprland = disabled; # TODO: Set to enabled if needed
 
-  # Nvidia Drivers
-  # hardware.nvidia.enable = true;
+    hardware = {
+      bluetooth = disabled;
+      cuda = disabled;
+      nvidia = disabled;
+    };
 
-  # Add packages (custom for ones in these dotfiles)
-  # environment.systemPackages = with pkgs; [
-  #   custom.package
-  # ];
+    programs = {
+      steam = disabled;
+    };
 
-  # ======================== DO NOT CHANGE THIS ========================
-  system.stateVersion = "22.11";
-  # ======================== DO NOT CHANGE THIS ========================
+    system = {
+      boot.grub = enabled;
+      keyboard = {
+        layout = "us";
+        variant = "intl";
+      };
+      region = {
+        locale = "en_US.UTF-8";
+        timeZone = "UTC";
+      };
+    };
+  };
+
+  system.stateVersion = "24.05";
 }

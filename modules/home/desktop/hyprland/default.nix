@@ -8,8 +8,7 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.desktop.hyprland;
   border-size = 1;
   gaps-in = 3;
@@ -17,14 +16,13 @@ let
   active-opacity = 0.9;
   inactive-opacity = 0.8;
   rounding = 10;
-in
-{
+in {
   options.${namespace}.desktop.hyprland = with types; {
     enable = mkBoolOpt false "Enable hyprland";
   };
 
   config = mkIf cfg.enable {
-    zeus.desktop.hyprland = {
+    nixforge.desktop.hyprland = {
       animations = enabled;
       keybindings = enabled;
     };
@@ -143,7 +141,6 @@ in
             accel_profile = "adaptive";
           }
         ];
-
       };
     };
 

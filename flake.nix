@@ -1,54 +1,41 @@
 {
-  description = "";
+  description = "nixforge - In the crucible of code, systems awaken";
 
   inputs = {
-    # NixPkgs (nixos-24.05)
-    stable.url = "github:nixos/nixpkgs/nixos-24.11";
-
-    # NixPkgs Unstable (nixos-unstable)
-    unstable.url = "github:nixos/nixpkgs/nixos-unstable";
-
-    ### Additional Inputs ###
-
-    # ags
-    ags.url = "github:Aylur/ags";
-
-    # Home Manager (release-24.05)
-    home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
-      inputs.nixpkgs.follows = "unstable";
-    };
-
-    # Hardware Configuration
-    nixos-hardware.url = "github:nixos/nixos-hardware";
-
-    # Run unpatched dynamically compiled binaries
-    nix-ld = {
-      url = "github:Mic92/nix-ld";
-      inputs.nixpkgs.follows = "unstable";
-    };
+    # Core Channels
+    stable.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     # Snowfall Lib
     snowfall-lib = {
       url = "github:snowfallorg/lib";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Hyprland
+    # Home Manager
+    home-manager = {
+      url = "github:nix-community/home-manager/release-24.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Weitere Inputs
+    ags.url = "github:Aylur/ags";
     hyprland.url = "github:hyprwm/Hyprland";
+    nixos-hardware.url = "github:nixos/nixos-hardware";
 
-    # Apple font
-    # apple-fonts.url = "github:Lyndeno/apple-fonts.nix";
+    nix-ld = {
+      url = "github:Mic92/nix-ld";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
-    # Sops secrets management
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "unstable";
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
-      inputs.nixpkgs.follows = "unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -60,9 +47,8 @@
       snowfall = {
         meta = {
           name = "nixforge";
-          title = "The Nix Forge - In the crucible of code, systems awaken. From metal and magic, they arise.";
+          title = "The Nix Forge - In the crucible of code, systems awaken.";
         };
-
         namespace = "nixforge";
       };
     };
@@ -76,9 +62,13 @@
         permittedInsecurePackages = [];
       };
 
-      overlays = with inputs; [];
+      overlays = with inputs; [
+        # Optional: z. B. hyprland.overlays.default
+      ];
 
-      systems.modules.nixos = with inputs; [];
+      systems.modules.nixos = with inputs; [
+        agenix.nixosModules.default
+      ];
 
       templates = import ./templates {};
     };

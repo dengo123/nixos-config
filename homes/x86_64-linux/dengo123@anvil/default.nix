@@ -6,10 +6,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-{
+with lib.${namespace}; {
   snowfallorg.user.enable = true;
-  zeus = {
+  nixforge = {
     bundles = {
       common = enabled;
       desktop.hyprland = enabled;

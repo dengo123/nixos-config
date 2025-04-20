@@ -1,47 +1,35 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
-  inputs,
+  pkgs,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.services.ollama;
-  pkgs_unstable = import inputs.unstable {
-    system = "x86_64-linux";
-    config.allowUnfree = true;
-  };
-in
-{
-  options.${namespace}.services.ollama = with types; {
-    enable = mkBoolOpt false "Enable ollama";
+in {
+  options.${namespace}.services.ollama = {
+    enable = mkBoolOpt false "Enable the Ollama service.";
+    acceleration = mkOption {
+      type = types.enum ["cuda" "rocm" "cpu"];
+      default = "cuda";
+      description = "Acceleration backend to use (e.g. CUDA for NVIDIA GPUs).";
+    };
+    port = mkOption {
+      type = types.port;
+      default = 11434;
+      description = "Port on which Ollama will listen.";
+    };
   };
 
-  disabledModules = [
-    "services/misc/ollama.nix"
-  ];
-  imports = [
-    "${inputs.unstable}/nixos/modules/services/misc/ollama.nix"
-  ];
   config = mkIf cfg.enable {
-    services = {
-      ollama = {
-        enable = true;
-        port = 11434;
-        openFirewall = true;
-        acceleration = "cuda";
-        package = pkgs_unstable.ollama;
-      };
-      nextjs-ollama-llm-ui = {
-        enable = true;
-        ollamaUrl = "http://127.0.0.1:11434";
-        hostname = "0.0.0.0";
-        port = 3050;
-      };
+    services.ollama = {
+      enable = true;
+      acceleration = cfg.acceleration;
+      port = cfg.port;
+      openFirewall = true;
+      package = pkgs.ollama;
     };
   };
 }
