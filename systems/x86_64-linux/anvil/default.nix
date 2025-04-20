@@ -12,7 +12,8 @@ with lib.${namespace}; {
   ${namespace} = {
     config = {
       user = {
-        name = "dengo123";
+        name = "hephaestus";
+        fullName = "Deniz Altiok";
         extraGroups = [
           "networkmanager"
           "wheel"
