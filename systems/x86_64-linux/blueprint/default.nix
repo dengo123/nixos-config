@@ -32,7 +32,7 @@ with lib.${namespace}; {
       hyprland = {
         enable = false;
         mode = "minimal";
-      }
+      };
     };
     hardware = {
       bluetooth = enabled;
