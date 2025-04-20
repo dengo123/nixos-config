@@ -11,9 +11,7 @@ with lib.${namespace}; let
 in {
   options.${namespace}.system.fonts = {
     enable = mkBoolOpt true "Enable font configuration";
-    packages =
-      mkOpt (types.listOf types.package) []
-      "Extra font packages to install system-wide";
+    packages = mkOpt (types.listOf types.package) [] "Extra font packages to install system-wide";
     fontconfig.enable = mkBoolOpt true "Enable fontconfig and default settings";
   };
 
@@ -23,14 +21,12 @@ in {
         cfg.packages
         ++ [
           pkgs.noto-fonts
-          pkgs.noto-fonts-cjk
+          pkgs.noto-fonts-cjk-sans
           pkgs.noto-fonts-emoji
           pkgs.inter
-          pkgs.intel-one-mono
-          pkgs.jetbrains-mono
-          pkgs.fira-code
-          pkgs.fira-code-symbols
-          pkgs.nerdfonts
+
+          pkgs.nerd-fonts.fira-code
+          pkgs.nerd-fonts.jetbrains-mono
         ];
 
       fontconfig = mkIf cfg.fontconfig.enable {
