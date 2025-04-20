@@ -1,55 +1,58 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.nvidia;
-in
-{
+
+  nvidiaPackages = config.boot.kernelPackages.nvidiaPackages;
+
+  resolvePackage = pkg:
+    {
+      stable = nvidiaPackages.stable;
+      production = nvidiaPackages.production;
+      latest = nvidiaPackages.latest;
+      beta = nvidiaPackages.beta;
+      vulkan_beta = nvidiaPackages.vulkan_beta;
+    }
+    .${pkg};
+in {
   options.${namespace}.hardware.nvidia = with types; {
-    enable = mkBoolOpt false "Enable nvidia module";
+    enable = mkBoolOpt false "Enable NVIDIA drivers";
+    package =
+      mkOpt (enum ["stable" "production" "latest" "beta" "vulkan_beta"])
+      "stable"
+      "NVIDIA driver package to use";
+    open = mkBoolOpt false "Use the NVIDIA open kernel module (experimental)";
   };
 
   config = mkIf cfg.enable {
-    hardware.graphics.enable = true;
+    hardware = {
+      graphics.enable = true;
 
-    services.xserver.videoDrivers = [ "nvidia" ];
+      nvidia = {
+        open = cfg.open;
+        package = resolvePackage cfg.package;
+        nvidiaSettings = true;
+        modesetting.enable = true;
+        powerManagement.enable = true;
+      };
+    };
 
-    hardware.nvidia = {
-      # Modesetting is required.
-      modesetting.enable = true;
+    services.xserver.videoDrivers = ["nvidia"];
 
-      # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
-      # Enable this if you have graphical corruption issues or application crashes after waking
-      # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead
-      # of just the bare essentials.
-      powerManagement.enable = true;
-
-      # Fine-grained power management. Turns off GPU when not in use.
-      # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-      powerManagement.finegrained = false;
-
-      # Use the NVidia open source kernel module (not to be confused with the
-      # independent third-party "nouveau" open source driver).
-      # Support is limited to the Turing and later architectures. Full list of
-      # supported GPUs is at:
-      # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus
-      # Only available from driver 515.43.04+
-      # Currently alpha-quality/buggy, so false is currently the recommended setting.
-      open = false;
-
-      # Enable the Nvidia settings menu,
-      # accessible via `nvidia-settings`.
-      nvidiaSettings = true;
-
-      # Optionally, you may need to select the appropriate driver version for your specific GPU.
-      package = config.boot.kernelPackages.nvidiaPackages.stable;
+    boot = {
+      kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"];
+      kernelParams = [
+        "nvidia_drm.modeset=1"
+        "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
+      ];
+      extraModprobeConfig = ''
+        options nvidia_drm modeset=1
+      '';
     };
   };
 }

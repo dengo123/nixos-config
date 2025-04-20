@@ -33,7 +33,11 @@ with lib.${namespace}; {
     hardware = {
       bluetooth = enabled;
       cuda = enabled;
-      nvidia = enabled;
+      nvidia = {
+        enable = true;
+        open = true;
+        package = "beta";
+      };
     };
     programs = {
       steam = enabled;
