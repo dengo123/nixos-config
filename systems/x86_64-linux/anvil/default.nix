@@ -26,7 +26,10 @@ with lib.${namespace}; {
     bundles = {
       common = enabled;
     };
-    desktop.hyprland = enabled;
+    desktop.hyprland = {
+      enable = true;
+      mode = "full";
+    };
     hardware = {
       bluetooth = enabled;
       cuda = enabled;
@@ -36,7 +39,7 @@ with lib.${namespace}; {
       steam = enabled;
       nh = enabled;
       nix-ld = enabled;
-      ragenix = enabled;
+      ragenix = disabled;
     };
     services = {
       ollama = enabled;

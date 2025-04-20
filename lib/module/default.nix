@@ -58,4 +58,17 @@ with lib; rec {
     #@ false
     enable = false;
   };
+  ## Create a string NixOS module option.
+  ##
+  ## ```nix
+  ## lib.mkStrOpt "default" "Description of the string option."
+  ## ```
+  mkStrOpt = mkOpt types.str;
+
+  ## Optional: ohne Beschreibung
+  mkStrOpt' = mkOpt' types.str;
+
+  ## Weitere Typen (wenn du willst)
+  # mkIntOpt = mkOpt types.int;
+  # mkStrListOpt = mkOpt (types.listOf types.str);
 }
