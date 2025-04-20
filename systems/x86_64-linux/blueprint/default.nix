@@ -25,16 +25,17 @@ with lib.${namespace}; {
       };
     };
     bundles = {
-      common = enabled;
+      vm = enabled;
     };
-    desktop.kde = enabled;
+    desktop = {
+      kde = enabled;
+      hyprland = {
+        enable = false;
+        mode = "minimal";
+      }
+    };
     hardware = {
       bluetooth = enabled;
-      nvidia = {
-        enable = true;
-        open = true;
-        package = "beta";
-      };
     };
     programs = {
       nh = enabled;
@@ -45,7 +46,7 @@ with lib.${namespace}; {
       virtualisation = enabled;
     };
     system = {
-      boot.systemd = enabled;
+      boot.systemd-boot = enabled;
       keyboard = {
         layout = "us";
         variant = "intl";
