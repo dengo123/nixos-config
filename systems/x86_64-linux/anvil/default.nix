@@ -9,7 +9,7 @@ with lib.${namespace}; {
 
   networking.hostName = "anvil";
 
-  nixforge = {
+  ${namespace} = {
     config = {
       user = {
         name = "dengo123";
@@ -36,6 +36,7 @@ with lib.${namespace}; {
       steam = enabled;
       nh = enabled;
       nix-ld = enabled;
+      ragenix = enabled;
     };
     services = {
       ollama = enabled;

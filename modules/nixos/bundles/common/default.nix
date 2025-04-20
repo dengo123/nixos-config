@@ -21,8 +21,10 @@ in {
         excludePackages = [pkgs.xterm];
       };
     };
-    nixforge = {
-      config.nix = enabled;
+    ${namespace} = {
+      config = {
+        nix = enabled;
+      };
 
       hardware = {
         audio = enabled;
