@@ -15,7 +15,7 @@ in {
 
   config = {
     i18n.defaultLocale = cfg.locale;
-    i18n.supportedLocales = [cfg.locale];
+    i18n.supportedLocales = ["${cfg.locale}/UTF-8"];
     time.timeZone = cfg.timeZone;
   };
 }
