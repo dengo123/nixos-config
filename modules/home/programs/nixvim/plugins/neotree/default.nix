@@ -1,7 +1,14 @@
-{ lib, ... }:
+{
+  lib,
+  config,
+  namespace,
+  ...
+}:
+with lib;
+with lib.${namespace}; let
+  cfg = config.${namespace}.programs.nixvim.plugins.neo-tree;
 
-let
-  lua = ''
+  luaConfig = ''
     require("neo-tree").setup({
       close_if_last_window = true,
       enable_git_status = true,
@@ -22,18 +29,21 @@ let
       },
     })
 
-    -- Keybindings
     vim.keymap.set("n", "<leader>n", ":Neotree toggle<CR>", { noremap = true, silent = true })
     vim.keymap.set("n", "<leader>bf", ":Neotree buffers reveal float<CR>", { noremap = true, silent = true })
 
-    -- Transparenz
     vim.cmd("highlight NeoTreeNormal guibg=NONE ctermbg=NONE")
     vim.cmd("highlight NeoTreeNormalNC guibg=NONE ctermbg=NONE")
     vim.cmd("highlight NeoTreeEndOfBuffer guibg=NONE ctermbg=NONE")
     vim.cmd("highlight NeoTreeWinSeparator guibg=NONE ctermbg=NONE")
   '';
 in {
-  programs.nixvim.plugins.neo-tree.enable = true;
-  programs.nixvim.extraConfigLua = lib.mkAfter lua;
-}
+  options.${namespace}.programs.nixvim.plugins.neo-tree = {
+    enable = mkBoolOpt false "Enable Neo-tree file explorer";
+  };
 
+  config = mkIf cfg.enable {
+    programs.nixvim.plugins.neo-tree.enable = true;
+    programs.nixvim.extraConfigLua = lib.mkAfter luaConfig;
+  };
+}

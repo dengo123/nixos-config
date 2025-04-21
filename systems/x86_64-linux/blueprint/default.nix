@@ -38,12 +38,16 @@ with lib.${namespace}; {
       nh = enabled;
       nix-ld = enabled;
       ragenix = disabled;
+      nixvim = {
+        enable = true;
+        mode = "devshell";
+      };
     };
     services = {
       virtualisation = enabled;
     };
     system = {
-      boot.systemd-boot = enabled;
+      boot.grub = enabled;
       keyboard = {
         layout = "us";
         variant = "intl";

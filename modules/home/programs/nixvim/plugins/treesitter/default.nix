@@ -1,30 +1,25 @@
-{ ... }:
-
 {
-  imports = [
-    ./plugins.nix
-    ./extra.nix
-  ];
+  lib,
+  config,
+  namespace,
+  ...
+}:
+with lib;
+with lib.${namespace}; let
+  cfg = config.${namespace}.programs.nixvim.plugins.treesitter;
+in {
+  options.${namespace}.programs.nixvim.plugins.treesitter = {
+    enable = mkBoolOpt false "Enable Treesitter and core features.";
+  };
 
-  programs.nixvim = {
-    config = {
+  config = mkIf cfg.enable {
+    programs.nixvim.config.plugins.treesitter = {
       enable = true;
-
-      plugins = {
-        treesitter = {
-          enable = true;
-
-          settings = {
-            ensure_installed = "all";
-            highlight.enable = true;
-            indent.enable = true;
-          };
-        };
-
-        rainbow-delimiters.enable = true;
-        treesitter-context.enable = true;
+      settings = {
+        ensure_installed = "all";
+        highlight.enable = true;
+        indent.enable = true;
       };
     };
   };
 }
-
