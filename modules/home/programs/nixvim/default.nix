@@ -37,9 +37,9 @@ in {
         alpha = enabled;
         cmp = enabled;
         dap = enabled;
-        diagnostics = enabled;
         lsp = enabled;
         none-ls = enabled;
+
         telescope = enabled;
         textobjects = enabled;
         treesitter = enabled;
@@ -48,6 +48,16 @@ in {
         neo-tree = enabled;
         surround = enabled;
         comment = enabled;
+
+        gitsigns = enabled;
+        noice = enabled;
+        notify = enabled;
+        trouble = enabled;
+
+        rainbow-delimiters = enabled;
+        treesitter-context = enabled;
+        textsubjects = enabled;
+        playground = enabled;
       };
     })
 

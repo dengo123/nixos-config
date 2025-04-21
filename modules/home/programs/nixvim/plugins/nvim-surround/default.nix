@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.nixvim.plugins.nvim-surround;
+  cfg = config.${namespace}.programs.nixvim.plugins.surround;
 in {
-  options.${namespace}.programs.nixvim.plugins.nvim-surround = {
+  options.${namespace}.programs.nixvim.plugins.surround = {
     enable = mkBoolOpt false "Enable nvim-surround for surround editing.";
   };
 

@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.nixvim.plugins.comment-nvim;
+  cfg = config.${namespace}.programs.nixvim.plugins.comment;
 in {
-  options.${namespace}.programs.nixvim.plugins.comment-nvim = {
+  options.${namespace}.programs.nixvim.plugins.comment = {
     enable = mkBoolOpt false "Enable comment.nvim for easy commenting.";
   };
 
