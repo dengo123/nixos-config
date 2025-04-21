@@ -38,10 +38,6 @@ with lib.${namespace}; {
       nh = enabled;
       nix-ld = enabled;
       ragenix = disabled;
-      nixvim = {
-        enable = true;
-        mode = "devshell";
-      };
     };
     services = {
       virtualisation = enabled;

@@ -23,7 +23,10 @@ with lib.${namespace}; {
         enable = true;
         username = "your-username"; # TODO: Change me!
       };
-      # Add more programs here
+      nixvim = {
+        enable = true;
+        mode = "devshell";
+      };
     };
 
     misc = {

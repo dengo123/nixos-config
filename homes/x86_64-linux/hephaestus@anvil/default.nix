@@ -21,6 +21,10 @@ with lib.${namespace}; {
         enable = true;
         username = "Ryan Wüest";
       };
+      nixvim = {
+        enable = true;
+        mode = "full";
+      };
       freetube = enabled;
       spotify = enabled;
     };

@@ -45,10 +45,6 @@ with lib.${namespace}; {
       nh = enabled;
       nix-ld = enabled;
       ragenix = disabled;
-      nixvim = {
-        enable = true;
-        mode = "full";
-      };
     };
     services = {
       ollama = enabled;
