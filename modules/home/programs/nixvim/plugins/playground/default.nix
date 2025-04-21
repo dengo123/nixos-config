@@ -7,9 +7,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.nixvim.plugins.treesitter-playground;
+  cfg = config.${namespace}.programs.nixvim.plugins.playground;
 in {
-  options.${namespace}.programs.nixvim.plugins.treesitter-playground = {
+  options.${namespace}.programs.nixvim.plugins.playground = {
     enable = mkBoolOpt false "Enable Treesitter playground viewer";
   };
 

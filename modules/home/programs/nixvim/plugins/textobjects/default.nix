@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.nixvim.plugins.treesitter-textobjects;
+  cfg = config.${namespace}.programs.nixvim.plugins.textobjects;
 in {
-  options.${namespace}.programs.nixvim.plugins.treesitter-textobjects = {
+  options.${namespace}.programs.nixvim.plugins.textobjects = {
     enable = mkBoolOpt false "Enable Treesitter textobjects support with movement, swap, and peek.";
   };
 

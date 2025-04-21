@@ -7,9 +7,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.nixvim.plugins.treesitter-textsubjects;
+  cfg = config.${namespace}.programs.nixvim.plugins.textsubjects;
 in {
-  options.${namespace}.programs.nixvim.plugins.treesitter-textsubjects = {
+  options.${namespace}.programs.nixvim.plugins.textsubjects = {
     enable = mkBoolOpt false "Enable Treesitter textsubjects";
   };
 
