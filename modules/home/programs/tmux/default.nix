@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,11 +6,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.tmux;
-in
-{
+in {
   options.${namespace}.programs.tmux = with types; {
     enable = mkBoolOpt false "Enable programs.tmux";
   };
@@ -22,20 +19,24 @@ in
       mouse = true;
       shell = "${pkgs.zsh}/bin/zsh";
       prefix = "C-s";
-      terminal = "kitty";
+      terminal = "screen-256color"; # statt hardcoded "kitty"
       keyMode = "vi";
       baseIndex = 1;
-
-      extraConfig = ''
-        set -g set-clipboard on
-      '';
+      historyLimit = 10000;
 
       plugins = with pkgs; [
         tmuxPlugins.catppuccin
         tmuxPlugins.vim-tmux-navigator
         tmuxPlugins.resurrect
+        tmuxPlugins.continuum
         tmuxPlugins.sensible
       ];
+
+      extraConfig = ''
+        set -g set-clipboard on
+        set -g @continuum-restore on
+        set -g status-keys vi
+      '';
     };
   };
 }

@@ -24,6 +24,12 @@
     # 🖥 Hyprland
     hyprland.url = "github:hyprwm/Hyprland";
 
+    # Nixvim
+    nixvim.url = "github:nix-community/nixvim";
+
+    # Ghostty
+    ghostty.url = "github:ghostty-org/ghostty";
+
     # 🎨 Stylix
     stylix = {
       url = "github:danth/stylix";

@@ -1,0 +1,34 @@
+{
+  ll = "ls -lah";
+  cl = "clear";
+
+  ".." = "cd ..";
+  "..." = "cd ../..";
+  "...." = "cd ../../..";
+  "....." = "cd ../../../..";
+
+  grep = "grep --color=auto";
+
+  upgrade = "sudo nix flake update --flake ~/nixos-config && sudo nixos-rebuild switch --flake ~/nixos-config";
+  update = "sudo nixos-rebuild switch --flake ~/nixos-config";
+  switch = "home-manager switch --flake ~/nixos-config";
+
+  v = "nvim";
+  n = "nano";
+  e = "emacs";
+
+  r = "reboot";
+  p = "poweroff";
+
+  g = "git";
+  ga = "git add";
+  gaa = "git add --all";
+  gp = "git push";
+  gl = "git pull";
+  gc = "git commit";
+  gcm = "git commit -m";
+  gcam = "git commit -a -m";
+  gr = "git reset";
+
+  zi = "zoxide query --interactive";
+}

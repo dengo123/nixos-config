@@ -5,9 +5,9 @@
 }:
 with lib;
 with lib.${namespace}; {
-  imports = [./hardware.nix];
+  # imports = [./hardware.nix];
 
-  networking.hostName = "anvil";
+  networking.hostName = "blueprint";
 
   ${namespace} = {
     config = {
@@ -33,9 +33,6 @@ with lib.${namespace}; {
         enable = false;
         mode = "minimal";
       };
-    };
-    hardware = {
-      bluetooth = enabled;
     };
     programs = {
       nh = enabled;

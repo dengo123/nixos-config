@@ -19,7 +19,7 @@ in {
         ssh = enabled;
         spice-agent = enabled;
         qemu-guest = enabled;
-        virtiofsd = enabled;
+        virtiofsd = disabled;
       };
 
       programs = {
@@ -28,8 +28,6 @@ in {
       };
 
       system = {
-        boot.systemd = enabled;
-
         fonts = {
           packages = with pkgs; [];
           fontconfig = disabled;
