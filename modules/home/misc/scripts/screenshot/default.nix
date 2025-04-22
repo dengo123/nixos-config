@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,8 +6,7 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.misc.scripts.screenshot;
 
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
@@ -39,8 +37,7 @@ let
                 --icon="$folder/$filename" \
                 --replace-id="$(cat "/tmp/nixy-notification" 2>/dev/null || echo 0)" --print-id > "/tmp/nixy-notification"
   '';
-in
-{
+in {
   options.${namespace}.misc.scripts.screenshot = with types; {
     enable = mkBoolOpt false "Enable misc.scripts.screenshot";
   };

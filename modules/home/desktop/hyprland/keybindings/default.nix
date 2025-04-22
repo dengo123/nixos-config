@@ -1,50 +1,74 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.desktop.hyprland.keybindings;
+
+  # Terminal resolver
+  terminal =
+    if config.${namespace}.programs.ghostty.enable
+    then "ghostty"
+    else if config.${namespace}.programs.kitty.enable
+    then "kitty"
+    else "foot"; # fallback
+
+  # Browser resolver
+  browser =
+    if config.${namespace}.programs.zen.enable
+    then "zen"
+    else if config.${namespace}.programs.brave.enable
+    then "brave"
+    else "firefox"; # fallback
 in {
   options.${namespace}.desktop.hyprland.keybindings = with types; {
-    enable = mkBoolOpt false "Enable hyprland keybindings";
+    enable = mkBoolOpt true "Enable Hyprland keybindings";
   };
+
   config = mkIf cfg.enable {
     wayland.windowManager.hyprland.settings = {
       bind =
         [
-          "$mod,RETURN, exec, ${pkgs.kitty}/bin/kitty" # Kitty
-          "$mod,E, exec, ${pkgs.nautilus}/bin/nautilus" # Nautilus
-          "$mod,B, exec, ${pkgs.librewolf}/bin/librewolf" # Librewolf
-          "$mod,K, exec, ${pkgs.bitwarden}/bin/bitwarden" # Bitwarden
-          "$mod,L, exec, ${pkgs.hyprlock}/bin/hyprlock" # Lock
-          "$mod,X, exec, power-menu" # Powermenu
-          "$mod,D, exec, launcher" # Launcher
-          "$shiftMod,SPACE, exec, hyprfocus-toggle" # Toggle HyprFocus
+          "$mod,RETURN, exec, ${terminal}"
+          "$mod,B, exec, ${browser}"
+          "$mod,O, exec, librewolf"
+          "$mod,Y, exec, ${terminal} -e yazi"
 
-          "$mod,Q, killactive," # Close window
-          "$mod,T, togglefloating," # Toggle Floating
-          "$mod,F, fullscreen" # Toggle Fullscreen
-          "$mod,left, movefocus, l" # Move focus left
-          "$mod,right, movefocus, r" # Move focus Right
-          "$mod,up, movefocus, u" # Move focus Up
-          "$mod,down, movefocus, d" # Move focus Down
-          "$shiftMod,up, focusmonitor, -1" # Focus previous monitor
-          "$shiftMod,down, focusmonitor, 1" # Focus next monitor
-          "$shiftMod,left, layoutmsg, addmaster" # Add to master
-          "$shiftMod,right, layoutmsg, removemaster" # Remove from master
+          "$mod,L, exec, hyprlock"
+          "$mod,X, exec, power-menu"
+          "$mod,D, exec, launcher"
+          "$shiftMod,SPACE, exec, hyprfocus-toggle"
 
-          "$mod,PRINT, exec, screenshot window" # Screenshot window
-          ",PRINT, exec, screenshot monitor" # Screenshot monitor
-          "$shiftMod,PRINT, exec, screenshot region" # Screenshot region
-          "ALT,PRINT, exec, screenshot region swappy" # Screenshot region then edit
+          "$mod,Q, killactive,"
+          "$shiftMod,Q, exit"
+          "$mod,T, togglefloating,"
+          "$mod,F, fullscreen"
 
-          "$shiftMod,S, exec, ${pkgs.librewolf}/bin/librewolf :open $(rofi --show dmenu -L 1 -p ' Search on internet')" # Search on internet with rofi
-          "$shiftMod,C, exec, clipboard" # Clipboard picker with rofi
-          "$mod,F2, exec, night-shift" # Toggle night shift
+          "$mod,left, movefocus, l"
+          "$mod,right, movefocus, r"
+          "$mod,up, movefocus, u"
+          "$mod,down, movefocus, d"
+          "$shiftMod,up, focusmonitor, -1"
+          "$shiftMod,down, focusmonitor, 1"
+          "$shiftMod,left, layoutmsg, addmaster"
+          "$shiftMod,right, layoutmsg, removemaster"
+
+          "$mod,S, togglespecialworkspace, magic"
+          "$mod,S, movetoworkspace, +0"
+          "$mod,S, togglespecialworkspace, magic"
+          "$mod,S, movetoworkspace, special:magic"
+          "$mod,S, togglespecialworkspace, magic"
+
+          "$mod,TAB, cyclenext,"
+          "$mod,TAB, bringactivetotop,"
+
+          "$mod,PRINT, exec, screenshot window"
+          ",PRINT, exec, screenshot monitor"
+          "$shiftMod,PRINT, exec, screenshot region"
+          "ALT,PRINT, exec, screenshot region swappy"
         ]
         ++ (builtins.concatLists (
           builtins.genList (
@@ -59,21 +83,21 @@ in {
         ));
 
       bindm = [
-        "$mod,mouse:272, movewindow" # Move Window (mouse)
-        "$mod,R, resizewindow" # Resize Window (mouse)
+        "$mod,mouse:272, movewindow"
+        "$mod,R, resizewindow"
       ];
 
       bindl = [
-        ",XF86AudioMute, exec, sound-toggle" # Toggle Mute
+        ",XF86AudioMute, exec, sound-toggle"
         ",switch:on:Lid Switch, exec, hyprctl keyword monitor 'eDP-1, disable'"
         ",switch:off:Lid Switch, exec, hyprctl keyword monitor 'eDP-1, prefered, auto, auto'"
       ];
 
       bindle = [
-        ",XF86AudioRaiseVolume, exec, sound-up" # Sound Up
-        ",XF86AudioLowerVolume, exec, sound-down" # Sound Down
-        ",XF86MonBrightnessUp, exec, brightness-up" # Brightness Up
-        ",XF86MonBrightnessDown, exec, brightness-down" # Brightness Down
+        ",XF86AudioRaiseVolume, exec, sound-up"
+        ",XF86AudioLowerVolume, exec, sound-down"
+        ",XF86MonBrightnessUp, exec, brightness-up"
+        ",XF86MonBrightnessDown, exec, brightness-down"
       ];
     };
   };

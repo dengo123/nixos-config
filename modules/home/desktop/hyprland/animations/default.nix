@@ -23,6 +23,9 @@ with lib.${namespace}; let
     then "6"
     else "3";
 in {
+  options.${namespace}.desktop.hyprland.animation = with types;
+    mkStrOpt "medium" "Animation speed: none, slow, medium, fast";
+
   config = mkIf (cfg.enable && speed != "none") {
     wayland.windowManager.hyprland.settings.animations = {
       enabled = true;

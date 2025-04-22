@@ -11,13 +11,6 @@ with lib.${namespace}; let
 in {
   options.${namespace}.desktop.hyprland = with types; {
     enable = mkBoolOpt false "Enable Hyprland as Wayland Compositor";
-
-    animation = mkStrOpt "medium" "Animation style (slow, medium, fast)";
-    monitor = mkStrOpt "single" "Monitor layout (single, dual, vertical)";
-    input = mkBoolOpt true "Enable default input settings";
-    theme = mkBoolOpt true "Enable theming (colors, borders, etc.)";
-    behavior = mkBoolOpt true "Enable Hyprland window behavior";
-    keybindings = mkBoolOpt true "Enable keybindings";
   };
 
   config = mkIf cfg.enable {
