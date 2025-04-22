@@ -19,7 +19,7 @@ in {
       programs = {
         atuin = enabled;
         eza = enabled;
-        fzf = disabled;
+        fzf = enabled;
         powerlevel10k = disabled;
         starship = disabled;
         zoxide = enabled;

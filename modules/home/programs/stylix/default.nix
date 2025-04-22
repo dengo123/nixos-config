@@ -22,7 +22,7 @@ in {
 
       autoEnable = true;
       #base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
-      base16Scheme = ./base16/catppuccin/custom.yaml;
+      base16Scheme = ./base16/catppuccin/colors.yaml;
       cursor = {
         package = pkgs.bibata-cursors;
         name = "Bibata-Original-Ice";
@@ -61,7 +61,7 @@ in {
         dark = "Papirus-Dark";
       };
 
-      image = ./wallpapers/sports.png;
+      image = ./wallpapers/nixos_waves.png;
 
       polarity = "dark";
       targets = {

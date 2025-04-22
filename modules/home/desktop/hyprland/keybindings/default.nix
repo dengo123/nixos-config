@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,11 +6,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.desktop.hyprland.keybindings;
-in
-{
+in {
   options.${namespace}.desktop.hyprland.keybindings = with types; {
     enable = mkBoolOpt false "Enable hyprland keybindings";
   };
@@ -51,15 +48,14 @@ in
         ]
         ++ (builtins.concatLists (
           builtins.genList (
-            i:
-            let
+            i: let
               ws = i + 1;
-            in
-            [
+            in [
               "$mod,code:1${toString i}, workspace, ${toString ws}"
               "$mod SHIFT,code:1${toString i}, movetoworkspace, ${toString ws}"
             ]
-          ) 9
+          )
+          9
         ));
 
       bindm = [

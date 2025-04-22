@@ -1,17 +1,13 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.btop;
-in
-{
+in {
   options.${namespace}.programs.btop = with types; {
     enable = mkBoolOpt false "Enable btop";
   };

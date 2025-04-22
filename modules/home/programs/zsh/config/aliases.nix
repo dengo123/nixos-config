@@ -1,5 +1,4 @@
 {
-  ll = "ls -lah";
   cl = "clear";
 
   ".." = "cd ..";
@@ -31,4 +30,8 @@
   gr = "git reset";
 
   zi = "zoxide query --interactive";
+  lg = "lazygit";
+  ls = "eza";
+  ll = "eza -lah";
+  tree = "eza --tree";
 }

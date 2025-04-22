@@ -5,30 +5,30 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.git;
-  home = config.${namespace}.config.user;
-in
-{
+  userCfg = config.${namespace}.config.user;
+in {
   options.${namespace}.programs.git = with types; {
-    enable = mkBoolOpt false "${namespace}.programs.git.enable";
-    username = mkOpt str home.fullName "${namespace}.programs.git.username";
-    useremail = mkOpt str home.email "${namespace}.programs.git.useremail";
+    enable = mkBoolOpt false "Enable Git configuration.";
+    username = mkOpt (nullOr str) null "Git user name (overrides user.fullName)";
+    useremail = mkOpt (nullOr str) null "Git email address (overrides user.email)";
   };
 
   config = mkIf cfg.enable {
     programs.git = {
       enable = true;
       delta = enabled;
+      lfs = enabled;
+
+      userName = mkDefault (cfg.username or userCfg.fullName);
+      userEmail = mkDefault (cfg.useremail or userCfg.email);
+
       extraConfig = {
         pull.rebase = true;
         init.defaultBranch = "main";
         rebase.autoStash = true;
       };
-      lfs = enabled;
-      userEmail = cfg.useremail;
-      userName = cfg.username;
     };
   };
 }

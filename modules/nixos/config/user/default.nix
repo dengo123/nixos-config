@@ -38,9 +38,9 @@ with lib.${namespace}; let
     '';
 in {
   options.${namespace}.config.user = with types; {
-    name = mkOpt str "john" "The name to use for the user account.";
-    fullName = mkOpt str "John Doe" "The full name of the user.";
-    email = mkOpt str "john.doe@mail.com" "The email of the user.";
+    name = mkOpt str "blacksmith" "The name to use for the user account.";
+    fullName = mkOpt str "John Forge" "The full name of the user.";
+    email = mkOpt str "john.forge@nixforge.com" "The email of the user.";
     initialPassword =
       mkOpt str "password"
       "The initial password to use when the user is first created.";

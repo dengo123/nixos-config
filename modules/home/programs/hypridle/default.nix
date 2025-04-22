@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,20 +6,17 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.hypridle;
-in
-{
+in {
   options.${namespace}.programs.hypridle = with types; {
     enable = mkBoolOpt false "Enable programs.hypridle";
   };
 
   config = mkIf cfg.enable {
     services.hypridle = {
-      enable = false;
+      enable = true;
       settings = {
-
         general = {
           ignore_dbus_inhibit = false;
           lock_cmd = "pidof hyprlock || ${pkgs.hyprlock}/bin/hyprlock";
