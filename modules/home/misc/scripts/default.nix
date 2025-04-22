@@ -14,7 +14,7 @@ in {
 
   config = mkIf cfg.enable {
     nixforge.misc.scripts = {
-      auto-monitor = enabled;
+      auto-monitors = enabled;
       brightness = enabled;
       caffeine = enabled;
       hyprfocus = enabled;

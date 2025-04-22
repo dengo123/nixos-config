@@ -53,7 +53,6 @@ in {
         kitty = enabled;
         librewolf = enabled;
         lazygit = disabled;
-        neovim = enabled;
         tmux = enabled;
         zen = enabled;
       };

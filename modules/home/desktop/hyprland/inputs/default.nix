@@ -6,15 +6,19 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.desktop.hyprland;
-  keyboardCfg = config.${namespace}.system.keyboard;
+  cfg = config.${namespace}.desktop.hyprland.inputs;
 in {
-  config = mkIf cfg.enable {
-    wayland.windowManager.hyprland.settings.input = {
-      kb_layout = keyboardCfg.layout;
-      kb_variant = keyboardCfg.variant;
-      kb_options = lib.concatStringsSep "," keyboardCfg.options;
+  options.${namespace}.desktop.hyprland.inputs = with types; {
+    layout = mkOpt str null "Keyboard layout (XKB)";
+    variant = mkOpt str null "Keyboard variant (XKB)";
+    options = mkOpt (listOf str) [] "List of XKB options";
+  };
 
+  config = mkIf (cfg.layout != null && cfg.variant != null) {
+    wayland.windowManager.hyprland.settings.input = {
+      kb_layout = cfg.layout;
+      kb_variant = cfg.variant;
+      kb_options = lib.concatStringsSep "," cfg.options;
       follow_mouse = 1;
       sensitivity = 0.0;
       repeat_delay = 300;
