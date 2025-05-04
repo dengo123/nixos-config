@@ -19,7 +19,7 @@ with lib.${namespace}; {
     programs = {
       git = {
         enable = true;
-        username = "Ryan Wüest";
+        username = "dengo123";
       };
       nixvim = {
         enable = true;

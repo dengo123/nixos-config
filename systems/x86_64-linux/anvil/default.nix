@@ -9,10 +9,10 @@ with lib.${namespace}; {
 
   networking.hostName = "anvil";
 
-  ${namespace} = {
+  nixforge = {
     config = {
       user = {
-        name = "hephaestus";
+        name = "dengo123";
         fullName = "Deniz Altiok";
         extraGroups = [
           "networkmanager"
