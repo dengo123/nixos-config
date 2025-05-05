@@ -6,6 +6,7 @@
 with lib;
 with lib.${namespace}; {
   snowfallorg.user.enable = true;
+
   nixforge = {
     bundles = {
       common = enabled;

@@ -23,7 +23,6 @@ in {
             lua-ls.enable = true;
             pyright.enable = true;
             nil_ls.enable = true;
-            ruff-lsp.enable = true;
           };
         };
 
@@ -80,7 +79,6 @@ in {
         lua-language-server
         nil
         pyright
-        ruff-lsp
       ];
     };
   };

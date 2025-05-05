@@ -22,7 +22,7 @@ in {
 
       autoEnable = true;
       #base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
-      base16Scheme = ./base16/catppuccin/colors.yaml;
+      base16Scheme = builtins.toString ./base16/catppuccin/colors.yaml;
       cursor = {
         package = pkgs.bibata-cursors;
         name = "Bibata-Original-Ice";
@@ -31,15 +31,15 @@ in {
 
       fonts = {
         monospace = {
-          package = pkgs.nerdfonts.override {fonts = ["JetBrainsMono"];};
+          package = pkgs.nerd-fonts.jetbrains-mono;
           name = "JetBrainsMono Nerd Font Mono";
         };
         sansSerif = {
-          package = inputs.apple-fonts.packages.${pkgs.system}.sf-pro-nerd;
+          package = pkgs.nerd-fonts.jetbrains-mono;
           name = "SFProDisplay Nerd Font";
         };
         serif = {
-          package = inputs.apple-fonts.packages.${pkgs.system}.sf-pro-nerd;
+          package = pkgs.nerd-fonts.jetbrains-mono;
           name = "SFProDisplay Nerd Font";
         };
         emoji = {

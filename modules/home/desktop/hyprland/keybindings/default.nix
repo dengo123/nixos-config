@@ -6,6 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
+  mod = "SUPER";
+  shiftMod = "SUPER SHIFT";
+
   cfg = config.${namespace}.desktop.hyprland.keybindings;
 
   # Terminal resolver
@@ -32,42 +35,42 @@ in {
     wayland.windowManager.hyprland.settings = {
       bind =
         [
-          "$mod,RETURN, exec, ${terminal}"
-          "$mod,B, exec, ${browser}"
-          "$mod,O, exec, librewolf"
-          "$mod,Y, exec, ${terminal} -e yazi"
+          "${mod},RETURN, exec, ${terminal}"
+          "${mod},B, exec, ${browser}"
+          "${mod},O, exec, librewolf"
+          "${mod},Y, exec, ${terminal} -e yazi"
 
-          "$mod,L, exec, hyprlock"
-          "$mod,X, exec, power-menu"
-          "$mod,D, exec, launcher"
-          "$shiftMod,SPACE, exec, hyprfocus-toggle"
+          "${mod},L, exec, hyprlock"
+          "${mod},X, exec, power-menu"
+          "${mod},D, exec, launcher"
+          "${shiftMod},SPACE, exec, hyprfocus-toggle"
 
-          "$mod,Q, killactive,"
-          "$shiftMod,Q, exit"
-          "$mod,T, togglefloating,"
-          "$mod,F, fullscreen"
+          "${mod},Q, killactive,"
+          "${shiftMod},Q, exit"
+          "${mod},T, togglefloating,"
+          "${mod},F, fullscreen"
 
-          "$mod,left, movefocus, l"
-          "$mod,right, movefocus, r"
-          "$mod,up, movefocus, u"
-          "$mod,down, movefocus, d"
-          "$shiftMod,up, focusmonitor, -1"
-          "$shiftMod,down, focusmonitor, 1"
-          "$shiftMod,left, layoutmsg, addmaster"
-          "$shiftMod,right, layoutmsg, removemaster"
+          "${mod},left, movefocus, l"
+          "${mod},right, movefocus, r"
+          "${mod},up, movefocus, u"
+          "${mod},down, movefocus, d"
+          "${shiftMod},up, focusmonitor, -1"
+          "${shiftMod},down, focusmonitor, 1"
+          "${shiftMod},left, layoutmsg, addmaster"
+          "${shiftMod},right, layoutmsg, removemaster"
 
-          "$mod,S, togglespecialworkspace, magic"
-          "$mod,S, movetoworkspace, +0"
-          "$mod,S, togglespecialworkspace, magic"
-          "$mod,S, movetoworkspace, special:magic"
-          "$mod,S, togglespecialworkspace, magic"
+          "${mod},S, togglespecialworkspace, magic"
+          "${mod},S, movetoworkspace, +0"
+          "${mod},S, togglespecialworkspace, magic"
+          "${mod},S, movetoworkspace, special:magic"
+          "${mod},S, togglespecialworkspace, magic"
 
-          "$mod,TAB, cyclenext,"
-          "$mod,TAB, bringactivetotop,"
+          "${mod},TAB, cyclenext,"
+          "${mod},TAB, bringactivetotop,"
 
-          "$mod,PRINT, exec, screenshot window"
+          "${mod},PRINT, exec, screenshot window"
           ",PRINT, exec, screenshot monitor"
-          "$shiftMod,PRINT, exec, screenshot region"
+          "${shiftMod},PRINT, exec, screenshot region"
           "ALT,PRINT, exec, screenshot region swappy"
         ]
         ++ (builtins.concatLists (
@@ -75,16 +78,16 @@ in {
             i: let
               ws = i + 1;
             in [
-              "$mod,code:1${toString i}, workspace, ${toString ws}"
-              "$mod SHIFT,code:1${toString i}, movetoworkspace, ${toString ws}"
+              "${mod},code:1${toString i}, workspace, ${toString ws}"
+              "${mod} SHIFT,code:1${toString i}, movetoworkspace, ${toString ws}"
             ]
           )
           9
         ));
 
       bindm = [
-        "$mod,mouse:272, movewindow"
-        "$mod,R, resizewindow"
+        "${mod},mouse:272, movewindow"
+        "${mod},R, resizewindow"
       ];
 
       bindl = [

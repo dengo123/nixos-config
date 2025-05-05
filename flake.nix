@@ -3,7 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    snowfall-lib.url = "github:snowfallorg/lib";
+
+    snowfall-lib = {
+      url = "github:snowfallorg/lib";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -55,18 +59,11 @@
       inherit inputs;
       src = ./.;
 
-      lib = lib;
-
       # global channel config
       channels-config = {
         allowUnfree = true;
       };
 
-      # Optional: zusätzliche Systemmodule oder spezielle Hosts
-      systems.modules.nixos = with inputs; [];
-      systems.modules.home = with inputs; [./modules/home];
-
-      # Optional: host-spezifische Einstellungen
       systems.hosts.anvil = {}; # nötig für Autodetektion
       system.users."dengo123@anvil".modules = with inputs; [];
 

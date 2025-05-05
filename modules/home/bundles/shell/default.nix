@@ -19,7 +19,7 @@ in {
         eza = enabled;
         fzf = enabled;
         powerlevel10k = disabled;
-        starship = disabled;
+        starship = enabled;
         yazi = enabled;
         zoxide = enabled;
         zsh = enabled;

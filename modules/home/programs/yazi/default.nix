@@ -15,8 +15,8 @@ in {
   config = mkIf cfg.enable {
     programs.yazi.enable = true;
 
-    home.file.".config/yazi/yazi.toml".source = ./yazi.toml;
-    home.file.".config/yazi/keymap.toml".source = ./keymap.toml;
+    home.file.".config/yazi/yazi.toml".source = ./yazi/yazi.toml;
+    home.file.".config/yazi/keymap.toml".source = ./yazi/keymap.toml;
 
     programs.zsh.initExtra = ''
       function y() {

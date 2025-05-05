@@ -16,7 +16,6 @@ in {
       };
 
       master = {
-        new_is_master = true;
         allow_small_split = true;
         mfact = 0.5;
       };

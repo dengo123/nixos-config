@@ -41,13 +41,13 @@ in {
     nixforge = {
       desktop.hyprland.enable = true;
       programs = {
-        ags = enabled;
+        ags = disabled;
         hypridle = enabled;
         hyprpaper = enabled;
         rofi = enabled;
-        # hyprlock = disabled; # kannst du aktivieren wenn gewünscht
+        hyprlock = enabled; # kannst du aktivieren wenn gewünscht
         # dolphin = disabled;
-        # waybar = disabled;
+        waybar = enabled;
       };
     };
   };

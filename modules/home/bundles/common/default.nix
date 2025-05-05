@@ -44,7 +44,7 @@ in {
       };
       misc = {
         gtk = disabled; # Done by stylix
-        qt = enabled;
+        qt = disabled;
         scripts = enabled;
       };
       programs = {
@@ -53,6 +53,7 @@ in {
         lazygit = enabled;
         tmux = enabled;
         zen = enabled;
+        stylix = enabled;
       };
     };
   };

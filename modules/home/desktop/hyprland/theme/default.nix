@@ -15,10 +15,9 @@ in {
   config = mkIf cfg.enable {
     wayland.windowManager.hyprland.settings = {
       general = {
-        gaps_in = 3;
-        gaps_out = 5;
-        border_size = 1;
-        border_part_of_window = true;
+        gaps_in = 5;
+        gaps_out = 10;
+        border_size = 2;
         layout = "master";
       };
 

@@ -1,15 +1,11 @@
-{
-  config,
-  lib,
-  namespace,
-  ...
-}:
+{ config, lib, namespace, ... }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+
+let
   cfg = config.${namespace}.programs.lazygit;
-  accent = "#${config.lib.stylix.colors.base0D}";
-  muted = "#${config.lib.stylix.colors.base03}";
-in {
+in
+{
   options.${namespace}.programs.lazygit = with types; {
     enable = mkBoolOpt false "Enable programs.lazygit";
   };
@@ -20,11 +16,8 @@ in {
       settings = lib.mkForce {
         gui = {
           theme = {
-            activeBorderColor = [
-              accent
-              "bold"
-            ];
-            inactiveBorderColor = [muted];
+            activeBorderColor = [ "blue" "bold" ];
+            inactiveBorderColor = [ "grey" ];
           };
           showListFooter = false;
           showRandomTip = false;
@@ -36,3 +29,4 @@ in {
     };
   };
 }
+

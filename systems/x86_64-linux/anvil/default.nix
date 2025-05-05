@@ -14,6 +14,7 @@ with lib.${namespace}; {
       user = {
         name = "dengo123";
         fullName = "Deniz Altiok";
+        email = "deniz060198@hotmail.com";
         extraGroups = [
           "networkmanager"
           "wheel"
@@ -37,7 +38,7 @@ with lib.${namespace}; {
       nvidia = {
         enable = true;
         open = true;
-        package = "beta";
+        package = "production";
       };
     };
     programs = {
