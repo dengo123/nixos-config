@@ -22,6 +22,7 @@ in {
 
       planify
       newsflash
+      thunderbird
     ];
   };
 }

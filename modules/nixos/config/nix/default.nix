@@ -23,11 +23,11 @@ in {
       nixfmt-rfc-style
     ];
 
-    nixpkgs.config = {
-      allowUnfree = true;
-      allowBroken = false;
-      permittedInsecurePackages = [];
-    };
+    # nixpkgs.config = {
+    #   allowUnfree = true;
+    #   allowBroken = false;
+    #   permittedInsecurePackages = [];
+    # };
 
     nix = let
       users = ["root" user.name];

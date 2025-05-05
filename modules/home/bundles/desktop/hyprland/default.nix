@@ -31,6 +31,7 @@ in {
       gnome-control-center
       morewaita-icon-theme
       pavucontrol
+      blueman
       swww
       qogir-icon-theme
       wayshot
@@ -41,13 +42,13 @@ in {
     nixforge = {
       desktop.hyprland.enable = true;
       programs = {
-        ags = disabled;
+        ags = enabled;
         hypridle = enabled;
         hyprpaper = enabled;
         rofi = enabled;
         hyprlock = enabled; # kannst du aktivieren wenn gewünscht
         # dolphin = disabled;
-        waybar = enabled;
+        waybar = disabled;
       };
     };
   };

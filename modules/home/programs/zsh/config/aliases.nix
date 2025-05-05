@@ -8,9 +8,8 @@
 
   grep = "grep --color=auto";
 
-  upgrade = "sudo nix flake update --flake ~/nixos-config && sudo nixos-rebuild switch --flake ~/nixos-config";
-  update = "sudo nixos-rebuild switch --flake ~/nixos-config";
-  switch = "home-manager switch --flake ~/nixos-config";
+  update = "sudo nix flake update --flake ~/nixos-config && sudo nixos-rebuild switch --flake ~/nixos-config";
+  switch = "sudo nixos-rebuild switch --flake ~/nixos-config";
 
   v = "nvim";
   n = "nano";

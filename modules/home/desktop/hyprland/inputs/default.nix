@@ -23,11 +23,7 @@ in {
       sensitivity = 0.0;
       repeat_delay = 300;
       repeat_rate = 50;
-
-      touchpad = {
-        natural_scroll = true;
-        tap-to-click = true;
-      };
+      natural_scroll = true;
     };
   };
 }

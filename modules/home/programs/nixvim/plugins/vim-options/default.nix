@@ -30,7 +30,6 @@ in {
         };
 
         keymaps = [
-          # Fenster-Navigation (horizontal & vertikal)
           {
             mode = "n";
             key = "<C-h>";

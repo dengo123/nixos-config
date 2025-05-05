@@ -18,7 +18,7 @@ in {
     home.file.".config/yazi/yazi.toml".source = ./yazi/yazi.toml;
     home.file.".config/yazi/keymap.toml".source = ./yazi/keymap.toml;
 
-    programs.zsh.initExtra = ''
+    programs.zsh.initContent = ''
       function y() {
         local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
         yazi "$@" --cwd-file="$tmp"

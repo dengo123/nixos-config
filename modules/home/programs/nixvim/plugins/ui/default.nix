@@ -52,11 +52,6 @@ in {
 
           indent-blankline = {
             enable = true;
-            settings = {
-              show_current_context = true;
-              show_current_context_start = true;
-              use_treesitter = true;
-            };
           };
         };
       };

@@ -13,6 +13,6 @@ in {
   };
 
   config = mkIf cfg.enable {
-    programs.nixvim.plugins.comment-nvim.enable = true;
+    programs.nixvim.plugins.comment.enable = true;
   };
 }
