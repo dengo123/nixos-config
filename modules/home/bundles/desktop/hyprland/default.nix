@@ -14,7 +14,6 @@ in {
   };
 
   config = mkIf cfg.enable {
-    # Fallbacks für animation/monitor mode (nur gesetzt, falls nicht gesetzt)
     nixforge.desktop.hyprland = {
       animation = mkDefault "medium";
       monitor.mode = mkDefault "auto-script";

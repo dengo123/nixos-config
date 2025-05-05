@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -49,10 +48,9 @@ in {
         scripts = enabled;
       };
       programs = {
-        brave = enabled;
-        kitty = enabled;
+        ghostty = enabled;
         librewolf = enabled;
-        lazygit = disabled;
+        lazygit = enabled;
         tmux = enabled;
         zen = enabled;
       };

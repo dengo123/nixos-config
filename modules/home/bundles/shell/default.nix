@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -14,7 +13,6 @@ in {
   };
 
   config = mkIf cfg.enable {
-    home.packages = with pkgs; [yazi];
     nixforge = {
       programs = {
         atuin = enabled;
@@ -22,6 +20,7 @@ in {
         fzf = enabled;
         powerlevel10k = disabled;
         starship = disabled;
+        yazi = enabled;
         zoxide = enabled;
         zsh = enabled;
       };

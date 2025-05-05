@@ -1,60 +1,38 @@
 {
-  description = "nixforge - In the crucible of code, systems awaken";
+  description = "nixforge – In the crucible of code, systems awaken";
 
   inputs = {
-    # 🧊 Channels
-    stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    snowfall-lib.url = "github:snowfallorg/lib";
 
-    # ❄️ Snowfall
-    snowfall-lib = {
-      url = "github:snowfallorg/lib";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # 🏠 Home Manager
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # 🧪 AGS – Aylur's GTK Shell
     ags.url = "github:Aylur/ags";
-
-    # 🖥 Hyprland
     hyprland.url = "github:hyprwm/Hyprland";
-
-    # Nixvim
     nixvim.url = "github:nix-community/nixvim";
-
-    # Ghostty
     ghostty.url = "github:ghostty-org/ghostty";
 
-    # 🎨 Stylix
     stylix = {
       url = "github:danth/stylix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # 🌐 Zen Browser
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # 🍏 Apple Fonts (optional)
     apple-fonts.url = "github:Lyndeno/apple-fonts.nix";
 
-    # ⚙️ Nix-ld
     nix-ld = {
       url = "github:Mic92/nix-ld";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # 🖥 Hardware Support
     nixos-hardware.url = "github:NixOS/nixos-hardware";
-
-    # 📦 NixOS Generators
     nixos-generators.url = "github:nix-community/nixos-generators";
   };
 
@@ -66,8 +44,9 @@
       snowfall = {
         meta = {
           name = "nixforge";
-          title = "The Nix Forge - In the crucible of code, systems awaken.";
+          title = "nixforge – In the crucible of code, systems awaken";
         };
+
         namespace = "nixforge";
       };
     };
@@ -76,61 +55,20 @@
       inherit inputs;
       src = ./.;
 
+      lib = lib;
+
+      # global channel config
       channels-config = {
         allowUnfree = true;
-        permittedInsecurePackages = [];
       };
 
-      systems.modules.nixos = with inputs; [
-      ];
+      # Optional: zusätzliche Systemmodule oder spezielle Hosts
+      systems.modules.nixos = with inputs; [];
+      systems.modules.home = with inputs; [./modules/home];
 
-      # 🔧 Aktiver Host
-      systems.hosts = {
-        anvil = {
-          specialArgs = {
-            namespace = "nixforge";
-            channel = inputs.nixpkgs;
-            pkgs = import inputs.nixpkgs {
-              system = "x86_64-linux";
-              config.allowUnfree = true;
-              overlays = [];
-            };
-          };
-        };
-
-        # furnace = {
-        #   specialArgs = {
-        #     namespace = "nixforge";
-        #     channel = inputs.nixpkgs;
-        #     pkgs = import inputs.nixpkgs {
-        #       system = x86_64-linux;
-        #       config.allowUnfree = true;
-        #     };
-        #   };
-        # };
-
-        # casting = {
-        #   specialArgs = {
-        #     namespace = "nixforge";
-        #     channel = inputs.nixpkgs;
-        #     pkgs = import inputs.nixpkgs {
-        #       system = x86_64-linux;
-        #       config.allowUnfree = true;
-        #     };
-        #   };
-        # };
-
-        # blueprint = {
-        #   specialArgs = {
-        #     namespace = "nixforge";
-        #     channel = inputs.nixpkgs;
-        #     pkgs = import inputs.nixpkgs {
-        #       system = x86_64-linux;
-        #       config.allowUnfree = true;
-        #     };
-        #   };
-        # };
-      };
+      # Optional: host-spezifische Einstellungen
+      systems.hosts.anvil = {}; # nötig für Autodetektion
+      system.users."dengo123@anvil".modules = with inputs; [];
 
       templates = import ./templates {};
     };
