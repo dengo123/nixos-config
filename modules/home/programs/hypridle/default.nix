@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -19,19 +18,24 @@ in {
       settings = {
         general = {
           ignore_dbus_inhibit = false;
-          lock_cmd = "pidof hyprlock || ${pkgs.hyprlock}/bin/hyprlock";
-          before_sleep_cmd = "loginctl lock-session";
-          after_sleep_cmd = "hyprctl dispatch dpms on";
+          before_sleep_cmd = "hyprlock";
+          after_sleep_cmd = "loginctl lock-session";
         };
 
         listener = [
           {
             timeout = 600;
-            on-timeout = "pidof hyprlock || ${pkgs.hyprlock}/bin/hyprlock";
+            on-timeout = "hyprlock";
           }
 
           {
-            timeout = 660;
+            timeout = 900;
+            on-timeout = "hyprctl dispatch dpms off";
+            on-resume = "hyprctl dispatch dpms on";
+          }
+
+          {
+            timeout = 1800;
             on-timeout = "systemctl suspend";
           }
         ];

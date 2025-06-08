@@ -23,6 +23,7 @@ in {
       planify
       newsflash
       thunderbird
+      pandoc
     ];
   };
 }

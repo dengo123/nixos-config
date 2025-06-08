@@ -7,10 +7,10 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.desktop.swaync;
+  cfg = config.${namespace}.programs.swaync;
   stylix = config.lib.stylix.colors;
 in {
-  options.${namespace}.desktop.swaync = with types; {
+  options.${namespace}.programs.swaync = with types; {
     enable = mkBoolOpt false "Enable swaynotificationcenter and related setup";
   };
 

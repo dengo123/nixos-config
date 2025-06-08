@@ -17,6 +17,7 @@
 
   r = "reboot";
   p = "poweroff";
+  u = "systemctl suspend";
 
   g = "git";
   ga = "git add";

@@ -15,6 +15,11 @@ with lib.${namespace}; {
       office = enabled;
     };
 
+    desktop.hyprland = {
+      enable = true;
+      monitor.mode = "vert-1";
+    };
+
     programs = {
       git = {
         enable = true;

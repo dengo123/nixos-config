@@ -36,11 +36,11 @@ in {
         };
         sansSerif = {
           package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "SFProDisplay Nerd Font";
+          name = "JetBrainsMono Nerd Font Mono";
         };
         serif = {
           package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "SFProDisplay Nerd Font";
+          name = "JetBrainsMono Nerd Font Mono";
         };
         emoji = {
           package = pkgs.noto-fonts-emoji;

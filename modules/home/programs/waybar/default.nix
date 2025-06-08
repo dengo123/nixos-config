@@ -57,6 +57,7 @@ in {
             "network"
             "clock#date"
             "clock"
+            "custom/swaync"
             "custom/power"
           ];
 
@@ -69,7 +70,8 @@ in {
           };
 
           "custom/logo" = {
-            tooltip = false;
+            tooltip = true;
+            on-click = "rofi -show drun";
             format = " ";
           };
 
@@ -130,6 +132,22 @@ in {
 
           tray = {
             spacing = 10;
+          };
+
+          "custom/swaync" = {
+            exec = ''
+              if swaync-client -D | grep -q true; then
+                echo -n '{"text": "", "tooltip": "Do Not Disturb", "class": "dnd-active"}'
+              else
+                echo -n '{"text": "", "tooltip": "", "class": "dnd-inactive"}'
+              fi
+            '';
+            return-type = "json";
+            format = "{} ";
+            interval = 2;
+            on-click = "swaync-client -t -sw";
+            escape = true;
+            tooltip = false;
           };
 
           clock = {

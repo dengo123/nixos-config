@@ -37,7 +37,7 @@ in {
         [
           "${mod},RETURN, exec, ${terminal}"
           "${mod},B, exec, ${browser}"
-          "${mod},O, exec, librewolf"
+          "${mod},O, exec, libreoffice"
           "${mod},Y, exec, ${terminal} -e yazi"
 
           "${mod},L, exec, hyprlock"

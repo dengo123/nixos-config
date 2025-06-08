@@ -8,7 +8,7 @@ with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.programs.hyprlock;
   foreground = "rgba(216, 222, 233, 0.70)";
-  imageStr = toString config.stylix.image;
+  imageStr = "${config.stylix.image}";
   font = config.stylix.fonts.serif.name;
 in {
   options.${namespace}.programs.hyprlock = with types; {
@@ -21,11 +21,10 @@ in {
       settings = {
         general = {
           grace = 5;
-          no_fade_in = false;
-          disable_loading_bar = false;
+          # deprecated: no_fade_in
+          # deprecated: disable_loading_bar
         };
 
-        # BACKGROUND
         background = {
           monitor = "";
           path = imageStr;
@@ -38,7 +37,6 @@ in {
 
         label = [
           {
-            # Day-Month-Date
             monitor = "";
             text = ''cmd[update:1000] echo -e "$(date +"%A, %B %d")"'';
             color = foreground;
@@ -48,7 +46,6 @@ in {
             halign = "center";
             valign = "center";
           }
-          # Time
           {
             monitor = "";
             text = ''cmd[update:1000] echo "<span>$(date +"%I:%M")</span>"'';
@@ -59,15 +56,10 @@ in {
             halign = "center";
             valign = "center";
           }
-          # USER
           {
             monitor = "";
             text = "    $USER";
             color = foreground;
-            outline_thickness = 2;
-            dots_size = 0.2; # Scale of input-field height, 0.2 - 0.8
-            dots_spacing = 0.2; # Scale of dots' absolute size, 0.0 - 1.0
-            dots_center = true;
             font_size = 18;
             font_family = font + " Bold";
             position = "0, -180";
@@ -76,14 +68,13 @@ in {
           }
         ];
 
-        # INPUT FIELD
         input-field = [
           {
             monitor = "";
             size = "300, 60";
             outline_thickness = 2;
-            dots_size = 0.2; # Scale of input-field height, 0.2 - 0.8
-            dots_spacing = 0.2; # Scale of dots' absolute size, 0.0 - 1.0
+            dots_size = 0.2;
+            dots_spacing = 0.2;
             dots_center = true;
             outer_color = "rgba(255, 255, 255, 0)";
             inner_color = "rgba(255, 255, 255, 0.1)";

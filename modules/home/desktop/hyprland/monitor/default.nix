@@ -22,6 +22,20 @@ in {
         ];
       })
 
+      (mkIf (cfg.mode == "vert-1") {
+        monitor = [
+          "desc:Hewlett Packard HP E232 3CQ7020B20,1920x1080@60,0x0,1,transform,1"
+          "desc:Hewlett Packard HP E232 3CQ70218NK,1920x1080@60,1080x420,1"
+        ];
+      })
+
+      (mkIf (cfg.mode == "vert-2") {
+        monitor = [
+          "desc:Hewlett Packard HP E232 3CQ7020B20,1920x1080@60,0x420,1"
+          "desc:Hewlett Packard HP E232 3CQ70218NK,1920x1080@60,1080x0,1,transform,1"
+        ];
+      })
+
       (mkIf (cfg.mode == "single") {
         monitor = [
           "DP-1,1920x1080@60,0x0,1"
