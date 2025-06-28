@@ -1,5 +1,5 @@
 {
-  description = "nixforge – In the crucible of code, systems awaken";
+  description = "The NixForge – In the crucible of code, systems awaken";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -54,18 +54,11 @@
       snowfall = {
         meta = {
           name = "nixforge";
-          title = "nixforge – In the crucible of code, systems awaken";
+          title = "The NixForge – In the crucible of code, systems awaken";
         };
         namespace = "nixforge";
       };
     };
-
-    lib' =
-      lib
-      // {
-        forAllSystems = f:
-          lib.genAttrs ["x86_64-linux" "aarch64-linux"] (system: f system);
-      };
   in
     lib.mkFlake {
       inherit inputs;
@@ -79,16 +72,16 @@
         inherit inputs;
       };
 
-      packages = lib'.forAllSystems (system: {
-        split-monitor-workspaces = inputs.split-monitor-workspaces.packages.${system}.split-monitor-workspaces;
-      });
+      packages.x86_64-linux.split-monitor-workspaces =
+        inputs.split-monitor-workspaces.packages.x86_64-linux.split-monitor-workspaces;
 
       systems.hosts.anvil = {};
+
       system.users."dengo123@anvil".modules = [
         {
           system = "x86_64-linux";
         }
-        ./modules/home/desktop/hyprland-plugins/split-monitor
+        ./modules/home/desktop/hyprland/plugins/split-monitor
       ];
 
       templates = import ./templates {};
