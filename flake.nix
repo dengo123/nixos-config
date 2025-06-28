@@ -65,17 +65,18 @@
       inherit inputs;
       src = ./.;
 
-      # global channel config
       channels-config = {
         allowUnfree = true;
       };
 
       specialArgs = {
         inherit inputs;
+        system = "x86_64-linux";
       };
 
       systems.hosts.anvil = {};
-      system.users."dengo123@anvil".modules = with inputs; [
+
+      system.users."dengo123@anvil".modules = [
         ./modules/home/desktop/hyprland-plugins/split-monitor
       ];
 

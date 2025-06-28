@@ -1,39 +1,20 @@
 {
   config,
   lib,
-  pkgs,
   inputs,
-  namespace,
+  system,
   ...
-}:
-with lib;
-with lib.${namespace}; let
-  cfg = config.${namespace}.desktop.hyprland.plugins.split-monitor;
-
-  splitPlugin = pkgs.stdenv.mkDerivation {
-    pname = "split-monitor-workspaces";
-    version = "git";
-
-    src = inputs.split-monitor-workspaces;
-
-    nativeBuildInputs = [pkgs.cmake];
-    buildInputs = [inputs.hyprland];
-
-    cmakeFlags = [
-      "-DHyprland_DIR=${inputs.hyprland}/lib/cmake/Hyprland"
-    ];
-
-    installPhase = ''
-      mkdir -p $out/lib
-      cp libsplit-monitor-workspaces.so $out/lib/
-    '';
-  };
+}: let
+  cfg = config.nixforge.desktop.hyprland.plugins.split-monitor;
+  pluginPkg = inputs.split-monitor-workspaces.packages.${system}.split-monitor-workspaces;
 in {
-  options.${namespace}.desktop.hyprland.plugins.split-monitor = with types; {
-    enable = mkBoolOpt false "Enable the split-monitor-workspaces plugin for Hyprland.";
+  options.nixforge.desktop.hyprland.plugins.split-monitor = {
+    enable = lib.mkEnableOption "Enable the split-monitor-workspaces plugin";
   };
 
-  config = mkIf cfg.enable {
-    programs.hyprland.plugins = [splitPlugin];
+  config = lib.mkIf cfg.enable {
+    wayland.windowManager.hyprland.plugins = [
+      "${pluginPkg}/lib/libsplit-monitor-workspaces.so"
+    ];
   };
 }
