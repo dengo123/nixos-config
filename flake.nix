@@ -50,12 +50,22 @@
     lib = inputs.snowfall-lib.mkLib {
       inherit inputs;
       src = ./.;
-      snowfall.meta = {
-        name = "nixforge";
-        title = "nixforge – In the crucible of code, systems awaken";
+
+      snowfall = {
+        meta = {
+          name = "nixforge";
+          title = "nixforge – In the crucible of code, systems awaken";
+        };
+        namespace = "nixforge";
       };
-      snowfall.namespace = "nixforge";
     };
+
+    lib' =
+      lib
+      // {
+        forAllSystems = f:
+          lib.genAttrs ["x86_64-linux" "aarch64-linux"] (system: f system);
+      };
   in
     lib.mkFlake {
       inherit inputs;
@@ -69,6 +79,10 @@
         inherit inputs;
       };
 
+      packages = lib'.forAllSystems (system: {
+        split-monitor-workspaces = inputs.split-monitor-workspaces.packages.${system}.split-monitor-workspaces;
+      });
+
       systems.hosts.anvil = {};
       system.users."dengo123@anvil".modules = [
         {
@@ -78,8 +92,5 @@
       ];
 
       templates = import ./templates {};
-
-      packages.x86_64-linux.split-monitor-workspaces =
-        inputs.split-monitor-workspaces.packages.x86_64-linux.split-monitor-workspaces;
     };
 }

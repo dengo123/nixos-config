@@ -6,6 +6,7 @@
   ...
 }: let
   cfg = config.nixforge.desktop.hyprland.plugins.split-monitor;
+
   pluginPkg = inputs.self.packages.${system}.split-monitor-workspaces;
 in {
   options.nixforge.desktop.hyprland.plugins.split-monitor = {
