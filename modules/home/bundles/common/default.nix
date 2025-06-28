@@ -49,7 +49,6 @@ in {
       };
       programs = {
         ghostty = enabled;
-        librewolf = enabled;
         lazygit = enabled;
         tmux = enabled;
         zen = enabled;

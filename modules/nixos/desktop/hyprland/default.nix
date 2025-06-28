@@ -39,7 +39,7 @@ in {
       upower.enable = cfg.settings.upower;
 
       # === DISPLAY MANAGER ===
-      xserver.displayManager.gdm = mkIf (cfg.mode == "full") {
+      displayManager.gdm = mkIf (cfg.mode == "full") {
         enable = true;
         wayland = true;
       };

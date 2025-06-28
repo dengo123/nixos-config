@@ -14,7 +14,7 @@ in {
     enable = mkBoolOpt false "Enable stylix";
   };
 
-  imports = [inputs.stylix.homeManagerModules.stylix];
+  imports = [inputs.stylix.homeModules.stylix];
 
   config = mkIf cfg.enable {
     stylix = {

@@ -32,10 +32,39 @@ in {
   config = mkIf cfg.enable {
     wayland.windowManager.hyprland.settings = {
       bind = [
+        # Programme starten
         "${mod},RETURN, exec, ${terminal}"
         "${mod},B, exec, ${browser}"
         "${mod},D, exec, launcher"
-        "${mod},L, exec, hyprlock"
+        "${mod},Y, exec, ${terminal} -e yazi"
+        "${mod},O, exec, libreoffice"
+        "${mod} CTRL,L, exec, hyprlock"
+
+        # Dynamische Workspaces
+        "${mod},up, workspace, +1"
+        "${mod},down, workspace, -1"
+        "${shiftMod},up, movetoworkspace, +1"
+        "${shiftMod},down, movetoworkspace, -1"
+
+        # Monitor-Fokus mit Pfeiltasten
+        "${mod},left, focusmonitor, -1"
+        "${mod},right, focusmonitor, 1"
+        "${shiftMod},left, moveworkspacetomonitor, -1"
+        "${shiftMod},right, moveworkspacetomonitor, 1"
+
+        # Fensterfokus mit Pfeil-Tasten
+        "${mod},H, movefocus, l"
+        "${mod},L, movefocus, r"
+        "${mod},K, movefocus, u"
+        "${mod},L, movefocus, d"
+
+        # Fenster verschieben Vim-Tasten
+        "${shiftMod},H, swapwindow, l"
+        "${shiftMod},L, swapwindow, r"
+        "${shiftMod},K, swapwindow, u"
+        "${shiftMod},J, swapwindow, d"
+
+        # Fensterverwaltung
         "${mod},Q, killactive"
         "${shiftMod},Q, exit"
         "${mod},T, togglefloating"
@@ -43,33 +72,9 @@ in {
         "${mod},TAB, cyclenext"
         "${mod},TAB, bringactivetotop"
 
-        # Dynamische Workspace-Navigation auf fokussiertem Monitor
-        "${mod},N, workspace, +1"
-        "${mod},B, workspace, -1"
-        "${shiftMod},N, movetoworkspace, +1"
-        "${shiftMod},B, movetoworkspace, -1"
-
-        # Feste Workspaces 1–3
-        "${mod},1, workspace, 1"
-        "${mod},2, workspace, 2"
-        "${mod},3, workspace, 3"
-        "${shiftMod},1, movetoworkspace, 1"
-        "${shiftMod},2, movetoworkspace, 2"
-        "${shiftMod},3, movetoworkspace, 3"
-
-        # Fokus und Monitorwechsel
-        "${mod},up, movefocus, u"
-        "${mod},down, movefocus, d"
-        "${mod},left, movefocus, l"
-        "${mod},right, movefocus, r"
-        "${shiftMod},left, focusmonitor, -1"
-        "${shiftMod},right, focusmonitor, 1"
-
-        # Extras
-        "${mod},Y, exec, ${terminal} -e yazi"
-        "${mod},O, exec, libreoffice"
+        # Spezial-Workspace (z.B. scratchpad)
         "${mod},S, togglespecialworkspace, magic"
-        "${mod},S, movetoworkspace, special:magic"
+        "${shiftMod},S, movetoworkspace, special:magic"
 
         # Screenshots
         "${mod},PRINT, exec, screenshot window"
