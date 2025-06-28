@@ -16,6 +16,12 @@
 
     ags.url = "github:Aylur/ags";
     hyprland.url = "github:hyprwm/Hyprland";
+
+    split-monitor-workspaces = {
+      url = "github:Duckonaut/split-monitor-workspaces";
+      inputs.hyprland.follows = "hyprland";
+    };
+
     nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 

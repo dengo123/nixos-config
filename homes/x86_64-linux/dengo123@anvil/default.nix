@@ -18,6 +18,9 @@ with lib.${namespace}; {
     desktop.hyprland = {
       enable = true;
       monitor.mode = "vert-1";
+      plugins = {
+        split-monitor = enabled;
+      };
     };
 
     programs = {
