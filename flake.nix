@@ -54,7 +54,7 @@
       snowfall = {
         meta = {
           name = "nixforge";
-          title = "The NixForge – In the crucible of code, systems awaken";
+          title = "nixforge – In the crucible of code, systems awaken";
         };
         namespace = "nixforge";
       };
@@ -70,19 +70,20 @@
 
       specialArgs = {
         inherit inputs;
+        system = "x86_64-linux"; # Damit Plugin-Zugriff funktioniert
       };
-
-      packages.x86_64-linux.split-monitor-workspaces =
-        inputs.split-monitor-workspaces.packages.x86_64-linux.split-monitor-workspaces;
 
       systems.hosts.anvil = {};
 
       system.users."dengo123@anvil".modules = [
-        {
-          system = "x86_64-linux";
-        }
-        ./modules/home/desktop/hyprland/plugins/split-monitor
+        ./modules/home/desktop/hyprland/plugins/split-monitor-workspaces
       ];
+
+      overlays = {
+        package.split-monitor-workspaces = final: prev: {
+          split-monitor-workspaces = inputs.split-monitor-workspaces.packages."x86_64-linux".split-monitor-workspaces;
+        };
+      };
 
       templates = import ./templates {};
     };
