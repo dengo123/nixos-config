@@ -1,4 +1,6 @@
 {
+  inputs,
+  pkgs,
   lib,
   namespace,
   ...
@@ -20,6 +22,7 @@ with lib.${namespace}; {
       monitor.mode = "vert-1";
       plugins = {
         split-monitor-workspaces.enable = true;
+        package = inputs.split-monitor-workspaces.packages.${pkgs.system}.split-monitor-workspaces;
       };
     };
 

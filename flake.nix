@@ -70,7 +70,7 @@
 
       specialArgs = {
         inherit inputs;
-        system = "x86_64-linux"; # Damit Plugin-Zugriff funktioniert
+        system = "x86_64-linux";
       };
 
       systems.hosts.anvil = {};
@@ -78,12 +78,6 @@
       system.users."dengo123@anvil".modules = [
         ./modules/home/desktop/hyprland/plugins/split-monitor-workspaces
       ];
-
-      overlays = {
-        package.split-monitor-workspaces = final: prev: {
-          split-monitor-workspaces = inputs.split-monitor-workspaces.packages."x86_64-linux".split-monitor-workspaces;
-        };
-      };
 
       templates = import ./templates {};
     };
