@@ -50,15 +50,11 @@
     lib = inputs.snowfall-lib.mkLib {
       inherit inputs;
       src = ./.;
-
-      snowfall = {
-        meta = {
-          name = "nixforge";
-          title = "nixforge – In the crucible of code, systems awaken";
-        };
-
-        namespace = "nixforge";
+      snowfall.meta = {
+        name = "nixforge";
+        title = "nixforge – In the crucible of code, systems awaken";
       };
+      snowfall.namespace = "nixforge";
     };
   in
     lib.mkFlake {
@@ -71,15 +67,19 @@
 
       specialArgs = {
         inherit inputs;
-        system = "x86_64-linux";
       };
 
       systems.hosts.anvil = {};
-
       system.users."dengo123@anvil".modules = [
+        {
+          system = "x86_64-linux";
+        }
         ./modules/home/desktop/hyprland-plugins/split-monitor
       ];
 
       templates = import ./templates {};
+
+      packages.x86_64-linux.split-monitor-workspaces =
+        inputs.split-monitor-workspaces.packages.x86_64-linux.split-monitor-workspaces;
     };
 }
