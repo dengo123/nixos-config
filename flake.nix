@@ -17,11 +17,6 @@
     ags.url = "github:Aylur/ags";
     hyprland.url = "github:hyprwm/Hyprland";
 
-    split-monitor-workspaces = {
-      url = "github:Duckonaut/split-monitor-workspaces";
-      inputs.hyprland.follows = "hyprland";
-    };
-
     nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 
@@ -75,8 +70,7 @@
 
       systems.hosts.anvil = {};
 
-      system.users."dengo123@anvil".modules = [
-        ./modules/home/desktop/hyprland/plugins/split-monitor-workspaces
+      system.users."dengo123@anvil".modules = with inputs; [
       ];
 
       templates = import ./templates {};

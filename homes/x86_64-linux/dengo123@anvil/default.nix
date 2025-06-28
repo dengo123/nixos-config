@@ -1,6 +1,4 @@
 {
-  inputs,
-  pkgs,
   lib,
   namespace,
   ...
@@ -20,9 +18,6 @@ with lib.${namespace}; {
     desktop.hyprland = {
       enable = true;
       monitor.mode = "vert-1";
-      plugins = {
-        split-monitor-workspace = enabled;
-      };
     };
 
     programs = {
