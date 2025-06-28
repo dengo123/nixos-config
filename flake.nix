@@ -70,8 +70,14 @@
         allowUnfree = true;
       };
 
-      systems.hosts.anvil = {}; # nötig für Autodetektion
-      system.users."dengo123@anvil".modules = with inputs; [];
+      specialArgs = {
+        inherit inputs;
+      };
+
+      systems.hosts.anvil = {};
+      system.users."dengo123@anvil".modules = with inputs; [
+        ./modules/home/desktop/hyprland-plugins/split-monitor
+      ];
 
       templates = import ./templates {};
     };

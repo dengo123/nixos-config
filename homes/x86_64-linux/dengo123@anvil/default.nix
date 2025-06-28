@@ -19,7 +19,7 @@ with lib.${namespace}; {
       enable = true;
       monitor.mode = "vert-1";
       plugins = {
-        split-monitor = enabled;
+        split-monitor.enable = true;
       };
     };
 
