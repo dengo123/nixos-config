@@ -74,7 +74,7 @@ in {
 
         # Spezial-Workspace (z.B. scratchpad)
         "${mod},S, togglespecialworkspace, magic"
-        "${shiftMod},S, movetoworkspace, special:magic"
+        "${mod},S, movetoworkspace, special:magic"
 
         # Screenshots
         "${mod},PRINT, exec, screenshot window"

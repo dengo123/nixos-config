@@ -23,6 +23,9 @@ in {
         variant = mkDefault "altgr-intl";
         options = mkDefault [];
       };
+      plugins = {
+        hyprsplit = enabled;
+      };
     };
 
     home.packages = with pkgs; [
