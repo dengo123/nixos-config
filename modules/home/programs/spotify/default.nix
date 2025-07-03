@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,14 +6,12 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.spotify;
-in
-{
+in {
   options.${namespace}.programs.spotify = with types; {
     enable = mkBoolOpt false "Enable ncspot a spotify client";
   };
 
-  config = mkIf cfg.enable { home.packages = with pkgs; [ ncspot ]; };
+  config = mkIf cfg.enable {home.packages = with pkgs; [ncspot];};
 }

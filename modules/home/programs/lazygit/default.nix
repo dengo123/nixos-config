@@ -1,11 +1,13 @@
-{ config, lib, namespace, ... }:
-with lib;
-with lib.${namespace};
-
-let
-  cfg = config.${namespace}.programs.lazygit;
-in
 {
+  config,
+  lib,
+  namespace,
+  ...
+}:
+with lib;
+with lib.${namespace}; let
+  cfg = config.${namespace}.programs.lazygit;
+in {
   options.${namespace}.programs.lazygit = with types; {
     enable = mkBoolOpt false "Enable programs.lazygit";
   };
@@ -16,8 +18,11 @@ in
       settings = lib.mkForce {
         gui = {
           theme = {
-            activeBorderColor = [ "blue" "bold" ];
-            inactiveBorderColor = [ "grey" ];
+            activeBorderColor = [
+              "blue"
+              "bold"
+            ];
+            inactiveBorderColor = ["grey"];
           };
           showListFooter = false;
           showRandomTip = false;
@@ -29,4 +34,3 @@ in
     };
   };
 }
-

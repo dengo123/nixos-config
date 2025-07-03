@@ -1,17 +1,13 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.zoxide;
-in
-{
+in {
   options.${namespace}.programs.zoxide = with types; {
     enable = mkBoolOpt false "Enable programs.zoxide";
   };

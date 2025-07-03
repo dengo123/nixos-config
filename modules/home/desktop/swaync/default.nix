@@ -7,10 +7,10 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.swaync;
+  cfg = config.${namespace}.desktop.swaync;
   stylix = config.lib.stylix.colors;
 in {
-  options.${namespace}.programs.swaync = with types; {
+  options.${namespace}.desktop.swaync = with types; {
     enable = mkBoolOpt false "Enable swaynotificationcenter and related setup";
   };
 
@@ -121,7 +121,9 @@ in {
             show-per-app-label = true;
           };
 
-          dnd = {text = " Do Not Disturb";};
+          dnd = {
+            text = " Do Not Disturb";
+          };
 
           mpris = {
             image-size = 96;

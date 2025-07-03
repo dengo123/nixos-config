@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.hypridle;
+  cfg = config.${namespace}.desktop.hypridle;
 in {
-  options.${namespace}.programs.hypridle = with types; {
+  options.${namespace}.desktop.hypridle = with types; {
     enable = mkBoolOpt false "Enable programs.hypridle";
   };
 

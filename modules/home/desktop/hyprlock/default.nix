@@ -6,12 +6,12 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.hyprlock;
+  cfg = config.${namespace}.desktop.hyprlock;
   foreground = "rgba(216, 222, 233, 0.70)";
   imageStr = "${config.stylix.image}";
   font = config.stylix.fonts.serif.name;
 in {
-  options.${namespace}.programs.hyprlock = with types; {
+  options.${namespace}.desktop.hyprlock = with types; {
     enable = mkBoolOpt false "Enable programs.hyprlock";
   };
 

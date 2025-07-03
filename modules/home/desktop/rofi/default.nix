@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,9 +6,8 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
-  cfg = config.${namespace}.programs.rofi;
+with lib.${namespace}; let
+  cfg = config.${namespace}.desktop.rofi;
 
   power-menu = pkgs.writeShellScriptBin "power-menu" ''
     #!/bin/sh
@@ -117,9 +115,8 @@ let
     rofi -show drun -theme launch
 
   '';
-in
-{
-  options.${namespace}.programs.rofi = with types; {
+in {
+  options.${namespace}.desktop.rofi = with types; {
     enable = mkBoolOpt false "Enable rofi";
   };
 

@@ -7,7 +7,7 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.waybar;
+  cfg = config.${namespace}.desktop.waybar;
 
   brightnessctl = pkgs.brightnessctl + "/bin/brightnessctl";
   pamixer = pkgs.pamixer + "/bin/pamixer";
@@ -22,7 +22,7 @@ with lib.${namespace}; let
     '';
   };
 in {
-  options.${namespace}.programs.waybar = {
+  options.${namespace}.desktop.waybar = {
     enable = mkBoolOpt false "${namespace}.programs.waybar.enable";
   };
 

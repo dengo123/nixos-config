@@ -14,45 +14,44 @@ in {
   };
 
   config = mkIf cfg.enable {
-    nixforge.desktop.hyprland = {
-      enable = true;
-      animation = mkDefault "medium";
-      monitor.mode = mkDefault "auto-script";
-      inputs = {
-        layout = mkDefault "us";
-        variant = mkDefault "altgr-intl";
-        options = mkDefault [];
+    nixforge.desktop = {
+      hyprland = {
+        enable = true;
+        animation = mkDefault "medium";
+        monitor.mode = mkDefault "auto-script";
+        inputs = {
+          layout = mkDefault "us";
+          variant = mkDefault "altgr-intl";
+          options = mkDefault [];
+        };
+        plugins = {
+          hyprsplit = enabled;
+        };
       };
-      plugins = {
-        hyprsplit = enabled;
-      };
-    };
-
-    home.packages = with pkgs; [
-      adwaita-icon-theme
-      brightnessctl
-      gnome-system-monitor
-      gnome-control-center
-      morewaita-icon-theme
-      pavucontrol
-      swww
-      qogir-icon-theme
-      wayshot
-      wl-clipboard
-      wl-gammactl
-    ];
-
-    services.blueman-applet.enable = true;
-
-    nixforge.programs = {
-      ags = disabled;
+      ags = enabled;
       hypridle = enabled;
       hyprpaper = enabled;
       rofi = enabled;
       hyprlock = enabled;
-      swaync = enabled;
+      swaync = disabled;
       waybar = disabled;
-      hyprpanel = enabled;
+      hyprpanel = disabled;
     };
   };
+
+  home.packages = with pkgs; [
+    adwaita-icon-theme
+    brightnessctl
+    gnome-system-monitor
+    gnome-control-center
+    morewaita-icon-theme
+    pavucontrol
+    swww
+    qogir-icon-theme
+    wayshot
+    wl-clipboard
+    wl-gammactl
+  ];
+
+  services.blueman-applet.enable = true;
 }
