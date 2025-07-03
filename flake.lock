@@ -651,6 +651,36 @@
         "type": "github"
       }
     },
+    "hyprland-plugins": {
+      "inputs": {
+        "hyprland": [
+          "hyprland"
+        ],
+        "nixpkgs": [
+          "hyprland-plugins",
+          "hyprland",
+          "nixpkgs"
+        ],
+        "systems": [
+          "hyprland-plugins",
+          "hyprland",
+          "systems"
+        ]
+      },
+      "locked": {
+        "lastModified": 1751468208,
+        "narHash": "sha256-uiXSAUGGspLHo+EcQ50ozZIlBONx0Vzvv4KwbJ/wQ7w=",
+        "owner": "hyprwm",
+        "repo": "hyprland-plugins",
+        "rev": "109c734f47c0a2c1d619001937a6c1d4ad806f2e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hyprwm",
+        "repo": "hyprland-plugins",
+        "type": "github"
+      }
+    },
     "hyprland-protocols": {
       "inputs": {
         "nixpkgs": [
@@ -770,26 +800,6 @@
       "original": {
         "owner": "hyprwm",
         "repo": "hyprlang",
-        "type": "github"
-      }
-    },
-    "hyprsplit": {
-      "inputs": {
-        "hyprland": [
-          "hyprland"
-        ]
-      },
-      "locked": {
-        "lastModified": 1751098042,
-        "narHash": "sha256-GRmqYscTk+uaG9yyWKPE1sw4wUb8YVGtLeOipQLWB+Q=",
-        "owner": "shezdy",
-        "repo": "hyprsplit",
-        "rev": "de4f1d819208e30b8967fd3c6885b1f228e2e734",
-        "type": "github"
-      },
-      "original": {
-        "owner": "shezdy",
-        "repo": "hyprsplit",
         "type": "github"
       }
     },
@@ -1161,7 +1171,7 @@
         "ghostty": "ghostty",
         "home-manager": "home-manager",
         "hyprland": "hyprland",
-        "hyprsplit": "hyprsplit",
+        "hyprland-plugins": "hyprland-plugins",
         "nix-ld": "nix-ld",
         "nixos-generators": "nixos-generators",
         "nixos-hardware": "nixos-hardware",

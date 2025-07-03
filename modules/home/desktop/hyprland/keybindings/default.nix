@@ -16,7 +16,7 @@ with lib.${namespace}; let
     then "ghostty"
     else if config.${namespace}.programs.kitty.enable
     then "kitty"
-    else "foot";
+    else "xterm";
 
   browser =
     if config.${namespace}.programs.zen.enable
@@ -69,6 +69,7 @@ in {
         "${shiftMod},Q, exit"
         "${mod},T, togglefloating"
         "${mod},F, fullscreen"
+        "${mod},space, layoutmsg, orientationtoggle"
         "${mod},TAB, cyclenext"
         "${mod},TAB, bringactivetotop"
 

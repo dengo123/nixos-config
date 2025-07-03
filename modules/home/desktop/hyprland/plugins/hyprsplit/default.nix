@@ -2,7 +2,6 @@
   lib,
   config,
   pkgs,
-  inputs,
   namespace,
   ...
 }:
@@ -15,13 +14,15 @@ in {
   };
 
   config = mkIf cfg.enable {
-    home.packages = [
-      inputs.hyprsplit.packages.${pkgs.system}.default
-    ];
+    wayland.windowManager.hyprland = {
+      plugins = [
+        pkgs.hyprlandPlugins.hyprsplit
+      ];
 
-    # Automatically load the plugin when Hyprland starts
-    wayland.windowManager.hyprland.settings.exec-once = mkAfter [
-      "hyprctl plugin load ${inputs.hyprsplit.packages.${pkgs.system}.default}/lib/libhyprsplit.so"
-    ];
+      settings.plugin.hyprsplit = {
+        num_workspaces = 5;
+        persistent_workspaces = false;
+      };
+    };
   };
 }

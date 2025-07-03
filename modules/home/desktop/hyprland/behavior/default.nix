@@ -12,7 +12,7 @@ in {
     wayland.windowManager.hyprland.settings = {
       general = {
         resize_on_border = true;
-        layout = "master";
+        layout = "dwindle";
       };
 
       master = {

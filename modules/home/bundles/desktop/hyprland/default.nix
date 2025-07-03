@@ -51,7 +51,8 @@ in {
       rofi = enabled;
       hyprlock = enabled;
       swaync = enabled;
-      waybar = enabled;
+      waybar = disabled;
+      hyprpanel = enabled;
     };
   };
 }

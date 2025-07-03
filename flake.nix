@@ -17,8 +17,8 @@
     ags.url = "github:Aylur/ags";
     hyprland.url = "github:hyprwm/Hyprland";
 
-    hyprsplit = {
-      url = "github:shezdy/hyprsplit";
+    hyprland-plugins = {
+      url = "github:hyprwm/hyprland-plugins";
       inputs.hyprland.follows = "hyprland";
     };
 
