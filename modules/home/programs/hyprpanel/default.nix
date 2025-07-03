@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -17,25 +16,25 @@ in {
     programs.hyprpanel = {
       enable = true;
 
-      layout = {
-        "bar.layouts" = {
-          "0" = {
-            left = [
-              "custom"
-              "workspaces"
-            ];
-            middle = ["clock"];
-            right = [
-              "network"
-              "volume"
-              "battery"
-              "systray"
-            ];
+      settings = {
+        layout = {
+          "bar.layouts" = {
+            "0" = {
+              left = [
+                "custom"
+                "workspaces"
+              ];
+              middle = ["clock"];
+              right = [
+                "network"
+                "volume"
+                "battery"
+                "systray"
+              ];
+            };
           };
         };
-      };
 
-      settings = {
         bar = {
           launcher.autoDetectIcon = true;
           workspaces = {

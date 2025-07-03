@@ -50,7 +50,7 @@ in {
       hyprpaper = enabled;
       rofi = enabled;
       hyprlock = enabled;
-      swaync = enabled;
+      swaync = disabled;
       waybar = disabled;
       hyprpanel = enabled;
     };
