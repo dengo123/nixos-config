@@ -56,7 +56,7 @@ in {
         "${mod},H, movefocus, l"
         "${mod},L, movefocus, r"
         "${mod},K, movefocus, u"
-        "${mod},L, movefocus, d"
+        "${mod},J, movefocus, d"
 
         # Fenster verschieben Vim-Tasten
         "${shiftMod},H, swapwindow, l"

@@ -45,14 +45,14 @@ in {
     services.blueman-applet.enable = true;
 
     nixforge.programs = {
-      ags = disabled;
+      ags = enabled;
       hypridle = enabled;
       hyprpaper = enabled;
       rofi = enabled;
       hyprlock = enabled;
       swaync = disabled;
       waybar = disabled;
-      hyprpanel = enabled;
+      hyprpanel = disabled;
     };
   };
 }
