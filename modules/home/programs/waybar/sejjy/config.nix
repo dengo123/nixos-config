@@ -33,7 +33,7 @@
     "custom/right4"
     "network"
     "bluetooth"
-    # "custom/update"
+    "custom/update"
     "custom/right5"
   ];
 
@@ -217,5 +217,57 @@
     tooltip-format-enumerate-connected-battery = ":: {device_alias}: 󱊣 {device_battery_percentage}%";
 
     on-click = "ghostty --title '󰂯  Bluetooth TUI' bash -c bluetui";
+  };
+
+  "custom/update" = {
+    exec = "~/nixos-config/modules/home/programs/waybar/scripts/nix-updates.sh";
+    return-type = "json";
+    interval = 300; # alle 5 Minuten
+    on-click = "ghostty --title 'Update' bash -c 'cd ~/nixos-config && nix flake update'";
+    tooltip = true;
+  };
+
+  mpris = {
+    format = "{player_icon} {title} - {artist}";
+    format-paused = "{status_icon} {title} - {artist}";
+
+    player-icons = {
+      default = "󰝚 ";
+      spotify = "<span foreground='#a6e3a1'>󰓇 </span>";
+      firefox = "<span foreground='#f38ba8'>󰗃 </span>";
+    };
+
+    status-icons = {
+      paused = "<span color='#b4befe'>\u200A\u200A󰏤\u2009\u2009</span>";
+    };
+
+    tooltip-format = "Playing: {title} - {artist}";
+    tooltip-format-paused = "Paused: {title} - {artist}";
+
+    min-length = 5;
+    max-length = 35;
+  };
+
+  pulseaudio = {
+    format = "{icon} {volume}%";
+    format-muted = "󰝟";
+    format-icons = {
+      default = [
+        "󰕿"
+        "󰖀"
+        "󰕾"
+      ];
+    };
+    on-click = "pamixer -t";
+    on-scroll-up = "pamixer -i 1";
+    on-scroll-down = "pamixer -d 1";
+    tooltip = false;
+  };
+  "custom/nightmode" = {
+    exec = "~/nixos-config/modules/home/programs/waybar/scripts/gammastep-status.sh";
+    return-type = "json";
+    on-click = "~/nixos-config/modules/home/programs/waybar/scripts/toggle-gammastep.sh";
+    interval = 5;
+    tooltip = true;
   };
 }
