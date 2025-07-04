@@ -195,7 +195,7 @@
     max-length = 18;
   };
 
-  network = {
+  "network" = {
     format-wifi = "󰖩";
     format-ethernet = "󰈀";
     format-disconnected = "󰖪";
@@ -203,7 +203,7 @@
     on-click = "ghostty --title '󰤨  Network Manager TUI' bash -c nmtui";
   };
 
-  bluetooth = {
+  "bluetooth" = {
     format = "󰂯";
     format-disabled = "󰂲";
     format-connected = "󰂱";
@@ -227,7 +227,7 @@
     tooltip = true;
   };
 
-  mpris = {
+  "mpris" = {
     format = "{player_icon} {title} - {artist}";
     format-paused = "{status_icon} {title} - {artist}";
 
@@ -248,7 +248,7 @@
     max-length = 35;
   };
 
-  pulseaudio = {
+  "pulseaudio" = {
     format = "{icon} {volume}%";
     format-muted = "󰝟";
     format-icons = {
@@ -263,11 +263,119 @@
     on-scroll-down = "pamixer -d 1";
     tooltip = false;
   };
+
   "custom/nightmode" = {
-    exec = "~/nixos-config/modules/home/programs/waybar/scripts/gammastep-status.sh";
+    exec = "~/nixos-config/modules/home/programs/waybar/scripts/nightmode.sh";
+    on-click = "~/nixos-config/modules/home/programs/waybar/scripts/nightmode.sh toggle";
     return-type = "json";
-    on-click = "~/nixos-config/modules/home/programs/waybar/scripts/toggle-gammastep.sh";
     interval = 5;
-    tooltip = true;
+    tooltip = false;
+  };
+
+  "custom/swaync" = {
+    exec = ''
+      swaync-client -D | grep -q true && echo '{"text": "", "class": "dnd-active"}' || echo '{"text": "󰂛", "class": "dnd-inactive"}'
+    '';
+    return-type = "json";
+    format = "{}";
+    interval = 2;
+    on-click = "swaync-client -t -sw";
+    tooltip = false;
+  };
+
+  "custom/power" = {
+    format = " ";
+    tooltip = false;
+    on-click = "wlogout";
+  };
+
+  "custom/paddw" = {
+    format = " ";
+    tooltip = false;
+  };
+
+  "custom/paddc" = {
+    format = " ";
+    tooltip = false;
+  };
+
+  "custom/left1" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left2" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left3" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left4" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left5" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left6" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left7" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/left8" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/right1" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/right2" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/right3" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/right4" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/right5" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/leftin1" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/leftin2" = {
+    format = "";
+    tooltip = false;
+  };
+
+  "custom/rightin1" = {
+    format = "";
+    tooltip = false;
   };
 }
