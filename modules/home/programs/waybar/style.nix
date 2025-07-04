@@ -1,165 +1,475 @@
 let
-  Logo = builtins.fetchurl rec {
-    name = "Logo-${sha256}.svg";
-    url = "https://raw.githubusercontent.com/NixOS/nixos-artwork/master/logo/nix-snowflake-colours.svg";
-    sha256 = "1cifj774r4z4m856fva1mamnpnhsjl44kw3asklrc57824f5lyz3";
-  };
+  theme = import ./theme.nix {inherit config lib pkgs;};
 in ''
-  * {
-    border: none;
-    border-radius: 0;
-    min-height: 0;
-    font-family: Material Design Icons, monospace;
-    font-size: 13px;
-  }
+  @define-color crust ${theme.colors.crust};
+  @define-color mantle ${theme.colors.mantle};
+  @define-color surface0 ${theme.colors.surface0};
+  @define-color surface1 ${theme.colors.surface1};
+  @define-color surface2 ${theme.colors.surface2};
+  @define-color text ${theme.colors.text};
+  @define-color rosewater ${theme.colors.rosewater};
+  @define-color lavender ${theme.colors.lavender};
 
-  window#waybar {
-    background-color: #181825;
-    transition-property: background-color;
-    transition-duration: 0.5s;
-  }
+  @define-color red ${theme.colors.red};
+  @define-color peach ${theme.colors.peach};
+  @define-color yellow ${theme.colors.yellow};
+  @define-color green ${theme.colors.green};
+  @define-color teal ${theme.colors.teal};
+  @define-color blue ${theme.colors.blue};
+  @define-color mauve ${theme.colors.mauve};
+  @define-color flamingo ${theme.colors.flamingo};
 
-  window#waybar.hidden {
-    opacity: 0.5;
-  }
+  @define-color white ${theme.colors.white};
+  @define-color black ${theme.colors.black};
 
-  #workspaces {
-    background-color: transparent;
-  }
+  /* Semantic Colors */
+  @define-color shadow ${theme.colors.shadow};
+  @define-color main-fg ${theme.colors.main-fg};
+  @define-color main-bg ${theme.colors.main-bg};
+  @define-color main-br ${theme.colors.main-br};
+  @define-color active-bg ${theme.colors.active-bg};
+  @define-color active-fg ${theme.colors.active-fg};
+  @define-color hover-bg ${theme.colors.hover-bg};
+  @define-color hover-fg ${theme.colors.hover-fg};
 
-  #workspaces button {
-    all: initial; /* Remove GTK theme values (waybar #1351) */
-    min-width: 0; /* Fix weird spacing in materia (waybar #450) */
-    box-shadow: inset 0 -3px transparent; /* Use box-shadow instead of border so the text isn't offset */
-    padding: 6px 18px;
-    margin: 6px 3px;
-    border-radius: 4px;
-    background-color: #1e1e2e;
-    color: #cdd6f4;
-  }
+  @define-color module-fg ${theme.colors.module-fg};
+  @define-color workspaces ${theme.colors.workspaces};
+  @define-color temperature ${theme.colors.temperature};
+  @define-color memory ${theme.colors.memory};
+  @define-color cpu ${theme.colors.cpu};
+  @define-color distro-fg ${theme.colors.distro-fg};
+  @define-color distro-bg ${theme.colors.distro-bg};
+  @define-color time ${theme.colors.time};
+  @define-color date ${theme.colors.date};
+  @define-color tray ${theme.colors.tray};
+  @define-color pulseaudio ${theme.colors.pulseaudio};
+  @define-color backlight ${theme.colors.backlight};
+  @define-color battery ${theme.colors.battery};
+  @define-color power ${theme.colors.power};
 
-  #workspaces button.active {
-    color: #1e1e2e;
-    background-color: #cdd6f4;
-  }
+  @define-color warning ${theme.colors.warning};
+  @define-color critical ${theme.colors.critical};
+  @define-color charging ${theme.colors.charging};
 
-  #workspaces button:hover {
-   box-shadow: inherit;
-   text-shadow: inherit;
-   color: #1e1e2e;
-   background-color: #cdd6f4;
-  }
-
-  #workspaces button.urgent {
-    background-color: #f38ba8;
-  }
-
-  #custom-weather,
-  #custom-swallow,
-  #custom-power,
-  #custom-todo,
-  #custom-weather,
-  #battery,
-  #backlight,
-  #pulseaudio,
-  #network,
-  #clock,
-  #tray {
-    border-radius: 4px;
-    margin: 6px 3px;
-    padding: 6px 12px;
-    background-color: #1e1e2e;
-    color: #181825;
-  }
-
-  #custom-power {
-    margin-right: 6px;
-  }
-
-  #custom-swaync {
-    margin-right: 10px;
-  }
-
-  #custom-logo {
-    margin: 6px 3px 6px 9px;
-    padding: 6px 18px;
-    background-image: url("${Logo}");
-    background-size: 70%;
-    background-position: center;
-    background-repeat: no-repeat;
-  }
-
-  #custom-weather,
-  #custom-todo {
-    color: #cdd6f4;
-    background-color: #1e1e2e;
-  }
-
-  #custom-swallow {
-    color: #cdd6f4;
-  }
-
-  #battery {
-    background-color: #f38ba8;
-  }
-
-  @keyframes blink {
-    to {
-      background-color: #f38ba8;
-      color: #181825;
+    /* ───────────────────────────────────────────────────────────────┤ global ├─── */
+    * {
+      min-height: 0;
+      border: none;
+      margin: 0;
+      padding: 0;
     }
-  }
 
-  .warning,
-  .critical,
-  .urgent,
-  #battery.critical:not(.charging) {
-    background-color: #f38ba8;
-    color: #181825;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-  }
+    /* ──────────────────────────────────────────────────────────┤ drop shadow ├─── */
+    window#waybar {
+      background: @shadow;
+    }
 
-  #backlight {
-    background-color: #fab387;
-  }
+    /* ───────────────────────────────────────────────────────────┤ background ├─── */
+    window#waybar > box {
+      background: @main-bg;
+      margin: 2px;
+    }
 
-  #pulseaudio.microphone {
-    background-color: #f9e2af;
-  }
+    /* ─────────────────────────────────────────────────────────────┤ tooltips ├─── */
+    tooltip {
+      background: @main-bg;
+      border: 1.5px solid @main-br;
+      border-radius: 8px;
+    }
 
-  #pulseaudio {
-    background-color: #a6e3a1;
-  }
+    tooltip label {
+      color: @main-fg;
+      margin: -1.5px 3px;
+    }
 
-  #network {
-    background-color: #94e2d5;
-  }
+      /* ──────────────────────────────────────────────────────────────┤ general ├─── */
+    #custom-launcher,
+    #workspaces,
+    #window,
+    #custom-temperature,
+    #memory,
+    #cpu,
+    #custom/inhibitor,
+    #clock,
+    #network,
+    #bluetooth,
+    #custom-update,
+    #mpris,
+    #pulseaudio,
+    #custom-swaync,
+    #custom-nightmode,
+    #custom-power {
+      opacity: 1;
+      color: @module-fg;
+      padding: 0 4px;
+    }
 
-  #clock.date {
-    background-color: #89b4fa;
-  }
+    #custom-left1,
+    #custom-left2,
+    #custom-left3,
+    #custom-left4,
+    #custom-left5,
+    #custom-left6,
+    #custom-left7,
+    #custom-left8 {
+      margin-bottom: 0;
+      text-shadow: -2px 0 2px rgba(0, 0, 0, 0.5);
+    }
 
-  #clock {
-    background-color: #cba6f7;
-  }
+    #custom-right1,
+    #custom-right2,
+    #custom-right3,
+    #custom-right4,
+    #custom-right5 {
+      margin-bottom: 0;
+      padding-right: 3px;
+      text-shadow: 2px 0 2px rgba(0, 0, 0, 0.5);
+    }
 
-  #custom-power {
-    background-color: #f2cdcd;
-  }
+      /* ───────────────────────────────────────────────────────┤ launcher button ├─── */
+    #custom-launcher {
+      background: @main-bg;
+    }
 
-  tooltip {
-    font-family: "Inter", sans-serif;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 30px;
-  }
+    #custom-launcher:hover {
+      color: @hover-fg;
+    }
 
-  tooltip label {
-    font-family: "Inter", sans-serif;
-    padding: 20px;
-  }
+      /* ───────────────────────────────────────────────────────────┤ workspaces ├─── */
+    #custom-left1 {
+      color: @workspaces;
+      background: @main-bg;
+      margin-bottom: 0;
+      padding-left: 2px;
+    }
+
+    #workspaces {
+      background: @workspaces;
+    }
+
+    #workspaces button {
+      color: @module-fg;
+      border-radius: 8px;
+      box-shadow: none;
+      margin: 2px 0;
+      padding: 0 2px;
+      transition: none;
+    }
+
+    #workspaces button:hover {
+      color: @hover-fg;
+      background: @hover-bg;
+      text-shadow: none;
+    }
+
+    #workspaces button.active {
+      color: @active-fg;
+      background: @active-bg;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.4);
+      margin: 2px;
+      padding: 0 6px;
+    }
+
+    #custom-right1 {
+      color: @workspaces;
+      background: @main-bg;
+      text-shadow: 3px 0 2px rgba(0, 0, 0, 0.4);
+      margin-bottom: 0;
+    }
+
+      /* ──────────────────────────────────────────────────────────┤ temperature ├─── */
+    #custom-paddc {
+      padding-right: 22px;
+    }
+
+    #custom-left2 {
+      color: @temperature;
+      background: @main-bg;
+      padding-left: 3px;
+    }
+
+    #custom-temperature {
+      background: @temperature;
+      padding: 0 0 0 1px;
+    }
+
+      /* ───────────────────────────────────────────────────────────────┤ memory ├─── */
+    #custom-left3 {
+      color: @memory;
+      background: @temperature;
+      padding-left: 3px;
+    }
+
+    #memory {
+      background: @memory;
+      padding: 0 0 0 1px;
+    }
+
+    #memory.warning {
+      color: @warning;
+    }
+
+    #memory.critical {
+      color: @critical;
+    }
+
+      /* ──────────────────────────────────────────────────────────────────┤ cpu ├─── */
+    #custom-left4 {
+      color: @cpu;
+      background: @memory;
+      padding-left: 3px;
+    }
+
+    #cpu {
+      background: @cpu;
+    }
+
+    #custom-leftin1 {
+      color: @cpu;
+      margin-bottom: -1px;
+    }
+
+      /* ──────────────────────────────────────────────────────────┤ distro icon ├─── */
+    #custom-left5 {
+      color: @distro-bg;
+      background: @main-bg;
+      text-shadow: none;
+      margin-bottom: -2px;
+      padding-left: 3px;
+    }
+
+    #custom-distro {
+      color: @distro-fg;
+      background: @distro-bg;
+      margin: 0 -1px -2px 0;
+      padding: 0 0 0 3px;
+      text-shadow: 0 0 1.5px rgba(0, 0, 0, 1);
+    }
+
+    #custom-right2 {
+      color: @distro-bg;
+      background: @main-bg;
+      text-shadow: none;
+      margin-bottom: -2px;
+    }
+
+      /* ─────────────────────────────────────────────────────────────────┤ time ├─── */
+    #custom-rightin1 {
+      color: @time;
+      margin-bottom: -1px;
+    }
+
+    #custom-inhibitor {
+      background: @time;
+      padding: 0 0 0 7px;
+    }
+
+    #custom-inhibitor:hover {
+      color: @hover-fg;
+    }
+
+    #clock.time {
+      background: @time;
+      margin-left: -2px;
+      padding: 0 3px 0 0;
+    }
+
+    #custom-right3 {
+      color: @time;
+      background: @date;
+    }
+
+      /* ─────────────────────────────────────────────────────────────────┤ date ├─── */
+    #clock.date {
+      background: @date;
+    }
+
+    #clock.date:hover {
+      color: @hover-fg;
+    }
+
+    #custom-right4 {
+      color: @date;
+      background: @tray;
+    }
+
+      /* ────────────────────────────────────────────────────────────────┤ wi-fi ├─── */
+    #network {
+      background: @tray;
+      padding: 0 8px 0 5px;
+    }
+
+    #network:hover {
+      color: @hover-fg;
+    }
+
+    /* ────────────────────────────────────────────────────────────┤ bluetooth ├─── */
+    #bluetooth {
+      background: @tray;
+      padding-right: 5px;
+    }
+
+    #bluetooth:hover {
+      color: @hover-fg;
+    }
+
+      /* ────────────────────────────────────────────────────────┤ system update ├─── */
+    #custom-update {
+      padding-right: 8px;
+      background: @tray;
+    }
+
+    #custom-update:hover {
+      color: @hover-fg;
+    }
+
+    #custom-right5 {
+      color: @tray;
+      background: @main-bg;
+    }
+
+      /* ───────────────────────────────────────────────────────────┤ media info ├─── */
+    #mpris {
+      background: @main-bg;
+      padding: 0 8px 0;
+    }
+
+    #mpris:hover {
+      color: @hover-fg;
+    }
+
+      /* ──────────────────────────────────────────────────────┤ output device ├─── */
+    #custom-left6 {
+      color: @pulseaudio;
+      background: @main-bg;
+      padding-left: 3px;
+    }
+
+    #pulseaudio {
+      background: @pulseaudio;
+    }
+
+    #pulseaudio:hover {
+      color: @hover-fg;
+    }
+
+      /* ─────────────────────────────────────────────────────────┤ nightmode ├─── */
+    #custom-left7 {
+      color: @backlight;
+      background: @pulseaudio;
+      padding-left: 2px;
+    }
+
+    #custom-nightmode {
+      background: @backlight;
+    }
+
+    #custom-nightmode:hover {
+      color: @hover-fg;
+    }
+
+      /* ──────────────────────────────────────────────────────────────┤ swaync ├─── */
+    #custom-left8 {
+      color: @battery;
+      background: @backlight;
+      padding-left: 2px;
+    }
+
+    #custom-swaync {
+      background: @battery;
+      color: @module-fg;
+    }
+
+    #custom-swaync:hover {
+      color: @hover-fg;
+    }
+
+    /* ─────────────────────────────────────────────────────────┤ power button ├─── */
+    #custom-leftin2 {
+      color: @battery;
+      background: @main-bg;
+      margin-bottom: -1px;
+    }
+
+    #custom-power {
+      color: @main-bg;
+      background: @power;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.6);
+      border-radius: 10px;
+      margin: 2px 4px 2px 0;
+      padding: 0 6px 0 9px;
+    }
+
+    #custom-power:hover {
+      color: @hover-fg;
+      background: @hover-bg;
+      text-shadow: none;
+      box-shadow: none;
+    }
+
+      /* ───────────────────────────────────────────────────────────┤ font sizes ├─── */
+    * {
+      font-family: "JetBrainsMono Nerd Font";
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    tooltip label,
+    #window label,
+    #mpris {
+      font-weight: normal;
+    }
+
+      /* ──────────────────────────────────────────────────┤ left & right arrows ├─── */
+    #custom-left1,
+    #custom-left2,
+    #custom-left3,
+    #custom-left4,
+    #custom-left5,
+    #custom-left6,
+    #custom-left7,
+    #custom-left8,
+    #custom-right1,
+    #custom-right2,
+    #custom-right3,
+    #custom-right4,
+    #custom-right5 {
+      font-size: 14.68px;
+    }
+
+    /* ─────────────────────────────────────────────────┤ left & right inverse ├─── */
+    #custom-leftin1,
+    #custom-leftin2,
+    #custom-rightin1 {
+      font-size: 15.5px;
+    }
+
+      /* ──────────────────────────────────────────────────────────┤ distro icon ├─── */
+    #custom-distro {
+      font-size: 14.6px;
+    }
+
+    #custom-left5,
+    #custom-right2 {
+      font-size: 15.68px;
+    }
+
+      /* ───────────────────────────────────────────────────────────┤ workspaces ├─── */
+    #workspaces button {
+      border-radius: 8px;
+      padding: 0 2px;
+    }
+
+    #workspaces button.active {
+      padding: 0 6px;
+    }
+
+      /* ─────────────────────────────────────────────────────────┤ power button ├─── */
+    #custom-power {
+      border-radius: 10px;
+      padding: 0 6px 0 9px;
+    }
+
 ''
