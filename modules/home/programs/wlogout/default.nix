@@ -1,17 +1,13 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.wlogout;
-in
-{
+in {
   options.${namespace}.programs.wlogout = with types; {
     enable = mkBoolOpt false "Enable programs.wlogout";
   };

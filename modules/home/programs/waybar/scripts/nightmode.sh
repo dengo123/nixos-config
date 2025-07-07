@@ -1,31 +1,26 @@
 #!/usr/bin/env bash
 
-# Symbol: Sonne (☀) für inaktiv, Halbmond (🌙) für aktiv
-ICON_ON="🌙"
-ICON_OFF="☀"
+ICON_ON=""
+ICON_OFF="󰖨"
+TEMP=3000
+PIDFILE="$XDG_RUNTIME_DIR/hyprsunset.pid"
 
-# Gammastep executable
-GAMMASTEP_BIN="$(command -v gammastep)"
-
-# PID-Datei (für manuelles Starten)
-PIDFILE="$XDG_RUNTIME_DIR/gammastep.pid"
-
-# Toggle mode
+# Toggle
 if [[ "$1" == "toggle" ]]; then
-    if pgrep -x gammastep >/dev/null; then
-        pkill -x gammastep
-        rm -f "$PIDFILE"
-    else
-        nohup "$GAMMASTEP_BIN" >/dev/null 2>&1 &
-        echo $! > "$PIDFILE"
-    fi
-    sleep 0.3
+  if pgrep -x hyprsunset >/dev/null; then
+    pkill -x hyprsunset
+    rm -f "$PIDFILE"
+  else
+    nohup hyprsunset -t $TEMP >/dev/null 2>&1 &
+    echo $! > "$PIDFILE"
+  fi
+  sleep 0.2
 fi
 
-# Status check
-if pgrep -x gammastep >/dev/null; then
-    echo "{\"text\": \"$ICON_ON\"}"
+# Status
+if pgrep -x hyprsunset >/dev/null; then
+  echo "{\"text\": \"$ICON_ON\", \"tooltip\": \"Nightmode aktiv\"}"
 else
-    echo "{\"text\": \"$ICON_OFF\"}"
+  echo "{\"text\": \"$ICON_OFF\", \"tooltip\": \"Nightmode aus\"}"
 fi
 

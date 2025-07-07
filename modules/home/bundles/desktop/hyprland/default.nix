@@ -52,7 +52,7 @@ in {
       hyprlock = enabled;
       swaync = enabled;
       waybar = enabled;
-      hyprpanel = disabled;
+      wlogout = enabled;
     };
   };
 }

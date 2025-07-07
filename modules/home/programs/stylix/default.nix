@@ -21,8 +21,8 @@ in {
       enable = true;
 
       autoEnable = true;
-      #base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
-      base16Scheme = builtins.toString ./base16/catppuccin/colors.yaml;
+      base16Scheme = import ./base16/catppuccin-mocha.nix;
+      # base16Scheme = builtins.toString ./base16/catppuccin/colors.yaml;
       cursor = {
         package = pkgs.bibata-cursors;
         name = "Bibata-Original-Ice";

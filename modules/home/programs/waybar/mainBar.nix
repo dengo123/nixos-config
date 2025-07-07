@@ -1,4 +1,5 @@
 {
+  output = "Hewlett Packard HP E232 3CQ70218NK";
   layer = "top";
   position = "top";
   mode = "dock";
@@ -41,7 +42,7 @@
     "custom/left6"
     "pulseaudio"
     "custom/left7"
-    "backlight"
+    "custom/nightmode"
     "custom/left8"
     "custom/swaync"
     "custom/leftin2"
@@ -57,9 +58,9 @@
   "hyprland/workspaces" = {
     on-scroll-up = "hyprctl dispatch workspace -1";
     on-scroll-down = "hyprctl dispatch workspace +1";
-    format = "○";
+    format = "●";
     format-visible = "●";
-    format-active = "<span color='#f5c2e7'></span>";
+    format-active = "";
     persistent-workspaces = {
       "1" = [];
       "2" = [];
@@ -119,12 +120,10 @@
   };
 
   "custom/temperature" = {
-    exec = "~/nixos-config/modules/home/programs/waybar/scripts/cpu-temp.sh";
-    return-type = "json";
-    format = "{}";
-    interval = 5;
-    min-length = 8;
-    max-length = 8;
+    format = " {}°C";
+    exec = "awk '{printf \"%d\", $1 / 1000}' /sys/class/hwmon/hwmon2/temp1_input";
+    interval = 10;
+    tooltip = true;
   };
 
   "memory" = {
@@ -199,7 +198,7 @@
     format-ethernet = "󰈀";
     format-disconnected = "󰖪";
     tooltip-format = "{ipaddr} ({signalStrength}%) via {essid}";
-    on-click = "ghostty --title '󰤨  Network Manager TUI' bash -c nmtui";
+    on-click = "sh -c 'ghostty --title \"󰤨  Network Manager TUI\" nmtui'";
   };
 
   "bluetooth" = {
@@ -215,14 +214,14 @@
     tooltip-format-enumerate-connected = "{device_alias}";
     tooltip-format-enumerate-connected-battery = ":: {device_alias}: 󱊣 {device_battery_percentage}%";
 
-    on-click = "ghostty --title '󰂯  Bluetooth TUI' bash -c bluetui";
+    on-click = "sh -c 'ghostty --title \"󰂯  Bluetooth TUI\" bluetui'";
   };
 
   "custom/update" = {
     exec = "~/nixos-config/modules/home/programs/waybar/scripts/nix-updates.sh";
     return-type = "json";
-    interval = 300; # alle 5 Minuten
-    on-click = "ghostty --title 'Update' bash -c 'cd ~/nixos-config && nix flake update'";
+    interval = 300;
+    on-click = "sh -c 'ghostty --title \"Update\" bash -c \"cd ~/nixos-config && nix flake update\"'";
     tooltip = true;
   };
 
@@ -237,7 +236,7 @@
     };
 
     status-icons = {
-      paused = "<span color='#b4befe'>\u200A\u200A󰏤\u2009\u2009</span>";
+      paused = "<span color='#b4befe'>󰏤</span>";
     };
 
     tooltip-format = "Playing: {title} - {artist}";
@@ -269,11 +268,14 @@
     return-type = "json";
     interval = 5;
     tooltip = false;
+    format = "{}";
   };
 
   "custom/swaync" = {
-    returexec = "swaync-client -D | grep -q true && echo '{\"text\": \"\", \"class\": \"dnd-active\"}' || echo '{\"text\": \"󰂛\", \"class\": \"dnd-inactive\"}'";
-    n-type = "json";
+    exec = ''
+      swaync-client -D | grep -q true && echo '{"text": "󰂛", "class": "dnd-active"}' || echo '{"text": "󰂚", "class": "dnd-inactive"}'
+    '';
+    return-type = "json";
     format = "{}";
     interval = 2;
     on-click = "swaync-client -t -sw";
