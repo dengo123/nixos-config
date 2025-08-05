@@ -20,9 +20,9 @@
     "usbhid"
     "sd_mod"
   ];
-  boot.initrd.kernelModules = [];
   boot.kernelModules = ["kvm-amd"];
   boot.extraModulePackages = [];
+  boot.resumeDevice = "/dev/disk/by-uuid/5c987df5-d144-43ae-9db1-899a7d6f5424";
 
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/a3ff7994-0933-49db-bbb5-8574dca697b0";

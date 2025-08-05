@@ -20,8 +20,8 @@ in {
       ];
 
       settings.plugin.hyprsplit = {
-        num_workspaces = 5;
-        persistent_workspaces = false;
+        num_workspaces = 3;
+        persistent_workspaces = true;
       };
     };
   };

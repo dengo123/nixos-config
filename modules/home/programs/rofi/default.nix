@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,8 +6,7 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.rofi;
 
   power-menu = pkgs.writeShellScriptBin "power-menu" ''
@@ -22,7 +20,7 @@ let
     shutdown='⏼'
     reboot=''
     lock='󰌾'
-    suspend='󰒲'
+    hibernate='󰒲'
     logout='󰍃'
     yes=''
     no=''
@@ -55,7 +53,7 @@ let
 
     # Pass variables to rofi dmenu
     run_rofi() {
-        echo -e "$lock\n$suspend\n$logout\n$reboot\n$shutdown" | rofi_cmd
+        echo -e "$lock\n$hibernate\n$logout\n$reboot\n$shutdown" | rofi_cmd
     }
 
     # Execute Command
@@ -66,7 +64,7 @@ let
                 systemctl poweroff
             elif [[ $1 == '--reboot' ]]; then
                 systemctl reboot
-            elif [[ $1 == '--suspend' ]]; then
+            elif [[ $1 == '--hibernate' ]]; then
                 mpc -q pause
                 amixer set Master mute
                 systemctl suspend
@@ -82,7 +80,7 @@ let
                 elif [[ "$DESKTOP_SESSION" == "xfce" ]]; then
                     killall xfce4-session
                 elif [[ "$DESKTOP_SESSION" == "hyprland" ]]; then
-                    killall Hyprland
+                    hyprctl dispatch exit
                 fi
             fi
         else
@@ -100,10 +98,10 @@ let
             run_cmd --reboot
             ;;
         $lock)
-            swaylock
+            hyprlock
             ;;
-        $suspend)
-            run_cmd --suspend
+        $hibernate)
+            run_cmd --hibernate
             ;;
         $logout)
             run_cmd --logout
@@ -117,8 +115,7 @@ let
     rofi -show drun -theme launch
 
   '';
-in
-{
+in {
   options.${namespace}.programs.rofi = with types; {
     enable = mkBoolOpt false "Enable rofi";
   };

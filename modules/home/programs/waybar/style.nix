@@ -1,11 +1,12 @@
 ''
   /* Basisfarben – Catppuccin Mocha */
-  @define-color crust      #1e1e2e;
+  @define-color crust      #11111b;
   @define-color mantle     #181825;
   @define-color surface0   #313244;
   @define-color surface1   #45475a;
   @define-color surface2   #585b70;
   @define-color text       #cdd6f4;
+  @define-color base       #1e1e2e;
   @define-color rosewater  #f5e0dc;
   @define-color lavender   #b4befe;
 
@@ -36,16 +37,16 @@
   @define-color module-fg  @text;
   @define-color workspaces @mantle;
   @define-color temperature @mantle;
-  @define-color memory     @crust;
+  @define-color memory     @base;
   @define-color cpu        @surface0;
   @define-color distro-fg  @black;
   @define-color distro-bg  @surface2;
   @define-color time       @surface0;
-  @define-color date       @crust;
+  @define-color date       @base;
   @define-color tray       @mantle;
 
   @define-color pulseaudio @mantle;
-  @define-color backlight  @crust;
+  @define-color backlight  @base;
   @define-color battery    @surface0;
   @define-color power      @surface2;
 

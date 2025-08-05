@@ -29,8 +29,12 @@ with lib.${namespace}; {
       common = enabled;
     };
     desktop.hyprland = {
-      enable = true;
+      enable = false;
       mode = "full";
+    };
+    desktop = {
+      xfce = enabled;
+      dwm = disabled;
     };
     hardware = {
       bluetooth = enabled;
