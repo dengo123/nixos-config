@@ -34,6 +34,8 @@ with lib.${namespace}; {
     };
     desktop = {
       xfce = enabled;
+    };
+    wm = {
       dwm = disabled;
     };
     hardware = {

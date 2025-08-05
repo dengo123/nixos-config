@@ -10,13 +10,13 @@ with lib.${namespace}; {
   nixforge = {
     bundles = {
       common = enabled;
-      desktop.hyprland = enabled;
+      desktop.hyprland = disabled;
       development = enabled;
       office = enabled;
     };
 
     desktop.hyprland = {
-      enable = true;
+      enable = false;
       monitor.mode = "vert-1";
     };
 

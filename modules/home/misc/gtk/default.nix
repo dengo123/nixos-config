@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,39 +6,49 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.misc.gtk;
-in
-{
+in {
   options.${namespace}.misc.gtk = with types; {
-    enable = mkBoolOpt false "Enable gtk";
+    enable = mkBoolOpt false "Enable GTK and XFCE theming.";
+    variant = mkOption {
+      type = types.enum [
+        "blue"
+        "silver"
+        "olive"
+      ];
+      default = "blue";
+      description = "Choose Luna variant (blue, silver, olive)";
+    };
   };
 
   config = mkIf cfg.enable {
-    gtk = {
-      enable = true;
+    # GTK 3 Settings
+    xdg.configFile."gtk-3.0/settings.ini".text = ''
+      [Settings]
+      gtk-theme-name=Luna-${cfg.variant}
+      gtk-icon-theme-name=Chicago95
+      gtk-cursor-theme-name=DMZ-White
+      gtk-font-name=Sans 10
+    '';
 
-      cursorTheme = {
-        name = "macOS-BigSur";
-        package = pkgs.apple-cursor;
-        size = 32; # Affects gtk applications as the name suggests
-      };
+    # XFWM4 Theme
+    xdg.configFile."xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml".text = ''
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfwm4" version="1.0">
+        <property name="general" type="empty">
+          <property name="theme" type="string" value="Luna-${cfg.variant}"/>
+        </property>
+      </channel>
+    '';
 
-      iconTheme = {
-        name = "Papirus-Dark";
-        package = pkgs.papirus-icon-theme;
-      };
-
-      theme = {
-        name = "Catppuccin-Mocha-Compact-Teal-Dark";
-        package = pkgs.catppuccin-gtk.override {
-          accents = [ "teal" ];
-          size = "compact";
-          tweaks = [ "rimless" ];
-          variant = "mocha";
-        };
-      };
-    };
+    # Optional: Panelfarbe XP-Luna-Style
+    xdg.configFile."xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml".text = ''
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-panel" version="1.0">
+        <property name="background-style" type="int" value="0"/>
+        <property name="background-color" type="string" value="#3A6EA5"/>
+      </channel>
+    '';
   };
 }
