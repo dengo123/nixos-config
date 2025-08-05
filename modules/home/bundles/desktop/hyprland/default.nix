@@ -54,7 +54,7 @@ in {
       waybar = enabled;
       wlogout = enabled;
       swayidle = enabled;
-      swaylock = enabled;
+      swaylock = disabled;
     };
   };
 }

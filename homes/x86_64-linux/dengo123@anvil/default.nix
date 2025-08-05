@@ -20,6 +20,10 @@ with lib.${namespace}; {
       monitor.mode = "vert-1";
     };
 
+    desktop = {
+      riverwm = enabled;
+    };
+
     programs = {
       git = {
         enable = true;
