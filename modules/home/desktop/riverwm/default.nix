@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.riverwm;
+  cfg = config.${namespace}.desktop.riverwm;
 in {
-  options.${namespace}.programs.riverwm = {
+  options.${namespace}.desktop.riverwm = {
     enable = mkEnableOption "Enable RiverWM (Wayland compositor + tiling/floating WM)";
   };
 

@@ -44,17 +44,17 @@ in {
 
     services.blueman-applet.enable = true;
 
-    nixforge.programs = {
-      ags = disabled;
-      hypridle = disabled;
-      hyprpaper = enabled;
-      rofi = enabled;
-      hyprlock = enabled;
-      swaync = enabled;
-      waybar = enabled;
-      wlogout = enabled;
-      swayidle = enabled;
-      swaylock = disabled;
+    nixforge = {
+      programs = {
+        hyprpaper = enabled;
+        rofi = enabled;
+        hyprlock = enabled;
+        swaync = enabled;
+        waybar = enabled;
+      };
+      services = {
+        hypridle = enabled;
+      };
     };
   };
 }

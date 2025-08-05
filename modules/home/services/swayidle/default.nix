@@ -6,9 +6,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.swayidle;
+  cfg = config.${namespace}.services.swayidle;
 in {
-  options.${namespace}.programs.swayidle = with types; {
+  options.${namespace}.services.swayidle = with types; {
     enable = mkBoolOpt false "Enable swayidle for session idle management";
     lockCommand = mkStrOpt "swaylock -f -c 000000" "Command to lock screen";
   };
