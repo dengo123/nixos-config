@@ -39,13 +39,7 @@ in {
         tailscale = enabled;
       };
 
-      themes.xp = {
-        fonts = {
-          packages = with pkgs; [];
-          fontconfig = enabled;
-        };
-        desktop = enabled;
-      };
+      themes.xp = enabled;
     };
   };
 }

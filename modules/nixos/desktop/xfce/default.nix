@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -19,46 +18,5 @@ in {
       desktopManager.xfce.enable = true;
       displayManager.lightdm.enable = true;
     };
-
-    environment.systemPackages = with pkgs; [
-      # Luna Theme (GTK + XFWM)
-      (pkgs.stdenv.mkDerivation {
-        pname = "luna-theme";
-        version = "1.0";
-        src = pkgs.fetchFromGitHub {
-          owner = "B00merang-Project";
-          repo = "Windows-XP";
-          rev = "master";
-          sha256 = "01yd84kq0nasf5qnawzmrvh4c4s1l73kvmsrx5qjfhihfsia5xg9";
-        };
-        installPhase = ''
-          mkdir -p $out/share/themes/Luna
-          cp -r ./* $out/share/themes/Luna/
-        '';
-      })
-
-      # Chicago95 Icons
-      (pkgs.stdenv.mkDerivation {
-        pname = "chicago95-icons";
-        version = "1.0";
-        src = pkgs.fetchFromGitHub {
-          owner = "grassmunk";
-          repo = "Chicago95";
-          rev = "master";
-          sha256 = "190n797v30iir10m6q2xdzrwqb06q8pvqr8r3m1c8cs2r6nzwibv";
-        };
-
-        # Deaktiviere alles außer Install
-        buildPhase = "true";
-
-        installPhase = ''
-          mkdir -p $out/share/icons
-          cp -r Chicago95/icons/* $out/share/icons/
-        '';
-      })
-
-      # Cursor
-      vanilla-dmz
-    ];
   };
 }
