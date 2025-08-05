@@ -43,7 +43,7 @@ in {
         apps = enabled;
       };
       misc = {
-        gtk = enabled; # Done by stylix
+        gtk = disabled; # Done by stylix
         qt = disabled;
         scripts = enabled;
       };

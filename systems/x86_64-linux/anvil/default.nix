@@ -29,15 +29,10 @@ with lib.${namespace}; {
       common = enabled;
     };
     desktop.hyprland = {
-      enable = false;
+      enable = true;
       mode = "full";
     };
-    desktop = {
-      xfce = enabled;
-    };
-    wm = {
-      dwm = disabled;
-    };
+    desktop.xfce = disabled;
     hardware = {
       bluetooth = enabled;
       cuda = enabled;
@@ -69,7 +64,6 @@ with lib.${namespace}; {
       };
     };
   };
-
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It‘s perfectly fine and recommended to leave

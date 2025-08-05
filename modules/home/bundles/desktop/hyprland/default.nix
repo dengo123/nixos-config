@@ -46,13 +46,14 @@ in {
 
     nixforge.programs = {
       ags = disabled;
-      hypridle = enabled;
+      hypridle = disabled;
       hyprpaper = enabled;
       rofi = enabled;
       hyprlock = enabled;
       swaync = enabled;
       waybar = enabled;
       wlogout = enabled;
+      swayidle = enabled;
     };
   };
 }
