@@ -21,7 +21,7 @@ with lib.${namespace}; {
     };
 
     desktop = {
-      riverwm = enabled;
+      awesome = enabled;
     };
 
     programs = {

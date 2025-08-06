@@ -21,6 +21,9 @@ in {
         excludePackages = [pkgs.xterm];
       };
     };
+    environment.systemPackages = with pkgs; [
+      stow
+    ];
     ${namespace} = {
       config = {
         nix = enabled;

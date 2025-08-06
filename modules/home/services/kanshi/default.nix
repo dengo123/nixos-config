@@ -30,15 +30,15 @@ in {
           outputs = [
             {
               # Hochkant-Monitor (links / Hauptmonitor)
-              criteria = "desc:Hewlett Packard HP E232 3CQ7020B20";
-              mode = "1920x1080@60Hz";
+              criteria = "Hewlett Packard HP E232 3CQ7020B20";
+              mode = "1920x1080@60";
               position = "0,0";
               transform = "90"; # 90° Rotation
             }
             {
               # Quer-Monitor (rechts)
-              criteria = "desc:Hewlett Packard HP E232 3CQ70218NK";
-              mode = "1920x1080@60Hz";
+              criteria = "Hewlett Packard HP E232 3CQ70218NK";
+              mode = "1920x1080@60";
               position = "1080,420";
             }
           ];
