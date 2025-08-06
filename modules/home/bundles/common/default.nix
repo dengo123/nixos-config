@@ -36,6 +36,8 @@ in {
 
       # Config formatting
       nixfmt-rfc-style
+
+      firefox
     ];
     nixforge = {
       bundles.shell = enabled;

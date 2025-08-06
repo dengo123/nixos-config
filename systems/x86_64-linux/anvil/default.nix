@@ -57,6 +57,7 @@ with lib.${namespace}; {
       keyboard = {
         layout = "us";
         variant = "intl";
+        naturalScrolling = true;
       };
       region = {
         locale = "de_DE.UTF-8";

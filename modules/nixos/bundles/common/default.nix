@@ -18,7 +18,8 @@ in {
       udisks2.enable = true; # Required for e-reader connections to calibre
       xserver = {
         enable = true;
-        excludePackages = [pkgs.xterm];
+        displayManager.startx.enable = true;
+        # excludePackages = [pkgs.xterm];
       };
     };
     environment.systemPackages = with pkgs; [

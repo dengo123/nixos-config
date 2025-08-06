@@ -55,6 +55,7 @@ in {
       services = {
         hypridle = enabled;
         kanshi = enabled;
+        autorandr = enabled;
       };
     };
   };

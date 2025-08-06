@@ -13,9 +13,14 @@ in {
     layout = mkOpt types.str "us" "Keyboard layout";
     variant = mkOpt types.str "intl" "Keyboard variant";
     options = mkOpt (types.listOf types.str) [] "XKB options as list of strings";
+    naturalScrolling = mkBoolOpt false "Enable natural scrolling";
   };
 
   config = mkIf cfg.enable {
+    services.libinput = {
+      enable = true;
+      mouse.naturalScrolling = cfg.naturalScrolling;
+    };
     services.xserver.xkb = {
       layout = cfg.layout;
       variant = cfg.variant;

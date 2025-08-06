@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -11,19 +10,11 @@ with lib.${namespace}; let
 in {
   options.${namespace}.services.kanshi = {
     enable = mkEnableOption "Enable kanshi for automatic monitor profile switching";
-
-    # Optional: Override kanshi package
-    package = mkOption {
-      type = types.package;
-      default = pkgs.kanshi;
-      description = "The kanshi package to use.";
-    };
   };
 
   config = mkIf cfg.enable {
     services.kanshi = {
       enable = true;
-      package = cfg.package;
 
       profiles = {
         dual = {
