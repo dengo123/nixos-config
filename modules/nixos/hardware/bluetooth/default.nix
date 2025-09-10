@@ -20,11 +20,12 @@ in {
       enable = true;
       powerOnBoot = cfg.powerOnBoot;
     };
-    services.blueman.enable = true;
+
+    services.blueman = enabled;
 
     environment.systemPackages = mkIf cfg.trayApplet [
-      pkgs.blueman
       pkgs.obexd
+      pkgs.blueman
     ];
   };
 }

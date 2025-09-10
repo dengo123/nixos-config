@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   namespace,
   ...
 }:
@@ -13,8 +14,16 @@ in {
   };
 
   config = mkIf cfg.enable {
-    xsession.windowManager.awesome = {
+    xsession = {
       enable = true;
+
+      windowManager.awesome = {
+        enable = true;
+        package = pkgs.awesome; # optional, aber explizit
+      };
+
+      # optional: beim X-Start noch Dinge tun
+      # initExtra = '' ${pkgs.autorandr}/bin/autorandr --change || true '';
     };
   };
 }

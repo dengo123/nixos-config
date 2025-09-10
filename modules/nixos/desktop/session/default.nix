@@ -1,4 +1,4 @@
-# modules/nixos/session/default.nix
+# modules/nixos/desktop/session/default.nix
 {
   config,
   lib,
@@ -8,9 +8,27 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.session;
+  cfg = config.${namespace}.desktop.session;
+
+  xsessionPkg = pkgs.stdenvNoCC.mkDerivation {
+    name = "xsession-desktop";
+    dontUnpack = true;
+    dontBuild = true;
+    installPhase = ''
+            mkdir -p $out/share/xsessions
+            cat > $out/share/xsessions/xsession.desktop <<'EOF'
+      [Desktop Entry]
+      Name=XSession
+      Comment=Run the user's ~/.xsession
+      Exec=${pkgs.runtimeShell}/bin/sh -lc 'exec "$HOME/.xsession"'
+      Type=Application
+      EOF
+    '';
+    # WICHTIG: Session-Namen bereitstellen
+    passthru.providedSessions = ["xsession"];
+  };
 in {
-  options.${namespace}.session = with types; {
+  options.${namespace}.desktop.session = with types; {
     enable = mkBoolOpt false "Enable X11 session managed by LightDM.";
     autoLogin.enable = mkBoolOpt false "Enable LightDM autologin into xsession.";
     autoLogin.user = mkOpt str "dengo123" "User for autologin.";
@@ -23,10 +41,11 @@ in {
       displayManager = {
         lightdm.enable = true;
 
-        # Wichtig: DM startet ~/.xsession (von Home-Manager verwaltet)
-        defaultSession = "none+xsession";
+        # Unsere benannte Session
+        sessionPackages = [xsessionPkg];
+        defaultSession = "xsession";
 
-        # Autologin (optional)
+        # optionaler Autologin
         autoLogin = mkIf cfg.autoLogin.enable {
           enable = true;
           user = cfg.autoLogin.user;
