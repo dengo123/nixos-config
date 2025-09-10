@@ -32,7 +32,7 @@ with lib.${namespace}; {
       enable = false;
       mode = "full";
     };
-    desktop.awesome = enabled;
+    desktop.session = enabled;
     hardware = {
       bluetooth = enabled;
       cuda = enabled;
