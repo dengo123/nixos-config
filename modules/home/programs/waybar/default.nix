@@ -19,10 +19,6 @@ in {
   config = mkIf cfg.enable {
     home.packages = with pkgs; [
       waybar
-      blueman
-      bluetui
-      networkmanager
-      networkmanager_dmenu
       brightnessctl
       playerctl
       pamixer

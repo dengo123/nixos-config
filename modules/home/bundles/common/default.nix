@@ -43,6 +43,7 @@ in {
       bundles.shell = enabled;
       config = {
         apps = enabled;
+        systray = enabled;
       };
       misc = {
         gtk = disabled; # Done by stylix

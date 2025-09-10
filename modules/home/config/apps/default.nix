@@ -1,17 +1,13 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.config.apps;
-in
-{
+in {
   options.${namespace}.config.apps = with types; {
     enable = mkBoolOpt false "Enable default app config";
   };

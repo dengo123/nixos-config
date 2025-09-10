@@ -1,5 +1,4 @@
 {
-  options,
   config,
   lib,
   pkgs,
@@ -7,30 +6,21 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.audio;
-in
-{
+in {
   options.${namespace}.hardware.audio = with types; {
-    enable = mkBoolOpt false "Enable pipewire";
+    enable = mkBoolOpt false "Enable PipeWire (ALSA + Pulse).";
+    trayApplet = mkBoolOpt true "Install pasystray binaries.";
   };
 
   config = mkIf cfg.enable {
-    security.rtkit.enable = true;
     services.pipewire = {
       enable = true;
-
-      alsa = {
-        enable = true;
-        support32Bit = true;
-      };
-
-      jack.enable = true;
+      alsa.enable = true;
+      alsa.support32Bit = true;
       pulse.enable = true;
-      wireplumber.enable = true;
     };
-
-    environment.systemPackages = with pkgs; [ pavucontrol ];
+    environment.systemPackages = mkIf cfg.trayApplet [pkgs.pasystray];
   };
 }

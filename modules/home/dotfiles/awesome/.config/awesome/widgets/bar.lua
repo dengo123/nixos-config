@@ -5,9 +5,9 @@ local wibox = require("wibox")
 local beautiful = require("beautiful")
 
 local Tabs = require("widgets.bar.tabs")
-local Sections = require("widgets.bar.sections")
 local Prompt = require("widgets.bar.prompt")
 local Layoutbox = require("widgets.bar.layoutbox")
+local Systray = require("widgets.bar.systray")
 
 local M = {}
 
@@ -23,29 +23,35 @@ function M.setup(s, opts)
 
 	-- Prompt + Layoutbox
 	s.mypromptbox = Prompt.build()
-
 	s.mylayoutbox = Layoutbox.build(s)
 
 	-- Tabs (Taglist + Tasklist)
 	local tabs = Tabs.build(s, { modkey = modkey })
 
-	-- Sektionen zusammenstellen
-	local left = Sections.left({
-		launcher = mylauncher,
-		taglist = tabs.taglist,
-		prompt = s.mypromptbox,
-	})
+	-- Systray
+	local tray = show_systray and Systray.build({ base_size = 20 }) or nil
 
-	local center = Sections.center({
-		tasklist = tabs.tasklist,
-	})
+	-- Links
+	local left = {
+		layout = wibox.layout.fixed.horizontal,
+		spacing = 8,
+		mylauncher,
+		tabs.taglist,
+		s.mypromptbox,
+	}
 
-	local right = Sections.right({
-		kbd = mykeyboardlayout,
-		systray = show_systray,
-		clock = mytextclock,
-		layoutbox = s.mylayoutbox,
-	})
+	-- Mitte
+	local center = tabs.tasklist
+
+	-- Rechts
+	local right = {
+		layout = wibox.layout.fixed.horizontal,
+		spacing = 10,
+		mykeyboardlayout,
+		tray,
+		mytextclock,
+		s.mylayoutbox,
+	}
 
 	-- Bar
 	s.mywibox = awful.wibar({
