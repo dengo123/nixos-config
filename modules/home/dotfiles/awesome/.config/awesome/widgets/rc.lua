@@ -8,7 +8,7 @@ require("awful.autofocus")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 local naughty = require("naughty")
-local menu = require("menu")
+local menubar = require("menubar")
 local hotkeys_popup = require("awful.hotkeys_popup")
 require("awful.hotkeys_popup.keys")
 
@@ -73,18 +73,39 @@ awful.layout.layouts = {
 }
 -- }}}
 
--- Menu-Modul laden und Widgets bauen
-local menu = require("widgets.menu")
-local mw = menu.create({
-	terminal = terminal,
-	editor_cmd = editor_cmd,
-	awesome_icon = beautiful.awesome_icon,
+-- {{{ Menu
+myawesomemenu = {
+	{
+		"hotkeys",
+		function()
+			hotkeys_popup.show_help(nil, awful.screen.focused())
+		end,
+	},
+	{ "manual", terminal .. " -e man awesome" },
+	{ "edit config", editor_cmd .. " " .. awesome.conffile },
+	{ "restart", awesome.restart },
+	{
+		"quit",
+		function()
+			awesome.quit()
+		end,
+	},
+}
+
+mymainmenu = awful.menu({
+	items = {
+		{ "awesome", myawesomemenu, beautiful.awesome_icon },
+		{ "open terminal", terminal },
+	},
 })
 
--- Diese Variablen nutzt deine Bar/rc.lua weiter:
-local mylauncher = mw.launcher
-local mymainmenu = mw.menu
--- (mw.awesomemenu wäre verfügbar, falls du es noch brauchst)
+mylauncher = awful.widget.launcher({
+	image = beautiful.awesome_icon,
+	menu = mymainmenu,
+})
+
+menubar.utils.terminal = terminal
+-- }}}
 
 -- Keyboard map indicator
 mykeyboardlayout = awful.widget.keyboardlayout()
