@@ -251,6 +251,14 @@ function M.apply(cfg)
 			awful.spawn.with_shell("screenshot")
 		end, { description = "screenshot", group = "launcher" }),
 
+		-- Suche / Prompt (Mod + s)
+		awful.key({ modkey }, "s", function()
+			local s = awful.screen.focused()
+			if s and s.mypromptbox then
+				s.mypromptbox:run()
+			end
+		end, { description = "search / run prompt", group = "launcher" }),
+
 		-- Awesome
 		awful.key({ modkey }, "r", awesome.restart, { description = "reload awesome", group = "awesome" }),
 		awful.key({ modkey }, "q", function()

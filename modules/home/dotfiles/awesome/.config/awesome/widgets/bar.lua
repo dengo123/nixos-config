@@ -1,93 +1,66 @@
 -- ~/.config/awesome/widgets/bar.lua
-local gears, awful, wibox, beautiful = require("gears"), require("awful"), require("wibox"), require("beautiful")
+local gears = require("gears")
+local awful = require("awful")
+local wibox = require("wibox")
+local beautiful = require("beautiful")
+
+local Tabs = require("widgets.bar.tabs")
+local Sections = require("widgets.bar.sections")
+local Prompt = require("widgets.bar.prompt")
+local Layoutbox = require("widgets.bar.layoutbox")
+
 local M = {}
 
 function M.setup(s, opts)
-	local cfg = opts.cfg or {}
+	local cfg = (opts and opts.cfg) or {}
 	local modkey = cfg.modkey
 	local mylauncher = opts.launcher
 	local mykeyboardlayout = opts.keyboardlayout
+	local show_systray = opts.systray ~= false -- default: true
 
-	local mytextclock = wibox.widget.textclock()
+	-- Basics
+	local mytextclock = wibox.widget.textclock("%a %d.%m.  %H:%M")
 
-	local taglist_buttons = gears.table.join(
-		awful.button({}, 1, function(t)
-			t:view_only()
-		end),
-		awful.button({ modkey }, 1, function(t)
-			if client.focus then
-				client.focus:move_to_tag(t)
-			end
-		end),
-		awful.button({}, 3, awful.tag.viewtoggle),
-		awful.button({ modkey }, 3, function(t)
-			if client.focus then
-				client.focus:toggle_tag(t)
-			end
-		end),
-		awful.button({}, 4, function(t)
-			awful.tag.viewnext(t.screen)
-		end),
-		awful.button({}, 5, function(t)
-			awful.tag.viewprev(t.screen)
-		end)
-	)
+	-- Prompt + Layoutbox
+	s.mypromptbox = Prompt.build()
 
-	local tasklist_buttons = gears.table.join(
-		awful.button({}, 1, function(c)
-			if c == client.focus then
-				c.minimized = true
-			else
-				c:emit_signal("request::activate", "tasklist", { raise = true })
-			end
-		end),
-		awful.button({}, 3, function()
-			awful.menu.client_list({ theme = { width = 250 } })
-		end),
-		awful.button({}, 4, function()
-			awful.client.focus.byidx(1)
-		end),
-		awful.button({}, 5, function()
-			awful.client.focus.byidx(-1)
-		end)
-	)
+	s.mylayoutbox = Layoutbox.build(s)
 
-	s.mypromptbox = awful.widget.prompt()
-	s.mylayoutbox = awful.widget.layoutbox(s)
-	s.mylayoutbox:buttons(gears.table.join(
-		awful.button({}, 1, function()
-			awful.layout.inc(1)
-		end),
-		awful.button({}, 3, function()
-			awful.layout.inc(-1)
-		end),
-		awful.button({}, 4, function()
-			awful.layout.inc(1)
-		end),
-		awful.button({}, 5, function()
-			awful.layout.inc(-1)
-		end)
-	))
-	s.mytaglist =
-		awful.widget.taglist({ screen = s, filter = awful.widget.taglist.filter.all, buttons = taglist_buttons })
-	s.mytasklist = awful.widget.tasklist({
-		screen = s,
-		filter = awful.widget.tasklist.filter.currenttags,
-		buttons = tasklist_buttons,
+	-- Tabs (Taglist + Tasklist)
+	local tabs = Tabs.build(s, { modkey = modkey })
+
+	-- Sektionen zusammenstellen
+	local left = Sections.left({
+		launcher = mylauncher,
+		taglist = tabs.taglist,
+		prompt = s.mypromptbox,
 	})
 
-	s.mywibox = awful.wibar({ position = "top", screen = s })
+	local center = Sections.center({
+		tasklist = tabs.tasklist,
+	})
+
+	local right = Sections.right({
+		kbd = mykeyboardlayout,
+		systray = show_systray,
+		clock = mytextclock,
+		layoutbox = s.mylayoutbox,
+	})
+
+	-- Bar
+	s.mywibox = awful.wibar({
+		position = "bottom",
+		screen = s,
+		height = beautiful.wibar_height or 28,
+		bg = beautiful.wibar_bg,
+		fg = beautiful.wibar_fg,
+	})
+
 	s.mywibox:setup({
 		layout = wibox.layout.align.horizontal,
-		{ layout = wibox.layout.fixed.horizontal, mylauncher, s.mytaglist, s.mypromptbox },
-		s.mytasklist,
-		{
-			layout = wibox.layout.fixed.horizontal,
-			mykeyboardlayout,
-			wibox.widget.systray(),
-			mytextclock,
-			s.mylayoutbox,
-		},
+		left,
+		center,
+		right,
 	})
 end
 
