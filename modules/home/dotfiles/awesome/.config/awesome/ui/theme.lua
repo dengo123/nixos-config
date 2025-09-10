@@ -1,4 +1,6 @@
-local gears, beautiful = require("gears"), require("beautiful")
+-- ~/.config/awesome/theme.lua
+local gears = require("gears")
+local beautiful = require("beautiful")
 local M = {}
 function M.apply(cfg)
 	local path = cfg.theme

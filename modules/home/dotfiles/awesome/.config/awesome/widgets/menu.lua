@@ -1,21 +1,10 @@
--- ~/.config/awesome/widgets/menu.lua
+local hotkeys_popup = require("awful.hotkeys_popup")
 local awful = require("awful")
 local beautiful = require("beautiful")
-local menubar = require("menubar")
-local hotkeys_popup = require("awful.hotkeys_popup")
-require("awful.hotkeys_popup.keys")
 
 local M = {}
-
---- Baut Hauptmenü + Launcher (1:1 aus deiner rc.lua, aber parametrisierbar).
--- @param opts { terminal, editor_cmd, awesome_icon }
--- @returns { menu = mymainmenu, launcher = mylauncher, awesomemenu = myawesomemenu }
 function M.create(opts)
-	opts = opts or {}
-	local terminal = opts.terminal or "xterm"
-	local editor_cmd = opts.editor_cmd or (terminal .. " -e nano")
-	local awesome_icon = opts.awesome_icon or beautiful.awesome_icon
-
+	local cfg = opts.cfg
 	local myawesomemenu = {
 		{
 			"hotkeys",
@@ -23,8 +12,8 @@ function M.create(opts)
 				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
-		{ "manual", terminal .. " -e man awesome" },
-		{ "edit config", editor_cmd .. " " .. awesome.conffile },
+		{ "manual", cfg.terminal .. " -e man awesome" },
+		{ "edit config", cfg.terminal .. " -e " .. cfg.editor .. " " .. awesome.conffile },
 		{ "restart", awesome.restart },
 		{
 			"quit",
@@ -33,27 +22,17 @@ function M.create(opts)
 			end,
 		},
 	}
-
 	local mymainmenu = awful.menu({
 		items = {
-			{ "awesome", myawesomemenu, awesome_icon },
-			{ "open terminal", terminal },
+			{ "awesome", myawesomemenu, opts.awesome_icon or beautiful.awesome_icon },
+			{ "open terminal", cfg.terminal },
 		},
 	})
-
 	local mylauncher = awful.widget.launcher({
-		image = awesome_icon,
+		image = opts.awesome_icon or beautiful.awesome_icon,
 		menu = mymainmenu,
 	})
-
-	-- menubar terminal setzen (wie in rc.lua)
-	menubar.utils.terminal = terminal
-
-	return {
-		menu = mymainmenu,
-		launcher = mylauncher,
-		awesomemenu = myawesomemenu,
-	}
+	return { menu = mymainmenu, launcher = mylauncher }
 end
 
 return M

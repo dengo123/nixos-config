@@ -4,9 +4,7 @@ local beautiful = require("beautiful")
 
 local M = {}
 
--- kb: dein require("keys")-Modul (für clientkeys)
--- mouse: dein require("mouse")-Modul (für client mouse buttons)
-function M.apply(kb, mouse)
+function M.apply(kb, mouse, cfg)
 	awful.rules.rules = {
 		{
 			rule = {},
@@ -16,7 +14,7 @@ function M.apply(kb, mouse)
 				focus = awful.client.focus.filter,
 				raise = true,
 				keys = kb.clientkeys,
-				buttons = mouse.client_buttons(),
+				buttons = mouse.client_buttons(cfg.modkey),
 				screen = awful.screen.preferred,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
 			},

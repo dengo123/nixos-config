@@ -1,3 +1,4 @@
+-- ~/.config/awesome/layouts.lua
 local awful = require("awful")
 return {
 	list = {
