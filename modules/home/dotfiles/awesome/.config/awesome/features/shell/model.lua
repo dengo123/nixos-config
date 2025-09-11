@@ -1,13 +1,11 @@
--- features/shell/model.lua
-
+-- ~/.config/awesome/features/shell/model.lua
 local wibox = require("wibox")
 
--- Sub-Widgets (NEU: richtiger Pfad)
-local Layoutbox = require("features.shell.widgets.layoutbox")
+-- Sub-Widgets
+local Tabs = require("features.shell.widgets.tabs") -- verschmolzenes Tag/Task-Widget
 local Clock = require("features.shell.widgets.clock")
 local Prompt = require("features.shell.widgets.prompt")
 local Systray = require("features.shell.widgets.systray")
-local Tabs = require("features.shell.widgets.tabs")
 
 local M = {}
 
@@ -22,11 +20,11 @@ function M.build(s, opts)
 
 	-- Widgets
 	s.mypromptbox = Prompt.build()
-	s.mylayoutbox = Layoutbox.build(s)
-	local tabs = Tabs.build(s, { modkey = modkey })
+	local tabs = Tabs.build(s, { modkey = modkey }) -- liefert { taglist = ... }
 	local tray = showtray and Systray.build({ base_size = 20 }) or nil
-	local clock = Clock.build("%a %d.%m.  %H:%M")
+	local clock = Clock.build("%H:%M") -- inkl. Popup-Kalender & Margin
 
+	-- LINKS: Launcher · Tabs (taglist) · Prompt
 	local left = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 8,
@@ -35,8 +33,10 @@ function M.build(s, opts)
 		s.mypromptbox,
 	}
 
-	local center = tabs.tasklist
+	-- MITTE: (leer) – oder z.B. Separator/Spacer, falls deine View das erwartet
+	local center = nil
 
+	-- RECHTS: Keyboardlayout · Systray · Clock · Layoutbox
 	local right = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 10,

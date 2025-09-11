@@ -1,5 +1,6 @@
 -- ~/.config/awesome/features/workspaces/tags.lua
 local awful = require("awful")
+local gears = require("gears")
 
 local M = {}
 
@@ -30,6 +31,41 @@ local function ensure_one_tag(s)
 			selected = true,
 		})
 	end
+end
+
+local function focus_master_of_tag(t)
+	if not t then
+		return
+	end
+	gears.timer.delayed_call(function()
+		-- Kandidat 1: "Master" des Screens
+		local c = awful.client.getmaster(t.screen)
+
+		-- Sicherstellen, dass der Master auch auf diesem Tag liegt
+		if not (c and c.valid and c.first_tag == t) then
+			-- Kandidat 2: erstes tiled-Fenster
+			local tiled = awful.client.tiled(t)
+			c = (tiled and tiled[1]) or nil
+		end
+
+		-- Fallback: irgendein Client des Tags
+		if not (c and c.valid) then
+			local clients = t:clients()
+			c = clients and clients[1] or nil
+		end
+
+		if c and c.valid then
+			if c.minimized then
+				c.minimized = false
+			end
+
+			-- nur wenn Fokus nicht schon im Tag liegt
+			local focused = client.focus
+			if not (focused and focused.valid and focused.first_tag == t) then
+				c:emit_signal("request::activate", "tag_switch_master_focus", { raise = true })
+			end
+		end
+	end)
 end
 
 -- API -----------------------------------------------------------------
@@ -67,11 +103,12 @@ function M.on_screen_rotation()
 	end)
 end
 
--- Signale: wenn ein Tag ausgewählt wird, Policy auf diesen Screen anwenden
+-- Signale: wenn ein Tag ausgewählt wird, Policy anwenden + Master fokussieren
 function M.attach_policy_signals()
 	tag.connect_signal("property::selected", function(t)
 		if t.selected and t.screen then
 			M.apply_layout_policy(t.screen)
+			focus_master_of_tag(t)
 		end
 	end)
 end
@@ -112,6 +149,14 @@ function M.delete_current(s)
 	renumber_tags(s)
 	-- optional: Layout-Policy erneut anwenden
 	M.apply_layout_policy(s)
+end
+
+-- explizit exportieren für manuelle Nutzung (z. B. in Keybinds)
+function M.focus_master_current(s)
+	s = s or awful.screen.focused()
+	if s and s.selected_tag then
+		focus_master_of_tag(s.selected_tag)
+	end
 end
 
 return M
