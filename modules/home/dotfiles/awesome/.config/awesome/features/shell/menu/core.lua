@@ -7,7 +7,7 @@ local placement = require("features.shell.menu.shared.placement")
 
 local M = {}
 
--- args = { theme=table, data={ user, left_items, right_items, power_items } }
+-- args = { theme=table, data={ user, left_items, right_items, power_items }, on_search=function(q) }
 function M.build_popup(args)
 	local t = args.theme or {}
 	local d = args.data or {}
@@ -15,18 +15,24 @@ function M.build_popup(args)
 	-- Bausteine erzeugen
 	local header_api = Header.build(d.user, t)
 	local columns = Columns.build(d.left_items, d.right_items, t)
-	local footer = Footer.build(d.power_items, t)
+
+	-- Footer: neue API nutzen (Widget + API)
+	local footer_widget, footer_api = Footer.build({
+		power_items = d.power_items,
+		on_search = args.on_search,
+		t = t,
+	})
 
 	-- Popup bauen (Placement: links am Rand, über der unteren Bar)
 	local popup_api = Popup.build({
 		header = header_api.widget,
 		cols = columns.widget,
-		footer = footer,
+		footer = footer_widget,
 		theme = t,
 		placement = placement.above_bar({
-			position = "bottom", -- "top", falls deine Bar oben sitzt
+			position = "bottom", -- oder "top"
 			gap = 2,
-			align = "left", -- am linken Workarea-Rand
+			align = "left", -- linker Rand
 		}),
 	})
 
@@ -46,7 +52,7 @@ function M.build_popup(args)
 		popup_api:toggle(opts)
 	end
 
-	-- Inhalte
+	-- Inhalte setzen
 	function api:set_left(items)
 		columns:set_left(items)
 	end
@@ -57,6 +63,11 @@ function M.build_popup(args)
 
 	function api:set_user(name, avatar_path, subtitle)
 		header_api:set_user(name, avatar_path, subtitle)
+	end
+
+	-- Footer-API (z. B. Suche fokussieren)
+	if footer_api and footer_api.focus_search then
+		api.focus_search = footer_api.focus_search
 	end
 
 	return api

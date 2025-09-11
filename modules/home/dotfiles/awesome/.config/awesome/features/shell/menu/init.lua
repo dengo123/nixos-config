@@ -1,14 +1,15 @@
--- ~/.config/awesome/features/shell/menu/init.lua
+-- features/shell/menu/init.lua
 local core = require("features.shell.menu.core")
 local defaults = require("features.shell.menu.data")
-local menubar = require("menubar")
 local awful = require("awful")
 local wibox = require("wibox")
-local beautiful = require("beautiful")
 local gears = require("gears")
+local beautiful = require("beautiful")
+local menubar = require("menubar")
 
 local M = {}
 
+-- Theme auflösen (Fn | Table | ui.theme Fallback)
 local function resolve_theme(theme)
 	if type(theme) == "function" then
 		theme = theme()
@@ -22,15 +23,10 @@ local function resolve_theme(theme)
 	elseif ok and type(tmod) == "table" then
 		return tmod
 	end
-	return {
-		bg = "#222222",
-		fg = "#ffffff",
-		border_color = "#000000",
-		border_width = 1,
-		total_height = 500,
-	}
+	return { bg = "#222222", fg = "#ffffff", border_color = "#000000", border_width = 1, total_height = 500 }
 end
 
+-- Daten mergen mit Defaults
 local function merge_data(src)
 	src = src or {}
 	local function pick(k)
@@ -44,10 +40,10 @@ local function merge_data(src)
 	}
 end
 
-local function make_default_launcher(api, icon)
-	local img = icon or beautiful.awesome_icon
+-- Launcher-Widget (klick -> api:toggle())
+local function make_launcher(api, icon)
 	return wibox.widget({
-		image = img,
+		image = icon or beautiful.awesome_icon,
 		widget = wibox.widget.imagebox,
 		buttons = gears.table.join(awful.button({}, 1, function()
 			api:toggle()
@@ -55,39 +51,33 @@ local function make_default_launcher(api, icon)
 	})
 end
 
--- Low-level: Popup/API erzeugen
-function M.create(opts)
-	opts = opts or {}
-	local build_popup = (type(core) == "function") and core or core.build_popup
-	assert(type(build_popup) == "function", "menu.core export mismatch: expected function 'build_popup'")
-	return build_popup({
-		theme = resolve_theme(opts.theme),
-		data = merge_data(opts.data),
-		cfg = opts.cfg,
-	})
+-- Fallback-Suche: öffnet Browser mit DuckDuckGo
+local function default_on_search(q)
+	if not q or #q == 0 then
+		return
+	end
+	local url_q = q:gsub("%s+", "+")
+	awful.spawn.with_shell('xdg-open "https://duckduckgo.com/?q=' .. url_q .. '"')
 end
 
--- High-level: Menü an die App hängen (setzt cfg.mymainmenu / cfg.mylauncher)
-function M.attach(cfg)
+-- Menü-Setup: baut Popup + Launcher
+-- Rückgabe: { menu = api(:show/:hide/:toggle/:focus_search), launcher = widget }
+function M.setup(cfg)
 	cfg = cfg or {}
 	if cfg.terminal then
 		menubar.utils.terminal = cfg.terminal
 	end
 
-	local api = M.create({
+	local api = core.build_popup({
 		cfg = cfg,
-		theme = cfg.menu_theme,
-		data = cfg.menu_data,
+		theme = resolve_theme(cfg.menu_theme),
+		data = merge_data(cfg.menu_data),
+		on_search = cfg.menu_on_search or default_on_search,
 	})
 
-	-- Falls schon ein Start-Widget existiert, nicht überschreiben.
-	-- Andernfalls einen einfachen Launcher bereitstellen.
-	if not cfg.mylauncher then
-		cfg.mylauncher = make_default_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon)
-	end
-	cfg.mymainmenu = api
+	local launcher = cfg.menu_launcher or make_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon)
 
-	return api
+	return { menu = api, launcher = launcher }
 end
 
 return M

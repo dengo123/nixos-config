@@ -1,4 +1,4 @@
--- features/shell/menu/parts/popup.lua
+-- ~/.config/awesome/features/shell/menu/parts/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -30,6 +30,15 @@ function Popup.build(args)
 		layout = wibox.layout.align.vertical,
 	})
 
+	-- Backdrop: fängt Outside-Klicks ab
+	local backdrop = wibox({
+		visible = false,
+		ontop = true, -- liegt über Clients
+		type = "splash", -- nicht als normales Fenster behandeln
+		bg = "#00000000", -- komplett transparent
+	})
+
+	-- Popup selbst: liegt über dem Backdrop
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
@@ -43,36 +52,17 @@ function Popup.build(args)
 		minimum_height = t.total_height or 520,
 	})
 
-	------------------------------------------------------------------------
-	-- Outside-Click via mousegrabber (kein Backdrop, blockiert nichts sichtbar)
-	local mousegrabber_running = false
-
-	local function start_mousegrabber(api, popup_obj)
-		if mousegrabber_running then
-			return
-		end
-		mousegrabber_running = true
-		mousegrabber.run(function(m)
-			if m.buttons and m.buttons[1] then
-				local x, y = m.x, m.y
-				local gx, gy, gw, gh = popup_obj.x, popup_obj.y, popup_obj.width, popup_obj.height
-				local inside = x >= gx and x <= gx + gw and y >= gy and y <= gy + gh
-				if not inside then
-					api:hide()
-					return false -- beendet Grabber; Klick geht an Client
-				end
-			end
-			return true
-		end, "left_ptr")
-	end
-
-	local function stop_mousegrabber()
-		if mousegrabber_running then
-			mousegrabber.stop()
-			mousegrabber_running = false
-		end
-	end
-	------------------------------------------------------------------------
+	-- Outside-Klick -> schließen
+	backdrop:buttons(gears.table.join(
+		awful.button({}, 1, function()
+			popup.visible = false
+			backdrop.visible = false
+		end),
+		awful.button({}, 3, function()
+			popup.visible = false
+			backdrop.visible = false
+		end)
+	))
 
 	-- Helfer: sichere Platzierung mit Retry/Clamping
 	local function place_safe(popup_obj, s, place, opts, theme)
@@ -87,7 +77,6 @@ function Popup.build(args)
 
 		place(popup_obj, s, opts)
 
-		-- Fallbacks falls place_fn nichts setzt
 		if popup_obj.y == nil then
 			popup_obj.y = wa.y + wa.height - gap - ph
 		end
@@ -96,18 +85,27 @@ function Popup.build(args)
 		end
 	end
 
+	-- Backdrop an Screen anpassen
+	local function size_backdrop(s)
+		local g = s.geometry
+		backdrop:geometry({ x = g.x, y = g.y, width = g.width, height = g.height })
+		backdrop.screen = s
+	end
+
 	-- Öffentliche API
 	local api = {}
 
 	-- opts: { screen=<screen> }
 	function api:show(opts)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
+
+		size_backdrop(s)
+		backdrop.visible = true -- erst Backdrop…
+
 		popup.screen = s
+		popup.visible = true -- …dann Popup drüber
 
-		-- Popup sichtbar machen (damit Maße vorhanden sind)
-		popup.visible = true
-
-		-- Mehrfach kurz platzieren, bis Maße/Workarea stabil
+		-- Platzierung, bis Maße/Workarea stabil
 		local attempts, max_attempts = 0, 6
 		local function try_place()
 			if not popup.visible then
@@ -122,17 +120,14 @@ function Popup.build(args)
 		end
 		gears.timer.delayed_call(try_place)
 		gears.timer.start_new(0.016, try_place)
-
-		-- Outside-Click starten
-		start_mousegrabber(api, popup)
 	end
 
 	function api:hide()
-		if not popup.visible then
+		if not popup.visible and not backdrop.visible then
 			return
 		end
-		stop_mousegrabber()
 		popup.visible = false
+		backdrop.visible = false
 	end
 
 	function api:toggle(opts)
@@ -146,12 +141,15 @@ function Popup.build(args)
 	-- Safety: falls Popup anderswo unsichtbar wird
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
-			stop_mousegrabber()
+			backdrop.visible = false
 		end
 	end)
 
-	-- Bei Workarea-Änderung neu platzieren, falls sichtbar
+	-- Screen-Größe ändert sich -> Backdrop + ggf. Popup neu platzieren
 	screen.connect_signal("property::workarea", function(s)
+		if backdrop.visible and backdrop.screen == s then
+			size_backdrop(s)
+		end
 		if popup.visible and popup.screen == s then
 			place_safe(popup, s, place_fn, nil, t)
 		end

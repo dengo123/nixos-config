@@ -3,7 +3,6 @@ local wibox = require("wibox")
 
 local Tabs = require("features.shell.widgets.tabs")
 local Clock = require("features.shell.widgets.clock")
-local Prompt = require("features.shell.widgets.prompt")
 local Systray = require("features.shell.widgets.systray")
 local Start = require("features.shell.widgets.start") -- <- NEU
 
@@ -16,7 +15,6 @@ function M.build(s, opts)
 	local kb = opts.keyboardlayout
 	local showtray = (opts.systray ~= false)
 
-	s.mypromptbox = Prompt.build()
 	local tabs = Tabs.build(s, { modkey = modkey })
 	local tray = showtray and Systray.build({ base_size = 20 }) or nil
 	local clock = Clock.build("%H:%M")
@@ -32,7 +30,6 @@ function M.build(s, opts)
 		spacing = 8,
 		start_btn,
 		tabs.taglist,
-		s.mypromptbox,
 	}
 
 	local center = nil
