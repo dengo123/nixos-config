@@ -11,23 +11,24 @@ local menubar = require("menubar")
 local confdir = gears.filesystem.get_configuration_dir()
 package.path = confdir .. "?.lua;" .. confdir .. "?/init.lua;" .. package.path
 
--- === zentrale Konfiguration & Core-Teile ===
-local cfg = require("system.config") -- { terminal, editor, modkey, theme, ... }
-local ui = require("ui") -- (theme + wallpaper bundle)
-local layouts = require("features.workspaces.layouts") -- ⬅️ hier liegt dein layouts.lua
+-- === System (Config + Error-Hooks) ===
+local system = require("system") -- sammelt system.config + system.errors
+local cfg = system.init() -- setzt Error-Hooks, liefert config
 
--- eigene Module
+-- === UI & Layouts ===
+local ui = require("ui") -- (theme + wallpaper bundle)
+local layouts = require("features.workspaces.layouts")
+
+-- === eigene Module ===
 local input = require("input") -- (keys + mouse bundle)
 local shell = require("features.shell")
 local windowing = require("features.windowing")
 local workspaces = require("features.workspaces")
 
-require("system.errors").hook()
-
 -- UI initialisieren (Theme zuerst, dann Wallpaper)
 ui.init(cfg)
 
--- Layouts anwenden (aus features/workspaces/layouts.lua)
+-- Layouts anwenden
 layouts:apply()
 
 -- Menü/Launcher
