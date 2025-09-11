@@ -1,34 +1,36 @@
--- features/shell/menu/init.lua
+-- ~/.config/awesome/features/shell/menu/init.lua
 local core = require("features.shell.menu.core")
 local defaults = require("features.shell.menu.data")
+local menubar = require("menubar")
+local awful = require("awful")
+local wibox = require("wibox")
+local beautiful = require("beautiful")
+local gears = require("gears")
 
 local M = {}
 
--- interner Helfer: Theme auflösen (Funktion | Tabelle | ui.theme Fallback)
 local function resolve_theme(theme)
 	if type(theme) == "function" then
 		theme = theme()
 	end
-	if type(theme) ~= "table" then
-		local ok, tmod = pcall(require, "ui.theme")
-		if ok and type(tmod.startmenu) == "function" then
-			theme = tmod.startmenu()
-		elseif ok and type(tmod) == "table" then
-			theme = tmod
-		else
-			theme = {
-				bg = "#222222",
-				fg = "#ffffff",
-				border_color = "#000000",
-				border_width = 1,
-				total_height = 500,
-			}
-		end
+	if type(theme) == "table" then
+		return theme
 	end
-	return theme
+	local ok, tmod = pcall(require, "ui.theme")
+	if ok and type(tmod.startmenu) == "function" then
+		return tmod.startmenu()
+	elseif ok and type(tmod) == "table" then
+		return tmod
+	end
+	return {
+		bg = "#222222",
+		fg = "#ffffff",
+		border_color = "#000000",
+		border_width = 1,
+		total_height = 500,
+	}
 end
 
--- interner Helfer: Daten mergen
 local function merge_data(src)
 	src = src or {}
 	local function pick(k)
@@ -42,33 +44,50 @@ local function merge_data(src)
 	}
 end
 
--- Low-level: nur Popup/API bauen
-function M.create(opts)
-	opts = opts or {}
-	local theme = resolve_theme(opts.theme)
-	local data = merge_data(opts.data)
-
-	local build_popup = (type(core) == "function") and core or core.build_popup
-	assert(type(build_popup) == "function", "menu.core export mismatch: expected function 'build_popup'")
-
-	local api = build_popup({
-		theme = theme,
-		data = data,
-		cfg = opts.cfg, -- zur Weitergabe falls core es nutzt
+local function make_default_launcher(api, icon)
+	local img = icon or beautiful.awesome_icon
+	return wibox.widget({
+		image = img,
+		widget = wibox.widget.imagebox,
+		buttons = gears.table.join(awful.button({}, 1, function()
+			api:toggle()
+		end)),
 	})
-
-	-- launcher kann später ergänzt werden; API ist Hauptsache
-	return { menu = api, launcher = nil }
 end
 
--- High-level: vollständiges Menü für die App initialisieren
--- gibt {menu, launcher} zurück, sodass shell/init nichts wissen muss
-function M.setup(cfg)
-	return M.create({
-		cfg = cfg,
-		theme = cfg and cfg.menu_theme, -- optional: Theme via cfg übergeben
-		data = cfg and cfg.menu_data, -- optional: Data via cfg übergeben
+-- Low-level: Popup/API erzeugen
+function M.create(opts)
+	opts = opts or {}
+	local build_popup = (type(core) == "function") and core or core.build_popup
+	assert(type(build_popup) == "function", "menu.core export mismatch: expected function 'build_popup'")
+	return build_popup({
+		theme = resolve_theme(opts.theme),
+		data = merge_data(opts.data),
+		cfg = opts.cfg,
 	})
+end
+
+-- High-level: Menü an die App hängen (setzt cfg.mymainmenu / cfg.mylauncher)
+function M.attach(cfg)
+	cfg = cfg or {}
+	if cfg.terminal then
+		menubar.utils.terminal = cfg.terminal
+	end
+
+	local api = M.create({
+		cfg = cfg,
+		theme = cfg.menu_theme,
+		data = cfg.menu_data,
+	})
+
+	-- Falls schon ein Start-Widget existiert, nicht überschreiben.
+	-- Andernfalls einen einfachen Launcher bereitstellen.
+	if not cfg.mylauncher then
+		cfg.mylauncher = make_default_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon)
+	end
+	cfg.mymainmenu = api
+
+	return api
 end
 
 return M

@@ -1,7 +1,5 @@
--- features/shell/init.lua
+-- ~/.config/awesome/features/shell/init.lua
 local awful = require("awful")
-local beautiful = require("beautiful")
-local menubar = require("menubar")
 
 local M = {
 	menu = require("features.shell.menu"),
@@ -11,34 +9,25 @@ local M = {
 	},
 }
 
--- Wrapper: Bar-Setup (Screen → Model → View)
 function M.bar.setup(s, opts)
 	local model = M.bar.model.build(s, opts or {})
 	return M.bar.view.place(s, model, opts or {})
 end
 
--- High-Level-Init: nur noch Zusammensetzen
 function M.init(cfg)
 	cfg = cfg or {}
 
-	-- Menü vollständig im Menü-Modul aufbauen
-	local mw = M.menu.setup(cfg)
-	cfg.mylauncher = mw.launcher
-	cfg.mymainmenu = mw.menu
+	-- Menü an cfg andocken (setzt cfg.mymainmenu / cfg.mylauncher)
+	M.menu.attach(cfg)
 
-	-- menubar Terminal (gehört eher zur App-weiten Config)
-	menubar.utils.terminal = cfg.terminal
-
-	-- globales Keyboardlayout-Widget, pro Screen gereicht
+	-- globales Keyboardlayout-Widget erstellen und an Bars reichen
 	local mykeyboardlayout = awful.widget.keyboardlayout()
 
-	-- pro Screen Bar platzieren
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
-			launcher = cfg.mylauncher,
+			launcher = cfg.mylauncher, -- kommt aus menu.attach()
 			keyboardlayout = mykeyboardlayout,
-			awesome_icon = beautiful.awesome_icon,
 		})
 	end)
 end
