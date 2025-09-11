@@ -30,12 +30,14 @@ function Popup.build(args)
 		layout = wibox.layout.align.vertical,
 	})
 
-	-- Backdrop: fängt Outside-Klicks ab
+	-- Backdrop: fängt Outside-Klicks ab (liegt nur über der Workarea)
 	local backdrop = wibox({
 		visible = false,
-		ontop = true, -- liegt über Clients
-		type = "splash", -- nicht als normales Fenster behandeln
-		bg = "#00000000", -- komplett transparent
+		ontop = true, -- über Clients
+		type = "utility", -- unauffälliger Fenstertyp
+		bg = "#00000000", -- volle Transparenz
+		opacity = 0.0, -- sicherstellen, dass nix verdeckt wird
+		shape = gears.shape.rectangle,
 	})
 
 	-- Popup selbst: liegt über dem Backdrop
@@ -69,7 +71,7 @@ function Popup.build(args)
 		local wa = s.workarea or s.geometry
 		local gap = 2
 		local ph = (popup_obj.height and popup_obj.height > 0) and popup_obj.height or (theme.total_height or 650)
-		ph = math.min(ph, math.max(wa.height - gap * 2, 1)) -- nie höher als Workarea
+		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
 
 		if popup_obj.height ~= ph then
 			popup_obj:geometry({ height = ph })
@@ -85,10 +87,10 @@ function Popup.build(args)
 		end
 	end
 
-	-- Backdrop an Screen anpassen
+	-- Backdrop an Screen-Workarea anpassen
 	local function size_backdrop(s)
-		local g = s.geometry
-		backdrop:geometry({ x = g.x, y = g.y, width = g.width, height = g.height })
+		local wa = s.workarea or s.geometry
+		backdrop:geometry({ x = wa.x, y = wa.y, width = wa.width, height = wa.height })
 		backdrop.screen = s
 	end
 
@@ -100,10 +102,10 @@ function Popup.build(args)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
 
 		size_backdrop(s)
-		backdrop.visible = true -- erst Backdrop…
+		backdrop.visible = true -- erst Backdrop …
 
 		popup.screen = s
-		popup.visible = true -- …dann Popup drüber
+		popup.visible = true -- … dann Popup drüber
 
 		-- Platzierung, bis Maße/Workarea stabil
 		local attempts, max_attempts = 0, 6
