@@ -1,4 +1,4 @@
--- features/shell/menu/popup.lua
+-- features/shell/menu/parts/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -11,15 +11,15 @@ function Popup.build(args)
 	local cols = args.cols
 	local footer = args.footer
 	local t = args.theme or {}
+
+	-- Fallback-Placement: links, über der unteren Bar (workarea-aware)
 	local place_fn = args.placement
 		or function(p, s)
-			-- Workarea berücksichtigt Bars/Docks; robust gegen Reload
 			local wa = s.workarea or s.geometry
 			local gap = 2
-			p.x = wa.x
-			-- echte Höhe, falls schon bekannt; sonst Theme-Fallback
 			local ph = (p.height and p.height > 0) and p.height or (t.total_height or 520)
-			p.y = wa.y + wa.height - gap - ph -- "über der unteren Bar"
+			p.x = wa.x
+			p.y = wa.y + wa.height - gap - ph
 		end
 
 	-- Container (nicht "root" nennen!)
@@ -43,33 +43,56 @@ function Popup.build(args)
 		minimum_height = t.total_height or 520,
 	})
 
-	-- Outside-Click: globale root.buttons temporär erweitern
-	local saved_root_buttons = nil
+	------------------------------------------------------------------------
+	-- Outside-Click via mousegrabber (kein Backdrop, blockiert nichts sichtbar)
+	local mousegrabber_running = false
 
-	local function start_root_click_close(api)
-		if saved_root_buttons ~= nil then
+	local function start_mousegrabber(api, popup_obj)
+		if mousegrabber_running then
 			return
 		end
-		saved_root_buttons = root.buttons()
-		local closer = gears.table.join(
-			awful.button({}, 1, function()
-				api:hide()
-			end),
-			awful.button({}, 3, function()
-				api:hide()
-			end)
-		)
-		if saved_root_buttons and #saved_root_buttons > 0 then
-			root.buttons(gears.table.join(saved_root_buttons, closer))
-		else
-			root.buttons(closer)
-		end
+		mousegrabber_running = true
+		mousegrabber.run(function(m)
+			if m.buttons and m.buttons[1] then
+				local x, y = m.x, m.y
+				local gx, gy, gw, gh = popup_obj.x, popup_obj.y, popup_obj.width, popup_obj.height
+				local inside = x >= gx and x <= gx + gw and y >= gy and y <= gy + gh
+				if not inside then
+					api:hide()
+					return false -- beendet Grabber; Klick geht an Client
+				end
+			end
+			return true
+		end, "left_ptr")
 	end
 
-	local function stop_root_click_close()
-		if saved_root_buttons ~= nil then
-			root.buttons(saved_root_buttons)
-			saved_root_buttons = nil
+	local function stop_mousegrabber()
+		if mousegrabber_running then
+			mousegrabber.stop()
+			mousegrabber_running = false
+		end
+	end
+	------------------------------------------------------------------------
+
+	-- Helfer: sichere Platzierung mit Retry/Clamping
+	local function place_safe(popup_obj, s, place, opts, theme)
+		local wa = s.workarea or s.geometry
+		local gap = 2
+		local ph = (popup_obj.height and popup_obj.height > 0) and popup_obj.height or (theme.total_height or 650)
+		ph = math.min(ph, math.max(wa.height - gap * 2, 1)) -- nie höher als Workarea
+
+		if popup_obj.height ~= ph then
+			popup_obj:geometry({ height = ph })
+		end
+
+		place(popup_obj, s, opts)
+
+		-- Fallbacks falls place_fn nichts setzt
+		if popup_obj.y == nil then
+			popup_obj.y = wa.y + wa.height - gap - ph
+		end
+		if popup_obj.x == nil then
+			popup_obj.x = wa.x
 		end
 	end
 
@@ -81,23 +104,35 @@ function Popup.build(args)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
 		popup.screen = s
 
-		-- 1) sichtbar machen, damit width/height bekannt sind
+		-- Popup sichtbar machen (damit Maße vorhanden sind)
 		popup.visible = true
 
-		-- 2) Platzierung nachreichen (sonst p.height oft 0 → Fehler)
-		gears.timer.delayed_call(function()
+		-- Mehrfach kurz platzieren, bis Maße/Workarea stabil
+		local attempts, max_attempts = 0, 6
+		local function try_place()
 			if not popup.visible then
-				return
+				return false
 			end
-			place_fn(popup, s, opts)
-		end)
+			attempts = attempts + 1
+			place_safe(popup, s, place_fn, opts, t)
+			if popup.height > 0 or attempts >= max_attempts then
+				return false
+			end
+			return true
+		end
+		gears.timer.delayed_call(try_place)
+		gears.timer.start_new(0.016, try_place)
 
-		start_root_click_close(api)
+		-- Outside-Click starten
+		start_mousegrabber(api, popup)
 	end
 
 	function api:hide()
+		if not popup.visible then
+			return
+		end
+		stop_mousegrabber()
 		popup.visible = false
-		stop_root_click_close()
 	end
 
 	function api:toggle(opts)
@@ -108,9 +143,17 @@ function Popup.build(args)
 		end
 	end
 
+	-- Safety: falls Popup anderswo unsichtbar wird
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
-			stop_root_click_close()
+			stop_mousegrabber()
+		end
+	end)
+
+	-- Bei Workarea-Änderung neu platzieren, falls sichtbar
+	screen.connect_signal("property::workarea", function(s)
+		if popup.visible and popup.screen == s then
+			place_safe(popup, s, place_fn, nil, t)
 		end
 	end)
 
