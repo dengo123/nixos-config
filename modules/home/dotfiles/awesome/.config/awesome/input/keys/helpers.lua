@@ -1,5 +1,6 @@
--- ~/.config/awesome/input/keys/helpers.lua
+-- ~/.config/awesome/input/keys/helpers.lua  (oder inputs/... -> bitte vereinheitlichen)
 local awful = require("awful")
+local gtable = require("gears.table")
 
 local H = {}
 
@@ -75,6 +76,21 @@ function H.move_client_to_neighbor_tag(delta, follow)
 			c:raise()
 		end
 	end
+end
+
+-- === pseudo maximize (ohne maximized-Flag; Floating bleibt funktionsfähig) ===
+function H.pseudo_maximize(c, opts)
+	if not c then
+		return
+	end
+	local defaults = { honor_workarea = true, margins = 0 }
+	local merged = gtable.crush({}, defaults, true)
+	if opts then
+		gtable.crush(merged, opts, true)
+	end
+	awful.placement.maximize(c, merged)
+	c:raise()
+	return c
 end
 
 return H
