@@ -4,68 +4,38 @@ pcall(require, "luarocks.loader")
 local gears = require("gears")
 local awful = require("awful")
 require("awful.autofocus")
-local beautiful = require("beautiful")
-local menubar = require("menubar")
 
 -- Module-Pfade
 local confdir = gears.filesystem.get_configuration_dir()
 package.path = confdir .. "?.lua;" .. confdir .. "?/init.lua;" .. package.path
 
--- === System (Config + Error-Hooks) ===
-local system = require("system") -- sammelt system.config + system.errors
-local cfg = system.init() -- setzt Error-Hooks, liefert config
+-- === System (Config + Error-Hooks via system.init) ===
+local system = require("system")
+local cfg = system.init()
 
--- === UI & Layouts ===
-local ui = require("ui") -- (theme + wallpaper bundle)
-local layouts = require("features.workspaces.layouts")
+-- === UI (Theme + Wallpaper) ===
+local ui = require("ui")
+ui.init(cfg)
 
 -- === eigene Module ===
-local input = require("input") -- (keys + mouse bundle)
+local input = require("input")
 local shell = require("features.shell")
 local windowing = require("features.windowing")
 local workspaces = require("features.workspaces")
 
--- UI initialisieren (Theme zuerst, dann Wallpaper)
-ui.init(cfg)
-
--- Layouts anwenden
-layouts:apply()
-
--- Menü/Launcher
-local mw = shell.menu.create({ cfg = cfg, awesome_icon = beautiful.awesome_icon })
-local mylauncher = mw.launcher
-local mymainmenu = mw.menu
-menubar.utils.terminal = cfg.terminal
-
--- Keyboard-Layout-Widget (WICHTIG: vor bar.setup definieren!)
-local mykeyboardlayout = awful.widget.keyboardlayout()
-
--- Workspaces initialisieren (Tags, Layout-Policy, Wallpaper-Signale)
+-- Workspaces (Layouts, Wallpaper-Signale, Tags, Policy)
 workspaces.init({
 	wallpaper_fn = ui.wallpaper.set,
-	ensure_one_tag = true,
-	renumber_on_start = true,
-	auto_adapt_layout_on_rotation = true,
 })
 
--- Windowing initialisieren (Rules + Client-Signals + Titlebar)
+-- Windowing (Rules, Client-Signals, Titlebar)
 windowing.init({
 	modkey = cfg.modkey,
 	mouse = input.mouse,
-	client_opts = { sloppy_focus = true },
-	titlebar_opts = { position = "top", size = 28 },
 })
 
--- Genau EIN per-Screen-Block
-awful.screen.connect_for_each_screen(function(s)
-	-- ui.wallpaper.set(s) -- übernimmt schon workspaces.init()
-	shell.bar.setup(s, {
-		cfg = cfg,
-		launcher = mylauncher,
-		keyboardlayout = mykeyboardlayout,
-	})
-end)
+-- Shell (Menü + Bar pro Screen; setzt cfg.mymainmenu / cfg.mylauncher)
+shell.init(cfg)
 
--- Keys + Root-Mouse anwenden (zentral über input)
-cfg.mymainmenu = mymainmenu
+-- Globale Inputs (Keys + Root-Mouse; nutzt cfg.mymainmenu)
 input.apply(cfg)

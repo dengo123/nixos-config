@@ -1,22 +1,33 @@
 -- ~/.config/awesome/features/windowing/init.lua
 local M = {}
 
-function M.init(opts)
-	opts = opts or {}
+function M.init(cfg)
+	cfg = cfg or {}
+
 	local rules = require("features.windowing.rules")
 	local clientSignals = require("features.windowing.client_signals")
 	local taskbar = require("features.windowing.taskbar")
 
+	-- Defaults
+	local opts = {
+		modkey = cfg.modkey,
+		mouse = cfg.mouse,
+		sloppy_focus = (cfg.client_opts and cfg.client_opts.sloppy_focus) or true,
+		titlebar_opts = cfg.titlebar_opts or { position = "top", size = 28 },
+	}
+
+	-- Apply rules
 	rules.apply({
-		modkey = opts.rules_cfg and opts.rules_cfg.modkey or opts.modkey,
+		modkey = opts.modkey,
 		mouse = opts.mouse,
 	})
 
+	-- Apply client signals
 	clientSignals.apply({
-		sloppy_focus = opts.client_opts and opts.client_opts.sloppy_focus,
+		sloppy_focus = opts.sloppy_focus,
 		taskbar = taskbar,
 		mouse = opts.mouse,
-		titlebar_opts = opts.titlebar_opts or { position = "top", size = 28 },
+		titlebar_opts = opts.titlebar_opts,
 	})
 end
 
