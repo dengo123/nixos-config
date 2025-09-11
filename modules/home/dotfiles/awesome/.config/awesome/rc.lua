@@ -21,11 +21,12 @@ local wallpaper = require("ui.wallpaper")
 local mouse = require("input.mouse")
 local kb = require("input.keys")
 local tags = require("policy.tags")
-local rules = require("policy.rules")
-local signals = require("policy.signals")
 
 -- statt widgets.bar + widgets.menu → features.shell
 local shell = require("features.shell")
+
+-- NEU: zentrales Windowing (ersetzt policy.rules + policy.signals)
+local windowing = require("features.windowing")
 
 require("system.errors").hook()
 
@@ -52,6 +53,14 @@ else
 	screen.connect_signal("property::geometry", wallpaper.set)
 end
 
+-- Windowing initialisieren (Rules + Client-Signals + Titlebar)
+windowing.init({
+	modkey = cfg.modkey,
+	mouse = mouse,
+	client_opts = { sloppy_focus = true }, -- bei Bedarf auf false setzen
+	titlebar_opts = { position = "top", size = 28 }, -- Taskbar/Titlebar-Layout
+})
+
 -- Genau EIN per-Screen-Block
 awful.screen.connect_for_each_screen(function(s)
 	wallpaper.set(s)
@@ -65,7 +74,5 @@ awful.screen.connect_for_each_screen(function(s)
 	})
 end)
 
--- Keys / Rules / Signals
+-- Keys (global)
 kb.apply(cfg)
-rules.apply(kb, mouse, cfg)
-signals.apply(mouse)

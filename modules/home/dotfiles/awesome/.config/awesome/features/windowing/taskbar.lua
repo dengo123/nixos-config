@@ -10,24 +10,30 @@ function M.attach(c, mouse, opts)
 	local size = (opts and opts.size) or 28
 
 	awful.titlebar(c, { position = pos, size = size }):setup({
+		-- LEFT: Icon + Title (Titel mit Move/Resize-Buttons)
 		{
+			layout = wibox.layout.fixed.horizontal,
 			awful.titlebar.widget.iconwidget(c),
+			{
+				widget = awful.titlebar.widget.titlewidget(c),
+				align = "center",
+			},
 			buttons = buttons,
-			layout = wibox.layout.fixed.horizontal,
 		},
+
+		-- MIDDLE: leer
+		nil,
+
+		-- RIGHT: (sichtbar rechts->links): Close | Floating | Minimize
 		{
-			{ align = "center", widget = awful.titlebar.widget.titlewidget(c) },
-			buttons = buttons,
-			layout = wibox.layout.flex.horizontal,
-		},
-		{
-			awful.titlebar.widget.floatingbutton(c),
-			awful.titlebar.widget.maximizedbutton(c),
-			awful.titlebar.widget.stickybutton(c),
-			awful.titlebar.widget.ontopbutton(c),
-			awful.titlebar.widget.closebutton(c),
 			layout = wibox.layout.fixed.horizontal,
+			-- Reihenfolge im Code = links->rechts innerhalb des rechten Blocks.
+			-- Der rechte Block selbst sitzt ganz rechts, daher Close am Ende = ganz rechts.
+			awful.titlebar.widget.minimizebutton(c), -- links von den drei
+			awful.titlebar.widget.floatingbutton(c), -- Mitte
+			awful.titlebar.widget.closebutton(c), -- ganz rechts
 		},
+
 		layout = wibox.layout.align.horizontal,
 	})
 end
