@@ -20,13 +20,9 @@ local wallpaper = require("ui.wallpaper")
 -- eigene Module
 local mouse = require("input.mouse")
 local kb = require("input.keys")
-local tags = require("policy.tags")
-
--- statt widgets.bar + widgets.menu → features.shell
 local shell = require("features.shell")
-
--- NEU: zentrales Windowing (ersetzt policy.rules + policy.signals)
 local windowing = require("features.windowing")
+local workspaces = require("features.workspaces")
 
 require("system.errors").hook()
 
@@ -46,27 +42,25 @@ mouse.apply_root(mymainmenu)
 -- Keyboard-Layout-Widget (WICHTIG: vor bar.setup definieren!)
 local mykeyboardlayout = awful.widget.keyboardlayout()
 
--- Wallpaper-Signale
-if wallpaper.hook then
-	wallpaper.hook()
-else
-	screen.connect_signal("property::geometry", wallpaper.set)
-end
+-- Workspaces initialisieren (Tags, Layout-Policy, Wallpaper-Signale)
+workspaces.init({
+	wallpaper_fn = wallpaper.set,
+	ensure_one_tag = true,
+	renumber_on_start = true,
+	auto_adapt_layout_on_rotation = true,
+})
 
 -- Windowing initialisieren (Rules + Client-Signals + Titlebar)
 windowing.init({
 	modkey = cfg.modkey,
 	mouse = mouse,
-	client_opts = { sloppy_focus = true }, -- bei Bedarf auf false setzen
-	titlebar_opts = { position = "top", size = 28 }, -- Taskbar/Titlebar-Layout
+	client_opts = { sloppy_focus = true },
+	titlebar_opts = { position = "top", size = 28 },
 })
 
 -- Genau EIN per-Screen-Block
 awful.screen.connect_for_each_screen(function(s)
-	wallpaper.set(s)
-	tags.ensure(s)
-	tags.renumber(s)
-
+	-- wallpaper.set(s) -- übernimmt schon workspaces.init(); kannst du hier weglassen, wenn du willst
 	shell.bar.setup(s, {
 		cfg = cfg,
 		launcher = mylauncher,

@@ -1,7 +1,7 @@
 -- ~/.config/awesome/keys.lua
 local gears = require("gears")
 local awful = require("awful")
-local tags = require("policy.tags")
+local tags = require("features.workspaces.tags")
 
 local M = {}
 
