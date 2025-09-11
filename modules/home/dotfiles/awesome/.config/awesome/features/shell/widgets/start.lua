@@ -58,14 +58,15 @@ function M.build(s, opts)
 		btn.bg = bg
 	end)
 
-	-- Klick → Menü unten links öffnen/umschalten
+	-- Klick → Menü screen-bewusst öffnen/umschalten
 	btn:buttons(gears.table.join(awful.button({}, 1, function()
 		if not menu then
 			return
 		end
-		local scrg = (s or awful.screen.focused()).geometry
-		-- unten links des Screens (y leicht ins Panel, damit’s sicher sichtbar ist)
-		menu:toggle({ coords = { x = scrg.x, y = scrg.y + scrg.height - 1 } })
+		menu:toggle({ screen = s or mouse.screen }) -- << wichtig
+		-- Wenn du trotzdem eine feste Position erzwingen willst, ergänze:
+		-- local g = (s or mouse.screen).geometry
+		-- menu:toggle({ screen = s or mouse.screen, coords = { x = g.x, y = g.y + g.height - 1 } })
 	end)))
 
 	return btn
