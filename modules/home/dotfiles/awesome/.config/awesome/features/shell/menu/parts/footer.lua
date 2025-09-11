@@ -1,6 +1,6 @@
 -- features/shell/menu/footer.lua
 local wibox = require("wibox")
-local P = require("features.shell.menu.primitives")
+local P = require("features.shell.menu.shared.primitives")
 
 local Footer = {}
 

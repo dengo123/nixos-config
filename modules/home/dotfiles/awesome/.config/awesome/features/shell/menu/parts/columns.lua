@@ -1,6 +1,6 @@
 -- features/shell/menu/columns.lua
 local wibox = require("wibox")
-local P = require("features.shell.menu.primitives")
+local P = require("features.shell.menu.shared.primitives")
 
 local Columns = {}
 

@@ -63,10 +63,11 @@ function M.build(s, opts)
 		if not menu then
 			return
 		end
-		menu:toggle({ screen = s or mouse.screen }) -- << wichtig
-		-- Wenn du trotzdem eine feste Position erzwingen willst, ergänze:
-		-- local g = (s or mouse.screen).geometry
-		-- menu:toggle({ screen = s or mouse.screen, coords = { x = g.x, y = g.y + g.height - 1 } })
+		local mc = mouse.coords()
+		menu:toggle({
+			screen = s or mouse.screen,
+			coords = { x = mc.x }, -- X des Klicks; Y kommt aus placement.above_bar
+		})
 	end)))
 
 	return btn
