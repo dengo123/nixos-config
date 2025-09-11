@@ -10,12 +10,8 @@ local M = {
 --- Apply all input bindings (keys + root mouse)
 -- @param cfg table: { modkey, terminal, launcher, browser, files, mymainmenu }
 function M.apply(cfg)
-	-- Keys
 	keys.apply(cfg)
-
-	-- Mouse root bindings
 	mouse.apply_root(cfg.mymainmenu)
-
 	return M
 end
 
