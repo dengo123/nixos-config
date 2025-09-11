@@ -23,8 +23,9 @@ local kb = require("input.keys")
 local tags = require("policy.tags")
 local rules = require("policy.rules")
 local signals = require("policy.signals")
-local menu = require("widgets.menu")
-local bar = require("widgets.bar")
+
+-- statt widgets.bar + widgets.menu → features.shell
+local shell = require("features.shell")
 
 require("system.errors").hook()
 
@@ -33,7 +34,7 @@ theme.apply(cfg)
 layouts:apply()
 
 -- Menü/Launcher
-local mw = menu.create({ cfg = cfg, awesome_icon = beautiful.awesome_icon })
+local mw = shell.menu.create({ cfg = cfg, awesome_icon = beautiful.awesome_icon })
 local mylauncher = mw.launcher
 local mymainmenu = mw.menu
 menubar.utils.terminal = cfg.terminal
@@ -46,9 +47,8 @@ local mykeyboardlayout = awful.widget.keyboardlayout()
 
 -- Wallpaper-Signale
 if wallpaper.hook then
-	wallpaper.hook() -- falls dein Modul diese Funktion anbietet
+	wallpaper.hook()
 else
-	-- Fallback: direkt an screen-Geometry hängen
 	screen.connect_signal("property::geometry", wallpaper.set)
 end
 
@@ -58,7 +58,7 @@ awful.screen.connect_for_each_screen(function(s)
 	tags.ensure(s)
 	tags.renumber(s)
 
-	bar.setup(s, {
+	shell.bar.setup(s, {
 		cfg = cfg,
 		launcher = mylauncher,
 		keyboardlayout = mykeyboardlayout,
