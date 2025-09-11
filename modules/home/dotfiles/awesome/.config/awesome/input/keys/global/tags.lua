@@ -38,9 +38,15 @@ return function(modkey)
 		-- Dynamische Tags
 		awful.key({ modkey }, "n", function()
 			tags.add()
-		end, { description = "new tag (auto)", group = "tag" }),
+		end, { description = "new tag (focus)", group = "tag" }),
+		awful.key({ modkey, "Shift" }, "n", function()
+			tags.add_silent()
+		end, { description = "new tag (silent)", group = "tag" }),
 		awful.key({ modkey }, "c", function()
 			tags.delete_current()
-		end, { description = "close current tag", group = "tag" })
+		end, { description = "close current tag (soft)", group = "tag" }),
+		awful.key({ modkey, "Shift" }, "c", function()
+			tags.delete_current_force()
+		end, { description = "force close current tag", group = "tag" })
 	)
 end

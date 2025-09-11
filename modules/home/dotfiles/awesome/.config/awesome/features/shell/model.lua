@@ -1,42 +1,41 @@
--- ~/.config/awesome/features/shell/model.lua
 local wibox = require("wibox")
 
--- Sub-Widgets
-local Tabs = require("features.shell.widgets.tabs") -- verschmolzenes Tag/Task-Widget
+local Tabs = require("features.shell.widgets.tabs")
 local Clock = require("features.shell.widgets.clock")
 local Prompt = require("features.shell.widgets.prompt")
 local Systray = require("features.shell.widgets.systray")
+local Start = require("features.shell.widgets.start") -- <- NEU
 
 local M = {}
 
--- baut linke/mittlere/rechte Seite für eine Bar
 function M.build(s, opts)
 	opts = opts or {}
 	local cfg = opts.cfg or {}
 	local modkey = cfg.modkey or "Mod4"
-	local launcher = opts.launcher
 	local kb = opts.keyboardlayout
 	local showtray = (opts.systray ~= false)
 
-	-- Widgets
 	s.mypromptbox = Prompt.build()
-	local tabs = Tabs.build(s, { modkey = modkey }) -- liefert { taglist = ... }
+	local tabs = Tabs.build(s, { modkey = modkey })
 	local tray = showtray and Systray.build({ base_size = 20 }) or nil
-	local clock = Clock.build("%H:%M") -- inkl. Popup-Kalender & Margin
+	local clock = Clock.build("%H:%M")
 
-	-- LINKS: Launcher · Tabs (taglist) · Prompt
+	local start_btn = Start.build(s, {
+		menu = cfg.mymainmenu,
+		label = "Start",
+		icon = cfg.start_icon or cfg.awesome_icon,
+	})
+
 	local left = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 8,
-		launcher,
+		start_btn,
 		tabs.taglist,
 		s.mypromptbox,
 	}
 
-	-- MITTE: (leer) – oder z.B. Separator/Spacer, falls deine View das erwartet
 	local center = nil
 
-	-- RECHTS: Keyboardlayout · Systray · Clock · Layoutbox
 	local right = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 10,

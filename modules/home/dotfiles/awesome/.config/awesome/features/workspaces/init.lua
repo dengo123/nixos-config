@@ -1,3 +1,4 @@
+-- ~/.config/awesome/features/workspaces/init.lua
 local awful = require("awful")
 local tags = require("features.workspaces.tags")
 local sigs = require("features.workspaces.screen_signals")
