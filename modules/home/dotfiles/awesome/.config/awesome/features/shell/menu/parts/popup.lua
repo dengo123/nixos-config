@@ -12,13 +12,17 @@ function Popup.build(args)
 	local footer = args.footer
 	local t = args.theme or {}
 	local place_fn = args.placement
-		or function(p, s) -- Fallback: unten links
-			local g = s.geometry
-			p.x = g.x
-			p.y = g.y + g.height - (t.total_height or 520)
+		or function(p, s)
+			-- Workarea berücksichtigt Bars/Docks; robust gegen Reload
+			local wa = s.workarea or s.geometry
+			local gap = 2
+			p.x = wa.x
+			-- echte Höhe, falls schon bekannt; sonst Theme-Fallback
+			local ph = (p.height and p.height > 0) and p.height or (t.total_height or 520)
+			p.y = wa.y + wa.height - gap - ph -- "über der unteren Bar"
 		end
 
-	-- nicht "root" nennen, um Awesome's global root nicht zu überschreiben
+	-- Container (nicht "root" nennen!)
 	local container = wibox.widget({
 		header,
 		cols,
@@ -72,13 +76,22 @@ function Popup.build(args)
 	-- Öffentliche API
 	local api = {}
 
-	-- opts: { coords={x=...}, screen=<screen> }
+	-- opts: { screen=<screen> }
 	function api:show(opts)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
 		popup.screen = s
-		-- Platzierung: darf optional opts lesen (für with_cursor_x)
-		place_fn(popup, s, opts)
+
+		-- 1) sichtbar machen, damit width/height bekannt sind
 		popup.visible = true
+
+		-- 2) Platzierung nachreichen (sonst p.height oft 0 → Fehler)
+		gears.timer.delayed_call(function()
+			if not popup.visible then
+				return
+			end
+			place_fn(popup, s, opts)
+		end)
+
 		start_root_click_close(api)
 	end
 

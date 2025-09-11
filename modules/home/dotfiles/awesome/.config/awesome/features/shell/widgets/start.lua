@@ -63,11 +63,7 @@ function M.build(s, opts)
 		if not menu then
 			return
 		end
-		local mc = mouse.coords()
-		menu:toggle({
-			screen = s or mouse.screen,
-			coords = { x = mc.x }, -- X des Klicks; Y kommt aus placement.above_bar
-		})
+		menu:toggle({ screen = s or mouse.screen })
 	end)))
 
 	return btn

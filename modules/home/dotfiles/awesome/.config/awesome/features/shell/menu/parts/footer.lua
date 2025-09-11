@@ -1,25 +1,101 @@
--- features/shell/menu/footer.lua
+-- ~/.config/awesome/features/shell/menu/footer.lua
+local gears = require("gears")
+local awful = require("awful")
 local wibox = require("wibox")
 local P = require("features.shell.menu.shared.primitives")
 
 local Footer = {}
 
--- power_items: { {icon=..., text=..., on_press=function() ... end}, ... }
-function Footer.build(power_items, t)
-	local powers = { layout = wibox.layout.fixed.horizontal, spacing = t.power_group_spacing or 8 }
-	for _, p in ipairs(power_items or {}) do
-		table.insert(powers, P.power_button(p, t))
+-- Kompatibel:
+--   Footer.build(power_items, t)
+--   Footer.build({ power_items = ..., on_search = ..., t = ... })
+function Footer.build(arg1, arg2)
+	-- ---- Compat Layer ---------------------------------------------------------
+	local opts
+	if type(arg1) == "table" and (arg1.power_items or arg1.on_search or arg1.t) then
+		-- neue API: Footer.build({ power_items=..., on_search=..., t=... })
+		opts = arg1
+	else
+		-- alte API: Footer.build(power_items, t)
+		opts = { power_items = arg1, t = arg2 }
+	end
+	opts.t = opts.t or {}
+	local t = opts.t
+
+	-- ---- Search prompt (optional) ---------------------------------------------
+	local on_search = opts.on_search
+	local prompt = awful.widget.prompt({
+		exe_callback = function(q)
+			if q and #q > 0 and on_search then
+				on_search(q)
+			end
+		end,
+		done_callback = function() end,
+		bg = t.search_bg or (t.footer_bg or t.bg),
+		fg = t.search_fg or (t.footer_fg or t.fg),
+	})
+
+	local placeholder = wibox.widget({
+		markup = "<span foreground='"
+			.. (t.search_fg or t.footer_fg or t.fg or "#ddd")
+			.. "66'>"
+			.. (t.search_placeholder or "Search…")
+			.. "</span>",
+		valign = "center",
+		widget = wibox.widget.textbox,
+	})
+
+	local stack = wibox.widget({
+		{ prompt.widget, visible = false, id = "prompt", widget = wibox.container.place },
+		{ placeholder, id = "hint", widget = wibox.container.place },
+		layout = wibox.layout.stack,
+	})
+
+	local function focus_search()
+		stack:get_children_by_id("prompt")[1].visible = true
+		stack:get_children_by_id("hint")[1].visible = false
+		prompt:run({
+			textbox = prompt.widget,
+			history_path = t.history_path or (gears.filesystem.get_cache_dir() .. "menu_search_history"),
+			completion_callback = awful.completion.shell,
+			done_callback = function()
+				stack:get_children_by_id("prompt")[1].visible = false
+				stack:get_children_by_id("hint")[1].visible = true
+			end,
+		})
 	end
 
+	local search = wibox.widget({
+		{
+			{ stack, left = 10, right = 10, widget = wibox.container.margin },
+			shape = (t.shape or gears.shape.rounded_rect),
+			bg = t.search_bg or (t.footer_bg or t.bg),
+			fg = t.search_fg or (t.footer_fg or t.fg),
+			forced_height = t.search_h or 28,
+			forced_width = t.search_w or 320,
+			widget = wibox.container.background,
+		},
+		buttons = gears.table.join(awful.button({}, 1, focus_search)),
+		layout = wibox.layout.fixed.horizontal,
+	})
+
+	-- ---- Power buttons ---------------------------------------------------------
+	local powers = { layout = wibox.layout.fixed.horizontal, spacing = t.power_group_spacing or 8 }
+	for _, p in ipairs(opts.power_items or {}) do
+		table.insert(powers, P.power_button(p, t))
+	end
+	local powers_right = wibox.widget({ powers, halign = "right", widget = wibox.container.place })
+
+	-- ---- Row + container -------------------------------------------------------
 	local row = wibox.widget({
-		nil,
-		powers,
-		nil,
+		search, -- links: Suche
+		nil, -- Mitte: Spacer
+		powers_right, -- rechts: Power-Buttons
 		expand = "outside",
 		layout = wibox.layout.align.horizontal,
 	})
 
-	return wibox.widget({
+	local footer = wibox.widget({
 		{
 			row,
 			left = t.footer_pad_l or 10,
@@ -32,6 +108,8 @@ function Footer.build(power_items, t)
 		fg = t.footer_fg or t.fg,
 		widget = wibox.container.background,
 	})
+
+	return footer, { focus_search = focus_search }
 end
 
 return Footer
