@@ -1,3 +1,4 @@
+-- features/shell/init.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local menubar = require("menubar")
@@ -16,26 +17,28 @@ function M.bar.setup(s, opts)
 	return M.bar.view.place(s, model, opts or {})
 end
 
--- High-Level-Init: Menü + Bar pro Screen
+-- High-Level-Init: nur noch Zusammensetzen
 function M.init(cfg)
-	-- Menü/Launcher
-	local mw = M.menu.create({
-		cfg = cfg,
-		awesome_icon = beautiful.awesome_icon,
-	})
+	cfg = cfg or {}
+
+	-- Menü vollständig im Menü-Modul aufbauen
+	local mw = M.menu.setup(cfg)
 	cfg.mylauncher = mw.launcher
 	cfg.mymainmenu = mw.menu
+
+	-- menubar Terminal (gehört eher zur App-weiten Config)
 	menubar.utils.terminal = cfg.terminal
 
-	-- Keyboard-Layout-Widget (global, aber pro Screen übergeben)
+	-- globales Keyboardlayout-Widget, pro Screen gereicht
 	local mykeyboardlayout = awful.widget.keyboardlayout()
 
-	-- pro Screen Bar
+	-- pro Screen Bar platzieren
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
 			launcher = cfg.mylauncher,
 			keyboardlayout = mykeyboardlayout,
+			awesome_icon = beautiful.awesome_icon,
 		})
 	end)
 end

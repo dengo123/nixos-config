@@ -1,4 +1,4 @@
--- Zentrale Defaults/Konfiguration
+-- ~/.config/awesome/system/config.lua
 return {
 	-- Basis
 	terminal = "ghostty",

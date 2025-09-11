@@ -1,6 +1,4 @@
 -- ~/.config/awesome/input/keys/init.lua
--- Fügt alle global-Key-Module zusammen und exportiert Helpers zentral.
-
 local gears = require("gears")
 
 -- Helpers einmalig laden und weiterreichen/weiterexportieren

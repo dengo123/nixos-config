@@ -1,3 +1,4 @@
+-- ~/.config/awesome/features/shell/model.lua
 local wibox = require("wibox")
 
 local Tabs = require("features.shell.widgets.tabs")

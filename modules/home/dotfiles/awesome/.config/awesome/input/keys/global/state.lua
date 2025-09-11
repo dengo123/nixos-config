@@ -1,3 +1,4 @@
+-- ~/.config/awesome/input/keys/global/state.lua
 local awful = require("awful")
 local H = require("input.keys.helpers")
 

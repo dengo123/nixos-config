@@ -1,4 +1,4 @@
--- features/shell/view.lua
+-- ~/.config/awesome/features/shell/view.lua
 
 local awful = require("awful")
 local wibox = require("wibox")

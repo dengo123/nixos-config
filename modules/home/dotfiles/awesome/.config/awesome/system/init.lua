@@ -1,3 +1,4 @@
+-- ~/.config/awesome/system/init.lua
 local config = require("system.config")
 local errors = require("system.errors")
 
