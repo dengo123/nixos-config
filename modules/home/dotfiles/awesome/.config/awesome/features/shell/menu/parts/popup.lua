@@ -5,12 +5,13 @@ local wibox = require("wibox")
 
 local Popup = {}
 
--- args = { header, cols, footer, theme, placement }  -- placement: fn(p, s, opts)
+-- args = { header, cols, footer, theme, placement, on_hide }  -- placement: fn(p, s, opts)
 function Popup.build(args)
 	local header = args.header
 	local cols = args.cols
 	local footer = args.footer
 	local t = args.theme or {}
+	local on_hide = args.on_hide -- <<< NEU: Hook bei Hide
 
 	-- Fallback-Placement: links, über der unteren Bar (workarea-aware)
 	local place_fn = args.placement
@@ -80,8 +81,7 @@ function Popup.build(args)
 
 		-- Clients – globaler Signal-Listener
 		if not client_click_connected then
-			client.connect_signal("button::press", function(c)
-				-- Mausposition prüfen; wenn außerhalb → schließen
+			client.connect_signal("button::press", function()
 				local pos = mouse.coords()
 				try_close_on_xy(pos.x, pos.y, api)
 			end)
@@ -96,13 +96,9 @@ function Popup.build(args)
 			outside_root_buttons = nil
 		end
 		if client_click_connected then
-			-- Leider liefert connect_signal keinen Handle; wir setzen einen einzigen
-			-- globalen Listener voraus. Um "abzuhängen", nutzen wir einen Guard:
-			-- Wir lassen ihn aktiv, aber er prüft popup.visible (kein Effekt wenn unsichtbar).
-			-- -> Daher hier kein disconnect nötig/sinnvoll.
+			-- globaler Listener bleibt, wirkt aber nur bei popup.visible = true
 			client_click_connected = false
 		end
-		-- Hinweis: Der client-Listener bleibt, reagiert aber nicht, wenn popup.visible = false.
 	end
 	-- ----------------------------------------------------------------------
 
@@ -159,6 +155,10 @@ function Popup.build(args)
 		if not popup.visible then
 			return
 		end
+		-- zuerst Hook ausführen (z. B. Suche abbrechen)
+		if on_hide then
+			pcall(on_hide)
+		end
 		popup.visible = false
 		remove_outside_listeners()
 	end
@@ -173,6 +173,10 @@ function Popup.build(args)
 
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
+			-- falls Unsichtbarkeit anderswo ausgelöst wurde
+			if on_hide then
+				pcall(on_hide)
+			end
 			remove_outside_listeners()
 		end
 	end)

@@ -20,13 +20,22 @@ function Footer.build(arg1, arg2)
 	opts.t = opts.t or {}
 	local t = opts.t
 
-	-- Konfig: Breite/Höhe
-	local HIT_W = t.search_hit_w or 200 -- unsichtbare Klickfläche (collapsed)
-	local EXPAND_W = t.search_w or 200 -- Breite im Fokus (expanded)
-	local FOOTER_H = t.footer_h or 52 -- Gesamthöhe des Footers
+	-- -----------------------------------------------------------------------
+	-- Config
+	-- -----------------------------------------------------------------------
+	local FOOTER_H = t.footer_h or 40 -- Gesamthöhe Footer
+	local PAD_T, PAD_B = (t.footer_pad_t or 6), (t.footer_pad_b or 6)
+	local inner_h = math.max(FOOTER_H - PAD_T - PAD_B, 1)
+	local SEARCH_H = math.floor(inner_h / 2) -- Suche = halbe Footerhöhe
+
+	local HIT_W = t.search_hit_w or 200 -- unsichtbare, klickbare Breite (collapsed)
+	local EXPAND_W = t.search_w or 200 -- sichtbare Breite im Fokus (expanded)
+
 	local ROW_SP = t.power_group_spacing or 8
 
-	-- ---- Search prompt -----------------------------------------------------
+	-- -----------------------------------------------------------------------
+	-- Search Prompt (ohne Label/Placeholder)
+	-- -----------------------------------------------------------------------
 	local on_search = opts.on_search
 	local prompt = awful.widget.prompt({
 		bg = t.search_bg or t.footer_bg or t.bg or "#455A64",
@@ -39,38 +48,30 @@ function Footer.build(arg1, arg2)
 		layout = wibox.layout.stack,
 	})
 
-	local collapsed = true
-
-	-- halbe Höhe für Searchbox (Footerhöhe bleibt gleich!)
-	local footer_inner_h = FOOTER_H - (t.footer_pad_t or 6) - (t.footer_pad_b or 6)
-	local search_h = math.floor(footer_inner_h / 2)
-
-	-- Hintergrund-Box (keine Höhen-Logik hier)
+	-- Hintergrund-Box für Styles (bekommt nur im expanded State eine Farbe)
 	local bg_box = wibox.widget({
 		{ stack, left = 10, right = 10, top = 2, bottom = 2, widget = wibox.container.margin },
 		shape = (t.shape or gears.shape.rounded_rect),
 		shape_clip = true,
-		bg = "#00000000", -- transparent im collapsed state
+		bg = "#00000000", -- transparent wenn collapsed
 		fg = t.search_fg or t.footer_fg or t.fg or "#FFFFFF",
 		widget = wibox.container.background,
 	})
 
-	-- 1) Höhe hart auf ½ Footer klemmen
+	-- Höhe hart auf halbe Footerhöhe klemmen + vertikal zentrieren
 	local height_ctl = wibox.widget({
 		bg_box,
 		strategy = "exact",
-		height = search_h,
+		height = SEARCH_H,
 		widget = wibox.container.constraint,
 	})
-
-	-- 2) Vertikal mittig platzieren
 	local vcenter = wibox.widget({
 		height_ctl,
 		valign = "center",
 		widget = wibox.container.place,
 	})
 
-	-- 3) Breite steuern (collapsed/expanded)
+	-- Breite per Constraint steuern (collapsed/expanded)
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
@@ -78,32 +79,42 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.constraint,
 	})
 
+	local collapsed = true
+	local search_active = false
+
 	local function apply_collapsed_style()
 		collapsed = true
 		bg_box.bg = "#00000000"
-		width_ctl.width = HIT_W -- Constraint (outer)
-		bg_box.forced_width = HIT_W -- Background-Box
-		-- falls du willst, zusätzlich:
-		-- search_box.forced_width = HIT_W
+		width_ctl.width = HIT_W
+		bg_box.forced_width = HIT_W
 	end
 
 	local function apply_expanded_style()
 		collapsed = false
 		bg_box.bg = t.search_bg or t.footer_bg or t.bg or "#455A64"
-		width_ctl.width = EXPAND_W -- Constraint (outer)
-		bg_box.forced_width = EXPAND_W -- Background-Box
-		-- optional zur Sicherheit gegen Layout-Shrink:
-		-- search_box.forced_width = EXPAND_W
+		width_ctl.width = EXPAND_W
+		bg_box.forced_width = EXPAND_W
+	end
+
+	local function cancel_search()
+		local prompt_node = stack:get_children_by_id("prompt")[1]
+		prompt_node.visible = false
+		prompt.widget:set_text("")
+		search_active = false
+		-- Keygrabber sicher stoppen, damit kein Hidden-Input weiterläuft
+		pcall(awful.keygrabber.stop)
+		apply_collapsed_style()
 	end
 
 	local function focus_search()
 		local prompt_node = stack:get_children_by_id("prompt")[1]
-
 		apply_expanded_style()
 		prompt_node.visible = true
+		prompt.widget:set_text("")
+		search_active = true
 
 		awful.prompt.run({
-			prompt = t.search_prompt or "Search: ",
+			prompt = "", -- <<< kein Label, nur Cursor
 			textbox = prompt.widget,
 			history_path = t.history_path or (gears.filesystem.get_cache_dir() .. "/menu_search_history"),
 			completion_callback = awful.completion.shell,
@@ -113,12 +124,12 @@ function Footer.build(arg1, arg2)
 				end
 			end,
 			done_callback = function()
-				prompt_node.visible = false
-				apply_collapsed_style()
+				cancel_search()
 			end,
 		})
 	end
 
+	-- Klickbare (unsichtbare) Fläche links im Footer
 	local search_box = wibox.widget({
 		width_ctl, -- enthält vcenter -> height_ctl -> bg_box -> stack -> prompt
 		buttons = gears.table.join(awful.button({}, 1, function()
@@ -131,16 +142,20 @@ function Footer.build(arg1, arg2)
 
 	apply_collapsed_style()
 
-	-- ---- Power buttons ----------------------------------------------------
+	-- -----------------------------------------------------------------------
+	-- Power Buttons rechts
+	-- -----------------------------------------------------------------------
 	local powers = { layout = wibox.layout.fixed.horizontal, spacing = ROW_SP }
 	for _, p in ipairs(opts.power_items or {}) do
 		table.insert(powers, P.power_button(p, t))
 	end
 	local powers_right = wibox.widget({ powers, halign = "right", widget = wibox.container.place })
 
-	-- ---- Row + container --------------------------------------------------
+	-- -----------------------------------------------------------------------
+	-- Footer Row & Container
+	-- -----------------------------------------------------------------------
 	local row = wibox.widget({
-		search_box, -- links: Search (collapsed → unsichtbar, nur Hitbox)
+		search_box, -- links: Such-Hitbox (unsichtbar bis Fokus)
 		nil, -- Mitte: Spacer
 		powers_right, -- rechts: Power-Buttons
 		expand = "inside",
@@ -152,17 +167,24 @@ function Footer.build(arg1, arg2)
 			row,
 			left = t.footer_pad_l or 10,
 			right = t.footer_pad_r or 10,
-			top = t.footer_pad_t or 6,
-			bottom = t.footer_pad_b or 6,
+			top = PAD_T,
+			bottom = PAD_B,
 			widget = wibox.container.margin,
 		},
-		forced_height = FOOTER_H, -- Footer behält volle Höhe
+		forced_height = FOOTER_H, -- Footer behält seine volle Höhe
 		bg = t.footer_bg or t.bg or "#263238",
 		fg = t.footer_fg or t.fg or "#FFFFFF",
 		widget = wibox.container.background,
 	})
 
-	return footer, { focus_search = focus_search }
+	return footer,
+		{
+			focus_search = focus_search,
+			cancel_search = cancel_search,
+			is_search_active = function()
+				return search_active
+			end,
+		}
 end
 
 return Footer
