@@ -20,6 +20,11 @@ function Footer.build(arg1, arg2)
 	opts.t = opts.t or {}
 	local t = opts.t
 
+	-- Konfig: unsichtbare Hitbox-Breite (collapsed) & sichtbare Prompt-Breite (expanded)
+	local HIT_W = t.search_hit_w or 200 -- unsichtbare, aber klickbare Breite
+	local EXPAND_W = t.search_w or 200 -- sichtbare Breite im Fokus
+	local ROW_SP = t.power_group_spacing or 8
+
 	-- ---- Search prompt -----------------------------------------------------
 	local on_search = opts.on_search
 	local prompt = awful.widget.prompt({
@@ -28,31 +33,51 @@ function Footer.build(arg1, arg2)
 		cursor_color = t.search_cursor or "#FFFFFF",
 	})
 
-	local placeholder = wibox.widget({
-		markup = "<span foreground='"
-			.. (t.search_fg or t.footer_fg or t.fg or "#FFFFFF")
-			.. "99'>"
-			.. (t.search_placeholder or "Search…")
-			.. "</span>",
-		valign = "center",
-		widget = wibox.widget.textbox,
-	})
-
-	-- prompt MUSS als Widget rein (nicht prompt.widget)
+	-- Nur der Prompt (kein Placeholder)
 	local stack = wibox.widget({
 		{ prompt, visible = false, id = "prompt", widget = wibox.container.place },
-		{ placeholder, visible = true, id = "hint", widget = wibox.container.place },
 		layout = wibox.layout.stack,
 	})
 
+	local collapsed = true
+
+	-- Hintergrundbox (bekommt Farbe nur im expanded state)
+	local bg_box = wibox.widget({
+		{ stack, left = 10, right = 10, top = 2, bottom = 2, widget = wibox.container.margin },
+		shape = (t.shape or gears.shape.rounded_rect),
+		shape_clip = true,
+		bg = "#00000000", -- transparent collapsed
+		fg = t.search_fg or t.footer_fg or t.fg or "#FFFFFF",
+		forced_height = t.search_h or 32,
+		widget = wibox.container.background,
+	})
+
+	-- Constraint um die Breite in collapsed/expanded zu steuern
+	local width_ctl = wibox.widget({
+		bg_box,
+		strategy = "exact", -- wir setzen die Breite explizit
+		width = HIT_W, -- initial: nur Hitbox
+		widget = wibox.container.constraint,
+	})
+
+	local function apply_collapsed_style()
+		collapsed = true
+		bg_box.bg = "#00000000" -- transparent
+		width_ctl.width = HIT_W -- nur klickbare Fläche
+	end
+
+	local function apply_expanded_style()
+		collapsed = false
+		bg_box.bg = t.search_bg or t.footer_bg or t.bg or "#455A64"
+		width_ctl.width = EXPAND_W -- volle sichtbare Breite
+	end
+
 	local function focus_search()
 		local prompt_node = stack:get_children_by_id("prompt")[1]
-		local hint_node = stack:get_children_by_id("hint")[1]
 
+		apply_expanded_style()
 		prompt_node.visible = true
-		hint_node.visible = false
 
-		-- funktionale API + textbox = prompt.widget  (wichtig für Fokus)
 		awful.prompt.run({
 			prompt = t.search_prompt or "Search: ",
 			textbox = prompt.widget,
@@ -65,29 +90,26 @@ function Footer.build(arg1, arg2)
 			end,
 			done_callback = function()
 				prompt_node.visible = false
-				hint_node.visible = true
+				apply_collapsed_style()
 			end,
 		})
 	end
 
-	-- Optisch sichtbare Box + Klick-Hotspot
 	local search_box = wibox.widget({
-		{
-			{ stack, left = 10, right = 10, top = 2, bottom = 2, widget = wibox.container.margin },
-			shape = (t.shape or gears.shape.rounded_rect),
-			shape_clip = true,
-			bg = t.search_bg or t.footer_bg or t.bg or "#455A64",
-			fg = t.search_fg or t.footer_fg or t.fg or "#FFFFFF",
-			forced_height = t.search_h or 32,
-			forced_width = t.search_w or 420,
-			widget = wibox.container.background,
-		},
-		buttons = gears.table.join(awful.button({}, 1, focus_search)),
+		width_ctl, -- enthält bg_box -> stack -> prompt
+		buttons = gears.table.join(awful.button({}, 1, function()
+			if collapsed then
+				focus_search()
+			end
+		end)),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
+	-- initial collapsed (unsichtbar, aber klickbar über HIT_W)
+	apply_collapsed_style()
+
 	-- ---- Power buttons ----------------------------------------------------
-	local powers = { layout = wibox.layout.fixed.horizontal, spacing = t.power_group_spacing or 8 }
+	local powers = { layout = wibox.layout.fixed.horizontal, spacing = ROW_SP }
 	for _, p in ipairs(opts.power_items or {}) do
 		table.insert(powers, P.power_button(p, t))
 	end
@@ -95,10 +117,10 @@ function Footer.build(arg1, arg2)
 
 	-- ---- Row + container --------------------------------------------------
 	local row = wibox.widget({
-		search_box, -- links: Suche
+		search_box, -- links: klickbare (unsichtbare) Hitbox -> öffnet Prompt
 		nil, -- Mitte: Spacer
 		powers_right, -- rechts: Power-Buttons
-		expand = "outside",
+		expand = "inside",
 		layout = wibox.layout.align.horizontal,
 	})
 

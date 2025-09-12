@@ -39,54 +39,72 @@ function Popup.build(args)
 		border_color = t.border_color or "#000000",
 		bg = t.bg or "#222222",
 		fg = t.fg or "#ffffff",
-		minimum_width = (t.col_left_w or 320) + (t.col_right_w or 220) + (t.cols_pad_l or 6) + (t.cols_pad_r or 6),
-		minimum_height = t.total_height or 520,
+		minimum_width = (t.col_left_w or 200) + (t.col_right_w or 200) + (t.cols_pad_l or 6) + (t.cols_pad_r or 6),
+		minimum_height = t.total_height or 650,
 	})
 
-	-- --------- Outside-Click via temporäre Root-Buttons (kein Grab, kein Backdrop)
+	-- ---------- Outside-Klick: temporäre Root- & Client-Listener ----------
 	local saved_root_buttons = nil
-	local outside_bindings = nil
+	local outside_root_buttons = nil
+	local client_click_connected = false
 
-	local function install_outside_bindings(api, popup_obj)
-		if saved_root_buttons then
-			return
-		end
-		saved_root_buttons = root.buttons()
-
-		local function maybe_close()
-			if not popup_obj.visible then
-				return
-			end
-			local c = mouse.coords()
-			local x, y = c.x, c.y
-			local gx, gy = popup_obj.x, popup_obj.y
-			local gw, gh = popup_obj.width, popup_obj.height
-			local inside = x >= gx and x <= gx + gw and y >= gy and y <= gy + gh
-			if not inside then
-				api:hide()
-			end
-		end
-
-		outside_bindings = gears.table.join(
-			awful.button({}, 1, maybe_close), -- Left click
-			awful.button({}, 2, maybe_close), -- Middle
-			awful.button({}, 3, maybe_close) -- Right
-		)
-
-		-- WICHTIG: Wir ersetzen nicht, wir hängen an
-		root.buttons(gears.table.join(saved_root_buttons or {}, outside_bindings))
+	local function is_inside_popup(px, py)
+		local gx, gy = popup.x, popup.y
+		local gw, gh = popup.width, popup.height
+		return px >= gx and px <= gx + gw and py >= gy and py <= gy + gh
 	end
 
-	local function remove_outside_bindings()
+	local function try_close_on_xy(x, y, api)
+		if popup.visible and not is_inside_popup(x, y) then
+			api:hide()
+			return true
+		end
+		return false
+	end
+
+	local function install_outside_listeners(api)
+		-- Root (Desktop) – Buttons anhängen, alte Buttons sichern
 		if not saved_root_buttons then
-			return
+			saved_root_buttons = root.buttons()
+			local function on_root_click()
+				local c = mouse.coords() -- {x=, y=}
+				try_close_on_xy(c.x, c.y, api)
+			end
+			outside_root_buttons = gears.table.join(
+				awful.button({}, 1, on_root_click),
+				awful.button({}, 2, on_root_click),
+				awful.button({}, 3, on_root_click)
+			)
+			root.buttons(gears.table.join(saved_root_buttons or {}, outside_root_buttons))
 		end
-		-- Ursprüngliche Root-Buttons wiederherstellen
-		root.buttons(saved_root_buttons)
-		saved_root_buttons = nil
-		outside_bindings = nil
+
+		-- Clients – globaler Signal-Listener
+		if not client_click_connected then
+			client.connect_signal("button::press", function(c)
+				-- Mausposition prüfen; wenn außerhalb → schließen
+				local pos = mouse.coords()
+				try_close_on_xy(pos.x, pos.y, api)
+			end)
+			client_click_connected = true
+		end
 	end
-	-- -----------------------------------------------------------------------
+
+	local function remove_outside_listeners()
+		if saved_root_buttons then
+			root.buttons(saved_root_buttons)
+			saved_root_buttons = nil
+			outside_root_buttons = nil
+		end
+		if client_click_connected then
+			-- Leider liefert connect_signal keinen Handle; wir setzen einen einzigen
+			-- globalen Listener voraus. Um "abzuhängen", nutzen wir einen Guard:
+			-- Wir lassen ihn aktiv, aber er prüft popup.visible (kein Effekt wenn unsichtbar).
+			-- -> Daher hier kein disconnect nötig/sinnvoll.
+			client_click_connected = false
+		end
+		-- Hinweis: Der client-Listener bleibt, reagiert aber nicht, wenn popup.visible = false.
+	end
+	-- ----------------------------------------------------------------------
 
 	-- Helfer: sichere Platzierung mit Retry/Clamping
 	local function place_safe(popup_obj, s, place, opts, theme)
@@ -112,13 +130,12 @@ function Popup.build(args)
 	-- Öffentliche API
 	local api = {}
 
-	-- opts: { screen=<screen> }
 	function api:show(opts)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
 		popup.screen = s
 		popup.visible = true
 
-		-- Platzierung, bis Maße/Workarea stabil
+		-- Platzierung mehrfach versuchen bis Maße stabil
 		local attempts, max_attempts = 0, 6
 		local function try_place()
 			if not popup.visible then
@@ -134,8 +151,8 @@ function Popup.build(args)
 		gears.timer.delayed_call(try_place)
 		gears.timer.start_new(0.016, try_place)
 
-		-- Outside-Click aktivieren (blockiert nichts)
-		install_outside_bindings(api, popup)
+		-- Outside-Listener aktivieren
+		install_outside_listeners(api)
 	end
 
 	function api:hide()
@@ -143,7 +160,7 @@ function Popup.build(args)
 			return
 		end
 		popup.visible = false
-		remove_outside_bindings()
+		remove_outside_listeners()
 	end
 
 	function api:toggle(opts)
@@ -154,14 +171,12 @@ function Popup.build(args)
 		end
 	end
 
-	-- Safety: falls Popup anderswo unsichtbar wird
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
-			remove_outside_bindings()
+			remove_outside_listeners()
 		end
 	end)
 
-	-- Bei Workarea-Änderung neu platzieren, falls sichtbar
 	screen.connect_signal("property::workarea", function(s)
 		if popup.visible and popup.screen == s then
 			place_safe(popup, s, place_fn, nil, t)
