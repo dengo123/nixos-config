@@ -30,17 +30,6 @@ function Popup.build(args)
 		layout = wibox.layout.align.vertical,
 	})
 
-	-- Backdrop: fängt Outside-Klicks ab (liegt nur über der Workarea)
-	local backdrop = wibox({
-		visible = false,
-		ontop = true, -- über Clients
-		type = "utility", -- unauffälliger Fenstertyp
-		bg = "#00000000", -- volle Transparenz
-		opacity = 0.0, -- sicherstellen, dass nix verdeckt wird
-		shape = gears.shape.rectangle,
-	})
-
-	-- Popup selbst: liegt über dem Backdrop
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
@@ -54,24 +43,57 @@ function Popup.build(args)
 		minimum_height = t.total_height or 520,
 	})
 
-	-- Outside-Klick -> schließen
-	backdrop:buttons(gears.table.join(
-		awful.button({}, 1, function()
-			popup.visible = false
-			backdrop.visible = false
-		end),
-		awful.button({}, 3, function()
-			popup.visible = false
-			backdrop.visible = false
-		end)
-	))
+	-- --------- Outside-Click via temporäre Root-Buttons (kein Grab, kein Backdrop)
+	local saved_root_buttons = nil
+	local outside_bindings = nil
+
+	local function install_outside_bindings(api, popup_obj)
+		if saved_root_buttons then
+			return
+		end
+		saved_root_buttons = root.buttons()
+
+		local function maybe_close()
+			if not popup_obj.visible then
+				return
+			end
+			local c = mouse.coords()
+			local x, y = c.x, c.y
+			local gx, gy = popup_obj.x, popup_obj.y
+			local gw, gh = popup_obj.width, popup_obj.height
+			local inside = x >= gx and x <= gx + gw and y >= gy and y <= gy + gh
+			if not inside then
+				api:hide()
+			end
+		end
+
+		outside_bindings = gears.table.join(
+			awful.button({}, 1, maybe_close), -- Left click
+			awful.button({}, 2, maybe_close), -- Middle
+			awful.button({}, 3, maybe_close) -- Right
+		)
+
+		-- WICHTIG: Wir ersetzen nicht, wir hängen an
+		root.buttons(gears.table.join(saved_root_buttons or {}, outside_bindings))
+	end
+
+	local function remove_outside_bindings()
+		if not saved_root_buttons then
+			return
+		end
+		-- Ursprüngliche Root-Buttons wiederherstellen
+		root.buttons(saved_root_buttons)
+		saved_root_buttons = nil
+		outside_bindings = nil
+	end
+	-- -----------------------------------------------------------------------
 
 	-- Helfer: sichere Platzierung mit Retry/Clamping
 	local function place_safe(popup_obj, s, place, opts, theme)
 		local wa = s.workarea or s.geometry
 		local gap = 2
 		local ph = (popup_obj.height and popup_obj.height > 0) and popup_obj.height or (theme.total_height or 650)
-		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
+		ph = math.min(ph, math.max(wa.height - gap * 2, 1)) -- nie höher als Workarea
 
 		if popup_obj.height ~= ph then
 			popup_obj:geometry({ height = ph })
@@ -87,25 +109,14 @@ function Popup.build(args)
 		end
 	end
 
-	-- Backdrop an Screen-Workarea anpassen
-	local function size_backdrop(s)
-		local wa = s.workarea or s.geometry
-		backdrop:geometry({ x = wa.x, y = wa.y, width = wa.width, height = wa.height })
-		backdrop.screen = s
-	end
-
 	-- Öffentliche API
 	local api = {}
 
 	-- opts: { screen=<screen> }
 	function api:show(opts)
 		local s = (opts and opts.screen) or mouse.screen or awful.screen.focused()
-
-		size_backdrop(s)
-		backdrop.visible = true -- erst Backdrop …
-
 		popup.screen = s
-		popup.visible = true -- … dann Popup drüber
+		popup.visible = true
 
 		-- Platzierung, bis Maße/Workarea stabil
 		local attempts, max_attempts = 0, 6
@@ -122,14 +133,17 @@ function Popup.build(args)
 		end
 		gears.timer.delayed_call(try_place)
 		gears.timer.start_new(0.016, try_place)
+
+		-- Outside-Click aktivieren (blockiert nichts)
+		install_outside_bindings(api, popup)
 	end
 
 	function api:hide()
-		if not popup.visible and not backdrop.visible then
+		if not popup.visible then
 			return
 		end
 		popup.visible = false
-		backdrop.visible = false
+		remove_outside_bindings()
 	end
 
 	function api:toggle(opts)
@@ -143,15 +157,12 @@ function Popup.build(args)
 	-- Safety: falls Popup anderswo unsichtbar wird
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
-			backdrop.visible = false
+			remove_outside_bindings()
 		end
 	end)
 
-	-- Screen-Größe ändert sich -> Backdrop + ggf. Popup neu platzieren
+	-- Bei Workarea-Änderung neu platzieren, falls sichtbar
 	screen.connect_signal("property::workarea", function(s)
-		if backdrop.visible and backdrop.screen == s then
-			size_backdrop(s)
-		end
 		if popup.visible and popup.screen == s then
 			place_safe(popup, s, place_fn, nil, t)
 		end
