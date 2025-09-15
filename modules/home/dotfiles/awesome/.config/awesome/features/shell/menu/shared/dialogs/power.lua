@@ -32,7 +32,7 @@ function M.power(theme_overrides)
 		},
 	}
 	return Base.choice({
-		title = "Turn off computer",
+		title = "Turn off Computer",
 		actions = actions,
 		theme = theme_overrides,
 	})
