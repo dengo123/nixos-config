@@ -124,7 +124,7 @@ in {
     home.packages = with pkgs; [
       launcher
       power-menu
-      rofi-wayland
+      rofi
       wl-clipboard
       wtype
     ];

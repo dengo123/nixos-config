@@ -21,9 +21,6 @@ in {
       config = {
         systray = enabled;
       };
-      programs = {
-        rofi = enabled;
-      };
       services = {
         autorandr = enabled;
       };
@@ -35,6 +32,7 @@ in {
       gnome-control-center
       morewaita-icon-theme
       qogir-icon-theme
+      nemo
     ];
   };
 }
