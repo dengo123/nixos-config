@@ -13,11 +13,11 @@ W.theme = {
 	radius = 12,
 
 	-- Farben
-	header_bg = "#3A6EA5",
+	header_bg = "#053193",
 	header_fg = "#FFFFFF",
-	body_bg = "#DDEEFF",
+	body_bg = "#617FD9",
 	body_fg = "#000000",
-	footer_bg = "#2B5B88",
+	footer_bg = "#053193",
 	footer_fg = "#FFFFFF",
 	dialog_bg = "#00000000",
 	backdrop = "#00000066",
@@ -28,10 +28,10 @@ W.theme = {
 	icons_spacing = 24,
 
 	-- Cancel-Button
-	cancel_bg = "#ECECEC",
+	cancel_bg = "#F5F5EE",
 	cancel_fg = "#000000",
-	cancel_hover_bg = "#ECECEC",
-	cancel_hover_border = "#2B5B88",
+	cancel_hover_bg = "#F5F5EE",
+	cancel_hover_border = "#607CD9",
 
 	-- Icon-Hover
 	icon_hover_bg = "#FFFFFF20",

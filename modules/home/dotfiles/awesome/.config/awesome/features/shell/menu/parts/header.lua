@@ -17,7 +17,7 @@ function Header.build(user, t)
 	local PAD_R = t.header_pad_r or 10
 	local PAD_T = t.header_pad_t or 8
 	local PAD_B = t.header_pad_b or 8
-	local BG = t.header_bg or t.bg or "#3A6EA5" -- Luna-Blau (wie Footer)
+	local BG = t.header_bg or t.bg or "#235CDB" -- Luna-Blau (wie Footer)
 	local FG = t.header_fg or t.fg or "#FFFFFF"
 
 	-- Avatar

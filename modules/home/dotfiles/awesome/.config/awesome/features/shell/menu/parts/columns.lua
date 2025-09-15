@@ -16,7 +16,7 @@ local DEFAULTS = {
 	-- Spaltenfarben
 	left_bg = "#FFFFFF", -- weiß
 	left_fg = "#000000",
-	right_bg = "#DDEEFF", -- hellblau
+	right_bg = "#D2E5FA", -- hellblau
 	right_fg = "#000000",
 
 	-- Rahmenfarbe (sichtbar durch padding)

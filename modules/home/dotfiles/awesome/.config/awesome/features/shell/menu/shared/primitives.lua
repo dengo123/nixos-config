@@ -31,7 +31,7 @@ end
 
 -- ---------- Defaults ----------
 local DEFAULTS = {
-	bg = "#3A6EA5",
+	bg = "#235CDB",
 	fg = "#FFFFFF",
 	bg_focus = nil,
 
@@ -43,7 +43,7 @@ local DEFAULTS = {
 	list_spacing = 0, -- kein sichtbarer Abstand zwischen Reihen
 
 	-- Footer power buttons
-	footer_bg = "#3A6EA5",
+	footer_bg = "#235CDB",
 	footer_fg = "#FFFFFF",
 	power_bg = nil,
 	power_fg = nil,

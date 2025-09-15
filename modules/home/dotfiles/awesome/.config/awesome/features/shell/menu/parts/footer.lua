@@ -32,7 +32,7 @@ function Footer.build(arg1, arg2)
 	local HIT_W = t.search_hit_w or 180
 	local EXPAND_W = t.search_w or 180
 
-	local FOOTER_BG = t.footer_bg or t.bg or "#3A6EA5"
+	local FOOTER_BG = t.footer_bg or t.bg or "#235CDB"
 	local FOOTER_FG = t.footer_fg or t.fg or "#FFFFFF"
 
 	local SEARCH_BG = "#FFFFFF"
