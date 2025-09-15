@@ -1,15 +1,18 @@
 -- ~/.config/awesome/features/shell/menu/shared/dialogs/base.lua
+-- Dialog logic: sizes/ratios, placement, backdrop, ESC handling.
+-- Style from features/shell/menu/dialogs/parts/theme.lua
+-- Widgets from features/shell/menu/dialogs/parts/widgets.lua
+
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
--- WICHTIG: Widgets und Theme kommen aus /features/shell/menu/dialogs
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
 
 local Base = {}
 
--- Icon in fester Zellbreite mittig halten (verhindert Zusammendrücken)
+-- keep a widget centered inside a fixed-width cell
 local function fixed_cell(widget, width)
 	return wibox.widget({
 		{
@@ -24,20 +27,17 @@ local function fixed_cell(widget, width)
 	})
 end
 
--- exakten Spacer in Pixeln bauen (leer, aber mit fester Breite)
+-- spacer with exact pixel width
 local function spacer_exact(px)
 	return wibox.widget({
-		wibox.widget({}), -- leerer Inhalt
+		wibox.widget({}),
 		strategy = "exact",
 		width = math.max(0, math.floor(px or 0)),
 		widget = wibox.container.constraint,
 	})
 end
 
--- baue Reihe: [S1][I1][S2][I2]...[Sn][In][S_{n+1}] als fixed.horizontal
--- targets: gewünschte Zentren in [0..1], z.B. {0.25,0.5,0.75} oder {1/3,2/3}
--- icon_px_w: feste Pixelbreite pro Icon-Zelle
--- place_px_w: nutzbare Breite (Dialogbreite - linkes/rechtes Padding)
+-- build row: [S1][I1][S2][I2]...[Sn][In][S(n+1)] using fixed.horizontal
 local function build_precise_fixed_row(icon_cells, targets, icon_px_w, place_px_w)
 	local n = #icon_cells
 	local S = {}
@@ -62,7 +62,7 @@ local function build_precise_fixed_row(icon_cells, targets, icon_px_w, place_px_
 	local row = wibox.widget({ layout = wibox.layout.fixed.horizontal })
 	for i = 1, n do
 		row:add(spacer_exact(S[i]))
-		row:add(icon_cells[i]) -- hat feste Breite (fixed_cell)
+		row:add(icon_cells[i])
 	end
 	row:add(spacer_exact(S[n + 1] or 0))
 	return row
@@ -71,26 +71,35 @@ end
 function Base.choice(opts)
 	opts = opts or {}
 
-	-- HIER: Theme direkt aus theme.lua holen (Defaults ⟵ opts.theme)
 	local th = Theme.get(opts.theme or {})
-
 	local s = awful.screen.focused()
 
-	-- feste Dialoggröße
+	-- dialog size
 	local DIALOG_W = th.dialog_w or 560
 	local DIALOG_H = th.dialog_h or 360
 
-	-- Höhen: 1/5 – 3/5 – 1/5
-	local H_HEADER = math.floor(DIALOG_H / 5)
-	local H_BODY = math.floor(DIALOG_H * 3 / 5)
-	local H_FOOT = H_HEADER
+	-- header/body/footer heights
+	local HR = th.header_ratio or 0.18
+	local FR = th.footer_ratio or 0.18
+	local H_HEADER = math.floor(DIALOG_H * HR)
+	local H_FOOT = math.floor(DIALOG_H * FR)
+	local H_BODY = DIALOG_H - H_HEADER - H_FOOT
 
-	-- Icon-Größe (Quadrat) + sichtbare Zellbreite
-	local ICON_SIZE = math.floor(DIALOG_H / 5)
+	-- icon size: from min(dialog_w, dialog_h), clamped to body height
+	local base_side = math.min(DIALOG_W, DIALOG_H)
+	local ICON_SIZE_RAW = math.floor(base_side * (th.icon_ratio or 0.20))
+	local PAD_V = th.pad_v or 14
+	local ICON_MAX = math.max(8, H_BODY - 2 * PAD_V)
+	local ICON_SIZE = math.min(ICON_SIZE_RAW, ICON_MAX)
 	th.icon_size = ICON_SIZE
-	local ICON_CELL_W = ICON_SIZE + 24 -- entspricht mk_icon (size + 24)
 
-	-- Backdrop
+	-- cell width (must match widgets.lua math)
+	local icon_pad = th.icon_pad or 6
+	local cell_pad = th.icon_cell_pad or 6
+	local cell_extra = th.icon_cell_extra_w or 12
+	local ICON_CELL_W = ICON_SIZE + icon_pad * 2 + cell_pad * 2 + cell_extra
+
+	-- backdrop
 	local backdrop = wibox({
 		screen = s,
 		visible = true,
@@ -100,10 +109,10 @@ function Base.choice(opts)
 	})
 	backdrop:geometry(s.geometry)
 
-	-- Header
+	-- header
 	local header_area = W.mk_header(opts.title or "", th)
 
-	-- Actions → Icon-Cells
+	-- actions -> icon cells
 	local actions = opts.actions or {}
 	local n = #actions
 	local built_cells = {}
@@ -127,26 +136,19 @@ function Base.choice(opts)
 		built_cells[i] = fixed_cell(iconw, ICON_CELL_W)
 	end
 
-	-- nutzbare Breite im Body (Außenabstände abziehen)
+	-- usable width in body
 	local PAD_H = th.pad_h or 16
 	local place_w = DIALOG_W - 2 * PAD_H
 
-	-- Ziel-Zentren
-	local targets
-	if n >= 3 then
-		targets = { 0.25, 0.50, 0.75 } -- Power: ¼ / ½ / ¾
-		while #built_cells > 3 do
-			table.remove(built_cells)
+	-- evenly spaced targets in [0..1]
+	local targets = {}
+	if n > 0 then
+		for i = 1, n do
+			targets[i] = (i - 0.5) / n
 		end
-	elseif n == 2 then
-		targets = { 1 / 3, 2 / 3 } -- Logout: ⅓ / ⅔
-	elseif n == 1 then
-		targets = { 0.5 } -- Ein Icon: Mitte
-	else
-		targets = {}
 	end
 
-	-- Reihe bauen
+	-- row
 	local icons_row
 	if #targets > 0 then
 		icons_row = build_precise_fixed_row(built_cells, targets, ICON_CELL_W, place_w)
@@ -154,7 +156,7 @@ function Base.choice(opts)
 		icons_row = wibox.widget({ layout = wibox.layout.fixed.horizontal })
 	end
 
-	-- Body
+	-- body
 	local body_with_margins = wibox.widget({
 		icons_row,
 		left = PAD_H,
@@ -173,12 +175,12 @@ function Base.choice(opts)
 
 	local body_area = wibox.widget({
 		body_centered,
-		bg = th.body_bg or "#DDEEFF",
-		fg = th.body_fg or "#000000",
+		bg = th.body_bg or "#00000000",
+		fg = th.body_fg or "#FFFFFF",
 		widget = wibox.container.background,
 	})
 
-	-- Footer / Cancel
+	-- footer/cancel
 	local popup
 	local function close()
 		if popup and popup.visible then
@@ -194,7 +196,7 @@ function Base.choice(opts)
 	th._computed_dialog_w = DIALOG_W
 	local footer_area = W.mk_footer("Cancel", close, th)
 
-	-- Fixhöhen
+	-- fixed heights
 	local header_fixed = wibox.widget({
 		header_area,
 		strategy = "exact",
@@ -214,7 +216,7 @@ function Base.choice(opts)
 		widget = wibox.container.constraint,
 	})
 
-	-- Popup (Rundung wie gehabt)
+	-- popup with rounding from theme
 	local rounded_block = wibox.widget({
 		{
 			header_fixed,
@@ -254,7 +256,7 @@ function Base.choice(opts)
 	popup.visible = true
 	awful.placement.centered(popup, { honor_workarea = true })
 
-	-- ESC + Klick schließt
+	-- close on ESC and backdrop click
 	backdrop:buttons(gears.table.join(awful.button({}, 1, close)))
 	awful
 		.keygrabber({
