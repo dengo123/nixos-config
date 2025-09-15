@@ -1,26 +1,42 @@
--- features/shell/menu/header.lua
+-- ~/.config/awesome/features/shell/menu/parts/header.lua
 local gears = require("gears")
 local wibox = require("wibox")
 
 local Header = {}
 
--- user: { name="...", avatar="path|image|surface", subtitle="optional string" }
--- t: theme table (avatar_size, avatar_shape, header_* paddings/colors, header_spacing, etc.)
+-- user: { name="...", avatar="path|image|surface", subtitle="optional" }
+-- t: optional overrides (header_h, header_bg/fg, header_pad_*, header_spacing,
+--    avatar_size, avatar_radius)
 function Header.build(user, t)
 	t = t or {}
 	user = user or {}
 
+	-- Maße/Farben (Defaults auf Luna-Blau + 64px)
+	local H = t.header_h or 64
+	local PAD_L = t.header_pad_l or 10
+	local PAD_R = t.header_pad_r or 10
+	local PAD_T = t.header_pad_t or 8
+	local PAD_B = t.header_pad_b or 8
+	local BG = t.header_bg or t.bg or "#3A6EA5" -- Luna-Blau (wie Footer)
+	local FG = t.header_fg or t.fg or "#FFFFFF"
+
 	-- Avatar
+	local AV_SIZE = t.avatar_size or 40
+	local AV_RAD = t.avatar_radius or 8
+	local AV_SHAPE = function(cr, w, h)
+		gears.shape.rounded_rect(cr, w, h, AV_RAD)
+	end
+
 	local avatar_img = wibox.widget({
 		image = user.avatar or nil,
 		resize = true,
-		forced_width = t.avatar_size or 42,
-		forced_height = t.avatar_size or 42,
-		clip_shape = t.avatar_shape or gears.shape.rounded_rect,
+		forced_width = AV_SIZE,
+		forced_height = AV_SIZE,
+		clip_shape = AV_SHAPE, -- runde Ecken
 		widget = wibox.widget.imagebox,
 	})
 
-	-- Textbereich (Name + optional Subtitle)
+	-- Text
 	local name_lbl = wibox.widget({
 		text = user.name or "",
 		valign = "center",
@@ -33,17 +49,17 @@ function Header.build(user, t)
 		widget = wibox.widget.textbox,
 	})
 
-	-- Wenn kein subtitle gesetzt ist, blenden wir die Zeile „unsichtbar“ (height 0) aus
+	local has_sub = (user.subtitle and user.subtitle ~= "")
+	subtitle_lbl.visible = has_sub
+
 	local text_column = wibox.widget({
 		name_lbl,
 		subtitle_lbl,
-		spacing = (user.subtitle and t.header_text_spacing) or 0,
+		spacing = has_sub and (t.header_text_spacing or 2) or 0,
 		layout = wibox.layout.fixed.vertical,
 	})
-	if not user.subtitle or user.subtitle == "" then
-		subtitle_lbl.visible = false
-	end
 
+	-- Innenlayout
 	local inner = wibox.widget({
 		avatar_img,
 		text_column,
@@ -51,17 +67,19 @@ function Header.build(user, t)
 		layout = wibox.layout.fixed.horizontal,
 	})
 
+	-- Container
 	local container = wibox.widget({
 		{
 			inner,
-			left = t.header_pad_l or 12,
-			right = t.header_pad_r or 12,
-			top = t.header_pad_t or 10,
-			bottom = t.header_pad_b or 10,
+			left = PAD_L,
+			right = PAD_R,
+			top = PAD_T,
+			bottom = PAD_B,
 			widget = wibox.container.margin,
 		},
-		bg = t.header_bg or t.bg,
-		fg = t.header_fg or t.fg,
+		forced_height = H,
+		bg = BG,
+		fg = FG,
 		widget = wibox.container.background,
 	})
 
@@ -76,8 +94,9 @@ function Header.build(user, t)
 		end
 		if subtitle ~= nil then
 			subtitle_lbl.text = subtitle
-			subtitle_lbl.visible = (subtitle ~= "")
-			text_column.spacing = (subtitle ~= "" and (t.header_text_spacing or 2)) or 0
+			local show = (subtitle ~= "")
+			subtitle_lbl.visible = show
+			text_column.spacing = show and (t.header_text_spacing or 2) or 0
 		end
 	end
 

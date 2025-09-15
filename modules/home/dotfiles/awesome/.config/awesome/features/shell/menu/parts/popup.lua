@@ -5,15 +5,15 @@ local wibox = require("wibox")
 
 local Popup = {}
 
--- args = { header, cols, footer, theme, placement, on_hide }  -- placement: fn(p, s, opts)
+-- args = { header, cols, footer, theme, placement, on_hide }
 function Popup.build(args)
 	local header = args.header
 	local cols = args.cols
 	local footer = args.footer
 	local t = args.theme or {}
-	local on_hide = args.on_hide -- <<< NEU: Hook bei Hide
+	local on_hide = args.on_hide
 
-	-- Fallback-Placement: links, über der unteren Bar (workarea-aware)
+	-- Fallback-Placement
 	local place_fn = args.placement
 		or function(p, s)
 			local wa = s.workarea or s.geometry
@@ -23,7 +23,7 @@ function Popup.build(args)
 			p.y = wa.y + wa.height - gap - ph
 		end
 
-	-- Container (nicht "root" nennen!)
+	-- Container
 	local container = wibox.widget({
 		header,
 		cols,
@@ -31,11 +31,15 @@ function Popup.build(args)
 		layout = wibox.layout.align.vertical,
 	})
 
+	-- Popup selbst mit Rundung
+	local RADIUS = t.popup_radius or 12
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
 		ontop = true,
-		shape = t.shape or gears.shape.rectangle,
+		shape = function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, RADIUS)
+		end,
 		border_width = t.border_width or 1,
 		border_color = t.border_color or "#000000",
 		bg = t.bg or "#222222",
@@ -44,9 +48,8 @@ function Popup.build(args)
 		minimum_height = t.total_height or 650,
 	})
 
-	-- ---------- Outside-Klick: temporäre Root- & Client-Listener ----------
-	local saved_root_buttons = nil
-	local outside_root_buttons = nil
+	-- Outside-Klick Handling (deins bleibt gleich) ----------------------------
+	local saved_root_buttons, outside_root_buttons
 	local client_click_connected = false
 
 	local function is_inside_popup(px, py)
@@ -64,11 +67,10 @@ function Popup.build(args)
 	end
 
 	local function install_outside_listeners(api)
-		-- Root (Desktop) – Buttons anhängen, alte Buttons sichern
 		if not saved_root_buttons then
 			saved_root_buttons = root.buttons()
 			local function on_root_click()
-				local c = mouse.coords() -- {x=, y=}
+				local c = mouse.coords()
 				try_close_on_xy(c.x, c.y, api)
 			end
 			outside_root_buttons = gears.table.join(
@@ -79,7 +81,6 @@ function Popup.build(args)
 			root.buttons(gears.table.join(saved_root_buttons or {}, outside_root_buttons))
 		end
 
-		-- Clients – globaler Signal-Listener
 		if not client_click_connected then
 			client.connect_signal("button::press", function()
 				local pos = mouse.coords()
@@ -96,25 +97,20 @@ function Popup.build(args)
 			outside_root_buttons = nil
 		end
 		if client_click_connected then
-			-- globaler Listener bleibt, wirkt aber nur bei popup.visible = true
 			client_click_connected = false
 		end
 	end
-	-- ----------------------------------------------------------------------
+	---------------------------------------------------------------------------
 
-	-- Helfer: sichere Platzierung mit Retry/Clamping
 	local function place_safe(popup_obj, s, place, opts, theme)
 		local wa = s.workarea or s.geometry
 		local gap = 2
 		local ph = (popup_obj.height and popup_obj.height > 0) and popup_obj.height or (theme.total_height or 650)
-		ph = math.min(ph, math.max(wa.height - gap * 2, 1)) -- nie höher als Workarea
-
+		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
 		if popup_obj.height ~= ph then
 			popup_obj:geometry({ height = ph })
 		end
-
 		place(popup_obj, s, opts)
-
 		if popup_obj.y == nil then
 			popup_obj.y = wa.y + wa.height - gap - ph
 		end
@@ -123,7 +119,7 @@ function Popup.build(args)
 		end
 	end
 
-	-- Öffentliche API
+	-- API ---------------------------------------------------------------------
 	local api = {}
 
 	function api:show(opts)
@@ -131,7 +127,6 @@ function Popup.build(args)
 		popup.screen = s
 		popup.visible = true
 
-		-- Platzierung mehrfach versuchen bis Maße stabil
 		local attempts, max_attempts = 0, 6
 		local function try_place()
 			if not popup.visible then
@@ -147,7 +142,6 @@ function Popup.build(args)
 		gears.timer.delayed_call(try_place)
 		gears.timer.start_new(0.016, try_place)
 
-		-- Outside-Listener aktivieren
 		install_outside_listeners(api)
 	end
 
@@ -155,7 +149,6 @@ function Popup.build(args)
 		if not popup.visible then
 			return
 		end
-		-- zuerst Hook ausführen (z. B. Suche abbrechen)
 		if on_hide then
 			pcall(on_hide)
 		end
@@ -173,7 +166,6 @@ function Popup.build(args)
 
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
-			-- falls Unsichtbarkeit anderswo ausgelöst wurde
 			if on_hide then
 				pcall(on_hide)
 			end

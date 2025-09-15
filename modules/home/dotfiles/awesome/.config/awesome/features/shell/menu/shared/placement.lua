@@ -32,16 +32,4 @@ function M.above_bar(params)
 	end
 end
 
--- Optional: X-Koordinate an Maus/Startbutton koppeln
-function M.with_cursor_x(base_place_fn)
-	return function(p, s, opts)
-		base_place_fn(p, s)
-		if opts and opts.coords and opts.coords.x then
-			local g = s.geometry
-			local x = math.max(g.x, math.min(opts.coords.x, g.x + g.width - p.width))
-			p.x = x
-		end
-	end
-end
-
 return M
