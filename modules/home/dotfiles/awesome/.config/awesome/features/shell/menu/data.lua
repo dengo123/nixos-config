@@ -16,7 +16,7 @@ D.left_items = {
 		text = "Internet",
 		icon = beautiful.awesome_icon,
 		on_press = function()
-			awful.spawn("zen-browser")
+			awful.spawn("firefox")
 		end,
 	},
 	{

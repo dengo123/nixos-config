@@ -3,6 +3,7 @@ local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local P = require("features.shell.menu.shared.primitives")
+local Dialogs = require("features.shell.menu.dialogs") -- << NEU
 
 local Footer = {}
 
@@ -166,12 +167,61 @@ function Footer.build(arg1, arg2)
 	apply_collapsed_style()
 
 	-- -----------------------------------------------------------------------
-	-- Power Buttons rechts
+	-- Power Buttons rechts  (volle Höhe + Dialoge, Hover bleibt)
 	-- -----------------------------------------------------------------------
-	local powers = { layout = wibox.layout.fixed.horizontal, spacing = ROW_SP }
+	local powers = {
+		layout = wibox.layout.fixed.horizontal,
+		spacing = 0,
+	}
+
 	for _, p in ipairs(opts.power_items or {}) do
-		table.insert(powers, P.power_button(p, t))
+		-- Label-Kürzung
+		if p.label and p.label:lower():find("turn off") then
+			p.label = "Turn off"
+		end
+
+		-- Original-Button (behält Hover/States)
+		local btn = P.power_button(p, t)
+
+		-- volle Innenhöhe, ohne eigenes Click-Handling außen
+		local fitted = wibox.widget({
+			btn,
+			strategy = "exact",
+			height = inner_h,
+			widget = wibox.container.constraint,
+		})
+
+		-- Dialog-Routing: Klick direkt auf dem Button überschreiben
+		local label = (p.label or ""):lower()
+		local id = (p.id or ""):lower()
+
+		if id == "power" or label:find("turn off") then
+			btn:buttons(gears.table.join(awful.button({}, 1, function()
+				require("features.shell.menu.dialogs").power({
+					bg = FOOTER_BG,
+					fg = FOOTER_FG,
+					btn_bg = "#ECECEC",
+					btn_fg = "#000000",
+					backdrop = "#00000088",
+					radius = 6,
+				})
+			end)))
+		elseif id == "logout" or label:find("log off") or label:find("logout") then
+			btn:buttons(gears.table.join(awful.button({}, 1, function()
+				require("features.shell.menu.dialogs").logout_confirm({
+					bg = FOOTER_BG,
+					fg = FOOTER_FG,
+					btn_bg = "#ECECEC",
+					btn_fg = "#000000",
+					backdrop = "#00000088",
+					radius = 6,
+				})
+			end)))
+		end
+
+		table.insert(powers, fitted)
 	end
+
 	local powers_right = wibox.widget({ powers, halign = "right", widget = wibox.container.place })
 
 	-- -----------------------------------------------------------------------
