@@ -6,7 +6,7 @@ function M.init(cfg)
 
 	local rules = require("features.windowing.rules")
 	local clientSignals = require("features.windowing.client_signals")
-	local taskbar = require("features.windowing.taskbar")
+	local taskbar = require("features.windowing.titlebar")
 
 	-- Defaults -------------------------------------------------------------
 	local opts = {
