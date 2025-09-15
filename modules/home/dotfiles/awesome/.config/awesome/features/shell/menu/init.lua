@@ -1,6 +1,6 @@
 -- features/shell/menu/init.lua
 local core = require("features.shell.menu.core")
-local defaults = require("features.shell.menu.data")
+local defaults = require("features.shell.menu.shared.data")
 local awful = require("awful")
 local wibox = require("wibox")
 local gears = require("gears")

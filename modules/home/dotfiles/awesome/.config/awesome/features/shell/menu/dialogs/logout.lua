@@ -1,4 +1,4 @@
-local Base = require("features.shell.menu.shared.dialogs.base")
+local Base = require("features.shell.menu.dialogs.base")
 
 local M = {}
 
@@ -7,7 +7,7 @@ function M.logout_confirm(theme_overrides)
 	local actions = {
 		{
 			emoji = "🚪",
-			label = "Exit WM",
+			label = "Log off",
 			on_press = function(close)
 				close()
 				awesome.quit()
