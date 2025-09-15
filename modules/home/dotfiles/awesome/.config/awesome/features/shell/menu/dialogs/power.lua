@@ -1,5 +1,5 @@
 local awful = require("awful")
-local Base = require("features.shell.menu.dialogs.base")
+local Base = require("features.shell.menu.dialogs.parts.base")
 
 local M = {}
 

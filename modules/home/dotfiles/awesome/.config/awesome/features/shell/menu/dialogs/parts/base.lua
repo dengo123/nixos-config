@@ -2,7 +2,10 @@
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local W = require("features.shell.menu.dialogs.widgets")
+
+-- WICHTIG: Widgets und Theme kommen aus /features/shell/menu/dialogs
+local W = require("features.shell.menu.dialogs.parts.widgets")
+local Theme = require("features.shell.menu.dialogs.parts.theme")
 
 local Base = {}
 
@@ -66,7 +69,11 @@ local function build_precise_fixed_row(icon_cells, targets, icon_px_w, place_px_
 end
 
 function Base.choice(opts)
-	local th = W.merge_theme(W.theme, opts.theme or {})
+	opts = opts or {}
+
+	-- HIER: Theme direkt aus theme.lua holen (Defaults ⟵ opts.theme)
+	local th = Theme.get(opts.theme or {})
+
 	local s = awful.screen.focused()
 
 	-- feste Dialoggröße
@@ -139,7 +146,7 @@ function Base.choice(opts)
 		targets = {}
 	end
 
-	-- Reihe bauen (ohne ratio, nur mit fixen Spacern)
+	-- Reihe bauen
 	local icons_row
 	if #targets > 0 then
 		icons_row = build_precise_fixed_row(built_cells, targets, ICON_CELL_W, place_w)
@@ -248,7 +255,7 @@ function Base.choice(opts)
 	awful.placement.centered(popup, { honor_workarea = true })
 
 	-- ESC + Klick schließt
-	backdrop:buttons(awful.button({}, 1, close))
+	backdrop:buttons(gears.table.join(awful.button({}, 1, close)))
 	awful
 		.keygrabber({
 			mask_modkeys = true,

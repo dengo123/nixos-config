@@ -1,53 +1,14 @@
--- ~/.config/awesome/features/shell/menu/shared/dialogs/widgets.lua
+-- ~/.config/awesome/features/shell/menu/dialogs/widgets.lua
+-- UI-Bausteine für Dialogs (Header, Footer, Icon).
+-- Erwartet Theme-Tabelle (th), die von außen übergeben wird.
+-- Theme-Werte selbst kommen aus features/shell/menu/dialogs/theme.lua.
+
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
+local Theme = require("features.shell.menu.dialogs.parts.theme")
 
 local W = {}
-
--- ===== Theme-Defaults (anpassbar) ==========================================
-W.theme = {
-	-- Größen
-	dialog_w = 560,
-	dialog_h = 360,
-	radius = 12,
-
-	-- Farben
-	header_bg = "#053193",
-	header_fg = "#FFFFFF",
-	body_bg = "#617FD9",
-	body_fg = "#000000",
-	footer_bg = "#053193",
-	footer_fg = "#FFFFFF",
-	dialog_bg = "#00000000",
-	backdrop = "#00000066",
-
-	-- Abstände
-	pad_h = 16,
-	pad_v = 14,
-	icons_spacing = 24,
-
-	-- Cancel-Button
-	cancel_bg = "#F5F5EE",
-	cancel_fg = "#000000",
-	cancel_hover_bg = "#F5F5EE",
-	cancel_hover_border = "#607CD9",
-
-	-- Icon-Hover
-	icon_hover_bg = "#FFFFFF20",
-	icon_hover_border = "#2B5B88",
-}
-
-function W.merge_theme(base, override)
-	local out = {}
-	for k, v in pairs(base or {}) do
-		out[k] = v
-	end
-	for k, v in pairs(override or {}) do
-		out[k] = v
-	end
-	return out
-end
 
 -- ===== Header ===============================================================
 function W.mk_header(title, th)
@@ -71,7 +32,6 @@ end
 
 -- ===== Footer mit Cancel rechts, Hover = blauer Rand ========================
 function W.mk_footer(cancel_label, on_cancel, th)
-	-- Sichtbarer Button-Inhalt
 	local inner = wibox.widget({
 		{
 			{
@@ -89,22 +49,20 @@ function W.mk_footer(cancel_label, on_cancel, th)
 		bg = th.cancel_bg or "#ECECEC",
 		fg = th.cancel_fg or "#000000",
 		shape = function(cr, w, h)
-			gears.shape.rounded_rect(cr, w, h, 2) -- nur 2px Radius
+			gears.shape.rounded_rect(cr, w, h, 2)
 		end,
 		shape_border_width = 0,
 		shape_border_color = "#00000000",
 		widget = wibox.container.background,
 	})
 
-	-- Zielmaße: Breite = 1/5 Dialogbreite, Höhe = 2/5 der inneren Footerhöhe
 	local footer_h = th._computed_footer_h or 0
 	local dialog_w = th._computed_dialog_w or 0
-	local inner_footer_h = math.max(0, footer_h - 16) -- 16px durch top/bottom Margin
-	local target_h = inner_footer_h > 0 and math.floor(inner_footer_h * 2 / 5) or nil
+	local inner_h = math.max(0, footer_h - 16)
+	local target_h = inner_h > 0 and math.floor(inner_h * 2 / 5) or nil
 	local target_w = dialog_w > 0 and math.floor(dialog_w / 5) or nil
 
-	-- Harte Größen-Constraint
-	local cancel_btn_exact = wibox.widget({
+	local cancel_btn = wibox.widget({
 		inner,
 		strategy = "exact",
 		width = target_w,
@@ -112,27 +70,25 @@ function W.mk_footer(cancel_label, on_cancel, th)
 		widget = wibox.container.constraint,
 	})
 
-	-- Hover
-	cancel_btn_exact:connect_signal("mouse::enter", function()
+	cancel_btn:connect_signal("mouse::enter", function()
 		inner.bg = th.cancel_hover_bg or th.cancel_bg or "#ECECEC"
 		inner.shape_border_width = 2
 		inner.shape_border_color = th.cancel_hover_border or "#2B5B88"
 	end)
-	cancel_btn_exact:connect_signal("mouse::leave", function()
+	cancel_btn:connect_signal("mouse::leave", function()
 		inner.bg = th.cancel_bg or "#ECECEC"
 		inner.shape_border_width = 0
 		inner.shape_border_color = "#00000000"
 	end)
-	cancel_btn_exact:buttons(gears.table.join(awful.button({}, 1, function()
+	cancel_btn:buttons(gears.table.join(awful.button({}, 1, function()
 		if on_cancel then
 			on_cancel()
 		end
 	end)))
 
-	-- Rechtsbündig + vertikal mittig
 	local right_cell = wibox.widget({
 		{
-			cancel_btn_exact,
+			cancel_btn,
 			halign = "right",
 			valign = "center",
 			widget = wibox.container.place,
@@ -160,9 +116,10 @@ end
 -- ===== Nacktes Icon (quadratisch) + optionales Label ========================
 -- args: { size, icon|emoji, emoji_font?, label?, on_press?, th? }
 function W.mk_icon(args)
-	local th = args.th or W.theme
+	local th = args.th or Theme.defaults
 	local size = args.size or 64
 
+	-- Icon selbst (unverändert)
 	local icon_widget
 	if args.icon and type(args.icon) == "string" and args.icon:match("^/") then
 		icon_widget = wibox.widget({
@@ -187,16 +144,17 @@ function W.mk_icon(args)
 		})
 	end
 
+	-- NEU: Label größer, weiß, mit mehr Abstand
 	local label_widget
 	if args.label and #args.label > 0 then
 		label_widget = wibox.widget({
 			{
-				text = args.label,
+				markup = string.format("<span font='sans 14' color='#FFFFFF'>%s</span>", args.label),
 				align = "center",
 				valign = "center",
 				widget = wibox.widget.textbox,
 			},
-			top = 6,
+			top = 12, -- vorher 6 → mehr Abstand zum Icon
 			widget = wibox.container.margin,
 		})
 	end
@@ -207,7 +165,7 @@ function W.mk_icon(args)
 		layout = wibox.layout.fixed.vertical,
 	})
 
-	-- Klick- + Hoverfläche
+	-- Rest (Hoverfläche, Klicks, Constraints) bleibt wie gehabt …
 	local clickable_bg = wibox.widget({
 		{
 			stack,
@@ -219,16 +177,13 @@ function W.mk_icon(args)
 		},
 		bg = "#00000000",
 		shape = gears.shape.rounded_rect,
-		shape_border_width = 0,
-		shape_border_color = "#00000000",
 		widget = wibox.container.background,
 	})
 
-	-- Constraint: Breite = Iconbreite + Padding, Höhe = Iconhöhe + (Label falls da) + Padding
 	local base_h = size + 12
 	local total_h = base_h
 	if label_widget then
-		total_h = total_h + 6 + 18
+		total_h = total_h + 12 + 18 -- an top=12 angepasst
 	end
 
 	local clickable = wibox.widget({
@@ -245,7 +200,6 @@ function W.mk_icon(args)
 		end)))
 	end
 
-	-- Hover-Effekt
 	clickable:connect_signal("mouse::enter", function()
 		clickable_bg.bg = th.icon_hover_bg or "#FFFFFF20"
 		clickable_bg.shape_border_width = 2
