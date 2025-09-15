@@ -3,7 +3,7 @@ local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local P = require("features.shell.menu.shared.primitives")
-local Dialogs = require("features.shell.menu.dialogs") -- << NEU
+local Dialogs = require("features.shell.menu.shared.dialogs")
 
 local Footer = {}
 
@@ -11,43 +11,40 @@ local Footer = {}
 --   Footer.build(power_items, t)
 --   Footer.build({ power_items = ..., on_search = ..., t = ... })
 function Footer.build(arg1, arg2)
-	-- ---- Compat Layer -----------------------------------------------------
+	-- ---- Compat Layer -------------------------------------------------------
 	local opts
 	if type(arg1) == "table" and (arg1.power_items or arg1.on_search or arg1.t) then
-		opts = arg1 -- neue API
+		opts = arg1
 	else
-		opts = { power_items = arg1, t = arg2 } -- alte API
+		opts = { power_items = arg1, t = arg2 }
 	end
 	opts.t = opts.t or {}
 	local t = opts.t
 
-	-- -----------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 	-- Config
-	-- -----------------------------------------------------------------------
-	local FOOTER_H = t.footer_h or 48 -- << 48px Gesamthöhe Footer
+	-- -------------------------------------------------------------------------
+	local FOOTER_H = t.footer_h or 48
 	local PAD_T, PAD_B = (t.footer_pad_t or 6), (t.footer_pad_b or 6)
 	local inner_h = math.max(FOOTER_H - PAD_T - PAD_B, 1)
-	local SEARCH_H = math.floor(inner_h / 2) -- Suche = halbe Footerhöhe
+	local SEARCH_H = math.floor(inner_h / 2)
 
-	local HIT_W = t.search_hit_w or 180 -- unsichtbare, klickbare Breite (collapsed)
-	local EXPAND_W = t.search_w or 180 -- sichtbare Breite im Fokus (expanded)
+	local HIT_W = t.search_hit_w or 180
+	local EXPAND_W = t.search_w or 180
 
-	local ROW_SP = t.power_group_spacing or 8
-
-	-- Farben (Luna-Blau Footer, weiße Searchbar)
-	local FOOTER_BG = t.footer_bg or t.bg or "#3A6EA5" -- << Luna Blue
+	local FOOTER_BG = t.footer_bg or t.bg or "#3A6EA5"
 	local FOOTER_FG = t.footer_fg or t.fg or "#FFFFFF"
 
-	local SEARCH_BG = "#FFFFFF" -- << weiß
-	local SEARCH_FG = "#000000" -- << schwarz
-	local CURSOR = "#000000" -- << schwarz
+	local SEARCH_BG = "#FFFFFF"
+	local SEARCH_FG = "#000000"
+	local CURSOR = "#000000"
 
-	-- -----------------------------------------------------------------------
-	-- Search Prompt (ohne Label/Placeholder)
-	-- -----------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
+	-- Search Prompt
+	-- -------------------------------------------------------------------------
 	local on_search = opts.on_search
 	local prompt = awful.widget.prompt({
-		bg = SEARCH_BG, -- wird im expanded state sichtbar
+		bg = SEARCH_BG,
 		fg = SEARCH_FG,
 		cursor_color = CURSOR,
 	})
@@ -58,13 +55,12 @@ function Footer.build(arg1, arg2)
 			visible = false,
 			id = "prompt",
 			widget = wibox.container.place,
-			halign = "left", -- << Cursor/Text linksbündig platzieren
+			halign = "left",
 			valign = "center",
 		},
 		layout = wibox.layout.stack,
 	})
 
-	-- Hintergrund-Box (rechteckig, im collapsed transparent)
 	local bg_box = wibox.widget({
 		{
 			stack,
@@ -74,31 +70,30 @@ function Footer.build(arg1, arg2)
 			bottom = 2,
 			widget = wibox.container.margin,
 		},
-		shape = gears.shape.rectangle, -- << rechteckig (kein Radius)
+		shape = gears.shape.rectangle,
 		shape_clip = true,
-		bg = "#00000000", -- transparent wenn collapsed
+		bg = "#00000000",
 		fg = SEARCH_FG,
 		widget = wibox.container.background,
 	})
 
-	-- Höhe der Searchbar = halbe Footerhöhe, vertikal zentriert
 	local height_ctl = wibox.widget({
 		bg_box,
 		strategy = "exact",
 		height = SEARCH_H,
 		widget = wibox.container.constraint,
 	})
+
 	local vcenter = wibox.widget({
 		height_ctl,
 		valign = "center",
 		widget = wibox.container.place,
 	})
 
-	-- Breite per Constraint steuern (collapsed/expanded)
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
-		width = HIT_W, -- initial: nur Hitbox
+		width = HIT_W,
 		widget = wibox.container.constraint,
 	})
 
@@ -107,7 +102,7 @@ function Footer.build(arg1, arg2)
 
 	local function apply_collapsed_style()
 		collapsed = true
-		bg_box.bg = "#00000000" -- transparent
+		bg_box.bg = "#00000000"
 		bg_box.fg = SEARCH_FG
 		width_ctl.width = HIT_W
 		bg_box.forced_width = HIT_W
@@ -115,7 +110,7 @@ function Footer.build(arg1, arg2)
 
 	local function apply_expanded_style()
 		collapsed = false
-		bg_box.bg = SEARCH_BG -- << weißer Balken im Fokus
+		bg_box.bg = SEARCH_BG
 		bg_box.fg = SEARCH_FG
 		width_ctl.width = EXPAND_W
 		bg_box.forced_width = EXPAND_W
@@ -153,9 +148,8 @@ function Footer.build(arg1, arg2)
 		})
 	end
 
-	-- Klickbare (unsichtbare) Fläche links im Footer
 	local search_box = wibox.widget({
-		width_ctl, -- enthält vcenter -> height_ctl -> bg_box -> stack -> prompt
+		width_ctl,
 		buttons = gears.table.join(awful.button({}, 1, function()
 			if collapsed then
 				focus_search()
@@ -166,24 +160,23 @@ function Footer.build(arg1, arg2)
 
 	apply_collapsed_style()
 
-	-- -----------------------------------------------------------------------
-	-- Power Buttons rechts  (volle Höhe + Dialoge, Hover bleibt)
-	-- -----------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
+	-- Power Buttons rechts
+	-- -------------------------------------------------------------------------
 	local powers = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 0,
 	}
 
 	for _, p in ipairs(opts.power_items or {}) do
-		-- Label-Kürzung
-		if p.label and p.label:lower():find("turn off") then
-			p.label = "Turn off"
+		local t_btn = {}
+		for k, v in pairs(t or {}) do
+			t_btn[k] = v
 		end
+		t_btn.defer_power_clicks = true
 
-		-- Original-Button (behält Hover/States)
-		local btn = P.power_button(p, t)
+		local btn = P.power_button(p, t_btn)
 
-		-- volle Innenhöhe, ohne eigenes Click-Handling außen
 		local fitted = wibox.widget({
 			btn,
 			strategy = "exact",
@@ -191,13 +184,28 @@ function Footer.build(arg1, arg2)
 			widget = wibox.container.constraint,
 		})
 
-		-- Dialog-Routing: Klick direkt auf dem Button überschreiben
-		local label = (p.label or ""):lower()
-		local id = (p.id or ""):lower()
+		local inner = btn._click_target or btn
+		inner:buttons({})
+		btn:buttons({})
 
-		if id == "power" or label:find("turn off") then
-			btn:buttons(gears.table.join(awful.button({}, 1, function()
-				require("features.shell.menu.dialogs").power({
+		local raw_text = (p.text or p.label or ""):lower()
+		local raw_nospace = raw_text:gsub("%s+", "")
+		local key = (p.id or raw_text):lower()
+		key = key:gsub("%s+", "")
+
+		local function bind(handler)
+			local b = gears.table.join(awful.button({}, 1, handler))
+			inner:buttons(b)
+			btn:buttons(b)
+		end
+
+		local matched = false
+
+		-- POWER
+		if key == "power" or raw_nospace:find("turnoff") or raw_text:find("shutdown") then
+			matched = true
+			bind(function()
+				Dialogs.power({
 					bg = FOOTER_BG,
 					fg = FOOTER_FG,
 					btn_bg = "#ECECEC",
@@ -205,10 +213,19 @@ function Footer.build(arg1, arg2)
 					backdrop = "#00000088",
 					radius = 6,
 				})
-			end)))
-		elseif id == "logout" or label:find("log off") or label:find("logout") then
-			btn:buttons(gears.table.join(awful.button({}, 1, function()
-				require("features.shell.menu.dialogs").logout_confirm({
+			end)
+
+		-- LOGOUT (soft)
+		elseif
+			key == "logout"
+			or key == "logoff"
+			or raw_text:find("logout")
+			or raw_text:find("log off")
+			or raw_text:find("exit")
+		then
+			matched = true
+			bind(function()
+				Dialogs.logout_confirm({
 					bg = FOOTER_BG,
 					fg = FOOTER_FG,
 					btn_bg = "#ECECEC",
@@ -216,21 +233,31 @@ function Footer.build(arg1, arg2)
 					backdrop = "#00000088",
 					radius = 6,
 				})
-			end)))
+			end)
+		end
+
+		if not matched and p.on_press then
+			bind(function()
+				p.on_press()
+			end)
 		end
 
 		table.insert(powers, fitted)
 	end
 
-	local powers_right = wibox.widget({ powers, halign = "right", widget = wibox.container.place })
+	local powers_right = wibox.widget({
+		powers,
+		halign = "right",
+		widget = wibox.container.place,
+	})
 
-	-- -----------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 	-- Footer Row & Container
-	-- -----------------------------------------------------------------------
+	-- -------------------------------------------------------------------------
 	local row = wibox.widget({
-		search_box, -- links: Such-Hitbox
-		nil, -- Mitte: Spacer
-		powers_right, -- rechts: Power-Buttons
+		search_box,
+		nil,
+		powers_right,
 		expand = "inside",
 		layout = wibox.layout.align.horizontal,
 	})
@@ -244,8 +271,8 @@ function Footer.build(arg1, arg2)
 			bottom = PAD_B,
 			widget = wibox.container.margin,
 		},
-		forced_height = FOOTER_H, -- Footer behält seine volle Höhe
-		bg = FOOTER_BG, -- << Luna-Blau
+		forced_height = FOOTER_H,
+		bg = FOOTER_BG,
 		fg = FOOTER_FG,
 		widget = wibox.container.background,
 	})

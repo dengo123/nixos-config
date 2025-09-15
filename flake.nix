@@ -14,14 +14,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ags.url = "github:Aylur/ags";
-    hyprland.url = "github:hyprwm/Hyprland";
-
-    hyprland-plugins = {
-      url = "github:hyprwm/hyprland-plugins";
-      inputs.hyprland.follows = "hyprland";
-    };
-
     nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 
@@ -34,8 +26,6 @@
       url = "github:0xc000022070/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    apple-fonts.url = "github:Lyndeno/apple-fonts.nix";
 
     nix-ld = {
       url = "github:Mic92/nix-ld";

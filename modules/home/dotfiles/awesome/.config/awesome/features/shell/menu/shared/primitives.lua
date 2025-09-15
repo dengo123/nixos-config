@@ -1,21 +1,20 @@
--- features/shell/menu/primitives.lua
+-- ~/.config/awesome/features/shell/menu/shared/primitives.lua
+-- (falls deine Datei nicht unter shared/ liegt, passe den Pfad an oder verschiebe sie.)
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local P = {}
 
--- ---------- Farb-Utils: Hex ↔ RGB + Aufhellen/Abdunkeln ----------
+-- ---------- Farb-Utils ----------
 local function clamp(x, a, b)
 	return math.max(a, math.min(b, x))
 end
-
 local function hex_to_rgb(hex)
 	hex = hex or "#000000"
 	local r, g, b = hex:match("#?(%x%x)(%x%x)(%x%x)")
 	return tonumber(r, 16), tonumber(g, 16), tonumber(b, 16)
 end
-
 local function rgb_to_hex(r, g, b)
 	return string.format(
 		"#%02X%02X%02X",
@@ -24,30 +23,31 @@ local function rgb_to_hex(r, g, b)
 		clamp(math.floor(b + 0.5), 0, 255)
 	)
 end
-
-local function adjust(hex, pct) -- pct: -20..+20 (negativ = dunkler)
+local function adjust(hex, pct)
 	local r, g, b = hex_to_rgb(hex)
 	local f = 1 + (pct / 100)
 	return rgb_to_hex(r * f, g * f, b * f)
 end
 
--- ---------- Defaults (XP-ish) ----------
+-- ---------- Defaults ----------
 local DEFAULTS = {
-	-- Basis
-	bg = "#3A6EA5", -- Luna-Blau
+	bg = "#3A6EA5",
 	fg = "#FFFFFF",
-	bg_focus = nil, -- wenn nil, wird aus bg abgeleitet
+	bg_focus = nil,
+
 	-- Rows (Columns)
 	row_bg = "#FFFFFF",
 	row_fg = "#000000",
-	row_bg_hover = nil, -- wenn nil, wird auto generiert
+	row_bg_hover = nil,
 	row_h = 48,
-	-- Power-Buttons (Footer)
+	list_spacing = 0, -- kein sichtbarer Abstand zwischen Reihen
+
+	-- Footer power buttons
 	footer_bg = "#3A6EA5",
 	footer_fg = "#FFFFFF",
-	power_bg = nil, -- fallback: footer_bg
-	power_fg = nil, -- fallback: footer_fg
-	power_bg_hover = nil, -- wenn nil, wird auto generiert
+	power_bg = nil,
+	power_fg = nil,
+	power_bg_hover = nil,
 	power_w = 110,
 	power_h = 48,
 	power_icon_size = 16,
@@ -55,29 +55,25 @@ local DEFAULTS = {
 
 local function with_defaults(t)
 	t = t or {}
-	-- fülle fehlende Schlüssel
 	for k, v in pairs(DEFAULTS) do
 		if t[k] == nil then
 			t[k] = v
 		end
 	end
-	-- sinnvolle Kaskaden
 	t.power_bg = t.power_bg or t.footer_bg or t.bg
 	t.power_fg = t.power_fg or t.footer_fg or t.fg
-	-- Auto-Hover ableiten, wenn nicht gesetzt
 	t.bg_focus = t.bg_focus or adjust(t.bg, -15)
 	t.row_bg_hover = t.row_bg_hover or adjust(t.row_bg, -8)
 	t.power_bg_hover = t.power_bg_hover or adjust(t.power_bg, -12)
 	return t
 end
 
--- ---------- Hover Helper (nutzt bereits Auto-Hover) ----------
+-- ---------- Hover Helper ----------
 function P.apply_hover(bg_container, t, normal, hover)
 	t = with_defaults(t)
 	local normal_bg = normal or t.bg
 	local hover_bg = hover or t.bg_focus
 	if normal_bg:lower() == hover_bg:lower() then
-		-- falls doch identisch, dunkle automatisch weiter ab
 		hover_bg = adjust(normal_bg, -12)
 	end
 	bg_container:connect_signal("mouse::enter", function()
@@ -141,12 +137,12 @@ function P.row_widget(item, t)
 		end
 	end)))
 
-	return P.fixed_height(bg_box, t.row_h) -- 48px default
+	return P.fixed_height(bg_box, t.row_h)
 end
 
 function P.list_widget(items, t)
 	t = with_defaults(t)
-	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing or 2 }
+	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }
 	for _, it in ipairs(items or {}) do
 		table.insert(box, P.row_widget(it, t))
 	end
@@ -189,24 +185,30 @@ function P.power_button(btn, t)
 		widget = wibox.container.background,
 	})
 
-	-- Hover garantiert sichtbar (Auto-Hover, falls nichts gesetzt)
+	-- Hover
 	P.apply_hover(box, t, t.power_bg, t.power_bg_hover)
 
-	-- Klick
-	box:buttons(gears.table.join(awful.button({}, 1, function()
-		if btn.on_press then
-			btn.on_press()
-		end
-	end)))
+	-- *** WICHTIG: Default-Click NUR wenn NICHT defered ***
+	if not (t.defer_power_clicks or btn.no_default_click) then
+		box:buttons(gears.table.join(awful.button({}, 1, function()
+			if btn.on_press then
+				btn.on_press()
+			end
+		end)))
+	end
 
-	-- Fixbreite + Fixhöhe (110 x 48)
-	return wibox.widget({
+	local fixed = wibox.widget({
 		box,
 		strategy = "exact",
-		width = t.power_w, -- 110
-		height = t.power_h, -- 48
+		width = t.power_w,
+		height = t.power_h,
 		widget = wibox.container.constraint,
 	})
+
+	-- Dem Aufrufer (Footer) das echte Click-Target geben:
+	fixed._click_target = box
+
+	return fixed
 end
 
 return P
