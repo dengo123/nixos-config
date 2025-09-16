@@ -1,6 +1,6 @@
 -- features/shell/menu/init.lua
-local base = require("features.shell.menu.shared.base")
-local defaults = require("features.shell.menu.shared.apps")
+local base = require("features.shell.menu.parts.base")
+local defaults = require("features.shell.menu.parts.apps")
 local awful = require("awful")
 local wibox = require("wibox")
 local gears = require("gears")

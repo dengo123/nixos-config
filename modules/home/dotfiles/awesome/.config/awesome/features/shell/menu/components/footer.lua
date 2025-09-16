@@ -1,9 +1,10 @@
--- ~/.config/awesome/features/shell/menu/parts/footer.lua
+-- features/shell/menu/components/footer.lua
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
-local P = require("features.shell.menu.shared.widgets")
+local P = require("features.shell.menu.parts.widgets")
 local Dialogs = require("features.shell.menu.dialogs")
+local Search = require("features.shell.menu.search") -- <- nutzt jetzt die Logik von oben
 
 local Footer = {}
 
@@ -22,7 +23,7 @@ function Footer.build(arg1, arg2)
 	local t = opts.t
 
 	-- -------------------------------------------------------------------------
-	-- Config
+	-- Config (nur Layout/Zeichnen – Logik kommt aus Search)
 	-- -------------------------------------------------------------------------
 	local FOOTER_H = t.footer_h or 48
 	local PAD_T, PAD_B = (t.footer_pad_t or 6), (t.footer_pad_b or 6)
@@ -40,9 +41,8 @@ function Footer.build(arg1, arg2)
 	local CURSOR = "#000000"
 
 	-- -------------------------------------------------------------------------
-	-- Search Prompt
+	-- Search Prompt (Host-Widgets)
 	-- -------------------------------------------------------------------------
-	local on_search = opts.on_search
 	local prompt = awful.widget.prompt({
 		bg = SEARCH_BG,
 		fg = SEARCH_FG,
@@ -97,76 +97,39 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.constraint,
 	})
 
-	local collapsed = true
-	local search_active = false
+	-- >>> Alle Logik (expand/collapse, focus, prompt.run, styling) liegt jetzt hier:
+	local search_ctl = Search.build({
+		prompt_widget = prompt.widget,
+		bg_box = bg_box,
+		width_ctl = width_ctl,
+		stack = stack,
 
-	local function apply_collapsed_style()
-		collapsed = true
-		bg_box.bg = "#00000000"
-		bg_box.fg = SEARCH_FG
-		width_ctl.width = HIT_W
-		bg_box.forced_width = HIT_W
-	end
+		hit_w = HIT_W,
+		expand_w = EXPAND_W,
 
-	local function apply_expanded_style()
-		collapsed = false
-		bg_box.bg = SEARCH_BG
-		bg_box.fg = SEARCH_FG
-		width_ctl.width = EXPAND_W
-		bg_box.forced_width = EXPAND_W
-	end
+		search_bg = SEARCH_BG,
+		search_fg = SEARCH_FG,
+		cursor = CURSOR,
 
-	local function cancel_search()
-		local prompt_node = stack:get_children_by_id("prompt")[1]
-		prompt_node.visible = false
-		prompt.widget:set_text("")
-		search_active = false
-		pcall(awful.keygrabber.stop)
-		apply_collapsed_style()
-	end
+		history_path = t.history_path,
+		on_search = opts.on_search,
+	})
 
-	local function focus_search()
-		local prompt_node = stack:get_children_by_id("prompt")[1]
-		apply_expanded_style()
-		prompt_node.visible = true
-		prompt.widget:set_text("")
-		search_active = true
-
-		awful.prompt.run({
-			prompt = "",
-			textbox = prompt.widget,
-			history_path = t.history_path or (gears.filesystem.get_cache_dir() .. "/menu_search_history"),
-			completion_callback = awful.completion.shell,
-			exe_callback = function(q)
-				if q and #q > 0 and on_search then
-					on_search(q)
-				end
-			end,
-			done_callback = function()
-				cancel_search()
-			end,
-		})
-	end
-
+	-- Klick auf die Searchbox delegiert nur noch an Search
 	local search_box = wibox.widget({
 		width_ctl,
 		buttons = gears.table.join(awful.button({}, 1, function()
-			if collapsed then
-				focus_search()
+			if search_ctl.is_collapsed and search_ctl:is_collapsed() then
+				search_ctl:focus()
 			end
 		end)),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	apply_collapsed_style()
-
 	-- -------------------------------------------------------------------------
-	-- Power Buttons rechts
+	-- Power Buttons rechts (unverändert)
 	-- -------------------------------------------------------------------------
-	local powers = {
-		layout = wibox.layout.fixed.horizontal,
-		spacing = 0,
-	}
+	local powers = { layout = wibox.layout.fixed.horizontal, spacing = 0 }
 
 	for _, p in ipairs(opts.power_items or {}) do
 		local t_btn = {}
@@ -190,8 +153,7 @@ function Footer.build(arg1, arg2)
 
 		local raw_text = (p.text or p.label or ""):lower()
 		local raw_nospace = raw_text:gsub("%s+", "")
-		local key = (p.id or raw_text):lower()
-		key = key:gsub("%s+", "")
+		local key = (p.id or raw_text):lower():gsub("%s+", "")
 
 		local function bind(handler)
 			local b = gears.table.join(awful.button({}, 1, handler))
@@ -201,7 +163,6 @@ function Footer.build(arg1, arg2)
 
 		local matched = false
 
-		-- POWER
 		if key == "power" or raw_nospace:find("turnoff") or raw_text:find("shutdown") then
 			matched = true
 			bind(function()
@@ -214,8 +175,6 @@ function Footer.build(arg1, arg2)
 					radius = 6,
 				})
 			end)
-
-		-- LOGOUT (soft)
 		elseif
 			key == "logout"
 			or key == "logoff"
@@ -279,10 +238,14 @@ function Footer.build(arg1, arg2)
 
 	return footer,
 		{
-			focus_search = focus_search,
-			cancel_search = cancel_search,
+			focus_search = function()
+				search_ctl:focus()
+			end,
+			cancel_search = function()
+				search_ctl:cancel()
+			end,
 			is_search_active = function()
-				return search_active
+				return search_ctl:is_active()
 			end,
 		}
 end
