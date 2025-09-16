@@ -85,7 +85,7 @@ function Base.choice(opts)
 	local H_FOOT = math.floor(DIALOG_H * FR)
 	local H_BODY = DIALOG_H - H_HEADER - H_FOOT
 
-	-- icon size: from min(dialog_w, dialog_h), clamped to body height
+	-- icon size
 	local base_side = math.min(DIALOG_W, DIALOG_H)
 	local ICON_SIZE_RAW = math.floor(base_side * (th.icon_ratio or 0.20))
 	local PAD_V = th.pad_v or 14
@@ -93,7 +93,7 @@ function Base.choice(opts)
 	local ICON_SIZE = math.min(ICON_SIZE_RAW, ICON_MAX)
 	th.icon_size = ICON_SIZE
 
-	-- cell width (must match widgets.lua math)
+	-- cell width
 	local icon_pad = th.icon_pad or 6
 	local cell_pad = th.icon_cell_pad or 6
 	local cell_extra = th.icon_cell_extra_w or 12
@@ -140,7 +140,7 @@ function Base.choice(opts)
 	local PAD_H = th.pad_h or 16
 	local place_w = DIALOG_W - 2 * PAD_H
 
-	-- evenly spaced targets in [0..1]
+	-- evenly spaced targets
 	local targets = {}
 	if n > 0 then
 		for i = 1, n do
@@ -216,31 +216,38 @@ function Base.choice(opts)
 		widget = wibox.container.constraint,
 	})
 
-	-- popup with rounding from theme
-	local rounded_block = wibox.widget({
+	-- popup mit Border innen (Gesamtgröße unverändert)
+	local border_block = wibox.widget({
 		{
 			header_fixed,
 			body_fixed,
 			footer_fixed,
 			layout = wibox.layout.fixed.vertical,
 		},
-		bg = th.dialog_bg or "#00000000",
+		bg = th.dialog_bg or "#000000",
 		shape = function(cr, w, h)
-			gears.shape.rounded_rect(cr, w, h, th.radius or 12)
+			if (th.dialog_radius or 0) > 0 then
+				gears.shape.rounded_rect(cr, w, h, th.dialog_radius)
+			else
+				gears.shape.rectangle(cr, w, h)
+			end
 		end,
 		shape_clip = true,
+		shape_border_width = th.dialog_border_width or 1,
+		shape_border_color = th.dialog_border or "#FFFFFF",
 		widget = wibox.container.background,
 	})
 
 	local popup_widget = wibox.widget({
 		{
-			rounded_block,
+			border_block,
 			strategy = "exact",
 			width = DIALOG_W,
 			height = DIALOG_H,
 			widget = wibox.container.constraint,
 		},
-		widget = wibox.container.background,
+		margins = 2,
+		widget = wibox.container.margin,
 	})
 
 	popup = awful.popup({

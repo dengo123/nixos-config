@@ -95,7 +95,7 @@ function W.mk_footer(cancel_label, on_cancel, th)
 	})
 
 	local dialog_w = th._computed_dialog_w or 0
-	local target_w = dialog_w > 0 and math.floor(dialog_w / 5) or nil
+	local target_w = th.cancel_width or (dialog_w > 0 and math.floor(dialog_w / 7) or nil)
 
 	local cancel_btn = wibox.widget({
 		inner,

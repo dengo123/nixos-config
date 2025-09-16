@@ -12,12 +12,13 @@ Theme.defaults = {
 	--------------------------------------------------------------------------
 	dialog_w = 560,
 	dialog_h = 360,
-	radius = 12,
+	dialog_radius = 0,
+	dialog_border_width = 1,
+	dialog_border = "#053193",
 
-	-- Statt starrem 1/5-1/5-3/5 nutzen wir feinere Ratios (XP-Feeling)
-	header_ratio = 0.22, -- ~18% der Gesamthöhe
-	footer_ratio = 0.22, -- ~18% der Gesamthöhe
 	-- Body ergibt sich automatisch = 1 - header_ratio - footer_ratio
+	header_ratio = 0.22, -- ~22% der Gesamthöhe
+	footer_ratio = 0.22, -- ~22% der Gesamthöhe
 
 	--------------------------------------------------------------------------
 	-- Farben/Flächen
@@ -30,8 +31,8 @@ Theme.defaults = {
 	footer_fg = "#FFFFFF",
 
 	-- Popup-Container/Backdrop
-	dialog_bg = "#00000000", -- transparenter Container (um den Block herum)
-	backdrop = "#00000066", -- halbtransparentes Schwarz hinter dem Dialog
+	dialog_bg = "#053193",
+	backdrop = "#00000066",
 
 	-- Header Typo/Icon
 	header_font_size = 18,
@@ -56,14 +57,14 @@ Theme.defaults = {
 	icon_spacing = 12, -- Abstand Icon ¿ Label (vertikal)
 
 	-- Label-Typo
-	icon_label_size = 10, -- pt
-	icon_label_leading = 6, -- Zeilenhöhe-Faktor
+	icon_label_size = 12, -- pt
+	icon_label_leading = 1.25, -- Zeilenhöhe-Faktor
 	icon_label_lines = 1, -- 1 Zeile erzwingen
 	icon_label_color = "#FFFFFF",
 
 	-- Icon-Form/Hover
 	icon_shape = "rounded", -- "rect" | "rounded"
-	icon_rounding = 4, -- px (nur für "rounded" relevant)
+	icon_rounding = 10, -- px (nur für "rounded" relevant)
 	icon_hover_bg = "#FFFFFF22",
 	icon_hover_border = "#2B77FF",
 	icon_hover_bw = 2,
@@ -79,6 +80,7 @@ Theme.defaults = {
 	cancel_hover_bg = "#F5F5EE",
 	cancel_hover_border = "#2B77FF",
 	cancel_hover_bw = 2,
+	-- cancel_width = 120,
 }
 
 function Theme.merge(a, b)
