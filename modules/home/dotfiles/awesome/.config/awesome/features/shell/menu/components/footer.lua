@@ -4,7 +4,7 @@ local awful = require("awful")
 local wibox = require("wibox")
 local P = require("features.shell.menu.parts.widgets")
 local Dialogs = require("features.shell.menu.dialogs")
-local Search = require("features.shell.menu.search") -- <- nutzt jetzt die Logik von oben
+local Search = require("features.shell.menu.search")
 
 local Footer = {}
 
@@ -23,31 +23,21 @@ function Footer.build(arg1, arg2)
 	local t = opts.t
 
 	-- -------------------------------------------------------------------------
-	-- Config (nur Layout/Zeichnen – Logik kommt aus Search)
+	-- Container-Layout (nur Footer-Rahmen; KEIN Search-Theming hier!)
 	-- -------------------------------------------------------------------------
 	local FOOTER_H = t.footer_h or 48
-	local PAD_T, PAD_B = (t.footer_pad_t or 6), (t.footer_pad_b or 6)
+	local PAD_T = t.footer_pad_t or 6
+	local PAD_B = t.footer_pad_b or 6
 	local inner_h = math.max(FOOTER_H - PAD_T - PAD_B, 1)
 	local SEARCH_H = math.floor(inner_h / 2)
-
-	local HIT_W = t.search_hit_w or 180
-	local EXPAND_W = t.search_w or 180
 
 	local FOOTER_BG = t.footer_bg or t.bg or "#235CDB"
 	local FOOTER_FG = t.footer_fg or t.fg or "#FFFFFF"
 
-	local SEARCH_BG = "#FFFFFF"
-	local SEARCH_FG = "#000000"
-	local CURSOR = "#000000"
-
 	-- -------------------------------------------------------------------------
-	-- Search Prompt (Host-Widgets)
+	-- Search Host-Widgets (neutral; Styling/Größen macht Search.init)
 	-- -------------------------------------------------------------------------
-	local prompt = awful.widget.prompt({
-		bg = SEARCH_BG,
-		fg = SEARCH_FG,
-		cursor_color = CURSOR,
-	})
+	local prompt = awful.widget.prompt({}) -- kein bg/fg/cursor hier!
 
 	local stack = wibox.widget({
 		{
@@ -72,8 +62,8 @@ function Footer.build(arg1, arg2)
 		},
 		shape = gears.shape.rectangle,
 		shape_clip = true,
+		-- bewusst neutral: Search.init setzt bg/fg/border/width
 		bg = "#00000000",
-		fg = SEARCH_FG,
 		widget = wibox.container.background,
 	})
 
@@ -93,26 +83,20 @@ function Footer.build(arg1, arg2)
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
-		width = HIT_W,
+		-- keine feste Breite hier; Search.init setzt width/forced_width
+		width = 1,
 		widget = wibox.container.constraint,
 	})
 
-	-- >>> Alle Logik (expand/collapse, focus, prompt.run, styling) liegt jetzt hier:
+	-- Alle Search-Details (Theme, collapsed/expanded, prompt.run, cursor, widths) in /search/init.lua
 	local search_ctl = Search.build({
 		prompt_widget = prompt.widget,
 		bg_box = bg_box,
 		width_ctl = width_ctl,
 		stack = stack,
-
-		hit_w = HIT_W,
-		expand_w = EXPAND_W,
-
-		search_bg = SEARCH_BG,
-		search_fg = SEARCH_FG,
-		cursor = CURSOR,
-
 		history_path = t.history_path,
 		on_search = opts.on_search,
+		-- start_collapsed = true  -- falls dein Search.init diese Option unterstützt
 	})
 
 	-- Klick auf die Searchbox delegiert nur noch an Search
@@ -127,7 +111,7 @@ function Footer.build(arg1, arg2)
 	})
 
 	-- -------------------------------------------------------------------------
-	-- Power Buttons rechts (unverändert)
+	-- Power-Buttons (unverändert)
 	-- -------------------------------------------------------------------------
 	local powers = { layout = wibox.layout.fixed.horizontal, spacing = 0 }
 
@@ -162,7 +146,6 @@ function Footer.build(arg1, arg2)
 		end
 
 		local matched = false
-
 		if key == "power" or raw_nospace:find("turnoff") or raw_text:find("shutdown") then
 			matched = true
 			bind(function()
@@ -239,13 +222,17 @@ function Footer.build(arg1, arg2)
 	return footer,
 		{
 			focus_search = function()
-				search_ctl:focus()
+				if search_ctl.focus then
+					search_ctl:focus()
+				end
 			end,
 			cancel_search = function()
-				search_ctl:cancel()
+				if search_ctl.cancel then
+					search_ctl:cancel()
+				end
 			end,
 			is_search_active = function()
-				return search_ctl:is_active()
+				return search_ctl.is_active and search_ctl:is_active() or false
 			end,
 		}
 end
