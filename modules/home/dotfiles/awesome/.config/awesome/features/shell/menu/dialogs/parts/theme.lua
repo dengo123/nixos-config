@@ -52,12 +52,12 @@ Theme.defaults = {
 	icon_ratio = 0.16, -- Anteil von H_BODY für ICON_SIZE
 	icon_pad = 6, -- Innenpad im Icon-Quadrat
 	icon_cell_pad = 6, -- Außenpad der gesamten Klick-Zelle
-	icon_cell_extra_w = 0, -- horizontale Zugabe für saubere Spalten
-	icon_spacing = 6, -- Abstand Icon ¿ Label (vertikal)
+	icon_cell_extra_w = 56, -- horizontale Zugabe für saubere Spalten
+	icon_spacing = 12, -- Abstand Icon ¿ Label (vertikal)
 
 	-- Label-Typo
 	icon_label_size = 10, -- pt
-	icon_label_leading = 2.0, -- Zeilenhöhe-Faktor
+	icon_label_leading = 6, -- Zeilenhöhe-Faktor
 	icon_label_lines = 1, -- 1 Zeile erzwingen
 	icon_label_color = "#FFFFFF",
 
