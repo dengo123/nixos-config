@@ -2,7 +2,7 @@
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
-local P = require("features.shell.menu.shared.primitives")
+local P = require("features.shell.menu.shared.widgets")
 local Dialogs = require("features.shell.menu.dialogs")
 
 local Footer = {}

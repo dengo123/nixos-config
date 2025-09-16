@@ -1,6 +1,6 @@
 local wibox = require("wibox")
 local gears = require("gears")
-local P = require("features.shell.menu.shared.primitives")
+local P = require("features.shell.menu.shared.widgets")
 
 local Columns = {}
 

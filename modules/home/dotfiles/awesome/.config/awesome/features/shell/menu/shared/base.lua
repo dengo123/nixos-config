@@ -1,9 +1,8 @@
--- ~/.config/awesome/features/shell/menu/core.lua
+-- ~/.config/awesome/features/shell/menu/base.lua
 local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
 local Footer = require("features.shell.menu.parts.footer")
 local Popup = require("features.shell.menu.parts.popup")
-local placement = require("features.shell.menu.shared.placement")
 
 local M = {}
 
@@ -33,11 +32,6 @@ function M.build_popup(args)
 		cols = columns.widget,
 		footer = footer_widget,
 		theme = t,
-		placement = placement.above_bar({
-			position = "bottom",
-			gap = 2,
-			align = "left",
-		}),
 		on_hide = function()
 			if footer_api and footer_api.cancel_search then
 				footer_api.cancel_search()

@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/shared/primitives.lua
+-- ~/.config/awesome/features/shell/menu/shared/widgets.lua
 -- (falls deine Datei nicht unter shared/ liegt, passe den Pfad an oder verschiebe sie.)
 local awful = require("awful")
 local gears = require("gears")

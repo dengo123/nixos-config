@@ -1,6 +1,6 @@
 -- features/shell/menu/init.lua
-local core = require("features.shell.menu.core")
-local defaults = require("features.shell.menu.shared.data")
+local base = require("features.shell.menu.shared.base")
+local defaults = require("features.shell.menu.shared.apps")
 local awful = require("awful")
 local wibox = require("wibox")
 local gears = require("gears")
@@ -68,7 +68,7 @@ function M.setup(cfg)
 		menubar.utils.terminal = cfg.terminal
 	end
 
-	local api = core.build_popup({
+	local api = base.build_popup({
 		cfg = cfg,
 		theme = resolve_theme(cfg.menu_theme),
 		data = merge_data(cfg.menu_data),

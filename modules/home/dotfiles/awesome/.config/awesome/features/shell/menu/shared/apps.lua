@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/data.lua
+-- ~/.config/awesome/features/shell/menu/apps.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 
