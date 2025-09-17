@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/parts/popup.lua
+-- ~/.config/awesome/features/shell/menu/components/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -180,6 +180,16 @@ function Popup.build(args)
 	end)
 
 	return api
+end
+
+function Popup.make_launcher(api, icon, beautiful)
+	return wibox.widget({
+		image = icon or (beautiful and beautiful.awesome_icon),
+		widget = wibox.widget.imagebox,
+		buttons = gears.table.join(awful.button({}, 1, function()
+			api:toggle()
+		end)),
+	})
 end
 
 return Popup

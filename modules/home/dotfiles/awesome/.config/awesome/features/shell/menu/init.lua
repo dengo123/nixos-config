@@ -1,9 +1,7 @@
 -- features/shell/menu/init.lua
 local base = require("features.shell.menu.parts.base")
 local defaults = require("features.shell.menu.parts.apps")
-local awful = require("awful")
-local wibox = require("wibox")
-local gears = require("gears")
+local Popup = require("features.shell.menu.components.popup") -- für make_launcher
 local beautiful = require("beautiful")
 local menubar = require("menubar")
 
@@ -23,7 +21,13 @@ local function resolve_theme(theme)
 	elseif ok and type(tmod) == "table" then
 		return tmod
 	end
-	return { bg = "#222222", fg = "#ffffff", border_color = "#000000", border_width = 1, total_height = 500 }
+	return {
+		bg = "#222222",
+		fg = "#ffffff",
+		border_color = "#000000",
+		border_width = 1,
+		total_height = 500,
+	}
 end
 
 -- Daten mergen mit Defaults
@@ -40,26 +44,6 @@ local function merge_data(src)
 	}
 end
 
--- Launcher-Widget (klick -> api:toggle())
-local function make_launcher(api, icon)
-	return wibox.widget({
-		image = icon or beautiful.awesome_icon,
-		widget = wibox.widget.imagebox,
-		buttons = gears.table.join(awful.button({}, 1, function()
-			api:toggle()
-		end)),
-	})
-end
-
--- Fallback-Suche: öffnet Browser mit DuckDuckGo
-local function default_on_search(q)
-	if not q or #q == 0 then
-		return
-	end
-	local url_q = q:gsub("%s+", "+")
-	awful.spawn.with_shell('xdg-open "https://duckduckgo.com/?q=' .. url_q .. '"')
-end
-
 -- Menü-Setup: baut Popup + Launcher
 -- Rückgabe: { menu = api(:show/:hide/:toggle/:focus_search), launcher = widget }
 function M.setup(cfg)
@@ -72,10 +56,11 @@ function M.setup(cfg)
 		cfg = cfg,
 		theme = resolve_theme(cfg.menu_theme),
 		data = merge_data(cfg.menu_data),
-		on_search = cfg.menu_on_search or default_on_search,
+		on_search = cfg.menu_on_search or function(_) end,
 	})
 
-	local launcher = cfg.menu_launcher or make_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon)
+	local launcher = cfg.menu_launcher
+		or Popup.make_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon, beautiful)
 
 	return { menu = api, launcher = launcher }
 end
