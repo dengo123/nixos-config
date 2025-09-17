@@ -408,4 +408,112 @@ function P.power_bar(power_items, t, opts)
 	return wibox.widget({ bar, halign = "right", widget = wibox.container.place })
 end
 
+-- ---------- HEADER: Avatar + Text (nur Inhalt, kein Container) ----------
+-- user: { name, avatar, subtitle }
+-- t: Theme (icon_ratio_header/text_ratio_header | avatar_size/text_size_header, header_text_spacing, header_spacing, font_family, avatar_radius)
+-- avail_h: verfügbare Innenhöhe (Header-H minus Top/Bottom-Padding)
+function P.build_header_content(user, t, avail_h)
+	t = with_defaults(t or {})
+	user = user or {}
+
+	local function resolve_header_icon_size()
+		if t.avatar_size then
+			return t.avatar_size
+		end
+		local ratio = t.icon_ratio_header or t.icon_ratio or 0.6
+		return math.max(1, math.floor(avail_h * ratio + 0.5))
+	end
+
+	local function resolve_header_font()
+		local family = t.font_family or "Sans"
+		local sz = t.text_size_header or t.text_size
+		if not sz then
+			local ratio = t.text_ratio_header or t.text_ratio or 0.20
+			sz = math.max(1, math.floor(avail_h * ratio + 0.5))
+			if t.text_min then
+				sz = math.max(sz, t.text_min)
+			end
+			if t.text_max then
+				sz = math.min(sz, t.text_max)
+			end
+		end
+		return family .. " " .. tostring(sz)
+	end
+
+	local icon_size = resolve_header_icon_size()
+	local font = resolve_header_font()
+
+	local AV_RAD = t.avatar_radius or 8
+	local AV_SHAPE = function(cr, w, h)
+		gears.shape.rounded_rect(cr, w, h, AV_RAD)
+	end
+
+	local avatar_img = wibox.widget({
+		image = user.avatar or nil,
+		resize = true,
+		forced_width = icon_size,
+		forced_height = icon_size,
+		clip_shape = AV_SHAPE,
+		widget = wibox.widget.imagebox,
+	})
+
+	local name_lbl = wibox.widget({
+		text = user.name or "",
+		font = font,
+		valign = "center",
+		align = "left",
+		widget = wibox.widget.textbox,
+	})
+
+	local subtitle_lbl = wibox.widget({
+		text = user.subtitle or "",
+		font = font,
+		valign = "center",
+		align = "left",
+		widget = wibox.widget.textbox,
+	})
+
+	local has_sub = (user.subtitle and user.subtitle ~= "")
+	subtitle_lbl.visible = has_sub
+
+	local text_column = wibox.widget({
+		name_lbl,
+		subtitle_lbl,
+		spacing = has_sub and (t.header_text_spacing or 2) or 0,
+		layout = wibox.layout.fixed.vertical,
+	})
+
+	local inner_line = wibox.widget({
+		avatar_img,
+		text_column,
+		spacing = t.header_spacing or 10,
+		layout = wibox.layout.fixed.horizontal,
+	})
+
+	local inner_centered = wibox.widget({
+		inner_line,
+		halign = "left", -- linksbündig
+		valign = "center", -- vertikal zentriert
+		widget = wibox.container.place,
+	})
+
+	local api = {}
+	function api.set_user(name, avatar_path, subtitle)
+		if name ~= nil then
+			name_lbl.text = name
+		end
+		if avatar_path ~= nil then
+			avatar_img.image = avatar_path
+		end
+		if subtitle ~= nil then
+			subtitle_lbl.text = subtitle
+			local show = (subtitle ~= "")
+			subtitle_lbl.visible = show
+			text_column.spacing = show and (t.header_text_spacing or 2) or 0
+		end
+	end
+
+	return { widget = inner_centered, set_user = api.set_user }
+end
+
 return P

@@ -24,9 +24,9 @@ local function resolve_theme(shared, mod_tbl, overrides)
 	local derived_h = math.max(1, math.floor(footer_h / 3 + 0.5))
 
 	local t = {
-		-- Farben
-		bg = pick(shared.search_bg, shared.bg, mod_tbl.search_bg, mod_tbl.bg, "#FFFFFF"),
-		fg = pick(shared.search_fg, shared.fg, mod_tbl.search_fg, mod_tbl.fg, "#000000"),
+		-- Farben: spezifisch > modul > generisch > fallback
+		bg = pick(shared.search_bg, mod_tbl.search_bg, mod_tbl.bg, shared.bg, "#FFFFFF"),
+		fg = pick(shared.search_fg, mod_tbl.search_fg, mod_tbl.fg, shared.fg, "#000000"),
 		cursor = pick(shared.search_cursor, mod_tbl.cursor, "#000000"),
 
 		-- Breiten
