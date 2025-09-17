@@ -4,8 +4,8 @@ local awful = require("awful")
 local M = {
 	menu = require("features.shell.menu"),
 	bar = {
-		model = require("features.shell.model"),
-		view = require("features.shell.view"),
+		model = require("features.shell.bar.model"),
+		view = require("features.shell.bar.view"),
 	},
 }
 

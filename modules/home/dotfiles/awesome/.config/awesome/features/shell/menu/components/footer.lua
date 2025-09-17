@@ -1,9 +1,9 @@
--- features/shell/menu/components/footer.lua
+-- ~/.config/awesome/features/shell/menu/components/footer.lua
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 
-local P = require("features.shell.menu.parts.widgets") -- Widgets (buttons, list, ...)
+local P = require("features.shell.menu.parts.widgets") -- Widgets (list, buttons, power_bar)
 local Dialogs = require("features.shell.menu.dialogs") -- Power/Logout Dialoge
 local Search = require("features.shell.menu.search") -- Search-Orchestrator
 
@@ -117,86 +117,11 @@ function Footer.build(arg1, arg2)
 	})
 
 	-- ---------------------------------------------------------------------------
-	-- Power-Buttons rechts
+	-- Power-Buttons rechts (komplett in widgets.lua gelöst)
 	-- ---------------------------------------------------------------------------
-	local powers = { layout = wibox.layout.fixed.horizontal, spacing = 0 }
-
-	for _, p in ipairs(opts.power_items or {}) do
-		local t_btn = {}
-		for k, v in pairs(t or {}) do
-			t_btn[k] = v
-		end
-		t_btn.defer_power_clicks = true
-
-		local btn = P.power_button(p, t_btn)
-
-		local fitted = wibox.widget({
-			btn,
-			strategy = "exact",
-			height = inner_h,
-			widget = wibox.container.constraint,
-		})
-
-		local inner = btn._click_target or btn
-		inner:buttons({})
-		btn:buttons({})
-
-		local raw_text = (p.text or p.label or ""):lower()
-		local raw_nospace = raw_text:gsub("%s+", "")
-		local key = (p.id or raw_text):lower():gsub("%s+", "")
-
-		local function bind(handler)
-			local b = gears.table.join(awful.button({}, 1, handler))
-			inner:buttons(b)
-			btn:buttons(b)
-		end
-
-		local matched = false
-		if key == "power" or raw_nospace:find("turnoff") or raw_text:find("shutdown") then
-			matched = true
-			bind(function()
-				Dialogs.power({
-					bg = FOOTER_BG,
-					fg = FOOTER_FG,
-					btn_bg = "#ECECEC",
-					btn_fg = "#000000",
-					backdrop = "#00000088",
-					radius = 6,
-				})
-			end)
-		elseif
-			key == "logout"
-			or key == "logoff"
-			or raw_text:find("logout")
-			or raw_text:find("log off")
-			or raw_text:find("exit")
-		then
-			matched = true
-			bind(function()
-				Dialogs.logout_confirm({
-					bg = FOOTER_BG,
-					fg = FOOTER_FG,
-					btn_bg = "#ECECEC",
-					btn_fg = "#000000",
-					backdrop = "#00000088",
-					radius = 6,
-				})
-			end)
-		end
-
-		if not matched and p.on_press then
-			bind(function()
-				p.on_press()
-			end)
-		end
-
-		table.insert(powers, fitted)
-	end
-
-	local powers_right = wibox.widget({
-		powers,
-		halign = "right",
-		widget = wibox.container.place,
+	local powers_right = P.power_bar(opts.power_items or {}, t, {
+		inner_h = inner_h,
+		dialogs = Dialogs,
 	})
 
 	-- ---------------------------------------------------------------------------
@@ -205,7 +130,7 @@ function Footer.build(arg1, arg2)
 	local row = wibox.widget({
 		search_box,
 		nil,
-		powers_right,
+		powers_right, -- rechts
 		expand = "inside",
 		layout = wibox.layout.align.horizontal,
 	})

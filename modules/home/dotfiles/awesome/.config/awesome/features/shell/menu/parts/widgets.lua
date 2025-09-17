@@ -323,8 +323,89 @@ function P.power_button(btn, t)
 
 	-- Dem Aufrufer (Footer) das echte Click-Target geben:
 	fixed._click_target = box
-
 	return fixed
+end
+
+-- ---------- POWER-BAR (rechte Button-Leiste für den Footer) ----------
+-- power_items: { {id?, text/label, icon, on_press?}, ... }
+-- t: Theme/Größen
+-- opts.inner_h: Innenhöhe (Footer_H - Pads)
+-- opts.dialogs: Modul mit .power() und .logout_confirm() (optional)
+function P.power_bar(power_items, t, opts)
+	t = with_defaults(t)
+	opts = opts or {}
+	local inner_h = opts.inner_h or t.footer_h or 48
+
+	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing or 0 }
+
+	for _, p in ipairs(power_items or {}) do
+		-- eigene Theme-Kopie pro Button
+		local t_btn = {}
+		for k, v in pairs(t) do
+			t_btn[k] = v
+		end
+		t_btn.defer_power_clicks = true
+		t_btn._power_inner_h = inner_h -- falls du künftig Ratios nutzen willst
+
+		local btn = P.power_button(p, t_btn)
+		local fixed = wibox.widget({
+			btn,
+			strategy = "exact",
+			height = inner_h,
+			widget = wibox.container.constraint,
+		})
+
+		local inner = btn._click_target or btn
+		inner:buttons({})
+		btn:buttons({}) -- Default-Bindings leeren, wir binden zentral
+
+		local raw_text = (p.text or p.label or ""):lower()
+		local key = (p.id or raw_text):gsub("%s+", ""):lower()
+
+		local function bind(handler)
+			local b = gears.table.join(awful.button({}, 1, handler))
+			inner:buttons(b)
+			btn:buttons(b)
+		end
+
+		local matched = false
+		if opts.dialogs then
+			if key == "power" or raw_text:find("shutdown") or raw_text:find("turnoff") then
+				matched = true
+				bind(function()
+					opts.dialogs.power({
+						bg = t.footer_bg or t.bg,
+						fg = t.footer_fg or t.fg,
+						btn_bg = t.dialog_btn_bg or "#ECECEC",
+						btn_fg = t.dialog_btn_fg or "#000000",
+						backdrop = t.dialog_backdrop or "#00000088",
+						radius = t.dialog_radius or 6,
+					})
+				end)
+			elseif key == "logout" or key == "logoff" or raw_text:find("logout") or raw_text:find("exit") then
+				matched = true
+				bind(function()
+					opts.dialogs.logout_confirm({
+						bg = t.footer_bg or t.bg,
+						fg = t.footer_fg or t.fg,
+						btn_bg = t.dialog_btn_bg or "#ECECEC",
+						btn_fg = t.dialog_btn_fg or "#000000",
+						backdrop = t.dialog_backdrop or "#00000088",
+						radius = t.dialog_radius or 6,
+					})
+				end)
+			end
+		end
+
+		if not matched and p.on_press then
+			bind(p.on_press)
+		end
+
+		table.insert(bar, fixed)
+	end
+
+	-- rechtsbündig ausrichten
+	return wibox.widget({ bar, halign = "right", widget = wibox.container.place })
 end
 
 return P
