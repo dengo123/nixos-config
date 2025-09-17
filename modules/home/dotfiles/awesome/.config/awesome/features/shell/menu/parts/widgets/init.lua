@@ -41,25 +41,6 @@ local DEFAULTS = {
 	row_bg_hover = nil,
 	row_h = 48,
 	list_spacing = 0, -- kein sichtbarer Abstand zwischen Reihen
-	row_spacing = 8,
-	row_pad_l = 10,
-	row_pad_r = 10,
-	row_pad_t = 4,
-	row_pad_b = 4,
-
-	-- Typografie / Ratios (optional; greifen nur, wenn gesetzt)
-	font_family = "Sans",
-	text_size = nil, -- absolut global
-	text_size_rows = nil, -- absolut für rows
-	text_ratio = nil, -- globaler Ratio (0..1) – nur wenn gesetzt
-	text_ratio_rows = nil, -- Ratio nur für rows
-	text_min = nil, -- optionale Klammern
-	text_max = nil,
-
-	-- Icons (absolut vs. Ratio)
-	icon_size = 18, -- alter Default beibehalten
-	icon_ratio = nil, -- globaler Ratio (0..1) – nur wenn gesetzt
-	icon_ratio_rows = nil, -- Ratio nur für rows
 
 	-- Footer power buttons
 	footer_bg = "#235CDB",
@@ -70,11 +51,6 @@ local DEFAULTS = {
 	power_w = 110,
 	power_h = 48,
 	power_icon_size = 16,
-	power_spacing = 6,
-	power_pad_l = 10,
-	power_pad_r = 10,
-	power_pad_t = 4,
-	power_pad_b = 4,
 }
 
 local function with_defaults(t)
@@ -90,69 +66,6 @@ local function with_defaults(t)
 	t.row_bg_hover = t.row_bg_hover or adjust(t.row_bg, -8)
 	t.power_bg_hover = t.power_bg_hover or adjust(t.power_bg, -12)
 	return t
-end
-
--- ---------- Ratio-Resolver (greifen nur, wenn Ratios/Größen gesetzt sind) ----------
-local function resolve_text_px(t, eff_h, kind)
-	-- absolute Größe hat Vorrang
-	if kind == "rows" and t.text_size_rows then
-		return t.text_size_rows
-	end
-	if t.text_size then
-		return t.text_size
-	end
-
-	-- Ratio? (nur, wenn gesetzt)
-	local ratio = nil
-	if kind == "rows" and t.text_ratio_rows then
-		ratio = t.text_ratio_rows
-	end
-	if not ratio then
-		ratio = t.text_ratio
-	end
-	if not ratio then
-		return nil
-	end -- kein Ratio gesetzt → nichts ändern
-
-	local sz = math.max(1, math.floor(eff_h * ratio + 0.5))
-	if t.text_min then
-		sz = math.max(sz, t.text_min)
-	end
-	if t.text_max then
-		sz = math.min(sz, t.text_max)
-	end
-	return sz
-end
-
-local function resolve_font(t, eff_h, kind)
-	local px = resolve_text_px(t, eff_h, kind)
-	if not px then
-		return nil
-	end
-	local family = t.font_family or "Sans"
-	return family .. " " .. tostring(px)
-end
-
-local function resolve_icon_px(t, eff_h, kind)
-	-- absolute Größe hat Vorrang
-	if kind == "rows" and t.icon_size then
-		return t.icon_size
-	end
-
-	-- Ratio? (nur, wenn gesetzt)
-	local ratio = nil
-	if kind == "rows" and t.icon_ratio_rows then
-		ratio = t.icon_ratio_rows
-	end
-	if not ratio then
-		ratio = t.icon_ratio
-	end
-	if ratio then
-		return math.max(1, math.floor(eff_h * ratio + 0.5))
-	end
-
-	-- Fallback auf bisherigen Default
-	return t.icon_size or DEFAULTS.icon_size
 end
 
 -- ---------- Hover Helper ----------
@@ -182,50 +95,30 @@ function P.fixed_height(widget, h)
 end
 
 -- ---------- LISTEN-ROW / COLUMN-BUTTON ----------
--- item = { icon=..., text=..., on_press=function() ... end }
 function P.row_widget(item, t)
 	t = with_defaults(t)
-
-	local eff_h = t.row_h or 48
-	local pad_t = t.row_pad_t or 0
-	local pad_b = t.row_pad_b or 0
-	local avail_h = math.max(eff_h - pad_t - pad_b, 1)
-
-	local icon_px = resolve_icon_px(t, avail_h, "rows")
-	local font = resolve_font(t, avail_h, "rows")
-
-	local hline = wibox.widget({
-		{
-			image = item.icon,
-			resize = true,
-			forced_height = icon_px,
-			forced_width = icon_px,
-			widget = wibox.widget.imagebox,
-		},
-		{
-			text = item.text or "",
-			font = font, -- wird nur gesetzt, wenn Ratio/px bestimmt wurde
-			valign = "center", -- vertikal zentriert
-			widget = wibox.widget.textbox,
-		},
-		spacing = t.row_spacing or 8,
-		layout = wibox.layout.fixed.horizontal,
-	})
-
-	-- vertikal zentriert, linksbündig
-	local centered = wibox.widget({
-		hline,
-		halign = "left",
-		valign = "center",
-		widget = wibox.container.place,
-	})
+	local icon_size = t.icon_size or 18
 
 	local content = wibox.widget({
-		centered,
+		{
+			{
+				image = item.icon,
+				resize = true,
+				forced_height = icon_size,
+				forced_width = icon_size,
+				widget = wibox.widget.imagebox,
+			},
+			{
+				text = item.text or "",
+				widget = wibox.widget.textbox,
+			},
+			spacing = t.row_spacing or 8,
+			layout = wibox.layout.fixed.horizontal,
+		},
 		left = t.row_pad_l or 10,
 		right = t.row_pad_r or 10,
-		top = pad_t,
-		bottom = pad_b,
+		top = t.row_pad_t or 4,
+		bottom = t.row_pad_b or 4,
 		widget = wibox.container.margin,
 	})
 
@@ -244,7 +137,7 @@ function P.row_widget(item, t)
 		end
 	end)))
 
-	return P.fixed_height(bg_box, eff_h)
+	return P.fixed_height(bg_box, t.row_h)
 end
 
 function P.list_widget(items, t)
@@ -257,7 +150,6 @@ function P.list_widget(items, t)
 end
 
 -- ---------- FOOTER-POWER-BUTTON ----------
--- btn = { icon=..., text=..., on_press=function() ... end }
 function P.power_button(btn, t)
 	t = with_defaults(t)
 	local size = t.power_icon_size
@@ -272,23 +164,15 @@ function P.power_button(btn, t)
 		},
 		{
 			text = btn.text or "",
-			valign = "center",
 			widget = wibox.widget.textbox,
 		},
 		spacing = t.power_spacing or 6,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	local placed = wibox.widget({
-		inner,
-		halign = "left",
-		valign = "center",
-		widget = wibox.container.place,
-	})
-
 	local box = wibox.widget({
 		{
-			placed,
+			inner,
 			left = t.power_pad_l or 10,
 			right = t.power_pad_r or 10,
 			top = t.power_pad_t or 4,
