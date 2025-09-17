@@ -73,7 +73,49 @@ function M.power_bar(power_items, t, opts)
 	local inner_h = opts.inner_h or t.footer_h or 48
 	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
 
+	-- helper: normalize id/label
+	local function norm(s)
+		s = tostring(s or ""):lower()
+		-- alles Nicht-Alphanumerische (inkl. Leerzeichen/Bindestriche/Unterstriche) entfernen
+		s = s:gsub("[%s%p_%-]+", "")
+		return s
+	end
+
+	local function decide_action(p)
+		local text = (p.text or p.label or "")
+		local id = p.id or text
+		local key = norm(id)
+		local raw = tostring(text):lower()
+
+		-- POWER
+		if
+			key == "power"
+			or key == "poweroff"
+			or key == "shutdown"
+			or raw:find("shutdown")
+			or raw:find("power%s*off")
+			or raw:find("turn%s*off")
+		then
+			return "power"
+		end
+		-- LOGOUT
+		if
+			key == "logout"
+			or key == "logoff"
+			or key == "signout"
+			or key == "signoff"
+			or raw:find("log[%s%-]*out")
+			or raw:find("log[%s%-]*off")
+			or raw:find("sign[%s%-]*out")
+			or raw:find("exit")
+		then
+			return "logout"
+		end
+		return nil
+	end
+
 	for _, p in ipairs(power_items or {}) do
+		-- Button mit „deferred clicks“ bauen
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
@@ -84,12 +126,10 @@ function M.power_bar(power_items, t, opts)
 		local btn = M.power_button(p, t_btn)
 		local fixed = wibox.widget({ btn, strategy = "exact", height = inner_h, widget = wibox.container.constraint })
 
+		-- alle vorhandenen Bindings entfernen (safety)
 		local inner = btn._click_target or btn
 		inner:buttons({})
 		btn:buttons({})
-
-		local raw = (p.text or p.label or ""):lower()
-		local key = (p.id or raw):gsub("%s+", ""):lower()
 
 		local function bind(fn)
 			local b = gears.table.join(awful.button({}, 1, fn))
@@ -97,35 +137,37 @@ function M.power_bar(power_items, t, opts)
 			btn:buttons(b)
 		end
 
-		local matched = false
-		if opts.dialogs then
-			if key == "power" or raw:find("shutdown") or raw:find("turnoff") then
-				matched = true
-				bind(function()
-					opts.dialogs.power({
-						bg = t.footer_bg or t.bg,
-						fg = t.footer_fg or t.fg,
-						btn_bg = t.dialog_btn_bg or "#ECECEC",
-						btn_fg = t.dialog_btn_fg or "#000000",
-						backdrop = t.dialog_backdrop or "#00000088",
-						radius = t.dialog_radius or 6,
-					})
-				end)
-			elseif key == "logout" or key == "logoff" or raw:find("logout") or raw:find("exit") then
-				matched = true
-				bind(function()
-					opts.dialogs.logout_confirm({
-						bg = t.footer_bg or t.bg,
-						fg = t.footer_fg or t.fg,
-						btn_bg = t.dialog_btn_bg or "#ECECEC",
-						btn_fg = t.dialog_btn_fg or "#000000",
-						backdrop = t.dialog_backdrop or "#00000088",
-						radius = t.dialog_radius or 6,
-					})
-				end)
-			end
+		local action = decide_action(p)
+		local did_bind = false
+
+		if opts.dialogs and action == "power" and type(opts.dialogs.power) == "function" then
+			bind(function()
+				opts.dialogs.power({
+					bg = t.footer_bg or t.bg,
+					fg = t.footer_fg or t.fg,
+					btn_bg = t.dialog_btn_bg or "#ECECEC",
+					btn_fg = t.dialog_btn_fg or "#000000",
+					backdrop = t.dialog_backdrop or "#00000088",
+					radius = t.dialog_radius or 6,
+				})
+			end)
+			did_bind = true
+		elseif opts.dialogs and action == "logout" and type(opts.dialogs.logout_confirm) == "function" then
+			bind(function()
+				opts.dialogs.logout_confirm({
+					bg = t.footer_bg or t.bg,
+					fg = t.footer_fg or t.fg,
+					btn_bg = t.dialog_btn_bg or "#ECECEC",
+					btn_fg = t.dialog_btn_fg or "#000000",
+					backdrop = t.dialog_backdrop or "#00000088",
+					radius = t.dialog_radius or 6,
+				})
+			end)
+			did_bind = true
 		end
-		if not matched and p.on_press then
+
+		-- Fallback nur, wenn kein Dialog-Binding stattfand
+		if not did_bind and p.on_press then
 			bind(p.on_press)
 		end
 

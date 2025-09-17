@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/components/footer.lua
+-- ~/.config/awesome/features/shell/menu/parts/footer.lua
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")

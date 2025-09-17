@@ -32,7 +32,7 @@ M.DEFAULTS = {
 
 	-- Globale Typografie/Icon Ratios (overridebar: *_header/_rows/_power)
 	font_family = "Sans",
-	text_ratio = 0.22,
+	text_ratio = 0.25,
 	text_ratio_header = nil,
 	text_ratio_rows = nil,
 	text_ratio_power = nil,
@@ -43,7 +43,7 @@ M.DEFAULTS = {
 	text_min = nil,
 	text_max = nil,
 
-	icon_ratio = 0.60,
+	icon_ratio = 0.90,
 	icon_ratio_header = nil,
 	icon_ratio_rows = nil,
 	icon_ratio_power = nil,

@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/components/columns.lua
+-- ~/.config/awesome/features/shell/menu/parts/columns.lua
 local wibox = require("wibox")
 local gears = require("gears")
 local P = require("features.shell.menu.widgets")
