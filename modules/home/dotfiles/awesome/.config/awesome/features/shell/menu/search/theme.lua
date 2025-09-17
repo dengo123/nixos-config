@@ -8,7 +8,6 @@ local Theme = {
 	hit_w = 180,
 	expand_w = 180,
 
-	height = 36, -- Zielhöhe der Suchleiste (inner)
 	pad_l = 10,
 	pad_r = 10,
 	pad_t = 2,

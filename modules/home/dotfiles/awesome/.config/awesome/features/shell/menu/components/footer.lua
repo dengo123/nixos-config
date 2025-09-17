@@ -43,10 +43,6 @@ function Footer.build(arg1, arg2)
 	local inner_margin = wibox.widget({
 		prompt,
 		id = "inner_margin",
-		left = 0,
-		right = 0,
-		top = 0,
-		bottom = 0, -- neutral; Search setzt Werte
 		widget = wibox.container.margin,
 	})
 
@@ -76,7 +72,6 @@ function Footer.build(arg1, arg2)
 	local height_ctl = wibox.widget({
 		bg_box,
 		strategy = "exact",
-		height = 1, -- neutraler Startwert
 		widget = wibox.container.constraint,
 	})
 
@@ -91,7 +86,6 @@ function Footer.build(arg1, arg2)
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
-		width = 1, -- neutral; Search setzt hit/expand width
 		widget = wibox.container.constraint,
 	})
 
