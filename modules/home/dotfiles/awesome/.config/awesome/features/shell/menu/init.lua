@@ -1,7 +1,7 @@
 -- features/shell/menu/init.lua
 local base = require("features.shell.menu.parts.base")
-local defaults = require("features.shell.menu.parts.apps")
-local Popup = require("features.shell.menu.components.popup") -- für make_launcher
+local defaults = require("features.shell.menu.widgets.apps")
+local Popup = require("features.shell.menu.parts.popup") -- für make_launcher
 local beautiful = require("beautiful")
 local menubar = require("menubar")
 

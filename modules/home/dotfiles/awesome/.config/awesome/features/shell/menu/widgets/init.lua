@@ -1,12 +1,11 @@
 -- ~/.config/awesome/features/shell/menu/parts/widgets.lua
--- (falls deine Datei nicht unter shared/ liegt, passe den Pfad an oder verschiebe sie.)
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local P = {}
 
--- ---------- Farb-Utils ----------
+-- ========== Utils: Farben ==========
 local function clamp(x, a, b)
 	return math.max(a, math.min(b, x))
 end
@@ -29,52 +28,77 @@ local function adjust(hex, pct)
 	return rgb_to_hex(r * f, g * f, b * f)
 end
 
--- ---------- Defaults ----------
+-- ========== Defaults (Standardisierte Keys) ==========
+-- Schema: {scope}_{prop}, z.B. header_h, row_pad_l, power_icon_size
 local DEFAULTS = {
+	-- Grundfarben
 	bg = "#235CDB",
 	fg = "#FFFFFF",
 	bg_focus = nil,
+
+	-- Globale Typografie/Icon Ratios (overrides: *_header, *_rows, *_power)
+	font_family = "Sans",
+	text_ratio = 0.25, -- Standard-Text-Ratio (0..1)
+	text_ratio_header = nil,
+	text_ratio_rows = nil,
+	text_ratio_power = nil,
+	text_size = nil, -- absolute Größe global
+	text_size_header = nil,
+	text_size_rows = nil,
+	text_size_power = nil,
+	text_min = nil, -- clamp optional
+	text_max = nil,
+
+	icon_ratio = 0.80, -- Standard-Icon-Ratio (0..1)
+	icon_ratio_header = nil,
+	icon_ratio_rows = nil,
+	icon_ratio_power = nil,
+	-- Absolute Größen bleiben kompatibel, werden aber von Ratios übersteuert
+	avatar_size = nil, -- alias für header icon size
+	icon_size = nil, -- global absolute icon size (Rows)
+	icon_size_header = nil,
+	icon_size_rows = nil,
+	icon_size_power = nil,
+
+	-- Header Layout
+	header_h = 64,
+	header_bg = nil, -- fallback: t.bg
+	header_fg = nil, -- fallback: t.fg
+	header_pad_l = 10,
+	header_pad_r = 10,
+	header_pad_t = 8,
+	header_pad_b = 8,
+	header_spacing = 10,
+	header_text_spacing = 2,
+	avatar_radius = 8,
 
 	-- Rows (Columns)
 	row_bg = "#FFFFFF",
 	row_fg = "#000000",
 	row_bg_hover = nil,
 	row_h = 48,
-	list_spacing = 0, -- kein sichtbarer Abstand zwischen Reihen
-	row_spacing = 8,
 	row_pad_l = 10,
 	row_pad_r = 10,
 	row_pad_t = 4,
 	row_pad_b = 4,
+	row_spacing = 8,
+	list_spacing = 0,
 
-	-- Typografie / Ratios (optional; greifen nur, wenn gesetzt)
-	font_family = "Sans",
-	text_size = nil, -- absolut global
-	text_size_rows = nil, -- absolut für rows
-	text_ratio = nil, -- globaler Ratio (0..1) – nur wenn gesetzt
-	text_ratio_rows = nil, -- Ratio nur für rows
-	text_min = nil, -- optionale Klammern
-	text_max = nil,
-
-	-- Icons (absolut vs. Ratio)
-	icon_size = 18, -- alter Default beibehalten
-	icon_ratio = nil, -- globaler Ratio (0..1) – nur wenn gesetzt
-	icon_ratio_rows = nil, -- Ratio nur für rows
-
-	-- Footer power buttons
+	-- Footer / Power
 	footer_bg = "#235CDB",
 	footer_fg = "#FFFFFF",
-	power_bg = nil,
-	power_fg = nil,
+	power_bg = nil, -- fallback: footer_bg
+	power_fg = nil, -- fallback: footer_fg
 	power_bg_hover = nil,
 	power_w = 110,
 	power_h = 48,
-	power_icon_size = 16,
-	power_spacing = 6,
 	power_pad_l = 10,
 	power_pad_r = 10,
 	power_pad_t = 4,
 	power_pad_b = 4,
+	power_spacing = 6,
+	power_icon_size = nil, -- alt; bleibt kompatibel (weniger bevorzugt wenn Ratio gesetzt)
+	power_bar_spacing = 0, -- spacing zwischen Buttons in der Leiste
 }
 
 local function with_defaults(t)
@@ -92,29 +116,33 @@ local function with_defaults(t)
 	return t
 end
 
--- ---------- Ratio-Resolver (greifen nur, wenn Ratios/Größen gesetzt sind) ----------
-local function resolve_text_px(t, eff_h, kind)
-	-- absolute Größe hat Vorrang
+-- ========== Größen-Resolver (Ratio > Absolute > Fallback) ==========
+local function resolve_text_size_number(t, eff_h, kind)
+	-- 1) absolute
+	if kind == "header" and t.text_size_header then
+		return t.text_size_header
+	end
 	if kind == "rows" and t.text_size_rows then
 		return t.text_size_rows
+	end
+	if kind == "power" and t.text_size_power then
+		return t.text_size_power
 	end
 	if t.text_size then
 		return t.text_size
 	end
-
-	-- Ratio? (nur, wenn gesetzt)
-	local ratio = nil
+	-- 2) ratio
+	local ratio = t.text_ratio
+	if kind == "header" and t.text_ratio_header then
+		ratio = t.text_ratio_header
+	end
 	if kind == "rows" and t.text_ratio_rows then
 		ratio = t.text_ratio_rows
 	end
-	if not ratio then
-		ratio = t.text_ratio
+	if kind == "power" and t.text_ratio_power then
+		ratio = t.text_ratio_power
 	end
-	if not ratio then
-		return nil
-	end -- kein Ratio gesetzt → nichts ändern
-
-	local sz = math.max(1, math.floor(eff_h * ratio + 0.5))
+	local sz = math.max(1, math.floor(eff_h * (ratio or DEFAULTS.text_ratio) + 0.5))
 	if t.text_min then
 		sz = math.max(sz, t.text_min)
 	end
@@ -125,37 +153,57 @@ local function resolve_text_px(t, eff_h, kind)
 end
 
 local function resolve_font(t, eff_h, kind)
-	local px = resolve_text_px(t, eff_h, kind)
-	if not px then
-		return nil
-	end
 	local family = t.font_family or "Sans"
-	return family .. " " .. tostring(px)
+	local size = resolve_text_size_number(t, eff_h, kind)
+	return family .. " " .. tostring(size)
 end
 
-local function resolve_icon_px(t, eff_h, kind)
-	-- absolute Größe hat Vorrang
-	if kind == "rows" and t.icon_size then
+local function resolve_icon_size(t, eff_h, kind)
+	-- 1) kind-spezifische absolute
+	if kind == "header" then
+		if t.icon_size_header then
+			return t.icon_size_header
+		end
+		if t.avatar_size then
+			return t.avatar_size
+		end -- Back-compat alias
+	elseif kind == "rows" then
+		if t.icon_size_rows then
+			return t.icon_size_rows
+		end
+	elseif kind == "power" then
+		if t.icon_size_power then
+			return t.icon_size_power
+		end
+		if t.power_icon_size then
+			return t.power_icon_size
+		end -- Back-compat alias
+	end
+	-- 2) globale absolute
+	if t.icon_size then
 		return t.icon_size
 	end
-
-	-- Ratio? (nur, wenn gesetzt)
-	local ratio = nil
+	-- 3) ratio (kind-spezifisch > global)
+	local ratio = t.icon_ratio
+	if kind == "header" and t.icon_ratio_header then
+		ratio = t.icon_ratio_header
+	end
 	if kind == "rows" and t.icon_ratio_rows then
 		ratio = t.icon_ratio_rows
 	end
-	if not ratio then
-		ratio = t.icon_ratio
+	if kind == "power" and t.icon_ratio_power then
+		ratio = t.icon_ratio_power
 	end
-	if ratio then
-		return math.max(1, math.floor(eff_h * ratio + 0.5))
-	end
-
-	-- Fallback auf bisherigen Default
-	return t.icon_size or DEFAULTS.icon_size
+	ratio = ratio or DEFAULTS.icon_ratio
+	return math.max(1, math.floor(eff_h * ratio + 0.5))
 end
 
--- ---------- Hover Helper ----------
+-- (optional) export der Resolver für spätere Nutzung
+P.resolve_font = resolve_font
+P.resolve_icon_size = resolve_icon_size
+P.resolve_text_size_number = resolve_text_size_number
+
+-- ========== Hover & Helpers ==========
 function P.apply_hover(bg_container, t, normal, hover)
 	t = with_defaults(t)
 	local normal_bg = normal or t.bg
@@ -171,27 +219,20 @@ function P.apply_hover(bg_container, t, normal, hover)
 	end)
 end
 
--- ---------- Fixhöhe-Wrapper ----------
 function P.fixed_height(widget, h)
-	return wibox.widget({
-		widget,
-		strategy = "exact",
-		height = h,
-		widget = wibox.container.constraint,
-	})
+	return wibox.widget({ widget, strategy = "exact", height = h, widget = wibox.container.constraint })
 end
 
--- ---------- LISTEN-ROW / COLUMN-BUTTON ----------
+-- ========== ROWS (Columns) ==========
 -- item = { icon=..., text=..., on_press=function() ... end }
 function P.row_widget(item, t)
 	t = with_defaults(t)
-
 	local eff_h = t.row_h or 48
 	local pad_t = t.row_pad_t or 0
 	local pad_b = t.row_pad_b or 0
 	local avail_h = math.max(eff_h - pad_t - pad_b, 1)
 
-	local icon_px = resolve_icon_px(t, avail_h, "rows")
+	local icon_px = resolve_icon_size(t, avail_h, "rows")
 	local font = resolve_font(t, avail_h, "rows")
 
 	local hline = wibox.widget({
@@ -204,16 +245,15 @@ function P.row_widget(item, t)
 		},
 		{
 			text = item.text or "",
-			font = font, -- wird nur gesetzt, wenn Ratio/px bestimmt wurde
-			valign = "center", -- vertikal zentriert
+			font = font,
+			valign = "center",
 			widget = wibox.widget.textbox,
 		},
-		spacing = t.row_spacing or 8,
+		spacing = t.row_spacing,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	-- vertikal zentriert, linksbündig
-	local centered = wibox.widget({
+	local placed = wibox.widget({
 		hline,
 		halign = "left",
 		valign = "center",
@@ -221,21 +261,15 @@ function P.row_widget(item, t)
 	})
 
 	local content = wibox.widget({
-		centered,
-		left = t.row_pad_l or 10,
-		right = t.row_pad_r or 10,
+		placed,
+		left = t.row_pad_l,
+		right = t.row_pad_r,
 		top = pad_t,
 		bottom = pad_b,
 		widget = wibox.container.margin,
 	})
 
-	local bg_box = wibox.widget({
-		content,
-		bg = t.row_bg,
-		fg = t.row_fg,
-		widget = wibox.container.background,
-	})
-
+	local bg_box = wibox.widget({ content, bg = t.row_bg, fg = t.row_fg, widget = wibox.container.background })
 	P.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
 
 	bg_box:buttons(gears.table.join(awful.button({}, 1, function()
@@ -256,31 +290,40 @@ function P.list_widget(items, t)
 	return wibox.widget(box)
 end
 
--- ---------- FOOTER-POWER-BUTTON ----------
+-- ========== POWER-BUTTON ==========
 -- btn = { icon=..., text=..., on_press=function() ... end }
 function P.power_button(btn, t)
 	t = with_defaults(t)
-	local size = t.power_icon_size
 
-	local inner = wibox.widget({
+	-- verfügbare Höhe für Ratio-Berechnung: aus Power-Bar (inner_h) oder eigener power_h
+	local eff_h = (t._power_inner_h or t.power_h or 48)
+	local pad_t = t.power_pad_t or 0
+	local pad_b = t.power_pad_b or 0
+	local avail_h = math.max(eff_h - pad_t - pad_b, 1)
+
+	local icon_px = resolve_icon_size(t, avail_h, "power")
+	local font = resolve_font(t, avail_h, "power")
+
+	local inner_hbox = wibox.widget({
 		{
 			image = btn.icon,
 			resize = true,
-			forced_height = size,
-			forced_width = size,
+			forced_height = icon_px,
+			forced_width = icon_px,
 			widget = wibox.widget.imagebox,
 		},
 		{
 			text = btn.text or "",
+			font = font, -- Ratio/px-basierte Schrift
 			valign = "center",
 			widget = wibox.widget.textbox,
 		},
-		spacing = t.power_spacing or 6,
+		spacing = t.power_spacing,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
 	local placed = wibox.widget({
-		inner,
+		inner_hbox,
 		halign = "left",
 		valign = "center",
 		widget = wibox.container.place,
@@ -289,10 +332,10 @@ function P.power_button(btn, t)
 	local box = wibox.widget({
 		{
 			placed,
-			left = t.power_pad_l or 10,
-			right = t.power_pad_r or 10,
-			top = t.power_pad_t or 4,
-			bottom = t.power_pad_b or 4,
+			left = t.power_pad_l,
+			right = t.power_pad_r,
+			top = pad_t,
+			bottom = pad_b,
 			widget = wibox.container.margin,
 		},
 		bg = t.power_bg,
@@ -301,10 +344,8 @@ function P.power_button(btn, t)
 		widget = wibox.container.background,
 	})
 
-	-- Hover
 	P.apply_hover(box, t, t.power_bg, t.power_bg_hover)
 
-	-- *** WICHTIG: Default-Click NUR wenn NICHT defered ***
 	if not (t.defer_power_clicks or btn.no_default_click) then
 		box:buttons(gears.table.join(awful.button({}, 1, function()
 			if btn.on_press then
@@ -321,46 +362,36 @@ function P.power_button(btn, t)
 		widget = wibox.container.constraint,
 	})
 
-	-- Dem Aufrufer (Footer) das echte Click-Target geben:
 	fixed._click_target = box
 	return fixed
 end
 
--- ---------- POWER-BAR (rechte Button-Leiste für den Footer) ----------
+-- ========== POWER-BAR (rechte Leiste) ==========
 -- power_items: { {id?, text/label, icon, on_press?}, ... }
--- t: Theme/Größen
--- opts.inner_h: Innenhöhe (Footer_H - Pads)
--- opts.dialogs: Modul mit .power() und .logout_confirm() (optional)
+-- opts.inner_h: Innenhöhe (Footer_H - Pads), opts.dialogs: { power=fn, logout_confirm=fn }
 function P.power_bar(power_items, t, opts)
 	t = with_defaults(t)
 	opts = opts or {}
 	local inner_h = opts.inner_h or t.footer_h or 48
-
-	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing or 0 }
+	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
 
 	for _, p in ipairs(power_items or {}) do
-		-- eigene Theme-Kopie pro Button
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
 		end
 		t_btn.defer_power_clicks = true
-		t_btn._power_inner_h = inner_h -- falls du künftig Ratios nutzen willst
+		t_btn._power_inner_h = inner_h
 
 		local btn = P.power_button(p, t_btn)
-		local fixed = wibox.widget({
-			btn,
-			strategy = "exact",
-			height = inner_h,
-			widget = wibox.container.constraint,
-		})
+		local fixed = wibox.widget({ btn, strategy = "exact", height = inner_h, widget = wibox.container.constraint })
 
 		local inner = btn._click_target or btn
 		inner:buttons({})
-		btn:buttons({}) -- Default-Bindings leeren, wir binden zentral
+		btn:buttons({})
 
-		local raw_text = (p.text or p.label or ""):lower()
-		local key = (p.id or raw_text):gsub("%s+", ""):lower()
+		local raw = (p.text or p.label or ""):lower()
+		local key = (p.id or raw):gsub("%s+", ""):lower()
 
 		local function bind(handler)
 			local b = gears.table.join(awful.button({}, 1, handler))
@@ -370,7 +401,7 @@ function P.power_bar(power_items, t, opts)
 
 		local matched = false
 		if opts.dialogs then
-			if key == "power" or raw_text:find("shutdown") or raw_text:find("turnoff") then
+			if key == "power" or raw:find("shutdown") or raw:find("turnoff") then
 				matched = true
 				bind(function()
 					opts.dialogs.power({
@@ -382,7 +413,7 @@ function P.power_bar(power_items, t, opts)
 						radius = t.dialog_radius or 6,
 					})
 				end)
-			elseif key == "logout" or key == "logoff" or raw_text:find("logout") or raw_text:find("exit") then
+			elseif key == "logout" or key == "logoff" or raw:find("logout") or raw:find("exit") then
 				matched = true
 				bind(function()
 					opts.dialogs.logout_confirm({
@@ -400,52 +431,23 @@ function P.power_bar(power_items, t, opts)
 		if not matched and p.on_press then
 			bind(p.on_press)
 		end
-
 		table.insert(bar, fixed)
 	end
 
-	-- rechtsbündig ausrichten
 	return wibox.widget({ bar, halign = "right", widget = wibox.container.place })
 end
 
--- ---------- HEADER: Avatar + Text (nur Inhalt, kein Container) ----------
--- user: { name, avatar, subtitle }
--- t: Theme (icon_ratio_header/text_ratio_header | avatar_size/text_size_header, header_text_spacing, header_spacing, font_family, avatar_radius)
--- avail_h: verfügbare Innenhöhe (Header-H minus Top/Bottom-Padding)
+-- ========== HEADER: Avatar + Text (Inhalt, kein Container) ==========
+-- avail_h = header_h - pad_t - pad_b
 function P.build_header_content(user, t, avail_h)
 	t = with_defaults(t or {})
 	user = user or {}
 
-	local function resolve_header_icon_size()
-		if t.avatar_size then
-			return t.avatar_size
-		end
-		local ratio = t.icon_ratio_header or t.icon_ratio or 0.6
-		return math.max(1, math.floor(avail_h * ratio + 0.5))
-	end
+	local icon_size = resolve_icon_size(t, avail_h, "header") -- avatar über icon_ratio[_header]
+	local font = resolve_font(t, avail_h, "header")
 
-	local function resolve_header_font()
-		local family = t.font_family or "Sans"
-		local sz = t.text_size_header or t.text_size
-		if not sz then
-			local ratio = t.text_ratio_header or t.text_ratio or 0.20
-			sz = math.max(1, math.floor(avail_h * ratio + 0.5))
-			if t.text_min then
-				sz = math.max(sz, t.text_min)
-			end
-			if t.text_max then
-				sz = math.min(sz, t.text_max)
-			end
-		end
-		return family .. " " .. tostring(sz)
-	end
-
-	local icon_size = resolve_header_icon_size()
-	local font = resolve_header_font()
-
-	local AV_RAD = t.avatar_radius or 8
 	local AV_SHAPE = function(cr, w, h)
-		gears.shape.rounded_rect(cr, w, h, AV_RAD)
+		gears.shape.rounded_rect(cr, w, h, t.avatar_radius or 8)
 	end
 
 	local avatar_img = wibox.widget({
@@ -492,8 +494,8 @@ function P.build_header_content(user, t, avail_h)
 
 	local inner_centered = wibox.widget({
 		inner_line,
-		halign = "left", -- linksbündig
-		valign = "center", -- vertikal zentriert
+		halign = "left",
+		valign = "center",
 		widget = wibox.container.place,
 	})
 

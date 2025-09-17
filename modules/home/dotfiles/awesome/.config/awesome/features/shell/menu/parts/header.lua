@@ -1,7 +1,6 @@
 -- ~/.config/awesome/features/shell/menu/components/header.lua
-local gears = require("gears")
 local wibox = require("wibox")
-local P = require("features.shell.menu.parts.widgets")
+local P = require("features.shell.menu.widgets")
 
 local Header = {}
 

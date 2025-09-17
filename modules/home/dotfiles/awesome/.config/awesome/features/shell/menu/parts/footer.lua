@@ -3,7 +3,7 @@ local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 
-local P = require("features.shell.menu.parts.widgets") -- Widgets (list, buttons, power_bar)
+local P = require("features.shell.menu.widgets") -- Widgets (list, buttons, power_bar)
 local Dialogs = require("features.shell.menu.dialogs") -- Power/Logout Dialoge
 local Search = require("features.shell.menu.search") -- Search-Orchestrator
 

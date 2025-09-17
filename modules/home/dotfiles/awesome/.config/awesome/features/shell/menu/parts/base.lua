@@ -1,8 +1,8 @@
--- ~/.config/awesome/features/shell/menu/base.lua
-local Header = require("features.shell.menu.components.header")
-local Columns = require("features.shell.menu.components.columns")
-local Footer = require("features.shell.menu.components.footer")
-local Popup = require("features.shell.menu.components.popup")
+-- ~/.config/awesome/features/shell/menu/parts/base.lua
+local Header = require("features.shell.menu.parts.header")
+local Columns = require("features.shell.menu.parts.columns")
+local Footer = require("features.shell.menu.parts.footer")
+local Popup = require("features.shell.menu.parts.popup")
 
 local M = {}
 

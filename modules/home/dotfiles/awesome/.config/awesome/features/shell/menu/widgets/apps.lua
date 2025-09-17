@@ -7,7 +7,6 @@ local D = {}
 D.user = {
 	name = os.getenv("USER") or "user",
 	avatar = beautiful.awesome_icon, -- später durch Pfad ersetzen
-	subtitle = "dengo123",
 }
 
 D.left_items = {
@@ -61,7 +60,7 @@ D.power_items = {
 		end,
 	},
 	{
-		text = "Turn Off Computer",
+		text = "Turn Off",
 		icon = beautiful.awesome_icon,
 		on_press = function()
 			awful.spawn.with_shell("systemctl poweroff")
