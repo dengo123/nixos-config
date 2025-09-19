@@ -36,7 +36,7 @@ function Footer.build(arg1, arg2)
 	-- ---------------------------------------------------------------------------
 	-- Search: neutrale Host-Widgets (Styling übernimmt Search.init / theme.lua)
 	-- ---------------------------------------------------------------------------
-	-- ---- Minimal: Inline Search Bar (mit awful.widget.prompt) -----------------
+	-- ---- Minimal: Inline Search Bar (collapsed/expanded + outside click) -----
 	local function urlencode(str)
 		if not str then
 			return ""
@@ -48,15 +48,15 @@ function Footer.build(arg1, arg2)
 		return str:gsub(" ", "+")
 	end
 
-	-- Prompt + sichtbare Textbox des Prompts
+	-- Größen
+	local FIX_W = 180 -- expandierte Breite
+	local HIT_W = 60 -- kollabierte Klickfläche
+	local FOOT_H = t.footer_h or 48
+	local H = math.max(16, math.floor(FOOT_H / 3 + 0.5))
+
+	-- Prompt + sichtbare Textbox
 	local prompt = awful.widget.prompt({})
 	local textbox = prompt.widget
-
-	-- Optik: weißes Feld, schwarze Schrift, transparenter Cursor
-	textbox.bg = "#FFFFFF"
-	textbox.fg = "#000000"
-	textbox.bg_cursor = "#00000000"
-	textbox.fg_cursor = "#000000"
 	if textbox.set_align then
 		textbox:set_align("left")
 	end
@@ -66,8 +66,12 @@ function Footer.build(arg1, arg2)
 	if textbox.set_text then
 		textbox:set_text("")
 	end
+	textbox.bg = "#FFFFFF"
+	textbox.fg = "#000000"
+	textbox.bg_cursor = "#00000000" -- kein Blockcursor
+	textbox.fg_cursor = "#000000"
 
-	-- Innenabstände + weißer Hintergrund
+	-- Innenabstand
 	local inner_margin = wibox.widget({
 		textbox,
 		left = 10,
@@ -76,6 +80,8 @@ function Footer.build(arg1, arg2)
 		bottom = 4,
 		widget = wibox.container.margin,
 	})
+
+	-- Weißes Rechteck (sichtbare Fläche)
 	local bg_box = wibox.widget({
 		inner_margin,
 		bg = "#FFFFFF",
@@ -83,36 +89,96 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.background,
 	})
 
-	-- Geometrie
-	local FIX_W = 180
-	bg_box.forced_width = FIX_W
-
-	local derived_h = math.max(16, math.floor((t.footer_h or 48) / 3 + 0.5))
+	-- Höhe fixieren
 	local height_ctl = wibox.widget({
 		bg_box,
 		strategy = "exact",
-		height = derived_h,
+		height = H,
 		widget = wibox.container.constraint,
 	})
+
+	-- Vertikal mittig
 	local vcenter = wibox.widget({
 		height_ctl,
 		valign = "center",
 		widget = wibox.container.place,
 	})
+
+	-- Breite per constraint
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
-		width = FIX_W,
+		width = FIX_W, -- wird dynamisch gesetzt
 		widget = wibox.container.constraint,
 	})
+
+	-- Links im Row-Slot
 	local hleft = wibox.widget({
 		width_ctl,
 		halign = "left",
 		widget = wibox.container.place,
 	})
 
-	-- Zustand + robuste Stop-Funktion (Keyboard immer freigeben)
+	-- Zustand
 	local prompt_running = false
+	local collapsed = true
+	local saved_root_buttons = nil
+	local ignore_next_root_click = false
+
+	local function detach_root_click_watcher()
+		if saved_root_buttons then
+			root.buttons(saved_root_buttons)
+			saved_root_buttons = nil
+		end
+	end
+
+	local function attach_root_click_watcher()
+		if not saved_root_buttons then
+			saved_root_buttons = root.buttons()
+		end
+		root.buttons(gears.table.join(awful.button({}, 1, function()
+			-- den unmittelbar vorigen Klick aus der Search ignorieren
+			if ignore_next_root_click then
+				return
+			end
+			-- Kollabieren bei Klick ins Leere
+			if prompt_running then
+				pcall(function()
+					awful.keygrabber.stop()
+				end)
+			end
+			prompt_running = false
+			bg_box.bg = "#00000000"
+			inner_margin.left, inner_margin.right = 0, 0
+			inner_margin.top, inner_margin.bottom = 0, 0
+			bg_box.forced_width = HIT_W
+			width_ctl.width = HIT_W
+			width_ctl:emit_signal("widget::layout_changed")
+			collapsed = true
+			detach_root_click_watcher()
+		end)))
+	end
+
+	local function apply_collapsed_style()
+		collapsed = true
+		bg_box.bg = "#00000000" -- transparent im collapsed
+		inner_margin.left, inner_margin.right = 0, 0
+		inner_margin.top, inner_margin.bottom = 0, 0
+		bg_box.forced_width = HIT_W
+		width_ctl.width = HIT_W
+		width_ctl:emit_signal("widget::layout_changed")
+	end
+
+	local function apply_expanded_style()
+		collapsed = false
+		bg_box.bg = "#FFFFFF"
+		inner_margin.left, inner_margin.right = 10, 10
+		inner_margin.top, inner_margin.bottom = 4, 4
+		bg_box.forced_width = FIX_W
+		width_ctl.width = FIX_W
+		width_ctl:emit_signal("widget::layout_changed")
+	end
+
 	local function stop_prompt()
 		if prompt_running then
 			prompt_running = false
@@ -130,15 +196,22 @@ function Footer.build(arg1, arg2)
 				textbox:set_text("")
 			end
 		end)
+		detach_root_click_watcher()
 	end
 
-	-- Prompt starten (einen Tick verzögert → keine Grabber-Kollision)
-	local function start_prompt()
+	local function collapse()
 		stop_prompt()
+		apply_collapsed_style()
+	end
+
+	local function expand_and_start()
+		stop_prompt()
+		apply_expanded_style()
+		attach_root_click_watcher()
+
+		-- einen Tick verzögert starten → verhindert Grabber-Kollisionen
 		gears.timer.delayed_call(function()
 			prompt_running = true
-
-			-- redundante Farbsicherheit am Prompt selbst
 			pcall(function()
 				prompt.bg = "#FFFFFF"
 			end)
@@ -163,16 +236,14 @@ function Footer.build(arg1, arg2)
 					if q ~= "" then
 						awful.spawn({ "firefox", "https://duckduckgo.com/?q=" .. urlencode(q) }, false)
 					end
-					stop_prompt()
+					collapse()
 				end,
-
 				done_callback = function()
-					stop_prompt()
+					collapse()
 				end,
-
 				keypressed_callback = function(mod, key)
 					if (not mod or #mod == 0) and key == "Escape" then
-						stop_prompt()
+						collapse()
 						return true
 					end
 					return false
@@ -181,12 +252,23 @@ function Footer.build(arg1, arg2)
 		end)
 	end
 
-	-- Klick → Prompt starten
+	-- Klickfläche = ganze Bar
+	local function mark_inner_click_and_expand()
+		ignore_next_root_click = true
+		gears.timer.delayed_call(function()
+			ignore_next_root_click = false
+		end)
+		expand_and_start()
+	end
+	bg_box:buttons(gears.table.join(awful.button({}, 1, mark_inner_click_and_expand)))
+	hleft:buttons(gears.table.join(awful.button({}, 1, mark_inner_click_and_expand)))
+
+	-- Startzustand: kollabiert
+	apply_collapsed_style()
+
+	-- Widget für die Row (linke Seite einsetzen)
 	local search_box = wibox.widget({
 		hleft,
-		buttons = gears.table.join(awful.button({}, 1, function()
-			start_prompt()
-		end)),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
@@ -230,13 +312,16 @@ function Footer.build(arg1, arg2)
 	return footer,
 		{
 			focus_search = function()
-				start_prompt()
+				expand_and_start()
 			end,
 			cancel_search = function()
-				stop_prompt()
-			end, -- <— NEU: erzwingt Freigabe
+				collapse()
+			end, -- von base.lua:on_hide() aufgerufen
 			is_search_active = function()
 				return prompt_running
+			end,
+			is_collapsed = function()
+				return collapsed
 			end,
 		}
 end
