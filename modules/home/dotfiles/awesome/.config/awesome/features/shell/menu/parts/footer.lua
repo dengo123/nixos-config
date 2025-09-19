@@ -5,7 +5,6 @@ local wibox = require("wibox")
 
 local P = require("features.shell.menu.widgets") -- Widgets (list, buttons, power_bar)
 local Dialogs = require("features.shell.menu.dialogs") -- Power/Logout Dialoge
-local Search = require("features.shell.menu.search") -- Search-Orchestrator
 
 local Footer = {}
 
@@ -37,81 +36,156 @@ function Footer.build(arg1, arg2)
 	-- ---------------------------------------------------------------------------
 	-- Search: neutrale Host-Widgets (Styling übernimmt Search.init / theme.lua)
 	-- ---------------------------------------------------------------------------
-	local prompt = awful.widget.prompt({}) -- neutral; Farben/Cursor setzt die Search
+	-- ---- Minimal: Inline Search Bar (mit awful.widget.prompt) -----------------
+	local function urlencode(str)
+		if not str then
+			return ""
+		end
+		str = str:gsub("\n", " ")
+		str = str:gsub("([^%w%-%_%.%~ ])", function(c)
+			return string.format("%%%02X", string.byte(c))
+		end)
+		return str:gsub(" ", "+")
+	end
 
-	-- Margin direkt um die Textbox – wird von Search thematisiert
+	-- Prompt + sichtbare Textbox des Prompts
+	local prompt = awful.widget.prompt({})
+	local textbox = prompt.widget
+
+	-- Optik: weißes Feld, schwarze Schrift, transparenter Cursor
+	textbox.bg = "#FFFFFF"
+	textbox.fg = "#000000"
+	textbox.bg_cursor = "#00000000"
+	textbox.fg_cursor = "#000000"
+	if textbox.set_align then
+		textbox:set_align("left")
+	end
+	if textbox.set_valign then
+		textbox:set_valign("center")
+	end
+	if textbox.set_text then
+		textbox:set_text("")
+	end
+
+	-- Innenabstände + weißer Hintergrund
 	local inner_margin = wibox.widget({
-		prompt,
-		id = "inner_margin",
+		textbox,
+		left = 10,
+		right = 10,
+		top = 4,
+		bottom = 4,
 		widget = wibox.container.margin,
 	})
-
-	-- Stack: Platzhalter mit id "prompt" (Search blendet ein/aus)
-	local stack = wibox.widget({
-		{
-			inner_margin,
-			id = "prompt",
-			visible = false,
-			halign = "left",
-			valign = "center",
-			widget = wibox.container.place,
-		},
-		layout = wibox.layout.stack,
-	})
-
-	-- Hintergrundbox (Farbe/Breite setzt Search)
 	local bg_box = wibox.widget({
-		{ stack, widget = wibox.container.margin }, -- neutral; Search setzt Margins/Farben
-		shape = gears.shape.rectangle,
-		shape_clip = true,
-		bg = "#00000000",
+		inner_margin,
+		bg = "#FFFFFF",
+		fg = "#000000",
 		widget = wibox.container.background,
 	})
 
-	-- Höhe der Suchleiste (wird von Search gesetzt)
+	-- Geometrie
+	local FIX_W = 180
+	bg_box.forced_width = FIX_W
+
+	local derived_h = math.max(16, math.floor((t.footer_h or 48) / 3 + 0.5))
 	local height_ctl = wibox.widget({
 		bg_box,
 		strategy = "exact",
+		height = derived_h,
 		widget = wibox.container.constraint,
 	})
-
-	-- Vertikal mittig im Footer
 	local vcenter = wibox.widget({
 		height_ctl,
 		valign = "center",
 		widget = wibox.container.place,
 	})
-
-	-- Kollaps-/Expand-Breite (setzt Search)
 	local width_ctl = wibox.widget({
 		vcenter,
 		strategy = "exact",
+		width = FIX_W,
 		widget = wibox.container.constraint,
 	})
-
-	-- Search-Controller aufbauen: alles Theming/Verhalten kommt von dort
-	local search_ctl = Search.build({
-		-- Host-Refs
-		prompt_widget = prompt.widget, -- die eigentliche Textbox
-		prompt_node = stack, -- Container mit Kind-ID "prompt"
-		inner_margin = inner_margin, -- für pad_l/r/t/b aus Search-Theme
-		bg_box = bg_box,
-		width_ctl = width_ctl,
-		height_ctl = height_ctl,
-
-		-- Theme-Ableitung: gib dein globales Menü-Theme durch
-		shared_theme = t, -- Search.theme.from_shared(t, ...) nutzt search_* Keys
-
-		-- Verhalten/History
-		history_path = t.history_path,
-		on_search = opts.on_search,
+	local hleft = wibox.widget({
+		width_ctl,
+		halign = "left",
+		widget = wibox.container.place,
 	})
 
-	-- Klick auf die Searchbox → Fokus (Search entscheidet expand/collapse)
+	-- Zustand + robuste Stop-Funktion (Keyboard immer freigeben)
+	local prompt_running = false
+	local function stop_prompt()
+		if prompt_running then
+			prompt_running = false
+		end
+		pcall(function()
+			awful.keygrabber.stop()
+		end)
+		gears.timer.delayed_call(function()
+			pcall(function()
+				awful.keygrabber.stop()
+			end)
+		end)
+		pcall(function()
+			if textbox.set_text then
+				textbox:set_text("")
+			end
+		end)
+	end
+
+	-- Prompt starten (einen Tick verzögert → keine Grabber-Kollision)
+	local function start_prompt()
+		stop_prompt()
+		gears.timer.delayed_call(function()
+			prompt_running = true
+
+			-- redundante Farbsicherheit am Prompt selbst
+			pcall(function()
+				prompt.bg = "#FFFFFF"
+			end)
+			pcall(function()
+				prompt.fg = "#000000"
+			end)
+			pcall(function()
+				prompt.bg_cursor = "#00000000"
+			end)
+			pcall(function()
+				prompt.fg_cursor = "#000000"
+			end)
+
+			awful.prompt.run({
+				prompt = "",
+				textbox = textbox,
+				history_path = nil,
+				completion_callback = nil,
+
+				exe_callback = function(q)
+					q = (q or ""):match("^%s*(.-)%s*$")
+					if q ~= "" then
+						awful.spawn({ "firefox", "https://duckduckgo.com/?q=" .. urlencode(q) }, false)
+					end
+					stop_prompt()
+				end,
+
+				done_callback = function()
+					stop_prompt()
+				end,
+
+				keypressed_callback = function(mod, key)
+					if (not mod or #mod == 0) and key == "Escape" then
+						stop_prompt()
+						return true
+					end
+					return false
+				end,
+			})
+		end)
+	end
+
+	-- Klick → Prompt starten
 	local search_box = wibox.widget({
-		width_ctl,
+		hleft,
 		buttons = gears.table.join(awful.button({}, 1, function()
-			search_ctl:focus()
+			start_prompt()
 		end)),
 		layout = wibox.layout.fixed.horizontal,
 	})
@@ -156,13 +230,13 @@ function Footer.build(arg1, arg2)
 	return footer,
 		{
 			focus_search = function()
-				search_ctl:focus()
+				start_prompt()
 			end,
 			cancel_search = function()
-				search_ctl:cancel()
-			end,
+				stop_prompt()
+			end, -- <— NEU: erzwingt Freigabe
 			is_search_active = function()
-				return search_ctl:is_active()
+				return prompt_running
 			end,
 		}
 end
