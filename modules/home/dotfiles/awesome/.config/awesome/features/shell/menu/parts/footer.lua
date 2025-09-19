@@ -50,7 +50,7 @@ function Footer.build(arg1, arg2)
 
 	-- Größen
 	local FIX_W = 180 -- expandierte Breite
-	local HIT_W = 60 -- kollabierte Klickfläche
+	local HIT_W = 180 -- kollabierte Klickfläche
 	local FOOT_H = t.footer_h or 48
 	local H = math.max(16, math.floor(FOOT_H / 3 + 0.5))
 
@@ -119,6 +119,12 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.place,
 	})
 
+	-- Äußeres Widget der Bar (KLICKFLÄCHE = GANZE BAR)
+	local search_box = wibox.widget({
+		hleft,
+		layout = wibox.layout.fixed.horizontal,
+	})
+
 	-- Zustand
 	local prompt_running = false
 	local collapsed = true
@@ -137,17 +143,17 @@ function Footer.build(arg1, arg2)
 			saved_root_buttons = root.buttons()
 		end
 		root.buttons(gears.table.join(awful.button({}, 1, function()
-			-- den unmittelbar vorigen Klick aus der Search ignorieren
+			-- den unmittelbar vorigen Klick aus der Bar ignorieren
 			if ignore_next_root_click then
 				return
 			end
-			-- Kollabieren bei Klick ins Leere
 			if prompt_running then
 				pcall(function()
 					awful.keygrabber.stop()
 				end)
 			end
 			prompt_running = false
+			-- kollabieren
 			bg_box.bg = "#00000000"
 			inner_margin.left, inner_margin.right = 0, 0
 			inner_margin.top, inner_margin.bottom = 0, 0
@@ -252,7 +258,7 @@ function Footer.build(arg1, arg2)
 		end)
 	end
 
-	-- Klickfläche = ganze Bar
+	-- Klickfläche = GANZE BAR (search_box)
 	local function mark_inner_click_and_expand()
 		ignore_next_root_click = true
 		gears.timer.delayed_call(function()
@@ -260,17 +266,10 @@ function Footer.build(arg1, arg2)
 		end)
 		expand_and_start()
 	end
-	bg_box:buttons(gears.table.join(awful.button({}, 1, mark_inner_click_and_expand)))
-	hleft:buttons(gears.table.join(awful.button({}, 1, mark_inner_click_and_expand)))
+	search_box:buttons(gears.table.join(awful.button({}, 1, mark_inner_click_and_expand)))
 
 	-- Startzustand: kollabiert
 	apply_collapsed_style()
-
-	-- Widget für die Row (linke Seite einsetzen)
-	local search_box = wibox.widget({
-		hleft,
-		layout = wibox.layout.fixed.horizontal,
-	})
 
 	-- ---------------------------------------------------------------------------
 	-- Power-Buttons rechts (komplett in widgets.lua gelöst)
