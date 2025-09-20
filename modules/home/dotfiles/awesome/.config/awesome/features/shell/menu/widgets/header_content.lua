@@ -8,7 +8,7 @@ function M.build_header_content(user, t, avail_h)
 	t = theme.with_defaults(t or {})
 	user = user or {}
 
-	local icon_sz = theme.resolve_icon_size(t, avail_h, "header") -- Avatar via icon_ratio[_header]
+	local icon_sz = theme.resolve_icon_size(t, avail_h, "header")
 	local font = theme.resolve_font(t, avail_h, "header")
 	local shape = function(cr, w, h)
 		gears.shape.rounded_rect(cr, w, h, t.avatar_radius or 8)
@@ -30,6 +30,7 @@ function M.build_header_content(user, t, avail_h)
 		align = "left",
 		widget = wibox.widget.textbox,
 	})
+
 	local sub = wibox.widget({
 		text = user.subtitle or "",
 		font = font,
@@ -37,6 +38,7 @@ function M.build_header_content(user, t, avail_h)
 		align = "left",
 		widget = wibox.widget.textbox,
 	})
+
 	local has_sub = (user.subtitle and user.subtitle ~= "")
 	sub.visible = has_sub
 
@@ -46,9 +48,23 @@ function M.build_header_content(user, t, avail_h)
 		spacing = has_sub and (t.header_text_spacing or 2) or 0,
 		layout = wibox.layout.fixed.vertical,
 	})
-	local line =
-		wibox.widget({ avatar, column, spacing = t.header_spacing or 10, layout = wibox.layout.fixed.horizontal })
 
+	-- ✨ WICHTIG: Textspalte selbst vertikal mittig zum Avatar ausrichten
+	local column_centered = wibox.widget({
+		column,
+		halign = "left",
+		valign = "center",
+		widget = wibox.container.place,
+	})
+
+	local line = wibox.widget({
+		avatar,
+		column_centered, -- <- statt 'column' direkt
+		spacing = t.header_spacing or 10,
+		layout = wibox.layout.fixed.horizontal,
+	})
+
+	-- optional: gesamte Zeile im gepaddeten Header mittig halten (kann bleiben)
 	local placed = wibox.widget({ line, halign = "left", valign = "center", widget = wibox.container.place })
 
 	local api = {}

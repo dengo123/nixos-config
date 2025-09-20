@@ -20,7 +20,6 @@ function M.apply(cfg)
 		require("input.keys.global.layout")(modkey), -- enthält "promote to master"
 		require("input.keys.global.state")(modkey),
 		require("input.keys.global.apps")(modkey, cfg),
-		require("input.keys.global.prompt")(modkey),
 		require("input.keys.global.awesome")(modkey)
 	)
 

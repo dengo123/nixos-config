@@ -1,175 +1,388 @@
 -- features/shell/menu/search/init.lua
+-- Minimal Search-Bar Modul: klickbarer Mode (local/web), fester Prefix, robustes Open-Verhalten.
+-- API:
+--   local Search = require("features.shell.menu.search")
+--   local inst = Search.new({
+--     footer_h = 48,
+--     width_expanded = 200,
+--     width_collapsed = 200,
+--     colors = { bg="#FFFFFF", fg="#000000", bg_collapsed="#00000000" },
+--     web = { browser="firefox", engine="https://duckduckgo.com/?q=%s" },
+--   })
+--   footer_left:add(inst.widget)
+--   -- optional:
+--   inst.api.focus_local() / inst.api.focus_web() / inst.api.cancel()
+
 local awful = require("awful")
 local gears = require("gears")
-local ThemeMod = require("features.shell.menu.search.theme")
+local wibox = require("wibox")
 
 local M = {}
 
-local function pick(...)
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v ~= nil then
-			return v
-		end
+local function urlencode(str)
+	if not str then
+		return ""
+	end
+	str = str:gsub("\n", " ")
+	str = str:gsub("([^%w%-%_%.%~ ])", function(c)
+		return string.format("%%%02X", string.byte(c))
+	end)
+	return str:gsub(" ", "+")
+end
+
+-- kleine Utility: defensive call
+local function try(fn)
+	return function(...)
+		local ok, _ = pcall(fn, ...)
+		return ok
 	end
 end
 
-local function resolve_theme(shared, mod_tbl, overrides)
-	shared = shared or {}
-	mod_tbl = type(mod_tbl) == "table" and mod_tbl or {}
-	overrides = overrides or {}
+function M.new(opts)
+	opts = opts or {}
+	local FOOT_H = opts.footer_h or 48
+	local H = math.max(16, math.floor(FOOT_H / 3 + 0.5))
+	local WIDTH_EXP = opts.width_expanded or 200
+	local WIDTH_COL = opts.width_collapsed or WIDTH_EXP
+	local HOME = os.getenv("HOME") or "~"
 
-	-- abgeleitete Höhe: 1/3 der Footer-Höhe (Default 48 -> 16)
-	local footer_h = pick(shared.footer_h, 48)
-	local derived_h = math.max(1, math.floor(footer_h / 3 + 0.5))
+	local colors = opts.colors or {}
+	local BG_ACTIVE = colors.bg or "#FFFFFF"
+	local FG_ACTIVE = colors.fg or "#000000"
+	local BG_COLLAPSED = colors.bg_collapsed or "#00000000"
 
-	local t = {
-		-- Farben: spezifisch > modul > generisch > fallback
-		bg = pick(shared.search_bg, mod_tbl.search_bg, mod_tbl.bg, shared.bg, "#FFFFFF"),
-		fg = pick(shared.search_fg, mod_tbl.search_fg, mod_tbl.fg, shared.fg, "#000000"),
-		cursor = pick(shared.search_cursor, mod_tbl.cursor, "#000000"),
+	local web = opts.web or {}
+	local BROWSER = web.browser or "firefox"
+	local ENGINE_FMT = web.engine or "https://duckduckgo.com/?q=%s"
 
-		-- Breiten
-		hit_w = pick(shared.search_hit_w, mod_tbl.hit_w, 180),
-		expand_w = pick(shared.search_w, mod_tbl.expand_w, mod_tbl.hit_w, 180),
-
-		-- Paddings
-		pad_l = pick(shared.search_pad_l, mod_tbl.pad_l, 10),
-		pad_r = pick(shared.search_pad_r, mod_tbl.pad_r, 10),
-		pad_t = pick(shared.search_pad_t, mod_tbl.pad_t, 2),
-		pad_b = pick(shared.search_pad_b, mod_tbl.pad_b, 2),
-
-		-- Höhe (aus Footer abgeleitet, falls nicht überschrieben)
-		height = pick(shared.search_height, mod_tbl.height, derived_h),
-
-		-- Prompt
-		prompt_local = pick(shared.search_prompt_local, mod_tbl.prompt_local, "/"),
-		prompt_web = pick(shared.search_prompt_web, mod_tbl.prompt_web, "?"),
-	}
-
-	-- user overrides oben drauf
-	for k, v in pairs(overrides) do
-		t[k] = v
+	-- Prompt + Textbox
+	local prompt = awful.widget.prompt({})
+	local textbox = prompt.widget
+	if textbox.set_align then
+		textbox:set_align("left")
 	end
-	-- safety: expand mindestens hit
-	t.expand_w = t.expand_w or t.hit_w
-	return t
-end
-
--- opts:
---   prompt_widget (REQUIRED), prompt_node (REQUIRED), inner_margin?, bg_box (REQUIRED),
---   width_ctl (REQUIRED), height_ctl?, shared_theme?, search_overrides?, history_path?, on_search?
-function M.build(opts)
-	assert(opts and opts.prompt_widget, "search.init: opts.prompt_widget required")
-	assert(opts.prompt_node and opts.bg_box and opts.width_ctl, "search.init: prompt_node, bg_box, width_ctl required")
-
-	local T = resolve_theme(opts.shared_theme, ThemeMod, opts.search_overrides)
-
-	local textbox = opts.prompt_widget
-	local prompt_node = opts.prompt_node
-	if prompt_node.get_children_by_id then
-		prompt_node = prompt_node:get_children_by_id("prompt")[1] or prompt_node
-	end
-
-	local inner_m = opts.inner_margin
-	local bg_box = opts.bg_box
-	local width_ctl = opts.width_ctl
-	local height_ctl = opts.height_ctl
-
-	-- Theme → Layout anwenden
-	if inner_m then
-		inner_m.left, inner_m.right = T.pad_l, T.pad_r
-		inner_m.top, inner_m.bottom = T.pad_t, T.pad_b
-	end
-	if height_ctl then
-		height_ctl.height = T.height
-	end
-	if textbox.set_cursor_color then
-		textbox:set_cursor_color(T.cursor)
+	if textbox.set_valign then
+		textbox:set_valign("center")
 	end
 	if textbox.set_text then
 		textbox:set_text("")
 	end
+	textbox.bg = BG_ACTIVE
+	textbox.fg = FG_ACTIVE
+	textbox.bg_cursor = "#00000000"
+	textbox.fg_cursor = FG_ACTIVE
 
-	local history_path = opts.history_path or (gears.filesystem.get_cache_dir() .. "/menu_search_history")
-	local on_search = opts.on_search
+	-- fixes Präfix-Label (nicht editierbar)
+	local prefix_lbl = wibox.widget({
+		text = "",
+		font = textbox.font or nil,
+		align = "left",
+		valign = "center",
+		widget = wibox.widget.textbox,
+	})
 
-	local collapsed, search_active = true, false
+	-- Innenlayout
+	local inner_margin = wibox.widget({
+		{
+			prefix_lbl,
+			textbox,
+			spacing = 8,
+			layout = wibox.layout.fixed.horizontal,
+		},
+		left = 10,
+		right = 10,
+		top = 4,
+		bottom = 4,
+		widget = wibox.container.margin,
+	})
 
-	local function apply_width(w)
-		width_ctl.width = w
-		bg_box.forced_width = w
-		-- Layout sicher refreshen, damit nichts “auf Max” bleibt
-		width_ctl:emit_signal("widget::layout_changed")
-		bg_box:emit_signal("widget::layout_changed")
+	local bg_box = wibox.widget({
+		inner_margin,
+		bg = BG_ACTIVE,
+		fg = FG_ACTIVE,
+		widget = wibox.container.background,
+	})
+
+	local height_ctl = wibox.widget({
+		bg_box,
+		strategy = "exact",
+		height = H,
+		widget = wibox.container.constraint,
+	})
+
+	local vcenter = wibox.widget({
+		height_ctl,
+		valign = "center",
+		widget = wibox.container.place,
+	})
+
+	local width_ctl = wibox.widget({
+		vcenter,
+		strategy = "exact",
+		width = WIDTH_EXP,
+		widget = wibox.container.constraint,
+	})
+
+	local hleft = wibox.widget({
+		width_ctl,
+		halign = "left",
+		widget = wibox.container.place,
+	})
+
+	local widget = wibox.widget({
+		hleft,
+		layout = wibox.layout.fixed.horizontal,
+	})
+
+	-- Status
+	local state = {
+		prompt_running = false,
+		collapsed = true,
+		saved_root_buttons = nil,
+		ignore_next_root_click = false,
+		mode = "local", -- "local" | "web"
+	}
+
+	-- Öffnen im Filemanager
+	local function open_with_file_manager(path)
+		awful.spawn({ "xdg-open", path }, false)
+	end
+
+	-- Lokalsuche (Ordner öffnen; Datei -> Parent; ~, abs/rel; fd/fdfind Fallback)
+	local function run_local_search(query)
+		local q = (query or ""):match("^%s*(.-)%s*$")
+		if q == "" then
+			open_with_file_manager(HOME)
+			return
+		end
+
+		local sh = string.format(
+			[[
+      set -eu
+      HOME_DIR=%q
+      Q=%q
+
+      case "$Q" in
+        "~"|"~/"*) Q="${Q/#\~/$HOME_DIR}";;
+      esac
+
+      if [ "${Q#/}" != "$Q" ]; then
+        CAND="$Q"
+      else
+        CAND="$HOME_DIR/$Q"
+      fi
+
+      if [ -d "$CAND" ]; then printf "%%s\n" "$CAND"; exit 0; fi
+      if [ -e "$CAND" ]; then dirname -- "$CAND"; exit 0; fi
+
+      BIN="$(command -v fd || command -v fdfind || true)"
+      if [ -n "${BIN:-}" ]; then
+        FIRST="$("$BIN" -H -c never -- "$Q" "$HOME_DIR" 2>/dev/null | head -n1)"
+        if [ -n "$FIRST" ]; then
+          if [ -d "$FIRST" ]; then printf "%%s\n" "$FIRST"; else dirname -- "$FIRST"; fi
+          exit 0
+        fi
+      fi
+
+      printf "%%s\n" "$HOME_DIR"
+    ]],
+			HOME,
+			q
+		)
+
+		awful.spawn.easy_async_with_shell(sh, function(stdout)
+			local target = stdout:match("([^\r\n]+)")
+			if not target or #target == 0 then
+				target = HOME
+			end
+			open_with_file_manager(target)
+		end)
+	end
+
+	-- Websuche
+	local function run_web_search(query)
+		local q = (query or ""):gsub("^%?+", ""):match("^%s*(.-)%s*$")
+		if q == "" then
+			return
+		end
+		local url = string.format(ENGINE_FMT, urlencode(q))
+		awful.spawn({ BROWSER, url }, false)
+	end
+
+	-- Root-Click Watcher
+	local function detach_root_click_watcher()
+		if state.saved_root_buttons then
+			root.buttons(state.saved_root_buttons)
+			state.saved_root_buttons = nil
+		end
+	end
+
+	local function attach_root_click_watcher()
+		if not state.saved_root_buttons then
+			state.saved_root_buttons = root.buttons()
+		end
+		root.buttons(gears.table.join(awful.button({}, 1, function()
+			if state.ignore_next_root_click then
+				return
+			end
+			if state.prompt_running then
+				try(awful.keygrabber.stop)()
+			end
+			state.prompt_running = false
+			bg_box.bg = BG_COLLAPSED
+			inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = 0, 0, 0, 0
+			bg_box.forced_width = WIDTH_COL
+			width_ctl.width = WIDTH_COL
+			width_ctl:emit_signal("widget::layout_changed")
+			state.collapsed = true
+			detach_root_click_watcher()
+		end)))
 	end
 
 	local function apply_collapsed_style()
-		collapsed = true
-		bg_box.bg = "#00000000"
-		bg_box.fg = T.fg
-		apply_width(T.hit_w)
+		state.collapsed = true
+		bg_box.bg = BG_COLLAPSED
+		inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = 0, 0, 0, 0
+		bg_box.forced_width = WIDTH_COL
+		width_ctl.width = WIDTH_COL
+		width_ctl:emit_signal("widget::layout_changed")
 	end
 
 	local function apply_expanded_style()
-		collapsed = false
-		bg_box.bg = T.bg
-		bg_box.fg = T.fg
-		apply_width(T.expand_w)
+		state.collapsed = false
+		bg_box.bg = BG_ACTIVE
+		inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = 10, 10, 4, 4
+		bg_box.forced_width = WIDTH_EXP
+		width_ctl.width = WIDTH_EXP
+		width_ctl:emit_signal("widget::layout_changed")
 	end
 
-	local function cancel_search()
-		if prompt_node then
-			prompt_node.visible = false
+	local function stop_prompt()
+		if state.prompt_running then
+			state.prompt_running = false
 		end
-		if textbox.set_text then
-			textbox:set_text("")
-		end
-		search_active = false
-		pcall(awful.keygrabber.stop)
+		try(awful.keygrabber.stop)()
+		gears.timer.delayed_call(function()
+			try(awful.keygrabber.stop)()
+		end)
+		try(function()
+			if textbox.set_text then
+				textbox:set_text("")
+			end
+		end)()
+		prefix_lbl.text = ""
+		detach_root_click_watcher()
+	end
+
+	local function collapse()
+		stop_prompt()
 		apply_collapsed_style()
 	end
 
-	local function focus_search()
-		apply_expanded_style()
-		if prompt_node then
-			prompt_node.visible = true
-		end
-		if textbox.set_text then
-			textbox:set_text("")
-		end
-		search_active = true
+	local function run_prompt(mode)
+		state.mode = mode or "local"
+		prefix_lbl.text = (state.mode == "local") and "/" or "?"
 
-		awful.prompt.run({
-			prompt = T.prompt_local or "/",
-			textbox = textbox,
-			history_path = history_path,
-			completion_callback = awful.completion.shell,
-			fg_cursor = T.fg,
-			bg_cursor = T.bg,
-			exe_callback = function(q)
-				if q and #q > 0 and on_search then
-					on_search(q)
-				end
-			end,
-			done_callback = function()
-				cancel_search()
-			end,
-		})
+		gears.timer.delayed_call(function()
+			state.prompt_running = true
+			try(function()
+				prompt.bg = BG_ACTIVE
+			end)()
+			try(function()
+				prompt.fg = FG_ACTIVE
+			end)()
+			try(function()
+				prompt.bg_cursor = "#00000000"
+			end)()
+			try(function()
+				prompt.fg_cursor = FG_ACTIVE
+			end)()
+
+			awful.prompt.run({
+				prompt = "",
+				textbox = textbox,
+				history_path = nil,
+				completion_callback = nil,
+
+				exe_callback = function(q)
+					q = (q or ""):match("^%s*(.-)%s*$")
+					if state.mode == "local" then
+						run_local_search(q)
+					else
+						run_web_search(q)
+					end
+					collapse()
+				end,
+
+				done_callback = function()
+					collapse()
+				end,
+
+				keypressed_callback = function(mod, key)
+					if (not mod or #mod == 0) and key == "Escape" then
+						collapse()
+						return true
+					end
+					return false
+				end,
+			})
+		end)
 	end
 
+	local function expand_and_start(mode)
+		stop_prompt()
+		apply_expanded_style()
+		attach_root_click_watcher()
+		run_prompt(mode or "local")
+	end
+
+	local function on_left_click()
+		state.ignore_next_root_click = true
+		gears.timer.delayed_call(function()
+			state.ignore_next_root_click = false
+		end)
+		expand_and_start("local")
+	end
+
+	local function on_right_click()
+		state.ignore_next_root_click = true
+		gears.timer.delayed_call(function()
+			state.ignore_next_root_click = false
+		end)
+		expand_and_start("web")
+	end
+
+	widget:buttons(gears.table.join(awful.button({}, 1, on_left_click), awful.button({}, 3, on_right_click)))
+
+	-- initial: collapsed
 	apply_collapsed_style()
 
-	return {
-		focus = focus_search,
-		cancel = cancel_search,
+	-- Public API
+	local api = {
+		focus_local = function()
+			expand_and_start("local")
+		end,
+		focus_web = function()
+			expand_and_start("web")
+		end,
+		cancel = function()
+			collapse()
+		end,
 		is_active = function()
-			return search_active
+			return state.prompt_running
 		end,
 		is_collapsed = function()
-			return collapsed
+			return state.collapsed
+		end,
+		set_engine = function(s)
+			ENGINE_FMT = s or ENGINE_FMT
+		end,
+		set_browser = function(b)
+			BROWSER = b or BROWSER
 		end,
 	}
+
+	return { widget = widget, api = api }
 end
 
 return M
