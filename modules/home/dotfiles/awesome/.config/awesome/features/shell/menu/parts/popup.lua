@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/components/popup.lua
+-- ~/.config/awesome/features/shell/menu/parts/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -48,7 +48,7 @@ function Popup.build(args)
 		minimum_height = t.total_height or 650,
 	})
 
-	-- Outside-Klick Handling (deins bleibt gleich) ----------------------------
+	-- Outside-Klick Handling ------------------------------------------------
 	local saved_root_buttons, outside_root_buttons
 	local client_click_connected = false
 
@@ -100,7 +100,7 @@ function Popup.build(args)
 			client_click_connected = false
 		end
 	end
-	---------------------------------------------------------------------------
+	-------------------------------------------------------------------------
 
 	local function place_safe(popup_obj, s, place, opts, theme)
 		local wa = s.workarea or s.geometry
@@ -119,7 +119,29 @@ function Popup.build(args)
 		end
 	end
 
-	-- API ---------------------------------------------------------------------
+	-- *** NEU: ESC-Keygrabber für Menü-Popup ***
+	local esc_grabber = nil
+	local function start_esc_grabber(api)
+		if esc_grabber then
+			return
+		end
+		esc_grabber = awful.keygrabber.run(function(mod, key, event)
+			if event == "release" then
+				return
+			end
+			if key == "Escape" then
+				api:hide()
+			end
+		end)
+	end
+	local function stop_esc_grabber()
+		if esc_grabber then
+			awful.keygrabber.stop(esc_grabber)
+			esc_grabber = nil
+		end
+	end
+
+	-- API -------------------------------------------------------------------
 	local api = {}
 
 	function api:show(opts)
@@ -143,6 +165,7 @@ function Popup.build(args)
 		gears.timer.start_new(0.016, try_place)
 
 		install_outside_listeners(api)
+		start_esc_grabber(api) -- <<< NEU
 	end
 
 	function api:hide()
@@ -154,6 +177,7 @@ function Popup.build(args)
 		end
 		popup.visible = false
 		remove_outside_listeners()
+		stop_esc_grabber() -- <<< NEU
 	end
 
 	function api:toggle(opts)
@@ -170,6 +194,7 @@ function Popup.build(args)
 				pcall(on_hide)
 			end
 			remove_outside_listeners()
+			stop_esc_grabber() -- <<< failsafe
 		end
 	end)
 

@@ -59,6 +59,48 @@ function M.setup(cfg)
 		on_search = cfg.menu_on_search or function(_) end,
 	})
 
+	-- <<< NEU: globale Menü-API für Keybinds bereitstellen >>>
+	_G.__menu_api = {
+		toggle = function(opts)
+			api:toggle(opts)
+		end, -- Super+Space
+		show = function(opts)
+			api:show(opts)
+		end,
+		hide = function()
+			api:hide()
+		end,
+
+		-- falls dein base.build_popup diese Funktionen anbietet:
+		focus_search = function()
+			if api.focus_search then
+				api:focus_search()
+			end
+		end,
+		focus_search_web = function()
+			if api.focus_search_web then
+				api:focus_search_web()
+			end
+		end,
+
+		-- optional: Signals als Fallback, wenn du auf _G verzichten willst
+		-- (Keybinds können awesome.emit_signal('menu::toggle') senden)
+	}
+	awesome.connect_signal("menu::toggle", function()
+		_G.__menu_api.toggle()
+	end)
+	awesome.connect_signal("menu::search_local", function()
+		if _G.__menu_api.focus_search then
+			_G.__menu_api.focus_search()
+		end
+	end)
+	awesome.connect_signal("menu::search_web", function()
+		if _G.__menu_api.focus_search_web then
+			_G.__menu_api.focus_search_web()
+		end
+	end)
+	-- <<< NEU Ende >>>
+
 	local launcher = cfg.menu_launcher
 		or Popup.make_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon, beautiful)
 

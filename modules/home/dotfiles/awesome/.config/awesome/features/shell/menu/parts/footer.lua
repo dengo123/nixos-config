@@ -113,7 +113,19 @@ function Footer.build(arg1, arg2)
 		set_search_browser = function(bin)
 			search_inst.api.set_browser(bin)
 		end,
+
+		-- Menü-API: Toggle (z. B. für <Super+Space>)
+		toggle = function()
+			if search_inst.api.is_active() then
+				search_inst.api.cancel()
+			else
+				search_inst.api.focus_local()
+			end
+		end,
 	}
+
+	-- globale API einmalig veröffentlichen (Keybinds können darauf zugreifen)
+	_G.__menu_api = api
 
 	return footer, api
 end

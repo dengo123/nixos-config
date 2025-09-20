@@ -1,23 +1,19 @@
 -- features/shell/menu/search/init.lua
--- Minimal Search-Bar Modul: klickbarer Mode (local/web), fester Prefix, robustes Open-Verhalten.
--- API:
---   local Search = require("features.shell.menu.search")
---   local inst = Search.new({
---     footer_h = 48,
---     width_expanded = 200,
---     width_collapsed = 200,
---     colors = { bg="#FFFFFF", fg="#000000", bg_collapsed="#00000000" },
---     web = { browser="firefox", engine="https://duckduckgo.com/?q=%s" },
---   })
---   footer_left:add(inst.widget)
---   -- optional:
---   inst.api.focus_local() / inst.api.focus_web() / inst.api.cancel()
-
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local M = {}
+
+local function hide_menu_popup()
+	local api = rawget(_G, "__menu_api")
+	if api and type(api.hide) == "function" then
+		api.hide()
+	else
+		-- Fallback, falls du lieber mit Signals arbeitest:
+		awesome.emit_signal("menu::hide")
+	end
+end
 
 local function urlencode(str)
 	if not str then
@@ -321,6 +317,7 @@ function M.new(opts)
 				keypressed_callback = function(mod, key)
 					if (not mod or #mod == 0) and key == "Escape" then
 						collapse()
+						hide_menu_popup()
 						return true
 					end
 					return false
