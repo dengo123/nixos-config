@@ -44,7 +44,6 @@ local DEFAULTS = {
 	-- Rows / Icons
 	row_h = 48,
 	list_spacing = 0,
-	icon_size = 18,
 	row_bg = "#FFFFFF",
 	row_fg = "#000000",
 	hover_bg = "#FFFFFF22",

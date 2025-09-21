@@ -10,16 +10,12 @@ function M.build_header_content(user, t, avail_h)
 
 	local icon_sz = theme.resolve_icon_size(t, avail_h, "header")
 	local font = theme.resolve_font(t, avail_h, "header")
-	local shape = function(cr, w, h)
-		gears.shape.rounded_rect(cr, w, h, t.avatar_radius or 8)
-	end
 
 	local avatar = wibox.widget({
 		image = user.avatar or nil,
 		resize = true,
 		forced_width = icon_sz,
 		forced_height = icon_sz,
-		clip_shape = shape,
 		widget = wibox.widget.imagebox,
 	})
 
