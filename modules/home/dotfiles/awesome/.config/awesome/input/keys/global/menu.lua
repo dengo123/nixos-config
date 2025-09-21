@@ -7,19 +7,29 @@ local function call_api(action)
 		return
 	end
 
-	if action == "search_local" then
-		if api.toggle then
+	local function open_menu()
+		if api.show then
+			api.show()
+		elseif api.toggle then
 			api.toggle()
 		end
+	end
+
+	if action == "search_local" then
+		open_menu()
 		if api.focus_search then
 			api.focus_search()
 		end
 	elseif action == "search_web" then
-		if api.toggle then
-			api.toggle()
-		end
+		open_menu()
 		if api.focus_search_web then
 			api.focus_search_web()
+		else
+			-- Fallback direkt auf die Search-API
+			local s = rawget(_G, "__search_api")
+			if s and s.focus_web then
+				s.focus_web()
+			end
 		end
 	elseif action == "toggle" then
 		if api.toggle then
@@ -29,20 +39,31 @@ local function call_api(action)
 end
 
 return function(modkey)
-	return awful.util.table.join(
-		-- Super + / → Menü öffnen + lokale Suche
-		awful.key({ modkey }, "/", function()
+	local join = awful.util.table.join
+	local function bind(mods, key, fn, desc)
+		return awful.key(mods, key, fn, { description = desc, group = "menu" })
+	end
+
+	return join(
+		-- Super + / -> Menü + lokale Suche
+		bind({ modkey }, "/", function()
 			call_api("search_local")
-		end, { description = "open menu + local search", group = "menu" }),
+		end, "open menu + local search"),
+		bind({ modkey }, "slash", function()
+			call_api("search_local")
+		end, "open menu + local search"),
 
-		-- Super + Shift + / → Menü öffnen + Websuche
-		awful.key({ modkey, "Shift" }, "/", function()
+		-- Super + Shift + / -> Menü + Websuche
+		bind({ modkey, "Shift" }, "/", function()
 			call_api("search_web")
-		end, { description = "open menu + web search", group = "menu" }),
+		end, "open menu + web search"),
+		bind({ modkey, "Shift" }, "question", function()
+			call_api("search_web")
+		end, "open menu + web search"),
 
-		-- Super + Space → Menü nur toggeln
-		awful.key({ modkey }, "space", function()
+		-- Super + Space -> nur Menü toggeln
+		bind({ modkey }, "space", function()
 			call_api("toggle")
-		end, { description = "toggle menu", group = "menu" })
+		end, "toggle menu")
 	)
 end

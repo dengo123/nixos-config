@@ -1,4 +1,4 @@
--- features/shell/menu/shared/theme.lua
+-- features/shell/menu/parts/theme.lua
 local Theme = {}
 
 local DEFAULTS = {

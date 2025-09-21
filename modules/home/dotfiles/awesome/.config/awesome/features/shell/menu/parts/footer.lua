@@ -86,46 +86,34 @@ function Footer.build(arg1, arg2)
 	})
 
 	-- ---------------------------------------------------------------------------
-	-- API-Passthrough (für Keybinds/Signals)
+	-- API: Search-Funktionen in bestehende Menü-API injizieren (nicht überschreiben)
 	-- ---------------------------------------------------------------------------
-	local api = {
-		-- Search-Steuerung bequem durchreichen:
-		focus_search = function()
-			search_inst.api.focus_local()
-		end,
-		focus_search_web = function()
-			search_inst.api.focus_web()
-		end,
-		cancel_search = function()
-			search_inst.api.cancel()
-		end,
-		is_search_active = function()
-			return search_inst.api.is_active()
-		end,
-		is_collapsed = function()
-			return search_inst.api.is_collapsed()
-		end,
+	local api = rawget(_G, "__menu_api") or {} -- vorhandene Popup-API beibehalten
 
-		-- Optional: Engine/Browser on-the-fly wechseln
-		set_search_engine = function(url_fmt)
-			search_inst.api.set_engine(url_fmt)
-		end,
-		set_search_browser = function(bin)
-			search_inst.api.set_browser(bin)
-		end,
+	-- Search passthrough
+	api.focus_search = function()
+		search_inst.api.focus_local()
+	end
+	api.focus_search_web = function()
+		search_inst.api.focus_web()
+	end
+	api.cancel_search = function()
+		search_inst.api.cancel()
+	end
+	api.is_search_active = function()
+		return search_inst.api.is_active()
+	end
+	api.is_search_collapsed = function()
+		return search_inst.api.is_collapsed()
+	end
+	api.set_search_engine = function(url_fmt)
+		search_inst.api.set_engine(url_fmt)
+	end
+	api.set_search_browser = function(bin)
+		search_inst.api.set_browser(bin)
+	end
 
-		-- Menü-API: Toggle (z. B. für <Super+Space>)
-		toggle = function()
-			if search_inst.api.is_active() then
-				search_inst.api.cancel()
-			else
-				search_inst.api.focus_local()
-			end
-		end,
-	}
-
-	-- globale API einmalig veröffentlichen (Keybinds können darauf zugreifen)
-	_G.__menu_api = api
+	_G.__search_api = search_inst.api -- optional
 
 	return footer, api
 end
