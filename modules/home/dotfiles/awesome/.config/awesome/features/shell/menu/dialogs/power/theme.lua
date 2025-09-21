@@ -1,4 +1,4 @@
--- features/shell/menu/dialogs/theme.lua
+-- features/shell/menu/dialogs/power/theme.lua
 -- Lokales Dialog-Theme (keine beautiful-Abhängigkeit)
 -- API:
 --   Theme.get(overrides) -> Tabelle (Defaults ¿ overrides)

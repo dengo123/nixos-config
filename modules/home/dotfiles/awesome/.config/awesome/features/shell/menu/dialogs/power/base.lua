@@ -1,12 +1,10 @@
--- Dialog-Komposition: Größen/Verhältnisse, Backdrop, ESC, Border innen.
--- Baut Header/Footer-Container, nutzt atomare Widgets aus parts/widgets.lua.
-
+-- features/shell/menu/dialogs/parts/base.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local W = require("features.shell.menu.dialogs.parts.widgets")
-local Theme = require("features.shell.menu.dialogs.parts.theme")
+local Theme = require("features.shell.menu.dialogs.power.theme")
 
 local Base = {}
 
@@ -19,22 +17,15 @@ local function pick(...)
 	end
 end
 
--- keep a widget centered inside a fixed-width cell
 local function fixed_cell(widget, width)
 	return wibox.widget({
-		{
-			widget,
-			halign = "center",
-			valign = "center",
-			widget = wibox.container.place,
-		},
+		{ widget, halign = "center", valign = "center", widget = wibox.container.place },
 		strategy = "exact",
 		width = width,
 		widget = wibox.container.constraint,
 	})
 end
 
--- spacer with exact pixel width
 local function spacer_exact(px)
 	return wibox.widget({
 		wibox.widget({}),
@@ -44,11 +35,9 @@ local function spacer_exact(px)
 	})
 end
 
--- build row: [S1][I1][S2][I2]...[Sn][In][S(n+1)] using fixed.horizontal
 local function build_precise_fixed_row(icon_cells, targets, icon_px_w, place_px_w)
 	local n = #icon_cells
 	local S = {}
-
 	if n == 1 then
 		local x = targets[1] * place_px_w
 		S[1] = math.max(0, x - icon_px_w / 2)
@@ -81,18 +70,15 @@ function Base.choice(opts)
 	local th = Theme.get(opts.theme or {})
 	local s = awful.screen.focused()
 
-	-- dialog size
 	local DIALOG_W = pick(th.dialog_w, 560)
 	local DIALOG_H = pick(th.dialog_h, 360)
 
-	-- header/body/footer heights
 	local HR = pick(th.header_ratio, 0.18)
 	local FR = pick(th.footer_ratio, 0.18)
 	local H_HEADER = math.floor(DIALOG_H * HR)
 	local H_FOOT = math.floor(DIALOG_H * FR)
 	local H_BODY = DIALOG_H - H_HEADER - H_FOOT
 
-	-- icon size
 	local base_side = math.min(DIALOG_W, DIALOG_H)
 	local ICON_SIZE_RAW = math.floor(base_side * pick(th.icon_ratio, 0.20))
 	local PAD_V = pick(th.pad_v, 14)
@@ -100,13 +86,11 @@ function Base.choice(opts)
 	local ICON_SIZE = math.min(ICON_SIZE_RAW, ICON_MAX)
 	th.icon_size = ICON_SIZE
 
-	-- cell width
 	local icon_pad = pick(th.icon_pad, 6)
 	local cell_pad = pick(th.icon_cell_pad, 6)
 	local cell_extra = pick(th.icon_cell_extra_w, 12)
 	local ICON_CELL_W = ICON_SIZE + icon_pad * 2 + cell_pad * 2 + cell_extra
 
-	-- backdrop
 	local backdrop = wibox({
 		screen = s,
 		visible = true,
@@ -116,9 +100,6 @@ function Base.choice(opts)
 	})
 	backdrop:geometry(s.geometry)
 
-	-- =======================
-	-- Header-Container bauen
-	-- =======================
 	local header_content = W.mk_header_content(opts.title or "", th)
 	local header_container = wibox.widget({
 		{
@@ -132,7 +113,6 @@ function Base.choice(opts)
 		widget = wibox.container.background,
 	})
 
-	-- actions -> icon cells
 	local actions = opts.actions or {}
 	local n = #actions
 	local built_cells = {}
@@ -148,9 +128,7 @@ function Base.choice(opts)
 			label = a.label,
 			th = th,
 		})
-
 		local cell = fixed_cell(iconw, ICON_CELL_W)
-		-- Klick auf den äußersten Wrapper der Zelle
 		cell:buttons(gears.table.join(awful.button({}, 1, function()
 			if a.on_press then
 				a.on_press(close_ref)
@@ -159,11 +137,9 @@ function Base.choice(opts)
 		built_cells[i] = cell
 	end
 
-	-- usable width in body
 	local PAD_H = pick(th.pad_h, 16)
 	local place_w = DIALOG_W - 2 * PAD_H
 
-	-- evenly spaced targets
 	local targets = {}
 	if n > 0 then
 		for i = 1, n do
@@ -174,7 +150,6 @@ function Base.choice(opts)
 	local icons_row = (#targets > 0) and build_precise_fixed_row(built_cells, targets, ICON_CELL_W, place_w)
 		or wibox.widget({ layout = wibox.layout.fixed.horizontal })
 
-	-- body
 	local body_with_margins = wibox.widget({
 		icons_row,
 		left = PAD_H,
@@ -196,9 +171,6 @@ function Base.choice(opts)
 		widget = wibox.container.background,
 	})
 
-	-- =======================
-	-- Footer-Container bauen
-	-- =======================
 	local popup
 	local function close()
 		if popup and popup.visible then
@@ -214,8 +186,6 @@ function Base.choice(opts)
 	th._computed_dialog_w = DIALOG_W
 
 	local cancel_btn = W.mk_cancel_button((th.cancel_label or "Cancel"), close, th)
-
-	-- optionale feste Breite via Ratio (z. B. 1/7 vom Dialog)
 	local target_w = th.cancel_width or (DIALOG_W > 0 and math.floor(DIALOG_W / 7) or nil)
 	if target_w then
 		local wrapped = wibox.widget({
@@ -224,7 +194,6 @@ function Base.choice(opts)
 			width = target_w,
 			widget = wibox.container.constraint,
 		})
-		-- Buttons auf äußersten Wrapper legen (zusätzlich zum inneren)
 		wrapped:buttons(gears.table.join(awful.button({}, 1, function()
 			close()
 		end)))
@@ -232,12 +201,7 @@ function Base.choice(opts)
 	end
 
 	local footer_right = wibox.widget({
-		{
-			cancel_btn,
-			halign = "right",
-			valign = "center",
-			widget = wibox.container.place,
-		},
+		{ cancel_btn, halign = "right", valign = "center", widget = wibox.container.place },
 		right = pick(th.footer_pad_h, th.pad_h, 12),
 		widget = wibox.container.margin,
 	})
@@ -254,7 +218,6 @@ function Base.choice(opts)
 		widget = wibox.container.background,
 	})
 
-	-- fixed heights
 	local header_fixed = wibox.widget({
 		header_container,
 		strategy = "exact",
@@ -274,14 +237,8 @@ function Base.choice(opts)
 		widget = wibox.container.constraint,
 	})
 
-	-- popup mit Border innen (Gesamtgröße unverändert)
 	local border_block = wibox.widget({
-		{
-			header_fixed,
-			body_fixed,
-			footer_fixed,
-			layout = wibox.layout.fixed.vertical,
-		},
+		{ header_fixed, body_fixed, footer_fixed, layout = wibox.layout.fixed.vertical },
 		bg = pick(th.dialog_bg, "#111318"),
 		shape = function(cr, w, h)
 			local r = pick(th.dialog_radius, 12)
@@ -305,8 +262,7 @@ function Base.choice(opts)
 			height = DIALOG_H,
 			widget = wibox.container.constraint,
 		},
-		-- kein äußerer transparenter Rand mehr
-		widget = wibox.container.margin,
+		widget = wibox.container.margin, -- kein äußerer transparenter Rand
 	})
 
 	popup = awful.popup({
@@ -322,7 +278,6 @@ function Base.choice(opts)
 	popup.visible = true
 	awful.placement.centered(popup, { honor_workarea = true })
 
-	-- close on ESC and backdrop click
 	backdrop:buttons(gears.table.join(awful.button({}, 1, close)))
 	awful
 		.keygrabber({
