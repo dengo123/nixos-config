@@ -1,34 +1,43 @@
--- ~/.config/awesome/features/shell/menu/dialogs/parts/widgets.lua
--- UI-Bausteine (Header, Footer, Icon). Reines Layout/Verhalten.
--- Sämtliche Styles kommen aus theme.lua.
+-- Atomare UI-Bausteine (ohne Container-Logik):
+--  - mk_header_content(title, th)
+--  - mk_cancel_button(label, on_click, th)
+--  - mk_icon_button{ icon|emoji, size, label, on_press, th }
 
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local Theme = require("features.shell.menu.dialogs.parts.theme")
 
 local W = {}
 
+local function pick(...)
+	for i = 1, select("#", ...) do
+		local v = select(i, ...)
+		if v ~= nil then
+			return v
+		end
+	end
+end
+
 -- ======================================================================
--- Header
+-- Header-Inhalt (Icon + Titel) OHNE Container/Farbe/Margins
 -- ======================================================================
-function W.mk_header(title, th)
-	th = th or Theme.defaults
+function W.mk_header_content(title, th)
+	th = th or {}
 
 	local icon_widget
 	if th.header_icon_path and #th.header_icon_path > 0 then
 		icon_widget = wibox.widget({
 			image = th.header_icon_path,
 			resize = true,
-			forced_width = th.header_icon_size or 20,
-			forced_height = th.header_icon_size or 20,
+			forced_width = pick(th.header_icon_size, th.header_font_size, 20),
+			forced_height = pick(th.header_icon_size, th.header_font_size, 20),
 			widget = wibox.widget.imagebox,
 		})
 	else
 		icon_widget = wibox.widget({
 			markup = string.format(
 				"<span font='sans %d'>%s</span>",
-				th.header_icon_size or th.header_font_size or 14,
+				pick(th.header_icon_size, th.header_font_size, 14),
 				th.header_icon or ""
 			),
 			align = "center",
@@ -38,53 +47,46 @@ function W.mk_header(title, th)
 	end
 
 	local text_widget = wibox.widget({
-		markup = string.format("<span font='sans %d'><b>%s</b></span>", th.header_font_size or 14, title or ""),
+		markup = string.format("<span font='sans %d'><b>%s</b></span>", pick(th.header_font_size, 14), title or ""),
 		align = "left",
 		valign = "center",
 		widget = wibox.widget.textbox,
 	})
 
 	return wibox.widget({
-		{
-			icon_widget,
-			text_widget,
-			spacing = th.pad_h or 8,
-			layout = wibox.layout.fixed.horizontal,
-		},
-		left = th.pad_h,
-		right = th.pad_h,
-		widget = wibox.container.margin,
-		bg = th.header_bg,
-		fg = th.header_fg,
-		widget = wibox.container.background,
+		icon_widget,
+		text_widget,
+		spacing = pick(th.header_spacing, th.pad_h, 8),
+		layout = wibox.layout.fixed.horizontal,
 	})
 end
 
 -- ======================================================================
--- Footer (Cancel rechts, Hover = Border; Höhe NICHT fix → kein Clipping)
+-- Cancel-Button (Button + Hover/Borders). Events sitzen auf äußerstem Wrapper.
 -- ======================================================================
-function W.mk_footer(cancel_label, on_cancel, th)
-	th = th or Theme.defaults
+function W.mk_cancel_button(label, on_click, th)
+	th = th or {}
 
 	local inner = wibox.widget({
 		{
 			{
-				text = cancel_label or "Cancel",
+				text = label or "Cancel",
 				align = "center",
 				valign = "center",
 				widget = wibox.widget.textbox,
 			},
-			left = th.cancel_pad_h,
-			right = th.cancel_pad_h,
-			top = th.cancel_pad_v,
-			bottom = th.cancel_pad_v,
+			left = (th.cancel_pad_h or 12),
+			right = (th.cancel_pad_h or 12),
+			top = (th.cancel_pad_v or 8),
+			bottom = (th.cancel_pad_v or 8),
 			widget = wibox.container.margin,
 		},
-		bg = th.cancel_bg,
-		fg = th.cancel_fg,
+		bg = th.cancel_bg or "#334155",
+		fg = th.cancel_fg or "#FFFFFF",
 		shape = function(cr, w, h)
-			if th.cancel_radius > 0 then
-				gears.shape.rounded_rect(cr, w, h, th.cancel_radius)
+			local r = (th.cancel_radius or 8)
+			if r > 0 then
+				gears.shape.rounded_rect(cr, w, h, r)
 			else
 				gears.shape.rectangle(cr, w, h)
 			end
@@ -94,66 +96,46 @@ function W.mk_footer(cancel_label, on_cancel, th)
 		widget = wibox.container.background,
 	})
 
-	local dialog_w = th._computed_dialog_w or 0
-	local target_w = th.cancel_width or (dialog_w > 0 and math.floor(dialog_w / 7) or nil)
-
-	local cancel_btn = wibox.widget({
+	local root = wibox.widget({
 		inner,
-		strategy = "exact",
-		width = target_w, -- nur Breite per Ratio; Höhe passt sich Inhalt an
-		widget = wibox.container.constraint,
+		widget = wibox.container.background,
 	})
 
-	cancel_btn:connect_signal("mouse::enter", function()
-		inner.bg = th.cancel_hover_bg
-		inner.shape_border_width = th.cancel_hover_bw
-		inner.shape_border_color = th.cancel_hover_border
+	root:connect_signal("mouse::enter", function()
+		inner.bg = th.cancel_hover_bg or inner.bg
+		inner.shape_border_width = th.cancel_hover_bw or 2
+		inner.shape_border_color = th.cancel_hover_border or "#2B77FF"
 	end)
-	cancel_btn:connect_signal("mouse::leave", function()
-		inner.bg = th.cancel_bg
+	root:connect_signal("mouse::leave", function()
+		inner.bg = th.cancel_bg or "#334155"
 		inner.shape_border_width = 0
 		inner.shape_border_color = "#00000000"
 	end)
-	cancel_btn:buttons(gears.table.join(awful.button({}, 1, function()
-		if on_cancel then
-			on_cancel()
+
+	root:buttons(gears.table.join(awful.button({}, 1, function()
+		if on_click then
+			on_click()
 		end
 	end)))
 
-	local right_cell = wibox.widget({
-		{
-			cancel_btn,
-			halign = "right",
-			valign = "center",
-			widget = wibox.container.place,
-		},
-		right = th.pad_h,
-		widget = wibox.container.margin,
-	})
-
-	return wibox.widget({
-		{ right_cell, top = 8, bottom = 8, widget = wibox.container.margin },
-		bg = th.footer_bg,
-		fg = th.footer_fg,
-		widget = wibox.container.background,
-	})
+	return root
 end
 
 -- ======================================================================
--- Icon-Button (quadratisches Icon mit Hover-Rahmen, Label drunter)
--- args: { size, icon|emoji, emoji_font?, label?, on_press?, th? }
+-- Icon-Button (quadratisches Icon + optionales Label, Hover nur am Icon)
 -- ======================================================================
-function W.mk_icon(args)
-	local th = (args and args.th) or Theme.defaults
-	local size = (args and args.size) or 64
+function W.mk_icon_button(args)
+	args = args or {}
+	local th = args.th or {}
+	local size = args.size or 64
 
-	local pad_icon = th.icon_pad or 6
-	local pad_cell = th.icon_cell_pad or 6
-	local spacing = th.icon_spacing or 6
+	local pad_icon = pick(th.icon_pad, 6)
+	local pad_cell = pick(th.icon_cell_pad, 6)
+	local spacing = pick(th.icon_spacing, 6)
 
-	-- Icon (Bild oder Emoji), strikt quadratisch
+	-- Inneres Icon
 	local icon_inner
-	if args and args.icon and type(args.icon) == "string" then
+	if args.icon and type(args.icon) == "string" then
 		icon_inner = wibox.widget({
 			image = args.icon,
 			resize = true,
@@ -162,8 +144,8 @@ function W.mk_icon(args)
 			widget = wibox.widget.imagebox,
 		})
 	else
-		local emoji_char = (args and args.emoji) or "..."
-		local emoji_font = (args and args.emoji_font) or ("sans " .. math.floor(size * 0.66))
+		local emoji_char = args.emoji or "…"
+		local emoji_font = args.emoji_font or ("sans " .. math.floor(size * 0.66))
 		icon_inner = wibox.widget({
 			markup = string.format("<span font='%s'>%s</span>", emoji_font, emoji_char),
 			align = "center",
@@ -178,11 +160,10 @@ function W.mk_icon(args)
 	local square_shape = (
 		th.icon_shape == "rounded"
 		and function(cr, w, h)
-			gears.shape.rounded_rect(cr, w, h, th.icon_rounding or 6)
+			gears.shape.rounded_rect(cr, w, h, pick(th.icon_rounding, 6))
 		end
 	) or gears.shape.rectangle
 
-	-- Hover-Quadrat (klein, strikt 1:1)
 	local hover_square = wibox.widget({
 		{
 			{
@@ -202,11 +183,11 @@ function W.mk_icon(args)
 		widget = wibox.container.background,
 	})
 
-	-- Label (einzeilig, Breite = Quadrat + Extra)
+	-- Label (optional)
 	local label_block, label_h = nil, 0
-	if args and args.label and #args.label > 0 then
-		local fsz = th.icon_label_size or 18
-		local leading = th.icon_label_leading or 1.25
+	if args.label and #args.label > 0 then
+		local fsz = pick(th.icon_label_size, 18)
+		local leading = pick(th.icon_label_leading, 1.25)
 		label_h = math.ceil(fsz * leading)
 
 		local lbl = wibox.widget({
@@ -233,7 +214,6 @@ function W.mk_icon(args)
 		})
 	end
 
-	-- Wahrnehmbar zentrieren: Quadrat um die halbe Label-Zone nach unten schieben
 	local v_spacing = (label_h > 0) and spacing or 0
 	local offset = math.floor((label_h + v_spacing) / 2)
 
@@ -244,15 +224,10 @@ function W.mk_icon(args)
 			valign = "center",
 			widget = wibox.container.place,
 		},
-		top = offset, -- <<— schiebt das Quadrat nach unten
+		top = offset,
 		widget = wibox.container.margin,
 	})
 
-	-- Gesamthöhe der Zelle (nur zur Info; base.lua regelt Breite)
-	local icon_block_h = box_side
-	local CELL_H = pad_cell + icon_block_h + v_spacing + label_h + pad_cell
-
-	-- Vertikale Anordnung: versetztes Quadrat + Label
 	local content = wibox.widget({
 		square_centered,
 		label_block,
@@ -272,7 +247,7 @@ function W.mk_icon(args)
 	-- Hover nur im Quadrat
 	hover_square:connect_signal("mouse::enter", function()
 		hover_square.bg = th.icon_hover_bg or "#FFFFFF22"
-		hover_square.shape_border_width = th.icon_hover_bw or 2
+		hover_square.shape_border_width = pick(th.icon_hover_bw, 2)
 		hover_square.shape_border_color = th.icon_hover_border or "#2B77FF"
 	end)
 	hover_square:connect_signal("mouse::leave", function()
@@ -280,8 +255,7 @@ function W.mk_icon(args)
 		hover_square.shape_border_width = 0
 	end)
 
-	-- Klick
-	if args and args.on_press then
+	if args.on_press then
 		clickable:buttons(gears.table.join(awful.button({}, 1, function()
 			args.on_press()
 		end)))
