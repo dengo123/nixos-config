@@ -5,6 +5,16 @@ local wibox = require("wibox")
 
 local Popup = {}
 
+-- helper oben einfügen (falls nicht vorhanden)
+local function pick(...)
+	for i = 1, select("#", ...) do
+		local v = select(i, ...)
+		if v ~= nil then
+			return v
+		end
+	end
+end
+
 -- args = { header, cols, footer, theme, placement, on_hide }
 function Popup.build(args)
 	local header = args.header
@@ -40,10 +50,13 @@ function Popup.build(args)
 		shape = function(cr, w, h)
 			gears.shape.rounded_rect(cr, w, h, RADIUS)
 		end,
-		border_width = t.border_width or 1,
-		border_color = t.border_color or "#000000",
-		bg = t.bg or "#222222",
-		fg = t.fg or "#ffffff",
+
+		-- >>> hier: Theme-konform statt Schwarz/Default
+		border_width = pick(t.popup_border_width, 1),
+		border_color = pick(t.popup_border_color, t.header_bg, "#3A6EA5"),
+		bg = pick(t.popup_bg, "#00000000"), -- transparent, damit columns.border_bg sichtbar ist
+		fg = pick(t.fg, "#ffffff"),
+
 		minimum_width = (t.col_left_w or 200) + (t.col_right_w or 200) + (t.cols_pad_l or 6) + (t.cols_pad_r or 6),
 		minimum_height = t.total_height or 650,
 	})

@@ -4,8 +4,6 @@ local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
 local Footer = require("features.shell.menu.parts.footer")
 local Popup = require("features.shell.menu.parts.popup")
-
--- Neu: Theme-Modul optional nutzen, wenn args.theme kein fertiges Table ist
 local ThemeMod_ok, ThemeMod = pcall(require, "features.shell.menu.parts.theme")
 
 local M = {}

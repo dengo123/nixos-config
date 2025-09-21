@@ -9,7 +9,7 @@ local DEFAULTS = {
 	-- Popup / Rahmen
 	popup_radius = 12,
 	popup_border_width = 1,
-	popup_border_color = "#3A6EA5",
+	popup_border_color = "#235CDB",
 	popup_bg = "#00000000", -- äußerer Container (meist transparent)
 	dialog_bg = "#235CDB", -- Innenfläche (Columns-Hintergrund)
 
@@ -40,9 +40,12 @@ local DEFAULTS = {
 	left_fg = "#000000",
 	right_bg = "#D2E5FA",
 	right_fg = "#000000",
+	border_bg = "235CDB",
 
 	-- Rows / Icons
 	row_h = 48,
+	left_row_h = nil,
+	right_row_h = 40,
 	list_spacing = 0,
 	row_bg = "#FFFFFF",
 	row_fg = "#000000",
@@ -67,21 +70,6 @@ end
 
 function Theme.get(overrides)
 	return merge(DEFAULTS, overrides or {})
-end
-
--- Beispiel-Preset
-function Theme.luna_xp(overrides)
-	return merge(
-		Theme.get({
-			dialog_bg = "#235CDB",
-			header_bg = "#235CDB",
-			footer_bg = "#235CDB",
-			left_bg = "#FFFFFF",
-			right_bg = "#D2E5FA",
-			popup_border_color = "#3A6EA5",
-		}),
-		overrides or {}
-	)
 end
 
 return Theme

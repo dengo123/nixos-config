@@ -1,118 +1,82 @@
 -- ~/.config/awesome/features/shell/menu/parts/columns.lua
 local wibox = require("wibox")
-local gears = require("gears")
 local P = require("features.shell.menu.widgets")
 
 local Columns = {}
 
-local DEFAULTS = {
-	-- Geometrie
-	col_left_w = 250,
-	col_right_w = 230,
-	col_spacing = 1,
-
-	-- Außenabstände (Rahmen sichtbar machen)
-	cols_pad_l = 2,
-	cols_pad_r = 2,
-	cols_pad_t = 2,
-	cols_pad_b = 2,
-
-	-- Spaltenfarben
-	left_bg = "#FFFFFF",
-	left_fg = "#000000",
-	right_bg = "#D2E5FA",
-	right_fg = "#000000",
-
-	-- Rahmen-/Hintergrund der gesamten Zwei-Spalten-Ansicht
-	border_bg = "#3A6EA5", -- Luna-Blau
-
-	-- Spaltenform
-	col_shape = gears.shape.rectangle,
-
-	-- Row-Höhen (an widgets.lua durchgereicht)
-	row_h = 48, -- globaler Default
-	left_row_h = nil, -- optional spezieller Override
-	right_row_h = 40, -- z.B. rechte Spalte etwas kompakter
-	list_spacing = 0, -- kein sichtbarer Abstand zwischen Rows
-}
-
-local function merge(a, b)
+local function shallow_copy(tbl)
 	local out = {}
-	for k, v in pairs(a or {}) do
-		out[k] = v
-	end
-	for k, v in pairs(b or {}) do
+	for k, v in pairs(tbl or {}) do
 		out[k] = v
 	end
 	return out
 end
 
+local function pick(...)
+	for i = 1, select("#", ...) do
+		local v = select(i, ...)
+		if v ~= nil then
+			return v
+		end
+	end
+end
+
 function Columns.build(left_items, right_items, t)
-	t = merge(DEFAULTS, t or {})
+	-- t kommt bereits aus base.lua/theme.lua
+	-- Spalten-spezifische Theme-Overlays
+	local left_t = shallow_copy(t)
+	left_t.row_bg = pick(t.left_bg, t.row_bg)
+	left_t.row_fg = pick(t.left_fg, t.row_fg)
+	left_t.row_h = pick(t.left_row_h, t.row_h)
+	left_t.list_spacing = pick(t.left_list_spacing, t.list_spacing)
 
-	-- Spalten-spezifische Theme-Overlays für die Rows:
-	-- (Hier KEINE Button-/Hover-/Click-Logik mehr; das macht widgets.lua)
-	local left_t = merge(t, {
-		row_bg = t.left_bg,
-		row_fg = t.left_fg,
-		row_h = t.left_row_h or t.row_h,
-		list_spacing = t.list_spacing,
-	})
+	local right_t = shallow_copy(t)
+	right_t.row_bg = pick(t.right_bg, t.row_bg)
+	right_t.row_fg = pick(t.right_fg, t.row_fg)
+	right_t.row_h = pick(t.right_row_h, t.row_h)
+	right_t.list_spacing = pick(t.right_list_spacing, t.list_spacing)
 
-	local right_t = merge(t, {
-		row_bg = t.right_bg,
-		row_fg = t.right_fg,
-		row_h = t.right_row_h or t.row_h,
-		list_spacing = t.list_spacing,
-	})
-
-	-- Rows kommen vollständig aus widgets.lua (P.list_widget / P.row_widget)
 	local left_list = P.list_widget(left_items or {}, left_t)
 	local right_list = P.list_widget(right_items or {}, right_t)
 
-	-- Linke Spalte
 	local left_col = wibox.widget({
 		{ left_list, margins = 0, widget = wibox.container.margin },
-		forced_width = t.col_left_w,
-		bg = t.left_bg,
-		fg = t.left_fg,
+		forced_width = pick(t.col_left_w, 250),
+		bg = left_t.row_bg,
+		fg = left_t.row_fg,
 		shape = t.col_shape,
 		widget = wibox.container.background,
 	})
 
-	-- Rechte Spalte
 	local right_col = wibox.widget({
 		{ right_list, margins = 0, widget = wibox.container.margin },
-		forced_width = t.col_right_w,
-		bg = t.right_bg,
-		fg = t.right_fg,
+		forced_width = pick(t.col_right_w, 230),
+		bg = right_t.row_bg,
+		fg = right_t.row_fg,
 		shape = t.col_shape,
 		widget = wibox.container.background,
 	})
 
-	-- Beide Spalten nebeneinander
 	local cols_inner = wibox.widget({
 		left_col,
 		right_col,
-		spacing = t.col_spacing,
+		spacing = pick(t.col_spacing, 1),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	-- Äußerer Container (Rahmenfläche)
 	local cols = wibox.widget({
 		{
 			cols_inner,
-			left = t.cols_pad_l,
-			right = t.cols_pad_r,
-			top = t.cols_pad_t,
-			bottom = t.cols_pad_b,
+			left = pick(t.cols_pad_l, 2),
+			right = pick(t.cols_pad_r, 2),
+			top = pick(t.cols_pad_t, 2),
+			bottom = pick(t.cols_pad_b, 2),
 			widget = wibox.container.margin,
 		},
-		bg = t.border_bg,
+		bg = pick(t.dialog_bg, "#235CDB"),
 		widget = wibox.container.background,
 	})
 
-	-- kleines API zum Live-Aktualisieren
 	local api = { widget = cols }
 	function api:set_left(items)
 		left_list.children = P.list_widget(items or {}, left_t).children

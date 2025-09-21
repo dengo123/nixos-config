@@ -20,10 +20,10 @@ in {
       windowManager.awesome = {
         enable = true;
         package = pkgs.awesome; # optional, aber explizit
+        luaModules = with pkgs.luaPackages; [
+          lgi
+        ];
       };
-
-      # optional: beim X-Start noch Dinge tun
-      # initExtra = '' ${pkgs.autorandr}/bin/autorandr --change || true '';
     };
   };
 }
