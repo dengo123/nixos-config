@@ -49,15 +49,9 @@ return function(modkey)
 		bind({ modkey }, "/", function()
 			call_api("search_local")
 		end, "open menu + local search"),
-		bind({ modkey }, "slash", function()
-			call_api("search_local")
-		end, "open menu + local search"),
 
 		-- Super + Shift + / -> Menü + Websuche
 		bind({ modkey, "Shift" }, "/", function()
-			call_api("search_web")
-		end, "open menu + web search"),
-		bind({ modkey, "Shift" }, "question", function()
 			call_api("search_web")
 		end, "open menu + web search"),
 

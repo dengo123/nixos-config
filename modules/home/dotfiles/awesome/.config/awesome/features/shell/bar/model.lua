@@ -1,10 +1,10 @@
--- ~/.config/awesome/features/shell/model.lua
+-- ~/.config/awesome/features/shell/bar/model.lua
 local wibox = require("wibox")
 
-local Tabs = require("features.shell.widgets.tabs")
-local Clock = require("features.shell.widgets.clock")
-local Systray = require("features.shell.widgets.systray")
-local Start = require("features.shell.widgets.start") -- <- NEU
+local Tabs = require("features.shell.bar.widgets.tabs")
+local Clock = require("features.shell.bar.widgets.clock")
+local Systray = require("features.shell.bar.widgets.systray")
+local Start = require("features.shell.bar.widgets.start") -- <- NEU
 
 local M = {}
 

@@ -43,11 +43,26 @@ function M.row_widget(item, t)
 	local bg_box = wibox.widget({ content, bg = t.row_bg, fg = t.row_fg, widget = wibox.container.background })
 	helper.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
 
+	-- Klick
 	bg_box:buttons(gears.table.join(awful.button({}, 1, function()
 		if item.on_press then
-			item.on_press()
+			-- bg_box als Anchor mitgeben
+			item.on_press(item, bg_box)
 		end
 	end)))
+
+	-- Hover-Events (NEU)
+	bg_box:connect_signal("mouse::enter", function()
+		if item.on_hover_in then
+			item.on_hover_in(item, bg_box)
+		end
+	end)
+
+	bg_box:connect_signal("mouse::leave", function()
+		if item.on_hover_out then
+			item.on_hover_out(item, bg_box)
+		end
+	end)
 
 	return helper.fixed_height(bg_box, eff_h)
 end

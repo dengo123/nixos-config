@@ -54,7 +54,7 @@ local DEFAULTS = {
 	hover_bw = 2,
 
 	-- Gesamthöhe (Columns/popup nutzen das)
-	total_height = 650,
+	total_height = 536,
 }
 
 local function merge(a, b)

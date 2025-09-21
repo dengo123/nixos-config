@@ -1,6 +1,6 @@
 -- ~/.config/awesome/features/shell/menu/int.lua
 local base = require("features.shell.menu.parts.base")
-local defaults = require("features.shell.menu.widgets.apps")
+local defaults = require("features.shell.menu.lib.apps")
 local Popup = require("features.shell.menu.parts.popup")
 local beautiful = require("beautiful")
 local menubar = require("menubar")
