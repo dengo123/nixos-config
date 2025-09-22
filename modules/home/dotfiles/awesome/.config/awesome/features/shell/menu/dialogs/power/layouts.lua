@@ -1,23 +1,33 @@
 -- features/shell/menu/dialogs/power/layouts.lua
 local awful = require("awful")
 local Base = require("features.shell.menu.dialogs.power.base")
+local Popup = require("features.shell.menu.dialogs.parts.popup") -- <— hinzufügen
 
 local M = {}
 
--- Immer: erst Dialog schließen, dann Aktion starten
+-- Immer: erst ALLE Popups schließen (failsafe), dann das aktuelle handle.close(),
+-- dann die Aktion starten
 local function close_then_cmd(cmd)
 	return function(close)
-		close() -- 1) Popup sofort zu
+		Popup.close_all() -- failsafe: wirklich alles zu
+		if close then
+			close()
+		end
 		if cmd and #cmd > 0 then
-			awful.spawn.with_shell(cmd) -- 2) dann Shell
+			awful.spawn.with_shell(cmd)
 		end
 	end
 end
 
 local function close_then_lua(fn)
 	return function(close)
-		close() -- 1) erst zu
-		pcall(fn) -- 2) dann Lua (sicher)
+		Popup.close_all()
+		if close then
+			close()
+		end
+		if fn then
+			pcall(fn)
+		end
 	end
 end
 
