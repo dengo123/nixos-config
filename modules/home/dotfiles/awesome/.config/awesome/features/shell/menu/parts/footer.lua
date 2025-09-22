@@ -2,7 +2,6 @@
 local wibox = require("wibox")
 
 local P = require("features.shell.menu.widgets") -- Buttons/Leisten
-local Dialogs = require("features.shell.menu.dialogs") -- Power-/Logout-Dialoge
 local Search = require("features.shell.menu.search") -- <- dein neues Search-Modul (init.lua)
 
 local Footer = {}
@@ -56,7 +55,6 @@ function Footer.build(arg1, arg2)
 	-- ---------------------------------------------------------------------------
 	local powers_right = P.power_bar(opts.power_items or {}, t, {
 		inner_h = inner_h,
-		dialogs = Dialogs,
 	})
 
 	-- ---------------------------------------------------------------------------

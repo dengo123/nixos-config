@@ -21,7 +21,7 @@ local function pick(...)
 	end
 end
 
-function Columns.build(left_items, right_items, t)
+function Columns.build(left_items, right_items, t, opts)
 	-- t kommt bereits aus base.lua/theme.lua
 	-- Spalten-spezifische Theme-Overlays
 	local left_t = shallow_copy(t)
@@ -36,8 +36,8 @@ function Columns.build(left_items, right_items, t)
 	right_t.row_h = pick(t.right_row_h, t.row_h)
 	right_t.list_spacing = pick(t.right_list_spacing, t.list_spacing)
 
-	local left_list = P.list_widget(left_items or {}, left_t)
-	local right_list = P.list_widget(right_items or {}, right_t)
+	local left_list = P.list_widget(left_items or {}, left_t, opts)
+	local right_list = P.list_widget(right_items or {}, right_t, opts)
 
 	local left_col = wibox.widget({
 		{ left_list, margins = 0, widget = wibox.container.margin },
@@ -79,11 +79,11 @@ function Columns.build(left_items, right_items, t)
 
 	local api = { widget = cols }
 	function api:set_left(items)
-		left_list.children = P.list_widget(items or {}, left_t).children
+		left_list.children = P.list_widget(items or {}, left_t, opts).children
 	end
 
 	function api:set_right(items)
-		right_list.children = P.list_widget(items or {}, right_t).children
+		right_list.children = P.list_widget(items or {}, right_t, opts).children
 	end
 
 	return api

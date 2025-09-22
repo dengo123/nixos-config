@@ -27,7 +27,7 @@ local function awesome_quit(close)
 end
 
 -- ===== Layouts =====
-function M.logout_confirm(theme_overrides)
+function M.logout(theme_overrides)
 	return Base.choice({
 		title = "Log off",
 		actions = {

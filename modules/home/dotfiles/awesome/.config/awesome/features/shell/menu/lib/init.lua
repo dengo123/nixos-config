@@ -1,22 +1,30 @@
--- ~/.config/awesome/features/shell/menu/lib/apps.lua
+-- ~/.config/awesome/features/shell/menu/lib/init.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 
--- Hotkeys-Popup (Standard)
-local hotkeys_popup = require("awful.hotkeys_popup")
-pcall(require, "awful.hotkeys_popup.keys") -- füllt die Gruppen (awesome/client/layout/…)
+-- Falls dein Hotkeys-Dialog diese Daten nutzt:
+pcall(require, "awful.hotkeys_popup.keys")
 
 local D = {}
 
--- User-Block
+-- -------------------------------------------------------------------
+-- User-Block (Header)
+-- -------------------------------------------------------------------
 D.user = {
 	name = os.getenv("USER") or "user",
 	avatar = beautiful.awesome_icon,
+	sub = nil, -- optional
 }
 
--- Linke Spalte (statisch)
+-- -------------------------------------------------------------------
+-- Linke Spalte (Schnellzugriffe)
+-- -------------------------------------------------------------------
 D.left_items = {
-	{ text = "All Programs", icon = beautiful.awesome_icon, on_press = function() end },
+	{
+		text = "All Programs",
+		icon = beautiful.awesome_icon,
+		on_press = function() end, -- Platzhalter
+	},
 	{
 		text = "Internet",
 		icon = beautiful.awesome_icon,
@@ -33,7 +41,9 @@ D.left_items = {
 	},
 }
 
--- Rechte Spalte (XP-Feeling)
+-- -------------------------------------------------------------------
+-- Rechte Spalte (Orte / Hilfe)
+-- -------------------------------------------------------------------
 D.right_items = {
 	{
 		text = "My Desktop",
@@ -43,7 +53,7 @@ D.right_items = {
 		end,
 	},
 	{
-		text = "My Documents", -- zeigt $HOME
+		text = "My Documents",
 		icon = beautiful.awesome_icon,
 		on_press = function()
 			awful.spawn.with_shell('xdg-open "$HOME"')
@@ -64,41 +74,40 @@ D.right_items = {
 		end,
 	},
 	{
-		text = "My Computer", -- dein nixos-config Repo
+		text = "My Computer",
 		icon = beautiful.awesome_icon,
 		on_press = function()
 			awful.spawn.with_shell('xdg-open "$HOME/nixos-config"')
 		end,
 	},
+
+	-- Hilfe/Support öffnet Hotkeys-Dialog
 	{
 		text = "Help and Support",
 		icon = beautiful.awesome_icon,
-		on_press = function()
-			hotkeys_popup.show_help(nil, awful.screen.focused())
-			-- Optional: Menü danach schließen
-			local api = rawget(_G, "__menu_api")
-			if api and api.hide then
-				api.hide()
-			end
-		end,
+		dialog = "hotkeys", -- -> Dialogs.hotkeys()
+		dialog_args = {
+			title = "Keyboard Shortcuts",
+			width = 900,
+		},
 	},
 }
 
--- Power-Leiste
+-- -------------------------------------------------------------------
+-- Power-Leiste (Footer rechts) – öffnet Dialoge
+-- -------------------------------------------------------------------
 D.power_items = {
 	{
 		text = "Log Off",
 		icon = beautiful.awesome_icon,
-		on_press = function()
-			awesome.quit()
-		end,
+		dialog = "logout", -- -> Dialogs.logout()
+		-- dialog_args = { ... } -- optional
 	},
 	{
 		text = "Turn Off",
 		icon = beautiful.awesome_icon,
-		on_press = function()
-			awful.spawn.with_shell("systemctl poweroff")
-		end,
+		dialog = "power", -- -> Dialogs.power()
+		-- dialog_args = { ... } -- optional
 	},
 }
 

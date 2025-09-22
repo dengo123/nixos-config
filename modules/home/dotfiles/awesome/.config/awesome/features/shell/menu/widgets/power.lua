@@ -1,11 +1,14 @@
+-- ~/.config/awesome/features/shell/menu/widgets/power.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.widgets.theme")
 local helper = require("features.shell.menu.widgets.helpers")
+local Actions = require("features.shell.menu.lib.actions")
 
 local M = {}
 
+-- Einzelner Power-Button (UI; Clicks werden außerhalb gebunden)
 function M.power_button(btn, t)
 	t = theme.with_defaults(t)
 	local eff_h = t._power_inner_h or t.power_h
@@ -48,6 +51,7 @@ function M.power_button(btn, t)
 
 	helper.apply_hover(box, t, t.power_bg, t.power_bg_hover)
 
+	-- Nur falls ausdrücklich erlaubt, Default-Click binden (Standard: aus)
 	if not (t.defer_power_clicks or btn.no_default_click) then
 		box:buttons(gears.table.join(awful.button({}, 1, function()
 			if btn.on_press then
@@ -67,20 +71,21 @@ function M.power_button(btn, t)
 	return fixed
 end
 
+-- Leiste der Power-Buttons
 function M.power_bar(power_items, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
 	local inner_h = opts.inner_h or t.footer_h or 48
 	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
 
-	-- helper: normalize id/label
+	-- ID/Label normalisieren
 	local function norm(s)
 		s = tostring(s or ""):lower()
-		-- alles Nicht-Alphanumerische (inkl. Leerzeichen/Bindestriche/Unterstriche) entfernen
 		s = s:gsub("[%s%p_%-]+", "")
 		return s
 	end
 
+	-- Semantik: was soll passieren?
 	local function decide_action(p)
 		local text = (p.text or p.label or "")
 		local id = p.id or text
@@ -115,7 +120,7 @@ function M.power_bar(power_items, t, opts)
 	end
 
 	for _, p in ipairs(power_items or {}) do
-		-- Button mit „deferred clicks“ bauen
+		-- Button bauen (Clicks später binden)
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
@@ -126,7 +131,7 @@ function M.power_bar(power_items, t, opts)
 		local btn = M.power_button(p, t_btn)
 		local fixed = wibox.widget({ btn, strategy = "exact", height = inner_h, widget = wibox.container.constraint })
 
-		-- alle vorhandenen Bindings entfernen (safety)
+		-- vorhandene Bindings entfernen (safety)
 		local inner = btn._click_target or btn
 		inner:buttons({})
 		btn:buttons({})
@@ -137,39 +142,39 @@ function M.power_bar(power_items, t, opts)
 			btn:buttons(b)
 		end
 
+		-- Provider prüfen
+		local provider = rawget(_G, "__menu_api") and _G.__menu_api.dialogs or nil
 		local action = decide_action(p)
-		local did_bind = false
 
-		if opts.dialogs and action == "power" and type(opts.dialogs.power) == "function" then
-			bind(function()
-				opts.dialogs.power({
+		-- Wenn Provider + passende Funktion → Dialog-Item synthetisieren; sonst Original-Item nutzen
+		local item
+		local can_dialog = provider
+			and (
+				(action == "power" and type(provider.power) == "function")
+				or (action == "logout" and type(provider.logout) == "function")
+			)
+
+		if (action == "power" or action == "logout") and can_dialog then
+			item = {
+				dialog = (action == "power") and "power" or "logout",
+				dialog_args = {
+					-- Footer-angepasste Overrides (werden mit Menü-Defaults gemergt)
 					bg = t.footer_bg or t.bg,
 					fg = t.footer_fg or t.fg,
 					btn_bg = t.dialog_btn_bg or "#ECECEC",
 					btn_fg = t.dialog_btn_fg or "#000000",
 					backdrop = t.dialog_backdrop or "#00000088",
 					radius = t.dialog_radius or 6,
-				})
-			end)
-			did_bind = true
-		elseif opts.dialogs and action == "logout" and type(opts.dialogs.logout_confirm) == "function" then
-			bind(function()
-				opts.dialogs.logout_confirm({
-					bg = t.footer_bg or t.bg,
-					fg = t.footer_fg or t.fg,
-					btn_bg = t.dialog_btn_bg or "#ECECEC",
-					btn_fg = t.dialog_btn_fg or "#000000",
-					backdrop = t.dialog_backdrop or "#00000088",
-					radius = t.dialog_radius or 6,
-				})
-			end)
-			did_bind = true
+				},
+			}
+		else
+			-- Kein Dialog-Provider oder keine passende Funktion → Fallback aufs Original
+			item = p
 		end
 
-		-- Fallback nur, wenn kein Dialog-Binding stattfand
-		if not did_bind and p.on_press then
-			bind(p.on_press)
-		end
+		-- Aktion erzeugen & binden
+		local fn = Actions.click(item) -- Provider wird zentral aus __menu_api gezogen
+		bind(fn)
 
 		table.insert(bar, fixed)
 	end

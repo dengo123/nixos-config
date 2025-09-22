@@ -5,7 +5,7 @@ local wibox = require("wibox")
 
 local Popup = {}
 
--- helper oben einfügen (falls nicht vorhanden)
+-- Erstes nicht-nil zurückgeben
 local function pick(...)
 	for i = 1, select("#", ...) do
 		local v = select(i, ...)
@@ -13,6 +13,21 @@ local function pick(...)
 			return v
 		end
 	end
+end
+
+-- Versionssicher: erkennen, ob etwas bereits ein Widget ist
+local function is_widget(x)
+	if type(x) ~= "table" then
+		return false
+	end
+	-- typische Widget-Merkmale in Awesome 4.x
+	if type(x.emit_signal) == "function" and x.connect_signal ~= nil then
+		return true
+	end
+	if x._private ~= nil and type(x.draw) == "function" then
+		return true
+	end
+	return false
 end
 
 -- args = { header, cols, footer, theme, placement, on_hide }
@@ -23,7 +38,7 @@ function Popup.build(args)
 	local t = args.theme or {}
 	local on_hide = args.on_hide
 
-	-- Fallback-Placement
+	-- Fallback-Placement (unten an die Workarea andocken)
 	local place_fn = args.placement
 		or function(p, s)
 			local wa = s.workarea or s.geometry
@@ -33,15 +48,47 @@ function Popup.build(args)
 			p.y = wa.y + wa.height - gap - ph
 		end
 
-	-- Container
-	local container = wibox.widget({
+	-------------------------------------------------------------------
+	-- Main-Inhalt (unten in der Stack)
+	-------------------------------------------------------------------
+	local container_main = wibox.widget({
 		header,
 		cols,
 		footer,
 		layout = wibox.layout.align.vertical,
 	})
 
-	-- Popup selbst mit Rundung
+	-------------------------------------------------------------------
+	-- Overlay (oben in der Stack) – zentriert mit Scrim
+	-------------------------------------------------------------------
+	local overlay_slot = wibox.widget({ layout = wibox.layout.fixed.vertical })
+	local overlay_root = wibox.widget({
+		{
+			{
+				overlay_slot,
+				widget = wibox.container.place,
+				halign = "center",
+				valign = "center",
+			},
+			widget = wibox.container.background,
+			bg = pick(t.dialog_scrim, "#00000099"), -- halbtransparentes Schwarz
+		},
+		visible = false,
+		widget = wibox.container.background,
+	})
+
+	-------------------------------------------------------------------
+	-- Stack: main unten, overlay oben
+	-------------------------------------------------------------------
+	local container = wibox.widget({
+		container_main,
+		overlay_root,
+		layout = wibox.layout.stack,
+	})
+
+	-------------------------------------------------------------------
+	-- Popup selbst
+	-------------------------------------------------------------------
 	local RADIUS = t.popup_radius or 12
 	local popup = awful.popup({
 		widget = container,
@@ -51,17 +98,19 @@ function Popup.build(args)
 			gears.shape.rounded_rect(cr, w, h, RADIUS)
 		end,
 
-		-- >>> hier: Theme-konform statt Schwarz/Default
+		-- Theme-konform
 		border_width = pick(t.popup_border_width, 1),
 		border_color = pick(t.popup_border_color, t.header_bg, "#3A6EA5"),
-		bg = pick(t.popup_bg, "#00000000"), -- transparent, damit columns.border_bg sichtbar ist
+		bg = pick(t.popup_bg, "#00000000"), -- transparent (Columns-Hintergrund sichtbar)
 		fg = pick(t.fg, "#ffffff"),
 
 		minimum_width = (t.col_left_w or 200) + (t.col_right_w or 200) + (t.cols_pad_l or 6) + (t.cols_pad_r or 6),
 		minimum_height = t.total_height or 650,
 	})
 
-	-- Outside-Klick Handling ------------------------------------------------
+	-------------------------------------------------------------------
+	-- Outside-Klick Handling (schließt das Menü – nicht nur den Dialog)
+	-------------------------------------------------------------------
 	local saved_root_buttons, outside_root_buttons
 	local client_click_connected = false
 
@@ -113,8 +162,10 @@ function Popup.build(args)
 			client_click_connected = false
 		end
 	end
-	-------------------------------------------------------------------------
 
+	-------------------------------------------------------------------
+	-- Placement (sicher)
+	-------------------------------------------------------------------
 	local function place_safe(popup_obj, s, place, opts, theme)
 		local wa = s.workarea or s.geometry
 		local gap = 2
@@ -132,13 +183,15 @@ function Popup.build(args)
 		end
 	end
 
-	-- *** NEU: ESC-Keygrabber für Menü-Popup ***
+	-------------------------------------------------------------------
+	-- ESC-Keygrabber
+	-------------------------------------------------------------------
 	local esc_grabber = nil
 	local function start_esc_grabber(api)
 		if esc_grabber then
 			return
 		end
-		esc_grabber = awful.keygrabber.run(function(mod, key, event)
+		esc_grabber = awful.keygrabber.run(function(_, key, event)
 			if event == "release" then
 				return
 			end
@@ -154,7 +207,9 @@ function Popup.build(args)
 		end
 	end
 
-	-- API -------------------------------------------------------------------
+	-------------------------------------------------------------------
+	-- Öffentliche API
+	-------------------------------------------------------------------
 	local api = {}
 
 	function api:show(opts)
@@ -178,7 +233,7 @@ function Popup.build(args)
 		gears.timer.start_new(0.016, try_place)
 
 		install_outside_listeners(api)
-		start_esc_grabber(api) -- <<< NEU
+		start_esc_grabber(api)
 	end
 
 	function api:hide()
@@ -190,7 +245,10 @@ function Popup.build(args)
 		end
 		popup.visible = false
 		remove_outside_listeners()
-		stop_esc_grabber() -- <<< NEU
+		stop_esc_grabber()
+		-- falls ein Dialog offen war: schließen
+		overlay_root.visible = false
+		overlay_slot:reset()
 	end
 
 	function api:toggle(opts)
@@ -201,13 +259,63 @@ function Popup.build(args)
 		end
 	end
 
+	-------------------------------------------------------------------
+	-- Dialog-API (Overlay steuern) – robust gegen Nicht-Widgets
+	-------------------------------------------------------------------
+	function api:show_dialog(widget)
+		if not widget then
+			return
+		end
+
+		-- Spezifikationstabellen → Widget konvertieren
+		if not is_widget(widget) then
+			local ok, built = pcall(wibox.widget, widget)
+			if ok and is_widget(built) then
+				widget = built
+			else
+				-- Ungültiger Dialog – defensiv abbrechen
+				return
+			end
+		end
+
+		-- Feste Größe/Constraint, um Verzerrungen zu vermeiden
+		local dw = tonumber(t.dialog_w) or 560
+		local dh = tonumber(t.dialog_h) or 360
+		local constrained = wibox.widget({
+			widget,
+			strategy = "exact",
+			width = dw,
+			height = dh,
+			widget = wibox.container.constraint,
+		})
+
+		overlay_slot:reset()
+		overlay_slot:add(constrained)
+		overlay_root.visible = true
+	end
+
+	function api:hide_dialog()
+		overlay_root.visible = false
+		overlay_slot:reset()
+	end
+
+	-- Klick auf Scrim: nur Dialog schließen (Menü bleibt offen)
+	overlay_root:buttons(gears.table.join(awful.button({}, 1, function()
+		api:hide_dialog()
+	end)))
+
+	-------------------------------------------------------------------
+	-- Signals & Reposition
+	-------------------------------------------------------------------
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
 			if on_hide then
 				pcall(on_hide)
 			end
 			remove_outside_listeners()
-			stop_esc_grabber() -- <<< failsafe
+			stop_esc_grabber()
+			overlay_root.visible = false
+			overlay_slot:reset()
 		end
 	end)
 

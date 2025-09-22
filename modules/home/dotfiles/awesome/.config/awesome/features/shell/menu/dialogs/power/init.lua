@@ -25,7 +25,7 @@ return {
 		return Layouts.power(overrides)
 	end,
 	logout_confirm = function(overrides)
-		return Layouts.logout_confirm(overrides)
+		return Layouts.logout(overrides)
 	end,
 
 	-- Exporte für gezielte Weiterverwendung
