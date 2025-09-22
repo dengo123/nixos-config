@@ -1,8 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/parts/footer.lua
 local wibox = require("wibox")
-
-local P = require("features.shell.menu.widgets") -- Buttons/Leisten
-local Search = require("features.shell.menu.search") -- <- dein neues Search-Modul (init.lua)
+local P = require("features.shell.menu.widgets") -- enthält power_bar()
+local Search = require("features.shell.menu.search") -- deine Search-Implementierung
 
 local Footer = {}
 
@@ -21,7 +20,7 @@ function Footer.build(arg1, arg2)
 	local t = opts.t
 
 	-- ---------------------------------------------------------------------------
-	-- Footer-Grundlayout (nur Container – KEINE Search-Logik/Theming hier!)
+	-- Footer-Grundlayout (nur Container)
 	-- ---------------------------------------------------------------------------
 	local FOOTER_H = t.footer_h or 48
 	local PAD_T = t.footer_pad_t or 6
@@ -51,17 +50,15 @@ function Footer.build(arg1, arg2)
 	})
 
 	-- ---------------------------------------------------------------------------
-	-- Power-Buttons rechts (komplett in widgets.lua gelöst)
+	-- Power-Buttons rechts (UI-only; Clicks -> Actions)
 	-- ---------------------------------------------------------------------------
-	local powers_right = P.power_bar(opts.power_items or {}, t, {
-		inner_h = inner_h,
-	})
+	local powers_right = P.power_bar(opts.power_items or {}, t, { inner_h = inner_h })
 
 	-- ---------------------------------------------------------------------------
 	-- Footer-Row & Container
 	-- ---------------------------------------------------------------------------
 	local row = wibox.widget({
-		search_inst.widget, -- links: Search-Bar (fertiges Widget aus dem Modul)
+		search_inst.widget, -- links: Search-Bar
 		nil, -- mitte: leer/Stretch
 		powers_right, -- rechts: Power-Leiste
 		expand = "inside",
@@ -86,9 +83,8 @@ function Footer.build(arg1, arg2)
 	-- ---------------------------------------------------------------------------
 	-- API: Search-Funktionen in bestehende Menü-API injizieren (nicht überschreiben)
 	-- ---------------------------------------------------------------------------
-	local api = rawget(_G, "__menu_api") or {} -- vorhandene Popup-API beibehalten
+	local api = rawget(_G, "__menu_api") or {}
 
-	-- Search passthrough
 	api.focus_search = function()
 		search_inst.api.focus_local()
 	end

@@ -3,14 +3,15 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.widgets.theme")
-local helper = require("features.shell.menu.widgets.helpers")
+local helper = require("features.shell.menu.lib.helpers")
 local Actions = require("features.shell.menu.lib.actions")
 
 local M = {}
 
--- Einzelner Power-Button (UI; Clicks werden außerhalb gebunden)
-function M.power_button(btn, t)
+-- Reiner UI-Button (keine Logik)
+function M.power_button(item, t)
 	t = theme.with_defaults(t)
+
 	local eff_h = t._power_inner_h or t.power_h
 	local pad_t = t.power_pad_t or 0
 	local pad_b = t.power_pad_b or 0
@@ -21,18 +22,28 @@ function M.power_button(btn, t)
 
 	local inner = wibox.widget({
 		{
-			image = btn.icon,
+			image = item.icon,
 			resize = true,
 			forced_height = icon_px,
 			forced_width = icon_px,
 			widget = wibox.widget.imagebox,
 		},
-		{ text = btn.text or "", font = font, valign = "center", widget = wibox.widget.textbox },
+		{
+			text = item.text or "",
+			font = font,
+			valign = "center",
+			widget = wibox.widget.textbox,
+		},
 		spacing = t.power_spacing,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	local placed = wibox.widget({ inner, halign = "left", valign = "center", widget = wibox.container.place })
+	local placed = wibox.widget({
+		inner,
+		halign = "left",
+		valign = "center",
+		widget = wibox.container.place,
+	})
 
 	local box = wibox.widget({
 		{
@@ -51,15 +62,7 @@ function M.power_button(btn, t)
 
 	helper.apply_hover(box, t, t.power_bg, t.power_bg_hover)
 
-	-- Nur falls ausdrücklich erlaubt, Default-Click binden (Standard: aus)
-	if not (t.defer_power_clicks or btn.no_default_click) then
-		box:buttons(gears.table.join(awful.button({}, 1, function()
-			if btn.on_press then
-				btn.on_press()
-			end
-		end)))
-	end
-
+	-- Keine Default-Logik hier – Clicks werden außen gebunden!
 	local fixed = wibox.widget({
 		box,
 		strategy = "exact",
@@ -67,114 +70,46 @@ function M.power_button(btn, t)
 		height = t.power_h,
 		widget = wibox.container.constraint,
 	})
+
 	fixed._click_target = box
 	return fixed
 end
 
--- Leiste der Power-Buttons
+-- Rechte Power-Leiste (UI-only) – Clicks -> Actions.click(item)
 function M.power_bar(power_items, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
+
 	local inner_h = opts.inner_h or t.footer_h or 48
 	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
 
-	-- ID/Label normalisieren
-	local function norm(s)
-		s = tostring(s or ""):lower()
-		s = s:gsub("[%s%p_%-]+", "")
-		return s
-	end
-
-	-- Semantik: was soll passieren?
-	local function decide_action(p)
-		local text = (p.text or p.label or "")
-		local id = p.id or text
-		local key = norm(id)
-		local raw = tostring(text):lower()
-
-		-- POWER
-		if
-			key == "power"
-			or key == "poweroff"
-			or key == "shutdown"
-			or raw:find("shutdown")
-			or raw:find("power%s*off")
-			or raw:find("turn%s*off")
-		then
-			return "power"
-		end
-		-- LOGOUT
-		if
-			key == "logout"
-			or key == "logoff"
-			or key == "signout"
-			or key == "signoff"
-			or raw:find("log[%s%-]*out")
-			or raw:find("log[%s%-]*off")
-			or raw:find("sign[%s%-]*out")
-			or raw:find("exit")
-		then
-			return "logout"
-		end
-		return nil
-	end
-
-	for _, p in ipairs(power_items or {}) do
-		-- Button bauen (Clicks später binden)
+	for _, item in ipairs(power_items or {}) do
+		-- Button-Theme für diese Höhe
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
 		end
-		t_btn.defer_power_clicks = true
 		t_btn._power_inner_h = inner_h
 
-		local btn = M.power_button(p, t_btn)
-		local fixed = wibox.widget({ btn, strategy = "exact", height = inner_h, widget = wibox.container.constraint })
+		-- Button bauen
+		local btn = M.power_button(item, t_btn)
+		local fixed = wibox.widget({
+			btn,
+			strategy = "exact",
+			height = inner_h,
+			widget = wibox.container.constraint,
+		})
 
-		-- vorhandene Bindings entfernen (safety)
-		local inner = btn._click_target or btn
-		inner:buttons({})
+		-- existierende Bindings entfernen (Safety)
+		local target = btn._click_target or btn
+		target:buttons({})
 		btn:buttons({})
 
-		local function bind(fn)
-			local b = gears.table.join(awful.button({}, 1, fn))
-			inner:buttons(b)
-			btn:buttons(b)
-		end
-
-		-- Provider prüfen
-		local provider = rawget(_G, "__menu_api") and _G.__menu_api.dialogs or nil
-		local action = decide_action(p)
-
-		-- Wenn Provider + passende Funktion → Dialog-Item synthetisieren; sonst Original-Item nutzen
-		local item
-		local can_dialog = provider
-			and (
-				(action == "power" and type(provider.power) == "function")
-				or (action == "logout" and type(provider.logout) == "function")
-			)
-
-		if (action == "power" or action == "logout") and can_dialog then
-			item = {
-				dialog = (action == "power") and "power" or "logout",
-				dialog_args = {
-					-- Footer-angepasste Overrides (werden mit Menü-Defaults gemergt)
-					bg = t.footer_bg or t.bg,
-					fg = t.footer_fg or t.fg,
-					btn_bg = t.dialog_btn_bg or "#ECECEC",
-					btn_fg = t.dialog_btn_fg or "#000000",
-					backdrop = t.dialog_backdrop or "#00000088",
-					radius = t.dialog_radius or 6,
-				},
-			}
-		else
-			-- Kein Dialog-Provider oder keine passende Funktion → Fallback aufs Original
-			item = p
-		end
-
-		-- Aktion erzeugen & binden
-		local fn = Actions.click(item) -- Provider wird zentral aus __menu_api gezogen
-		bind(fn)
+		-- EIN Handler: zentral über Actions
+		local cb = Actions.click(item)
+		local bindings = gears.table.join(awful.button({}, 1, cb))
+		target:buttons(bindings)
+		btn:buttons(bindings)
 
 		table.insert(bar, fixed)
 	end

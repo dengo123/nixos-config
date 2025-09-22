@@ -16,22 +16,27 @@ local function open_dialog_by_name(name, args)
 	if not _api then
 		return
 	end
-	local Dialogs = require("features.shell.menu.dialogs") -- zentraler Pool
+	local Dialogs = require("features.shell.menu.dialogs")
 	local theme = (_api.get_theme and _api:get_theme()) or {}
 	local fn = Dialogs and Dialogs[name]
 	if type(fn) ~= "function" then
 		return
 	end
 
-	-- korrekte Options-Struktur: Theme unter .theme, und embed=true fürs Overlay
 	local opts = { theme = theme, embed = true }
 	for k, v in pairs(args or {}) do
 		opts[k] = v
 	end
 
 	local widget = fn(opts)
+
+	-- >>> wichtige Zeile: Menü aufklappen, falls gerade verdeckt
+	if _api.show then
+		_api:show()
+	end
+
 	if _api.show_dialog then
-		_api:show_dialog(widget) -- Overlay anzeigen (Popup-Stack)
+		_api:show_dialog(widget)
 	end
 end
 
@@ -79,12 +84,6 @@ function Actions.click(item)
 	return function()
 		Actions.run(item)
 	end
-end
-
--- Alias für ältere Aufrufer (z. B. widgets/power.lua ruft Actions.make(...) auf)
--- Signatur: make(item, _provider?, _theme?, _widget?) – Extra-Args werden ignoriert.
-function Actions.make(item, _provider, _theme, _widget)
-	return Actions.click(item)
 end
 
 return Actions

@@ -1,9 +1,10 @@
--- features/shell/menu/widgets/rows.lua
+-- ~/.config/awesome/features/shell/menu/widgets/rows.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.widgets.theme")
-local helper = require("features.shell.menu.widgets.helpers")
+local helper = require("features.shell.menu.lib.helpers")
+local Actions = require("features.shell.menu.lib.actions")
 
 local M = {}
 
@@ -32,7 +33,12 @@ function M.row_widget(item, t, opts)
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	local placed = wibox.widget({ hline, halign = "left", valign = "center", widget = wibox.container.place })
+	local placed = wibox.widget({
+		hline,
+		halign = "left",
+		valign = "center",
+		widget = wibox.container.place,
+	})
 
 	local content = wibox.widget({
 		placed,
@@ -43,41 +49,19 @@ function M.row_widget(item, t, opts)
 		widget = wibox.container.margin,
 	})
 
-	local bg_box = wibox.widget({ content, bg = t.row_bg, fg = t.row_fg, widget = wibox.container.background })
+	local bg_box = wibox.widget({
+		content,
+		bg = t.row_bg,
+		fg = t.row_fg,
+		widget = wibox.container.background,
+	})
+
 	helper.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
 
-	-- Default-Click-Handler:
-	local function default_press()
-		-- 1) explizites item.on_press hat Vorrang
-		if item.on_press then
-			return item.on_press(item, bg_box)
-		end
-		-- 2) declarative dialog: item.dialog = "hotkeys" | "power" | "logout" | "generic" | <custom>
-		if opts.dialogs and item.dialog and type(opts.dialogs[item.dialog]) == "function" then
-			local overrides = {}
-			-- Theme-Overrides aus base mitnehmen:
-			for k, v in pairs(opts.dialog_overrides or {}) do
-				overrides[k] = v
-			end
-			-- Item-Args mergen (Item darf theme übersteuern)
-			if type(item.dialog_args) == "table" then
-				for k, v in pairs(item.dialog_args) do
-					overrides[k] = v
-				end
-			end
-			-- Bonus: "anchor" mitgeben, falls dein Dialog das nutzt
-			overrides.anchor = overrides.anchor or bg_box
-			-- Öffnen:
-			return opts.dialogs[item.dialog](overrides)
-		end
-	end
+	-- Klick strikt zentral über Actions (Dialoge/Aktionen entscheidet lib/actions.lua)
+	bg_box:buttons(gears.table.join(awful.button({}, 1, Actions.click(item))))
 
-	-- Klick binden
-	bg_box:buttons(gears.table.join(awful.button({}, 1, function()
-		default_press()
-	end)))
-
-	-- Optionale Hover-Callbacks aus Item
+	-- Optionale Hover-Callbacks aus Item beibehalten
 	bg_box:connect_signal("mouse::enter", function()
 		if item.on_hover_in then
 			item.on_hover_in(item, bg_box)
@@ -96,7 +80,7 @@ function M.list_widget(items, t, opts)
 	t = theme.with_defaults(t)
 	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }
 	for _, it in ipairs(items or {}) do
-		table.insert(box, M.row_widget(it, t, opts)) -- <— opts weiterreichen
+		table.insert(box, M.row_widget(it, t, opts))
 	end
 	return wibox.widget(box)
 end

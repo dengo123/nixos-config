@@ -88,7 +88,6 @@ D.right_items = {
 		dialog = "hotkeys", -- -> Dialogs.hotkeys()
 		dialog_args = {
 			title = "Keyboard Shortcuts",
-			width = 900,
 		},
 	},
 }
