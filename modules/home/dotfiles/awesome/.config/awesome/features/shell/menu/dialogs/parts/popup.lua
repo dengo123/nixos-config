@@ -1,3 +1,6 @@
+-- features/shell/menu/dialogs/parts/popup.lua
+-- Theme-neutraler Popup-Wrapper mit robuster ESC-Handling (OO + Legacy Keygrabber)
+
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -15,13 +18,8 @@ function Popup.close_all()
 	end
 end
 
-local function pick(...)
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v ~= nil then
-			return v
-		end
-	end
+local function nz(x, fallback)
+	return x == nil and fallback or x
 end
 
 function Popup.show(form_widget, th, opts)
@@ -32,22 +30,41 @@ function Popup.show(form_widget, th, opts)
 	local W = assert(opts.width, "popup.show: width required")
 	local H = assert(opts.height, "popup.show: height required")
 
-	-- Backdrop
+	local close_on_escape = nz(opts.close_on_escape, true)
+	local close_on_backdrop = nz(opts.close_on_backdrop, false)
+
+	-- Backdrop: blockt Klicks, schließt standardmäßig NICHT
 	local backdrop = wibox({
 		screen = s,
 		visible = true,
 		ontop = true,
 		type = "splash",
-		bg = pick(th.backdrop, "#00000066"),
+		bg = nz(th.backdrop, "#00000000"),
 	})
 	backdrop:geometry(s.geometry)
+	backdrop.input_passthrough = false
 
-	-- Border innen
+	if close_on_backdrop then
+		backdrop:buttons(gears.table.join(
+			awful.button({}, 1, function() end) -- wird von close() unten überschrieben; hier genügt Block+Schließen
+		))
+	else
+		-- NO-OP-Handler zum Konsumieren von Klicks (blockt Clients/Menu darunter)
+		backdrop:buttons(
+			gears.table.join(
+				awful.button({}, 1, function() end),
+				awful.button({}, 2, function() end),
+				awful.button({}, 3, function() end)
+			)
+		)
+	end
+
+	-- Innen-Container (neutral)
 	local border_block = wibox.widget({
 		form_widget,
-		bg = pick(th.dialog_bg, "#111318"),
+		bg = nz(th.dialog_bg, "#00000000"),
 		shape = function(cr, w, h)
-			local r = pick(th.dialog_radius, 12)
+			local r = tonumber(th.dialog_radius) or 0
 			if r > 0 then
 				gears.shape.rounded_rect(cr, w, h, r)
 			else
@@ -55,8 +72,8 @@ function Popup.show(form_widget, th, opts)
 			end
 		end,
 		shape_clip = true,
-		shape_border_width = pick(th.dialog_border_width, 1),
-		shape_border_color = pick(th.dialog_border, "#3A6EA5"),
+		shape_border_width = tonumber(th.dialog_border_width) or 0,
+		shape_border_color = nz(th.dialog_border, "#00000000"),
 		widget = wibox.container.background,
 	})
 
@@ -82,14 +99,20 @@ function Popup.show(form_widget, th, opts)
 	})
 
 	-- Lifecycle
-	local kg
+	local kg -- kann OO-Objekt ODER Legacy-ID sein
 	local function stop_grabber()
-		if kg and kg.stop then
-			pcall(function()
-				kg:stop()
-			end)
+		if kg then
+			if type(kg) == "table" and kg.stop then
+				pcall(function()
+					kg:stop()
+				end) -- OO-API
+			else
+				pcall(function()
+					awful.keygrabber.stop(kg)
+				end) -- Legacy
+			end
+			kg = nil
 		end
-		kg = nil
 	end
 
 	local function really_close()
@@ -110,21 +133,40 @@ function Popup.show(form_widget, th, opts)
 		really_close() -- idempotent
 	end
 
-	-- ESC + Backdrop
-	backdrop:buttons(gears.table.join(awful.button({}, 1, close)))
-	kg = awful.keygrabber({
-		mask_modkeys = true,
-		stop_key = "Escape",
-		stop_event = "release",
-		keybindings = { {
-			{},
-			"Escape",
-			function()
-				close()
-			end,
-		} },
-	})
-	kg:start()
+	-- Falls Backdrop-Schließen aktiv: echten Close-Handler setzen
+	if close_on_backdrop then
+		backdrop:buttons(
+			gears.table.join(awful.button({}, 1, close), awful.button({}, 2, close), awful.button({}, 3, close))
+		)
+	end
+
+	-- ESC schließt (robust für beide APIs + Masking von Lock-Keys)
+	if close_on_escape then
+		-- Versuche OO-API
+		local ok, obj = pcall(function()
+			return awful.keygrabber({
+				mask_modkeys = true, -- NumLock/CapsLock etc. maskieren
+				stop_key = "Escape",
+				stop_event = "release",
+				keybindings = {
+					{ {}, "Escape", close }, -- auf Key-press schließen; stop auf release
+				},
+			})
+		end)
+
+		if ok and obj and obj.start then
+			kg = obj
+			kg:start()
+		else
+			-- Fallback: Legacy-API
+			kg = awful.keygrabber.run(function(_, key, event)
+				-- Maskiere Lock-Keys: wir reagieren nur auf Escape-Release
+				if key == "Escape" and event == "release" then
+					close()
+				end
+			end)
+		end
+	end
 
 	popup.visible = true
 	awful.placement.centered(popup, { honor_workarea = true })
