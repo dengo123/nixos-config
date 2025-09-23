@@ -8,49 +8,80 @@ local wibox = require("wibox")
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local H = require("features.shell.menu.dialogs.parts.helpers")
 local Popup = require("features.shell.menu.dialogs.parts.popup")
+local Theme = require("features.shell.menu.dialogs.parts.theme")
+local Icons = require("features.shell.menu.dialogs.parts.icons")
 
 local Base = {}
 
 -- --- Theme-Resolve ----------------------------------------------------------
-local function resolve_theme(theme)
-	if type(theme) == "function" then
-		local ok, t = pcall(theme)
-		if ok and type(t) == "table" then
-			return t
+
+-- Fallback-Merge, falls Theme.merge nicht vorhanden ist (flaches Merge: a < b)
+local function shallow_merge(a, b)
+	local out = {}
+	if type(a) == "table" then
+		for k, v in pairs(a) do
+			out[k] = v
 		end
-	elseif type(theme) == "table" then
-		return theme
 	end
-	local ui = rawget(_G, "ui")
-	if ui and type(ui.theme) == "table" then
-		return ui.theme
+	if type(b) == "table" then
+		for k, v in pairs(b) do
+			out[k] = v
+		end
 	end
-	return {}
+	return out
 end
 
-local function num(x, fb)
-	x = tonumber(x)
-	return x ~= nil and x or fb
+local function resolve_theme(theme_overrides)
+	-- 1) Overrides aus Fn/Table ziehen
+	local overrides = {}
+	if type(theme_overrides) == "function" then
+		local ok, t = pcall(theme_overrides)
+		if ok and type(t) == "table" then
+			overrides = t
+		end
+	elseif type(theme_overrides) == "table" then
+		overrides = theme_overrides
+	end
+
+	-- 2) ui.theme als Basis (falls vorhanden)
+	local ui_base = {}
+	local ui = rawget(_G, "ui")
+	if ui and type(ui.theme) == "table" then
+		ui_base = ui.theme
+	end
+
+	-- 3) Mergen + Defaults via Theme.get/merge (mit Fallback)
+	local merged
+	if Theme and type(Theme.merge) == "function" then
+		merged = Theme.merge(ui_base, overrides)
+	else
+		merged = shallow_merge(ui_base, overrides)
+	end
+
+	if Theme and type(Theme.get) == "function" then
+		return Theme.get(merged)
+	end
+	return merged or {}
 end
 
 -- --- Public -----------------------------------------------------------------
 function Base.choice(opts)
 	opts = opts or {}
 
-	-- Theme zuerst sauber auflösen
+	-- Theme auflösen (zentral hier)
 	local th = resolve_theme(opts.theme)
 
 	-- Größen & Geometrie
-	local DIALOG_W = num(H.pick(th.dialog_w, 560), 560)
-	local DIALOG_H = num(H.pick(th.dialog_h, 360), 360)
-	local geom = H.compute_icon_metrics(th, DIALOG_W, DIALOG_H) -- liefert seg/pads etc.
+	local DIALOG_W = H.num(H.pick(th.dialog_w, 560), 560)
+	local DIALOG_H = H.num(H.pick(th.dialog_h, 360), 360)
+	local geom = H.compute_icon_metrics(th, DIALOG_W, DIALOG_H) -- seg/pads etc.
 
 	-- ========================= Header =========================================
 	local header = wibox.widget({
 		{
 			W.mk_header_content(opts.title or "", th),
-			left = num(H.pick(th.header_pad_h, th.pad_h, 12), 12),
-			right = num(H.pick(th.header_pad_h, th.pad_h, 12), 12),
+			left = H.num(H.pick(th.header_pad_h, th.pad_h, 12), 12),
+			right = H.num(H.pick(th.header_pad_h, th.pad_h, 12), 12),
 			widget = wibox.container.margin,
 		},
 		bg = H.pick(th.header_bg, "#235CDB"),
@@ -59,38 +90,19 @@ function Base.choice(opts)
 	})
 
 	-- ========================= Body ===========================================
-	-- Body Core: entweder externer body_widget oder Icon-Grid
-	local actions = opts.actions or {}
+	-- Body Core: entweder externer body_widget oder Icon-Row über Icons.actions_row
 	local body_core
-
 	local close_ref = function() end -- später mit echtem handle.close belegt
 
 	if opts.body_widget then
 		body_core = opts.body_widget
 	else
-		local cells = {}
-		for i, a in ipairs(actions) do
-			local btn = W.mk_icon_button({
-				icon = a.icon,
-				emoji = a.emoji,
-				emoji_font = a.emoji_font,
-				size = geom.icon_size,
-				label = a.label,
-				th = th,
-				on_press = function()
-					if a.on_press then
-						a.on_press(close_ref)
-					end
-				end,
-			})
-			cells[i] = H.fixed_cell(btn, geom.icon_cell_w)
-		end
-		local targets = H.targets_linear(#cells)
-		body_core = (#cells > 0) and H.build_even_row(cells, targets, geom.icon_cell_w, geom.place_w)
-			or wibox.widget({ layout = wibox.layout.fixed.horizontal })
+		body_core = Icons.actions_row(opts.actions or {}, th, geom, function()
+			return close_ref
+		end)
 	end
 
-	-- WICHTIG: Padding INSIDE der Background-Box, damit kein „Rand“ um den Body entsteht.
+	-- Padding INSIDE der Background-Box (keine „äußeren“ Ränder um den Body)
 	local body = wibox.widget({
 		{
 			{ body_core, halign = "center", valign = "center", widget = wibox.container.place },
@@ -119,15 +131,15 @@ function Base.choice(opts)
 
 	local footer_right = wibox.widget({
 		{ cancel_btn, halign = "right", valign = "center", widget = wibox.container.place },
-		right = num(H.pick(th.footer_pad_h, th.pad_h, 12), 12),
+		right = H.num(H.pick(th.footer_pad_h, th.pad_h, 12), 12),
 		widget = wibox.container.margin,
 	})
 
 	local footer = wibox.widget({
 		{
 			footer_right,
-			top = num(H.pick(th.footer_pad_v, 8), 8),
-			bottom = num(H.pick(th.footer_pad_v, 8), 8),
+			top = H.num(H.pick(th.footer_pad_v, 8), 8),
+			bottom = H.num(H.pick(th.footer_pad_v, 8), 8),
 			widget = wibox.container.margin,
 		},
 		bg = H.pick(th.footer_bg, "#235CDB"),
@@ -178,7 +190,7 @@ function Base.choice(opts)
 		handle.close()
 	end)))
 
-	-- Echten close in die Action-Handler injizieren
+	-- Echten close in die Action-Handler injizieren (lazy via get_close_ref)
 	close_ref = handle.close
 
 	return handle

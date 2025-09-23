@@ -2,9 +2,13 @@
 -- Generische Layout-/Geometrie-Utilities (keine Popup-/Theme-Resolve-Logik)
 
 local wibox = require("wibox")
-local gears = require("gears")
 
 local H = {}
+
+function H.num(x, fb)
+	x = tonumber(x)
+	return x ~= nil and x or fb
+end
 
 function H.pick(...)
 	for i = 1, select("#", ...) do

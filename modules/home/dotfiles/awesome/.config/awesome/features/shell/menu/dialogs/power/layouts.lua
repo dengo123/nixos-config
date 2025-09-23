@@ -1,5 +1,5 @@
 -- features/shell/menu/dialogs/power/layouts.lua
-local Base = require("features.shell.menu.dialogs.power.base")
+local Base = require("features.shell.menu.dialogs.parts.base")
 local Actions = require("features.shell.menu.dialogs.parts.actions")
 
 local M = {}
