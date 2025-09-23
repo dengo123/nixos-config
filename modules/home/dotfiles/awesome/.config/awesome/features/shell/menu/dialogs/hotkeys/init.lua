@@ -1,13 +1,15 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/hotkeys/init.lua
+local gears = require("gears")
 local beautiful = require("beautiful")
 beautiful.hotkeys_bg = "#ECE9D8"
 beautiful.hotkeys_fg = "#000000"
 beautiful.hotkeys_modifiers_fg = "#000000"
-beautiful.hotkeys_border_width = 2
+beautiful.hotkeys_border_width = 4
 beautiful.hotkeys_border_color = "#235CDB"
 beautiful.hotkeys_font = "Inter 10"
 beautiful.hotkeys_description_font = "Inter 10"
 beautiful.hotkeys_group_margin = 16
+beautiful.hotkeys_shape = gears.shape.rounded_rect
 
 -- Standard-Gruppen registrieren
 pcall(require, "awful.hotkeys_popup.keys")
