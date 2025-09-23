@@ -3,14 +3,33 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.widgets.theme")
-local helper = require("features.shell.menu.lib.helpers")
-local Actions = require("features.shell.menu.lib.actions")
+local Lib = require("features.shell.menu.lib") -- nur der Aggregator
 
 local M = {}
 
+-- Lib-Auflösung: opts.lib > opts.api.lib > __menu_api.lib > require'd Lib
+local function resolve_lib(opts)
+	opts = opts or {}
+	if opts.lib then
+		return opts.lib
+	end
+	if opts.api and opts.api.lib then
+		return opts.api.lib
+	end
+	local api = rawget(_G, "__menu_api")
+	if api and api.lib then
+		return api.lib
+	end
+	return Lib
+end
+
 -- Reiner UI-Button (keine Logik)
-function M.power_button(item, t)
+function M.power_button(item, t, opts)
 	t = theme.with_defaults(t)
+	opts = opts or {}
+
+	local lib = resolve_lib(opts)
+	local helpers = (lib and lib.helpers) or {}
 
 	local eff_h = t._power_inner_h or t.power_h
 	local pad_t = t.power_pad_t or 0
@@ -60,7 +79,10 @@ function M.power_button(item, t)
 		widget = wibox.container.background,
 	})
 
-	helper.apply_hover(box, t, t.power_bg, t.power_bg_hover)
+	-- Hover nur anwenden, wenn vorhanden
+	if type(helpers.apply_hover) == "function" then
+		helpers.apply_hover(box, t, t.power_bg, t.power_bg_hover)
+	end
 
 	-- Keine Default-Logik hier – Clicks werden außen gebunden!
 	local fixed = wibox.widget({
@@ -75,10 +97,13 @@ function M.power_button(item, t)
 	return fixed
 end
 
--- Rechte Power-Leiste (UI-only) – Clicks -> Actions.click(item)
+-- Rechte Power-Leiste (UI-only) – Clicks -> Lib.actions.click(item)
 function M.power_bar(power_items, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
+
+	local lib = resolve_lib(opts)
+	local actions = (lib and lib.actions) or nil
 
 	local inner_h = opts.inner_h or t.footer_h or 48
 	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
@@ -92,7 +117,7 @@ function M.power_bar(power_items, t, opts)
 		t_btn._power_inner_h = inner_h
 
 		-- Button bauen
-		local btn = M.power_button(item, t_btn)
+		local btn = M.power_button(item, t_btn, opts)
 		local fixed = wibox.widget({
 			btn,
 			strategy = "exact",
@@ -105,8 +130,8 @@ function M.power_bar(power_items, t, opts)
 		target:buttons({})
 		btn:buttons({})
 
-		-- EIN Handler: zentral über Actions
-		local cb = Actions.click(item)
+		-- EIN Handler: zentral über Lib.actions (falls vorhanden), sonst No-Op
+		local cb = (actions and type(actions.click) == "function") and actions.click(item) or function() end
 		local bindings = gears.table.join(awful.button({}, 1, cb))
 		target:buttons(bindings)
 		btn:buttons(bindings)

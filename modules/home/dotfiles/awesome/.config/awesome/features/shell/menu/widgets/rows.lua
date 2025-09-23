@@ -3,14 +3,43 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.widgets.theme")
-local helper = require("features.shell.menu.lib.helpers")
-local Actions = require("features.shell.menu.lib.actions")
+local Lib = require("features.shell.menu.lib") -- nur der Aggregator
 
 local M = {}
+
+-- weicher Fallback für fixed_height, falls lib.helpers.fixed_height fehlt
+local function fallback_fixed_height(widget, h)
+	return wibox.widget({
+		widget,
+		strategy = "exact",
+		height = math.max(1, tonumber(h) or 1),
+		widget = wibox.container.constraint,
+	})
+end
+
+-- Lib-Auflösung: opts.lib > opts.api.lib > __menu_api.lib > require'd Lib
+local function resolve_lib(opts)
+	opts = opts or {}
+	if opts.lib then
+		return opts.lib
+	end
+	if opts.api and opts.api.lib then
+		return opts.api.lib
+	end
+	local api = rawget(_G, "__menu_api")
+	if api and api.lib then
+		return api.lib
+	end
+	return Lib
+end
 
 function M.row_widget(item, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
+
+	local lib = resolve_lib(opts)
+	local helpers = (lib and lib.helpers) or {}
+	local actions = (lib and lib.actions) or nil
 
 	local eff_h = t.row_h
 	local pad_t = t.row_pad_t or 0
@@ -56,10 +85,17 @@ function M.row_widget(item, t, opts)
 		widget = wibox.container.background,
 	})
 
-	helper.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
+	-- Hover nur anwenden, wenn vorhanden
+	if type(helpers.apply_hover) == "function" then
+		helpers.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
+	end
 
-	-- Klick strikt zentral über Actions (Dialoge/Aktionen entscheidet lib/actions.lua)
-	bg_box:buttons(gears.table.join(awful.button({}, 1, Actions.click(item))))
+	-- Klick strikt über Lib.actions (falls vorhanden), sonst No-Op
+	local on_click = nil
+	if actions and type(actions.click) == "function" then
+		on_click = actions.click(item)
+	end
+	bg_box:buttons(gears.table.join(awful.button({}, 1, on_click or function() end)))
 
 	-- Optionale Hover-Callbacks aus Item beibehalten
 	bg_box:connect_signal("mouse::enter", function()
@@ -73,7 +109,12 @@ function M.row_widget(item, t, opts)
 		end
 	end)
 
-	return helper.fixed_height(bg_box, eff_h)
+	-- fixed_height über Lib.helpers, sonst Fallback
+	if type(helpers.fixed_height) == "function" then
+		return helpers.fixed_height(bg_box, eff_h)
+	else
+		return fallback_fixed_height(bg_box, eff_h)
+	end
 end
 
 function M.list_widget(items, t, opts)
