@@ -1,4 +1,4 @@
--- Atomare UI-Bausteine (ohne Container-Logik):
+-- features/shell/menu/dialogs/parts/widgets.lua
 --  - mk_header_content(title, th)
 --  - mk_cancel_button(label, on_click, th)
 --  - mk_icon_button{ icon|emoji, size, label, on_press, th }

@@ -1,37 +1,11 @@
 -- features/shell/menu/dialogs/power/layouts.lua
-local awful = require("awful")
 local Base = require("features.shell.menu.dialogs.power.base")
-local Popup = require("features.shell.menu.dialogs.parts.popup") -- <— hinzufügen
+local Actions = require("features.shell.menu.dialogs.parts.actions")
 
 local M = {}
 
--- Immer: erst ALLE Popups schließen (failsafe), dann das aktuelle handle.close(),
--- dann die Aktion starten
-local function close_then_cmd(cmd)
-	return function(close)
-		Popup.close_all() -- failsafe: wirklich alles zu
-		if close then
-			close()
-		end
-		if cmd and #cmd > 0 then
-			awful.spawn.with_shell(cmd)
-		end
-	end
-end
+-- ===== Aktionen (Shell/Lua) ===============================================
 
-local function close_then_lua(fn)
-	return function(close)
-		Popup.close_all()
-		if close then
-			close()
-		end
-		if fn then
-			pcall(fn)
-		end
-	end
-end
-
--- ===== Aktionen =====
 local switch_user = [[
   if command -v dm-tool >/dev/null 2>&1; then
     dm-tool switch-to-greeter
@@ -46,13 +20,14 @@ local function awesome_quit_lua()
 	awesome.quit()
 end
 
--- ===== Layouts =====
+-- ===== Layouts ============================================================
+
 function M.logout(th)
 	return Base.choice({
 		title = "Log off",
 		actions = {
-			{ emoji = "👤", label = "Switch user", on_press = close_then_cmd(switch_user) },
-			{ emoji = "🚪", label = "Log off", on_press = close_then_lua(awesome_quit_lua) },
+			{ emoji = "👤", label = "Switch user", on_press = Actions.cmd(switch_user) },
+			{ emoji = "🚪", label = "Log off", on_press = Actions.lua(awesome_quit_lua) },
 		},
 		theme = th,
 	})
@@ -62,9 +37,9 @@ function M.power(th)
 	return Base.choice({
 		title = "Turn off Computer",
 		actions = {
-			{ emoji = "🛌", label = "Stand By", on_press = close_then_cmd("systemctl suspend") },
-			{ emoji = "⏻", label = "Turn Off", on_press = close_then_cmd("systemctl poweroff") },
-			{ emoji = "🔄", label = "Restart", on_press = close_then_cmd("systemctl reboot") },
+			{ emoji = "🛌", label = "Stand By", on_press = Actions.cmd("systemctl suspend") },
+			{ emoji = "⏻", label = "Turn Off", on_press = Actions.cmd("systemctl poweroff") },
+			{ emoji = "🔄", label = "Restart", on_press = Actions.cmd("systemctl reboot") },
 		},
 		theme = th,
 	})
