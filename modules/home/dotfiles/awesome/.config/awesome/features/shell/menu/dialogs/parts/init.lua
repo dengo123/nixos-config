@@ -6,7 +6,7 @@ local wibox = require("wibox")
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
-local Focus = require("features.shell.menu.dialogs.parts.focus") -- ← Key-Fokus
+local Focus = require("features.shell.menu.lib.focus") -- ← Key-Fokus
 
 local Base = {}
 
@@ -201,8 +201,7 @@ function Base.dialog(opts)
 
 	-- Tastatur-Fokus aktivieren (←/→ + Enter), falls Items vorhanden
 	if type(focus_items) == "table" and #focus_items > 0 then
-		local stop_focus = Focus.attach(handle, focus_items, th)
-
+		local stop_focus = Focus.attach(focus_items, th, { handle = handle })
 		-- Cleanup: Keygrabber stoppen, Fokus-Optik resetten
 		if type(stop_focus) == "function" then
 			local old_close = handle.close
