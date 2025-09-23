@@ -19,6 +19,8 @@ Theme.defaults = {
 	-- Body ergibt sich automatisch = 1 - header_ratio - footer_ratio
 	header_ratio = 0.22, -- ~22% der Gesamthöhe
 	footer_ratio = 0.22, -- ~22% der Gesamthöhe
+	header_h = 80,
+	footer_h = 80,
 
 	--------------------------------------------------------------------------
 	-- Farben/Flächen

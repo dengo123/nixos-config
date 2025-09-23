@@ -1,67 +1,36 @@
--- ~/.config/awesome/features/shell/menu/dialogs/hotkeys.lua
-local awful = require("awful")
+-- ~/.config/awesome/features/shell/menu/dialogs/hotkeys/init.lua
 local wibox = require("wibox")
-local beautiful = require("beautiful")
-local gears = require("gears")
-local hotkeys_popup = require("awful.hotkeys_popup")
-pcall(require, "awful.hotkeys_popup.keys") -- Gruppen registrieren
+local Base = require("features.shell.menu.dialogs.parts")
 
 local M = {}
 
--- >>> Hier Theme direkt im Modul festlegen
-local LOCAL_THEME = {
-	bg = "#ECE9D8", -- Hintergrund
-	fg = "#000000", -- Textfarbe
-	border = "#2b77ff", -- Randfarbe
-	border_width = 2, -- Randbreite (px)
-	radius = 10, -- Eckenradius (px)
-	font = nil, -- z.B. "Inter 10"
-	desc_font = nil, -- z.B. "Inter 10"
-	modifiers_fg = "#000000", -- Farbe der Modifikatorkeys
-	group_margin = 6, -- Abstand zwischen Gruppen
-}
+local HOTKEYS_SIZE = { w = 680, h = 460 } -- größer als power
+local HEADER_H = 80
+local FOOTER_H = 80
 
--- Optional: per Code änderbar (falls du später willst)
-function M.set_theme(t)
-	for k, v in pairs(t or {}) do
-		LOCAL_THEME[k] = v
-	end
+local function mk_text_body(th, _dims, _get_close, text)
+	local tb = wibox.widget({
+		markup = text or "No hotkeys defined.",
+		align = "left",
+		valign = "top",
+		wrap = "word_char",
+		widget = wibox.widget.textbox,
+	})
+	tb.font = th.mono_font or th.font or "monospace 10"
+	return tb
 end
 
-local function apply_theme()
-	beautiful.hotkeys_bg = LOCAL_THEME.bg
-	beautiful.hotkeys_fg = LOCAL_THEME.fg
-	beautiful.hotkeys_border_color = LOCAL_THEME.border
-	beautiful.hotkeys_border_width = LOCAL_THEME.border_width
-	beautiful.hotkeys_shape = function(cr, w, h)
-		gears.shape.rounded_rect(cr, w, h, LOCAL_THEME.radius or 0)
-	end
-
-	if LOCAL_THEME.font then
-		beautiful.hotkeys_font = LOCAL_THEME.font
-	end
-	if LOCAL_THEME.desc_font then
-		beautiful.hotkeys_description_font = LOCAL_THEME.desc_font
-	end
-	if LOCAL_THEME.modifiers_fg ~= nil then
-		beautiful.hotkeys_modifiers_fg = LOCAL_THEME.modifiers_fg
-	end
-	if LOCAL_THEME.group_margin ~= nil then
-		beautiful.hotkeys_group_margin = LOCAL_THEME.group_margin
-	end
-end
-
--- Minimal: öffnet immer das klassische Hotkeys-Popup mit unserem Modul-Theme.
--- Gibt ein 1x1-Placeholder-Widget zurück (damit dein Overlay-Fluss zufrieden ist).
-function M.hotkeys(_opts)
-	apply_theme()
-	hotkeys_popup.show_help(nil, awful.screen.focused())
-
-	return wibox.widget({
-		strategy = "exact",
-		width = 1,
-		height = 1,
-		widget = wibox.container.constraint,
+function M.show_text(overrides, text)
+	return Base.dialog({
+		title = "Hotkeys",
+		theme = overrides,
+		size = HOTKEYS_SIZE,
+		header_h = HEADER_H,
+		footer_h = FOOTER_H,
+		body_builder = function(th, dims, get_close)
+			th.header_h, th.footer_h = dims.header_h, dims.footer_h
+			return mk_text_body(th, dims, get_close, text)
+		end,
 	})
 end
 
