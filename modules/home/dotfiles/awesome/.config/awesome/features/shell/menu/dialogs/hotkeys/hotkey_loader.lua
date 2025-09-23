@@ -1,4 +1,4 @@
--- features/shell/menu/hotkeys/hotkey_loader.lua
+-- features/shell/menu/dialogs/hotkeys/hotkey_loader.lua
 local M = {}
 
 -- Anzeige-Reihenfolge der Modifier
@@ -34,13 +34,50 @@ local function sort_mods(mods)
 	return mods
 end
 
-local function combo_string(mods, key, labels)
+-- Sicherer Getter: unterstützt table UND userdata (__index)
+local function getfield(obj, ...)
+	for i = 1, select("#", ...) do
+		local name = select(i, ...)
+		local v
+		if type(obj) == "table" then
+			v = rawget(obj, name)
+		end
+		if v == nil then
+			local ok, res = pcall(function()
+				return obj[name]
+			end)
+			if ok then
+				v = res
+			end
+		end
+		if v ~= nil then
+			return v
+		end
+	end
+	return nil
+end
+
+-- Rendert "Key" als String, unterstützt key ODER keygroup
+local function key_to_string(k)
+	local key = getfield(k, "key", "_key")
+	if key ~= nil and key ~= "" then
+		return tostring(key)
+	end
+	local keygroup = getfield(k, "keygroup", "_keygroup")
+	if keygroup ~= nil and keygroup ~= "" then
+		-- einfache, neutrale Darstellung von Keygroups
+		return string.format("[%s]", tostring(keygroup))
+	end
+	return "" -- notfalls leer lassen; Beschreibung zeigt dann trotzdem was
+end
+
+local function combo_string(mods, key_str, labels)
 	labels = labels or MOD_LABELS_DEFAULT
 	local parts = {}
 	for _, m in ipairs(sort_mods(deepcopy(mods or {}))) do
 		table.insert(parts, labels[m] or m)
 	end
-	table.insert(parts, tostring(key or ""))
+	table.insert(parts, key_str or "")
 	return table.concat(parts, " + ")
 end
 
@@ -48,18 +85,24 @@ local function ingest_keys(keylist, by_group, opts)
 	if type(keylist) ~= "table" then
 		return
 	end
+
 	local labels = opts.labels or MOD_LABELS_DEFAULT
 	local include_undesc = opts.include_undesc or false
 	local default_group = opts.default_group or "misc"
 
-	for _, k in ipairs(keylist) do
-		local mods = k.modifiers or {}
-		local key = k.key
-		local desc = rawget(k, "description")
-		local grp = rawget(k, "group") or default_group
+	-- WICHTIG: pairs statt ipairs (gears.table.join/root.keys sind oft nicht „array-sequentiell“)
+	for _, k in pairs(keylist) do
+		local mods = getfield(k, "modifiers")
+		if type(mods) ~= "table" then
+			mods = (mods ~= nil) and { mods } or {}
+		end
+
+		local desc = getfield(k, "description", "_description")
+		local grp = getfield(k, "group", "_group") or default_group
 
 		if (desc and desc ~= "") or include_undesc then
-			local combo = combo_string(mods, key, labels)
+			local key_str = key_to_string(k) -- unterstützt key/keygroup
+			local combo = combo_string(mods, key_str, labels)
 			by_group[grp] = by_group[grp] or {}
 			table.insert(by_group[grp], { combo = combo, desc = desc or "" })
 		end

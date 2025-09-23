@@ -46,40 +46,6 @@ local function resolve_theme(theme)
 end
 
 ---------------------------------------------------------------------
--- Dialog-Overrides aus Theme ableiten (Default-Look für Dialoge)
----------------------------------------------------------------------
-local function dialog_overrides_from_theme(t)
-	return {
-		bg = t.dialog_bg or t.header_bg or t.bg,
-		fg = t.dialog_fg or t.header_fg or t.fg,
-		radius = t.dialog_radius or t.popup_radius or 8,
-		border = t.dialog_border or t.popup_border_color,
-		border_width = t.dialog_border_width or t.popup_border_width or 1,
-		backdrop = t.dialog_backdrop or "#00000088",
-		btn_bg = t.dialog_btn_bg,
-		btn_fg = t.dialog_btn_fg,
-	}
-end
-
--- flaches Merge (für Tabellen gleicher Ebene)
-local function merge(a, b)
-	local out = {}
-	for k, v in pairs(a or {}) do
-		out[k] = v
-	end
-	for k, v in pairs(b or {}) do
-		out[k] = v
-	end
-	return out
-end
-
----------------------------------------------------------------------
--- args = {
---   theme,
---   data = { user, left_items, right_items, power_items },
---   on_search = function(query) ... end
--- }
----------------------------------------------------------------------
 function M.build_popup(args)
 	args = args or {}
 	local t = resolve_theme(args.theme)
@@ -162,35 +128,6 @@ function M.build_popup(args)
 
 	function api:get_theme()
 		return t
-	end
-
-	-- ZENTRALER DIALOG-PROVIDER + Default-Overrides
-	api.dialogs = Dialogs
-	api.dialog_overrides = dialog_overrides_from_theme(t)
-
-	-- Dialog öffnen (Theme + embed korrekt an Dialog übergeben)
-	function api:open_dialog(name, overrides)
-		local D = self.dialogs
-		if D and type(D[name]) == "function" then
-			-- Options für den Dialog bauen:
-			--  - Theme-Basis = aktuelles Menü-Theme
-			--  - dialog_overrides als Theme-Overrides mergen
-			--  - zusätzlich übergebene overrides oben drauf
-			local opts = { theme = merge(t, self.dialog_overrides or {}), embed = true }
-			for k, v in pairs(overrides or {}) do
-				if k == "theme" and type(v) == "table" then
-					opts.theme = merge(opts.theme, v)
-				else
-					opts[k] = v
-				end
-			end
-			local widget = D[name](opts) -- Dialog-Builder liefert Widget (für Overlay)
-			popup_api:show_dialog(widget)
-			return widget
-		end
-		if gears and gears.debug and gears.debug.print_warning then
-			gears.debug.print_warning(("Unknown dialog name: %s"):format(tostring(name)))
-		end
 	end
 
 	-- Search-Orchestrierung (vom Footer-API durchgereicht)
