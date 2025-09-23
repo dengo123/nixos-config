@@ -1,7 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/init.lua
 local parts = require("features.shell.menu.parts")
-local defaults = require("features.shell.menu.lib")
-local Popup = require("features.shell.menu.parts.popup")
+local Lib = require("features.shell.menu.lib")
+local defaults = Lib.defaults()
 local beautiful = require("beautiful")
 local menubar = require("menubar")
 
@@ -34,7 +34,7 @@ function M.setup(cfg)
 		on_search = cfg.menu_on_search or function(_) end,
 	})
 
-	-- >>> Variante A: komplettes Menü-API global bereitstellen
+	-- >>> Globale Menü-API bereitstellen
 	_G.__menu_api = api
 
 	-- Komfort-Signale
@@ -52,9 +52,9 @@ function M.setup(cfg)
 		end
 	end)
 
-	-- Launcher (Icon-Button)
+	-- Launcher (Icon-Button) – via API (Option B)
 	local launcher = cfg.menu_launcher
-		or Popup.make_launcher(api, (cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon, beautiful)
+		or api:make_launcher((cfg.ui and cfg.ui.awesome_icon) or beautiful.awesome_icon, beautiful)
 
 	return { menu = api, launcher = launcher }
 end

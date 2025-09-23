@@ -1,11 +1,10 @@
--- ~/.config/awesome/features/shell/menu/parts/init.lua
+-- features/shell/menu/parts/init.lua
 local gears = require("gears")
 local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
 local Footer = require("features.shell.menu.parts.footer")
 local Popup = require("features.shell.menu.parts.popup")
-local Dialogs = require("features.shell.menu.dialogs")
-local Actions = require("features.shell.menu.lib.actions")
+local Lib = require("features.shell.menu.lib")
 
 local ThemeMod_ok, ThemeMod = pcall(require, "features.shell.menu.parts.theme")
 
@@ -176,8 +175,16 @@ function M.build_popup(args)
 	end
 
 	-- Dispatcher an die API andocken (zentral!)
-	if Actions and type(Actions.init) == "function" then
-		Actions.init(api)
+	if Lib and type(Lib.init) == "function" then
+		Lib.init(api, { flatten_helpers = false, flatten_focus = false })
+	end
+
+	-------------------------------------------------------------------
+	-- Launcher-Builder an die API hängen (Option B)
+	-------------------------------------------------------------------
+	function api:make_launcher(icon, beautiful_mod)
+		-- delegiert an parts.popup
+		return Popup.make_launcher(self, icon, beautiful_mod)
 	end
 
 	return api
