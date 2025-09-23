@@ -123,6 +123,7 @@ end
 
 -- ======================================================================
 -- Icon-Button (quadratisches Icon + optionales Label, Hover nur am Icon)
+--  -> jetzt fokusfähig: :set_focus(on, th2) und :activate()
 -- ======================================================================
 function W.mk_icon_button(args)
 	args = args or {}
@@ -260,6 +261,34 @@ function W.mk_icon_button(args)
 			args.on_press()
 		end)))
 	end
+
+	------------------------------------------------------------------
+	-- Tastatur-Fokus-API
+	------------------------------------------------------------------
+	function clickable:set_focus(on, th2)
+		local t = th2 or th
+		local bg_on = pick(t.icon_focus_bg, t.icon_hover_bg, "#FFFFFF22")
+		local bw_on = pick(t.icon_focus_bw, t.icon_hover_bw, 2)
+		local bor_on = pick(t.icon_focus_border, t.icon_hover_border, "#2B77FF")
+
+		if on then
+			hover_square.bg = bg_on
+			hover_square.shape_border_width = bw_on
+			hover_square.shape_border_color = bor_on
+		else
+			hover_square.bg = "#00000000"
+			hover_square.shape_border_width = 0
+			-- border color egal wenn bw=0
+		end
+	end
+
+	function clickable:activate()
+		if args.on_press then
+			args.on_press()
+		end
+	end
+
+	------------------------------------------------------------------
 
 	return clickable
 end

@@ -98,7 +98,9 @@ end
 function Icons.actions_row(actions, th, geom, get_close_ref)
 	actions = actions or {}
 	geom = geom or {}
-	local cells = {}
+
+	local cells, items = {}, {} -- <<<< Fokus-Items sammeln
+
 	for i, a in ipairs(actions) do
 		local btn = W.mk_icon_button({
 			icon = a.icon,
@@ -120,13 +122,19 @@ function Icons.actions_row(actions, th, geom, get_close_ref)
 				end
 			end,
 		})
+
+		items[i] = btn -- <<<< für Pfeil/Enter-Steuerung merken
 		cells[i] = fixed_cell(btn, geom.icon_cell_w or (geom.icon_size or 64) + 24)
 	end
+
 	if #cells == 0 then
-		return wibox.widget({ layout = wibox.layout.fixed.horizontal })
+		return wibox.widget({ layout = wibox.layout.fixed.horizontal }), {} -- <<<< 2 Rückgaben
 	end
+
 	local targets = targets_linear(#cells)
-	return build_even_row(cells, targets, geom.icon_cell_w, geom.place_w or 400)
+	local row = build_even_row(cells, targets, geom.icon_cell_w, geom.place_w or 400)
+
+	return row, items -- <<<< Row + Fokusliste
 end
 
 return Icons

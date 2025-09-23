@@ -6,6 +6,7 @@ local wibox = require("wibox")
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
+local Focus = require("features.shell.menu.dialogs.parts.focus") -- ← Key-Fokus
 
 local Base = {}
 
@@ -98,11 +99,11 @@ function Base.dialog(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Body (Widget ODER Builder)
-	local body_core
+	-- Body (Widget ODER Builder)  — kann jetzt auch focus_items liefern
+	local body_core, focus_items
 	local close_ref = function() end
 	if type(opts.body_builder) == "function" then
-		body_core = opts.body_builder(th, dims, function()
+		body_core, focus_items = opts.body_builder(th, dims, function()
 			return close_ref
 		end)
 	elseif opts.body_widget then
@@ -129,8 +130,12 @@ function Base.dialog(opts)
 	local cancel_btn = W.mk_cancel_button(pick(th.cancel_label, "Cancel"), nil, th)
 	local target_w = th.cancel_width or (Wd > 0 and math.floor(Wd / 7) or nil)
 	if target_w then
-		cancel_btn =
-			wibox.widget({ cancel_btn, strategy = "exact", width = target_w, widget = wibox.container.constraint })
+		cancel_btn = wibox.widget({
+			cancel_btn,
+			strategy = "exact",
+			width = target_w,
+			widget = wibox.container.constraint,
+		})
 	end
 
 	local footer_right = wibox.widget({
@@ -152,11 +157,24 @@ function Base.dialog(opts)
 	})
 
 	-- Fixhöhen/Stack (Header/Body/Footer sind fix, Body = Hd - Header - Footer)
-	local header_fixed =
-		wibox.widget({ header, strategy = "exact", height = HEADER_H, widget = wibox.container.constraint })
-	local body_fixed = wibox.widget({ body, strategy = "exact", height = BODY_H, widget = wibox.container.constraint })
-	local footer_fixed =
-		wibox.widget({ footer, strategy = "exact", height = FOOTER_H, widget = wibox.container.constraint })
+	local header_fixed = wibox.widget({
+		header,
+		strategy = "exact",
+		height = HEADER_H,
+		widget = wibox.container.constraint,
+	})
+	local body_fixed = wibox.widget({
+		body,
+		strategy = "exact",
+		height = BODY_H,
+		widget = wibox.container.constraint,
+	})
+	local footer_fixed = wibox.widget({
+		footer,
+		strategy = "exact",
+		height = FOOTER_H,
+		widget = wibox.container.constraint,
+	})
 
 	local stack = wibox.widget({
 		header_fixed,
@@ -177,7 +195,24 @@ function Base.dialog(opts)
 	cancel_btn:buttons(gears.table.join(awful.button({}, 1, function()
 		handle.close()
 	end)))
+
+	-- close_ref jetzt auf echte Close-Funktion binden
 	close_ref = handle.close
+
+	-- Tastatur-Fokus aktivieren (←/→ + Enter), falls Items vorhanden
+	if type(focus_items) == "table" and #focus_items > 0 then
+		local stop_focus = Focus.attach(handle, focus_items, th)
+
+		-- Cleanup: Keygrabber stoppen, Fokus-Optik resetten
+		if type(stop_focus) == "function" then
+			local old_close = handle.close
+			handle.close = function(...)
+				pcall(stop_focus)
+				return old_close(...)
+			end
+		end
+	end
+
 	return handle
 end
 
