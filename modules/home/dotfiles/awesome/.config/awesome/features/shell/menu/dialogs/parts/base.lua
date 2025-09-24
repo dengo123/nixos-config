@@ -6,7 +6,7 @@ local wibox = require("wibox")
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
-local Focus = require("features.shell.menu.lib.focus") -- ← Key-Fokus
+local Lib = require("features.shell.menu.lib") -- ← nur lib, Fokus via Lib.focus
 
 local Base = {}
 
@@ -19,6 +19,7 @@ local function pick(...)
 		end
 	end
 end
+
 local function num(x, fb)
 	x = tonumber(x)
 	return x ~= nil and x or fb
@@ -39,6 +40,7 @@ local function shallow_merge(a, b)
 	end
 	return out
 end
+
 local function resolve_theme(overrides)
 	local ov = {}
 	if type(overrides) == "function" then
@@ -49,11 +51,13 @@ local function resolve_theme(overrides)
 	elseif type(overrides) == "table" then
 		ov = overrides
 	end
+
 	local ui_base = {}
 	local ui = rawget(_G, "ui")
 	if ui and type(ui.theme) == "table" then
 		ui_base = ui.theme
 	end
+
 	local merged = (Theme and Theme.merge) and Theme.merge(ui_base, ov) or shallow_merge(ui_base, ov)
 	return (Theme and Theme.get) and Theme.get(merged) or merged
 end
@@ -163,12 +167,14 @@ function Base.dialog(opts)
 		height = HEADER_H,
 		widget = wibox.container.constraint,
 	})
+
 	local body_fixed = wibox.widget({
 		body,
 		strategy = "exact",
 		height = BODY_H,
 		widget = wibox.container.constraint,
 	})
+
 	local footer_fixed = wibox.widget({
 		footer,
 		strategy = "exact",
@@ -187,7 +193,7 @@ function Base.dialog(opts)
 	local handle = Popup.show(stack, th, {
 		width = Wd,
 		height = Hd,
-		close_on_escape = false,
+		close_on_escape = false, -- wir behandeln Esc im Focus-Controller
 		close_on_backdrop = false,
 		group = "dialogs",
 	})
@@ -200,8 +206,8 @@ function Base.dialog(opts)
 	close_ref = handle.close
 
 	-- Tastatur-Fokus aktivieren (←/→ + Enter), falls Items vorhanden
-	if type(focus_items) == "table" and #focus_items > 0 then
-		local stop_focus = Focus.attach(focus_items, th, { handle = handle })
+	if type(focus_items) == "table" and #focus_items > 0 and Lib.focus and Lib.focus.attach then
+		local stop_focus = Lib.focus.attach(focus_items, th, { handle = handle })
 		-- Cleanup: Keygrabber stoppen, Fokus-Optik resetten
 		if type(stop_focus) == "function" then
 			local old_close = handle.close
