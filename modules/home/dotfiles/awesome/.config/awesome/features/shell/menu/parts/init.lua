@@ -1,5 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/parts/init.lua
 local gears = require("gears")
+local wibox = require("wibox")
+
 local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
 local Footer = require("features.shell.menu.parts.footer")
@@ -14,7 +16,7 @@ local M = {}
 -- Theme-Resolver
 ---------------------------------------------------------------------
 local function resolve_theme(theme)
-	-- 1) Fertiges Table
+	-- 1) fertiges Table
 	if type(theme) == "table" then
 		return theme
 	end
@@ -45,24 +47,19 @@ local function resolve_theme(theme)
 end
 
 ---------------------------------------------------------------------
+-- Menü-Popup aufbauen (reines Layout/Chrome/Placement hier!)
+---------------------------------------------------------------------
 function M.build_popup(args)
 	args = args or {}
 	local t = resolve_theme(args.theme)
 	local d = args.data or {}
 
 	-------------------------------------------------------------------
-	-- Header
+	-- Header / Columns / Footer
 	-------------------------------------------------------------------
 	local header_api = Header.build(d.user, t)
-
-	-------------------------------------------------------------------
-	-- Columns
-	-------------------------------------------------------------------
 	local columns = Columns.build(d.left_items, d.right_items, t)
 
-	-------------------------------------------------------------------
-	-- Footer (Widget + API; kapselt Suche/Bindings)
-	-------------------------------------------------------------------
 	local footer_widget, footer_api = Footer.build({
 		power_items = d.power_items,
 		on_search = args.on_search,
@@ -70,30 +67,99 @@ function M.build_popup(args)
 	})
 
 	-------------------------------------------------------------------
-	-- Menü-Popup (Hülle um Header/Columns/Footer)
+	-- Höhe & feste Constraints (Layout gehört hierher)
 	-------------------------------------------------------------------
-	local popup_api = Popup.build({
-		header = header_api.widget,
-		cols = columns.widget,
-		footer = footer_widget,
-		theme = t,
+	local total_h = tonumber(t.total_height) or 650
+	local header_h = tonumber(t.header_h) or 64
+	local footer_h = tonumber(t.footer_h) or 48
+	local body_h = math.max(1, total_h - header_h - footer_h)
+
+	local header_fixed = wibox.widget({
+		header_api.widget,
+		strategy = "exact",
+		height = header_h,
+		widget = wibox.container.constraint,
+	})
+
+	local cols_fixed = wibox.widget({
+		columns.widget,
+		strategy = "exact",
+		height = body_h,
+		widget = wibox.container.constraint,
+	})
+
+	local footer_fixed = wibox.widget({
+		footer_widget,
+		strategy = "exact",
+		height = footer_h,
+		widget = wibox.container.constraint,
+	})
+
+	-------------------------------------------------------------------
+	-- Chrome (Rundung, Border, Farben) – NICHT im popup.lua!
+	-------------------------------------------------------------------
+	local chrome = wibox.widget({
+		{
+			header_fixed,
+			cols_fixed,
+			footer_fixed,
+			layout = wibox.layout.fixed.vertical,
+		},
+		bg = t.popup_bg or t.dialog_bg or "#235CDB",
+		shape = function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, tonumber(t.popup_radius) or 12)
+		end,
+		shape_clip = true,
+		shape_border_width = tonumber(t.popup_border_width) or 1,
+		shape_border_color = t.popup_border_color or t.header_bg or "#3A6EA5",
+		widget = wibox.container.background,
+	})
+
+	-- (Optional) Breite erzwingen – sonst automatisch
+	local total_w = tonumber(t.total_width) -- kann nil sein
+	local chrome_box = wibox.widget({
+		chrome,
+		strategy = total_w and "exact" or "min",
+		width = total_w,
+		height = total_h,
+		widget = wibox.container.constraint,
+	})
+
+	-------------------------------------------------------------------
+	-- Popup shell (Cycle/Overlay-only) + Placement kommt von HIER
+	-------------------------------------------------------------------
+	local popup_api = Popup.wrap(chrome_box, {
 		on_hide = function()
 			-- Suche schließen, wenn das Menü kollabiert
 			if footer_api and (footer_api.cancel_search or footer_api.cancel) then
 				pcall(footer_api.cancel_search or footer_api.cancel)
 			end
 		end,
+		scrim_bg = t.dialog_scrim or "#00000099",
 	})
+
+	-- Platzierungsfunktion (unten an die Workarea andocken)
+	local function place_bottom(p, s, _opts)
+		local wa = s.workarea or s.geometry
+		local gap = 2
+		local ph = tonumber(t.total_height) or 650
+		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
+		if p.height ~= ph then
+			p:geometry({ height = ph })
+		end
+		p.x = wa.x
+		p.y = wa.y + wa.height - gap - ph
+	end
+	if popup_api.set_placement then
+		popup_api:set_placement(place_bottom)
+	end
 
 	-------------------------------------------------------------------
 	-- Öffentliche Menü-API
 	-------------------------------------------------------------------
 	local api = {}
-
-	-- Handle zum Stoppen des Menü-Fokus (Keygrabber/Cleanup)
 	local stop_focus = nil
 
-	-- Helfer: Menü-Fokus anhängen (Spalten-aware, Fallback linear)
 	local function attach_menu_focus()
 		-- Fokus-Items aus Spalten holen
 		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
@@ -104,7 +170,6 @@ function M.build_popup(args)
 					handle = popup_api, -- für Esc/cleanup
 					start_side = "left",
 					wrap = true,
-					-- keys = { left="Left", right="Right", up="Up", down="Down", ok={"Return","KP_Enter"}, cancel="Escape" },
 				})
 			elseif type(Lib.focus.attach) == "function" then
 				local linear = {}
@@ -120,22 +185,17 @@ function M.build_popup(args)
 		return nil
 	end
 
-	-- Sichtbarkeit
 	function api:show(opts)
 		popup_api:show(opts)
 
-		-- alten Fokus-Grabber (falls vorhanden) stoppen
 		if stop_focus then
 			pcall(stop_focus)
 			stop_focus = nil
 		end
-
-		-- Fokus neu anhängen
 		stop_focus = attach_menu_focus()
 	end
 
 	function api:hide()
-		-- zuerst Fokus abräumen
 		if stop_focus then
 			pcall(stop_focus)
 			stop_focus = nil
@@ -143,7 +203,6 @@ function M.build_popup(args)
 		popup_api:hide()
 	end
 
-	-- dot-safe toggle (funktioniert bei api.toggle(...) und api:toggle(...))
 	function api:toggle(opts)
 		if popup_api.is_visible and popup_api:is_visible() then
 			api:hide()
@@ -165,9 +224,8 @@ function M.build_popup(args)
 		header_api:set_user(name, avatar, sub)
 	end
 
-	-- Dialog-Brücke / Theme-Zugriff
+	-- Dialog-Overlay (Widget muss bereits layoutet sein; popup.lua macht kein Layout)
 	function api:show_dialog(w)
-		-- Menü-Fokus pausieren, sonst frisst er die Keys des Dialogs
 		if stop_focus then
 			pcall(stop_focus)
 			stop_focus = nil
@@ -177,7 +235,6 @@ function M.build_popup(args)
 
 	function api:hide_dialog()
 		popup_api:hide_dialog()
-		-- Menü-Fokus nach dem Dialog wieder anhängen
 		if not stop_focus then
 			stop_focus = attach_menu_focus()
 		end
@@ -187,7 +244,7 @@ function M.build_popup(args)
 		return t
 	end
 
-	-- Search-Orchestrierung (vom Footer-API durchgereicht)
+	-- Search-Bridge vom Footer
 	if footer_api then
 		if footer_api.focus_search then
 			function api:focus_search()
@@ -232,16 +289,13 @@ function M.build_popup(args)
 		end
 	end
 
-	-- Dispatcher an die API andocken (zentral!)
+	-- Dispatcher andocken
 	if Lib and type(Lib.init) == "function" then
 		Lib.init(api, { flatten_helpers = false, flatten_focus = false })
 	end
 
-	-------------------------------------------------------------------
-	-- Launcher-Builder an die API hängen (Option B)
-	-------------------------------------------------------------------
+	-- Launcher-Builder
 	function api:make_launcher(icon, beautiful_mod)
-		-- delegiert an parts.popup
 		return Popup.make_launcher(self, icon, beautiful_mod)
 	end
 
