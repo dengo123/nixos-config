@@ -9,7 +9,7 @@ local Footer = require("features.shell.menu.parts.footer")
 local Popup = require("features.shell.menu.parts.popup")
 local Lib = require("features.shell.menu.lib")
 
-local ThemeMod_ok, ThemeMod = pcall(require, "features.shell.menu.parts.theme")
+local ThemeMod_ok, ThemeMod = pcall(require, "features.shell.menu.lib.theme")
 
 local M = {}
 

@@ -2,7 +2,7 @@
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local theme = require("features.shell.menu.widgets.theme")
+local theme = require("features.shell.menu.lib.theme")
 local Lib = require("features.shell.menu.lib") -- nur der Aggregator
 
 local M = {}
@@ -129,65 +129,26 @@ function M.row_widget(item, t, opts)
 	-- focus API auf dem Focus-Container implementieren
 	function focus_wrap:set_focus(on, th2)
 		local tt = th2 or t
-
-		-- Farben & Form
-		local bg_on = tt.row_focus_bg or tt.row_bg_hover or tt.bg_focus or "#FFFFFF22"
-		local fg_on = tt.row_focus_fg or tt.row_fg
 		local bg_off = tt.row_bg
 		local fg_off = tt.row_fg
 
-		-- Rundung der "Button"-Fläche (innerer Container)
-		local shape_on = tt.row_focus_shape or tt.row_shape or tt.shape or gears.shape.rounded_rect
-		local radius_on = tonumber(tt.row_focus_radius or tt.row_radius) or 8
+		-- Nimm einfach die vorhandene Hover-Farbe aus dem Theme
+		local bg_on = tt.row_bg_hover or bg_off
+		local fg_on = tt.row_focus_fg or tt.row_fg
 
-		-- optional: extra Innenabstand im Fokus (wirkt „button-y“)
-		local fpl = tonumber(tt.row_focus_pad_l or tt.row_pad_l) or 0
-		local fpr = tonumber(tt.row_focus_pad_r or tt.row_pad_r) or 0
-		local fpt = tonumber(tt.row_focus_pad_t or tt.row_pad_t) or 0
-		local fpb = tonumber(tt.row_focus_pad_b or tt.row_pad_b) or 0
-
-		-- Button-Highlight: auf dem INNEREN bg_box arbeiten,
-		-- und den äußeren Focus-Rahmen komplett neutral lassen.
 		if on then
 			bg_box.bg = bg_on
 			bg_box.fg = fg_on
-			bg_box.shape = function(cr, w, h)
-				shape_on(cr, w, h, radius_on)
-			end
-			bg_box.shape_clip = true
-			-- optional: falls du KEINEN Border willst, sorge dafür, dass der äußere Wrap nichts zeichnet:
-			focus_wrap.bg = "#00000000"
-			focus_wrap.shape_border_width = 0
-
-			-- leicht mehr Innenabstand im Fokus (fühlt sich wie ein Button an)
-			if content and content.set_left then
-				content.left = fpl
-				content.right = fpr
-				content.top = fpt
-				content.bottom = fpb
-			end
 		else
 			bg_box.bg = bg_off
 			bg_box.fg = fg_off
-			-- zurück zur neutralen Form (kann rechteckig bleiben, oder selbe Rundung)
-			bg_box.shape = function(cr, w, h)
-				local r = tonumber(tt.row_radius) or 0
-				local base_shape = tt.row_shape or tt.shape or gears.shape.rectangle
-				base_shape(cr, w, h, r)
-			end
-			bg_box.shape_clip = false
-
-			focus_wrap.bg = "#00000000"
-			focus_wrap.shape_border_width = 0
-
-			-- Standard-Padding zurücksetzen
-			if content and content.set_left then
-				content.left = tt.row_pad_l or content.left
-				content.right = tt.row_pad_r or content.right
-				content.top = tt.row_pad_t or content.top
-				content.bottom = tt.row_pad_b or content.bottom
-			end
 		end
+
+		-- Keine Rahmen, keine extra Padding/Shapes:
+		focus_wrap.bg = "#00000000"
+		focus_wrap.shape_border_width = 0
+		bg_box.shape = nil
+		bg_box.shape_clip = false
 	end
 
 	function focus_wrap:activate()

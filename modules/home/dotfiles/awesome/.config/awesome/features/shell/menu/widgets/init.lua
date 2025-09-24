@@ -1,6 +1,6 @@
 local P = {}
 
-local theme = require("features.shell.menu.widgets.theme")
+local theme = require("features.shell.menu.lib.theme")
 local helper = require("features.shell.menu.lib.helpers")
 local rows = require("features.shell.menu.widgets.rows")
 local power = require("features.shell.menu.widgets.power")

@@ -2,7 +2,7 @@
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local theme = require("features.shell.menu.widgets.theme")
+local theme = require("features.shell.menu.lib.theme")
 local Lib = require("features.shell.menu.lib") -- nur der Aggregator
 
 local M = {}
