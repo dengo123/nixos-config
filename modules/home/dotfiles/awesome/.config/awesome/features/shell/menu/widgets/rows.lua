@@ -78,12 +78,23 @@ function M.row_widget(item, t, opts)
 		widget = wibox.container.margin,
 	})
 
+	-- inner Background (für Hover)
 	local bg_box = wibox.widget({
 		content,
 		bg = t.row_bg,
 		fg = t.row_fg,
 		widget = wibox.container.background,
 	})
+
+	-- äußerer Focus-Rahmen (für Tastatur-Fokus)
+	local focus_wrap = wibox.widget({
+		bg = "#00000000",
+		shape = t.row_shape or t.shape or gears.shape.rectangle,
+		shape_border_width = 0,
+		shape_border_color = "#00000000",
+		widget = wibox.container.background,
+	})
+	focus_wrap:set_widget(bg_box)
 
 	-- Hover nur anwenden, wenn vorhanden
 	if type(helpers.apply_hover) == "function" then
@@ -95,7 +106,10 @@ function M.row_widget(item, t, opts)
 	if actions and type(actions.click) == "function" then
 		on_click = actions.click(item)
 	end
-	bg_box:buttons(gears.table.join(awful.button({}, 1, on_click or function() end)))
+	local bindings = gears.table.join(awful.button({}, 1, on_click or function() end))
+	bg_box:buttons(bindings)
+	-- optional vollflächig:
+	focus_wrap:buttons(bindings)
 
 	-- Optionale Hover-Callbacks aus Item beibehalten
 	bg_box:connect_signal("mouse::enter", function()
@@ -109,21 +123,68 @@ function M.row_widget(item, t, opts)
 		end
 	end)
 
-	-- fixed_height über Lib.helpers, sonst Fallback
-	if type(helpers.fixed_height) == "function" then
-		return helpers.fixed_height(bg_box, eff_h)
-	else
-		return fallback_fixed_height(bg_box, eff_h)
+	-- focus API auf dem Focus-Container implementieren
+	function focus_wrap:set_focus(on, th2)
+		local tt = th2 or t
+		local bg_f = tt.row_focus_bg or tt.row_bg_hover or tt.bg_focus or "#FFFFFF22"
+		local bw_f = tt.row_focus_bw or 2
+		local br_f = tt.row_focus_border or tt.focus_border or "#2B77FF"
+
+		if on then
+			focus_wrap.bg = bg_f
+			focus_wrap.shape_border_width = bw_f
+			focus_wrap.shape_border_color = br_f
+		else
+			focus_wrap.bg = "#00000000"
+			focus_wrap.shape_border_width = 0
+			-- border color egal wenn bw=0
+		end
 	end
+
+	function focus_wrap:activate()
+		if on_click then
+			on_click()
+		end
+	end
+
+	-- fixed_height über Lib.helpers, sonst Fallback
+	local out
+	if type(helpers.fixed_height) == "function" then
+		out = helpers.fixed_height(focus_wrap, eff_h)
+	else
+		out = fallback_fixed_height(focus_wrap, eff_h)
+	end
+
+	-- >>> WICHTIG: Fokus/Activate nach außen durchreichen,
+	-- weil 'out' (constraint) das eigentliche Widget ist, das Focus.attach bekommt
+	function out:set_focus(on, th2)
+		if focus_wrap.set_focus then
+			focus_wrap:set_focus(on, th2)
+		end
+	end
+
+	function out:activate()
+		if focus_wrap.activate then
+			focus_wrap:activate()
+		end
+	end
+
+	return out
 end
 
 function M.list_widget(items, t, opts)
 	t = theme.with_defaults(t)
+
 	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }
+	local focus = {}
+
 	for _, it in ipairs(items or {}) do
-		table.insert(box, M.row_widget(it, t, opts))
+		local row = M.row_widget(it, t, opts)
+		table.insert(box, row)
+		table.insert(focus, row) -- Leaf liefert :set_focus/:activate (per Proxy)
 	end
-	return wibox.widget(box)
+
+	return wibox.widget(box), focus
 end
 
 return M

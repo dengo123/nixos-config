@@ -1,4 +1,4 @@
--- features/shell/menu/parts/init.lua
+-- ~/.config/awesome/features/shell/menu/parts/init.lua
 local gears = require("gears")
 local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
@@ -90,17 +90,66 @@ function M.build_popup(args)
 	-------------------------------------------------------------------
 	local api = {}
 
+	-- Handle zum Stoppen des Menü-Fokus (Keygrabber/Cleanup)
+	local stop_focus = nil
+
+	-- Helfer: Menü-Fokus anhängen (Spalten-aware, Fallback linear)
+	local function attach_menu_focus()
+		-- Fokus-Items aus Spalten holen
+		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
+
+		if Lib and Lib.focus then
+			if type(Lib.focus.attach_columns) == "function" then
+				return Lib.focus.attach_columns(cols_focus, t, {
+					handle = popup_api, -- für Esc/cleanup
+					start_side = "left",
+					wrap = true,
+					-- keys = { left="Left", right="Right", up="Up", down="Down", ok={"Return","KP_Enter"}, cancel="Escape" },
+				})
+			elseif type(Lib.focus.attach) == "function" then
+				local linear = {}
+				for _, w in ipairs(cols_focus.left or {}) do
+					table.insert(linear, w)
+				end
+				for _, w in ipairs(cols_focus.right or {}) do
+					table.insert(linear, w)
+				end
+				return Lib.focus.attach(linear, t, { handle = popup_api })
+			end
+		end
+		return nil
+	end
+
 	-- Sichtbarkeit
 	function api:show(opts)
 		popup_api:show(opts)
+
+		-- alten Fokus-Grabber (falls vorhanden) stoppen
+		if stop_focus then
+			pcall(stop_focus)
+			stop_focus = nil
+		end
+
+		-- Fokus neu anhängen
+		stop_focus = attach_menu_focus()
 	end
 
 	function api:hide()
+		-- zuerst Fokus abräumen
+		if stop_focus then
+			pcall(stop_focus)
+			stop_focus = nil
+		end
 		popup_api:hide()
 	end
 
+	-- dot-safe toggle (funktioniert bei api.toggle(...) und api:toggle(...))
 	function api:toggle(opts)
-		popup_api:toggle(opts)
+		if popup_api.is_visible and popup_api:is_visible() then
+			api:hide()
+		else
+			api:show(opts)
+		end
 	end
 
 	-- Inhalte setzen
@@ -118,11 +167,20 @@ function M.build_popup(args)
 
 	-- Dialog-Brücke / Theme-Zugriff
 	function api:show_dialog(w)
+		-- Menü-Fokus pausieren, sonst frisst er die Keys des Dialogs
+		if stop_focus then
+			pcall(stop_focus)
+			stop_focus = nil
+		end
 		popup_api:show_dialog(w)
 	end
 
 	function api:hide_dialog()
 		popup_api:hide_dialog()
+		-- Menü-Fokus nach dem Dialog wieder anhängen
+		if not stop_focus then
+			stop_focus = attach_menu_focus()
+		end
 	end
 
 	function api:get_theme()

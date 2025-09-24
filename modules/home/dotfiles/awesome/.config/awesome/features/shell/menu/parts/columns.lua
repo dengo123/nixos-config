@@ -11,7 +11,6 @@ local function shallow_copy(tbl)
 	end
 	return out
 end
-
 local function pick(...)
 	for i = 1, select("#", ...) do
 		local v = select(i, ...)
@@ -22,8 +21,6 @@ local function pick(...)
 end
 
 function Columns.build(left_items, right_items, t, opts)
-	-- t kommt bereits aus base.lua/theme.lua
-	-- Spalten-spezifische Theme-Overlays
 	local left_t = shallow_copy(t)
 	left_t.row_bg = pick(t.left_bg, t.row_bg)
 	left_t.row_fg = pick(t.left_fg, t.row_fg)
@@ -36,11 +33,12 @@ function Columns.build(left_items, right_items, t, opts)
 	right_t.row_h = pick(t.right_row_h, t.row_h)
 	right_t.list_spacing = pick(t.right_list_spacing, t.list_spacing)
 
-	local left_list = P.list_widget(left_items or {}, left_t, opts)
-	local right_list = P.list_widget(right_items or {}, right_t, opts)
+	-- WICHTIG: zweite Rückgabe (Fokus-Items) entgegennehmen
+	local left_view, left_focus = P.list_widget(left_items or {}, left_t, opts)
+	local right_view, right_focus = P.list_widget(right_items or {}, right_t, opts)
 
 	local left_col = wibox.widget({
-		{ left_list, margins = 0, widget = wibox.container.margin },
+		{ left_view, margins = 0, widget = wibox.container.margin },
 		forced_width = pick(t.col_left_w, 250),
 		bg = left_t.row_bg,
 		fg = left_t.row_fg,
@@ -49,7 +47,7 @@ function Columns.build(left_items, right_items, t, opts)
 	})
 
 	local right_col = wibox.widget({
-		{ right_list, margins = 0, widget = wibox.container.margin },
+		{ right_view, margins = 0, widget = wibox.container.margin },
 		forced_width = pick(t.col_right_w, 230),
 		bg = right_t.row_bg,
 		fg = right_t.row_fg,
@@ -78,12 +76,22 @@ function Columns.build(left_items, right_items, t, opts)
 	})
 
 	local api = { widget = cols }
+
 	function api:set_left(items)
-		left_list.children = P.list_widget(items or {}, left_t, opts).children
+		local v, foc = P.list_widget(items or {}, left_t, opts)
+		left_view.children = v.children
+		left_focus = foc or {}
 	end
 
 	function api:set_right(items)
-		right_list.children = P.list_widget(items or {}, right_t, opts).children
+		local v, foc = P.list_widget(items or {}, right_t, opts)
+		right_view.children = v.children
+		right_focus = foc or {}
+	end
+
+	-- NEU: Fokus-Items nach außen geben
+	function api:get_focus_items()
+		return { left = left_focus or {}, right = right_focus or {} }
 	end
 
 	return api
