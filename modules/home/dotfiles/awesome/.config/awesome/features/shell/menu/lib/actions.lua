@@ -1,5 +1,6 @@
 -- ~/.config/awesome/features/shell/menu/lib/actions.lua
 local awful = require("awful")
+local gears = require("gears") -- NEU: für delayed_call/start_new
 
 local Actions, _api = {}, nil
 function Actions.init(api)
@@ -27,7 +28,54 @@ local function merge(a, b)
 	return o
 end
 
+---------------------------------------------------------------------
+-- Debounce / Guards (ohne gears.timer.seconds)
+---------------------------------------------------------------------
+local _cooldown = {} -- key -> true während Cooldown
+local _reentry = false -- globaler Guard gegen Press+Release im selben Frame
+
+-- stabiler Schlüssel pro Item
+local function item_key(it)
+	if type(it) ~= "table" then
+		return tostring(it)
+	end
+	if it.id then
+		return "id:" .. tostring(it.id)
+	end
+	if it.dialog then
+		return "dlg:" .. tostring(it.dialog)
+	end
+	if it.cmd then
+		return "cmd:" .. tostring(it.cmd)
+	end
+	if it.bin then
+		local argv = table.concat(tbl(it.argv), " ")
+		return "bin:" .. tostring(it.bin) .. "|" .. argv
+	end
+	if type(it.on_press) == "function" then
+		return "cb:" .. tostring(it.on_press)
+	end
+	return "item:" .. tostring(it)
+end
+
+-- throttelt Aufrufe je key für window_s Sekunden (Default ~0.22s)
+local function throttle(key, window_s, fn)
+	local win = tonumber(window_s) or 0.22
+	if _cooldown[key] then
+		return
+	end
+	_cooldown[key] = true
+	-- Timer, der den Cooldown wieder löscht
+	gears.timer.start_new(win, function()
+		_cooldown[key] = nil
+		return false
+	end)
+	return fn()
+end
+
+---------------------------------------------------------------------
 -- Dialog öffnen (Menü sichtbar lassen)
+---------------------------------------------------------------------
 local function open_dialog_by_name(name, args)
 	local api = get_api()
 	if not api then
@@ -55,15 +103,21 @@ local function open_dialog_by_name(name, args)
 	return true
 end
 
--- ---------------------------------------------
+---------------------------------------------------------------------
 -- Zentrale Policy-Ausführung
--- policy = {
---   close = "before" | "after" | "none",  -- wann Dialog(e) schließen
---   menu_close = true|false,              -- Menü schließen? (default: true)
--- }
--- ---------------------------------------------
+-- policy = { close="before"|"after"|"none", menu_close=true|false }
+---------------------------------------------------------------------
 local function run_with_policy(policy, fn_close, fn_action)
 	policy = policy or { close = "before" }
+
+	-- Reentrancy-Guard: Press+Release im selben Tick nur 1x
+	if _reentry then
+		return
+	end
+	_reentry = true
+	gears.timer.delayed_call(function()
+		_reentry = false
+	end)
 
 	local function close_dialogs_only()
 		-- 1) Standalone-Dialoge (ältere APIs)
@@ -104,17 +158,17 @@ local function run_with_policy(policy, fn_close, fn_action)
 	end
 
 	if policy.close == "before" then
-		-- Dialoge waren vorher zu; jetzt noch Menü schließen (default: an)
 		maybe_close_menu()
 		return
 	end
 
-	-- close == "none" oder nicht gesetzt:
-	-- Standard: Menü nach der Aktion schließen (falls nicht explizit verboten)
+	-- default: Menü nach der Aktion schließen
 	maybe_close_menu()
 end
 
+---------------------------------------------------------------------
 -- Fabriken
+---------------------------------------------------------------------
 function Actions.cmd(cmd, policy)
 	return function(close)
 		run_with_policy(policy, close, function()
@@ -158,31 +212,41 @@ function Actions.run_bin(bin, argv)
 	end
 end
 
--- Dispatcher
--- item: { dialog, dialog_args, on_press, cmd, bin, argv, policy }
+---------------------------------------------------------------------
+-- Dispatcher mit Throttle
+-- item: { dialog, dialog_args, on_press, cmd, bin, argv, policy, id? }
+---------------------------------------------------------------------
 function Actions.run(item)
 	if not item then
 		return
 	end
-	if item.dialog then
-		return open_dialog_by_name(item.dialog, item.dialog_args)
-	end
-	if type(item.on_press) == "function" then
-		return run_with_policy(item.policy, nil, item.on_press)
-	end
-	if item.cmd then
-		return run_with_policy(item.policy, nil, function()
-			Actions.run_shell(item.cmd)
-		end)
-	end
-	if item.bin then
-		return run_with_policy(item.policy, nil, function()
-			Actions.run_bin(item.bin, item.argv)
-		end)
-	end
+	local key = item_key(item)
+	return throttle(key, 0.22, function()
+		-- Dialog
+		if item.dialog then
+			return open_dialog_by_name(item.dialog, item.dialog_args)
+		end
+		-- Callback
+		if type(item.on_press) == "function" then
+			return run_with_policy(item.policy, nil, item.on_press)
+		end
+		-- Shell
+		if item.cmd then
+			return run_with_policy(item.policy, nil, function()
+				Actions.run_shell(item.cmd)
+			end)
+		end
+		-- Binär
+		if item.bin then
+			return run_with_policy(item.policy, nil, function()
+				Actions.run_bin(item.bin, item.argv)
+			end)
+		end
+	end)
 end
 
 function Actions.click(item)
+	-- Maus-Mehrfachfeuer wird durch throttle() abgefedert
 	return function()
 		Actions.run(item)
 	end
