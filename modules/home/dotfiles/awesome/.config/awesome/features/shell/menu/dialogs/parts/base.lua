@@ -187,7 +187,7 @@ function Base.dialog(opts)
 	local handle = Popup.show(stack, th, {
 		width = Wd,
 		height = Hd,
-		close_on_escape = true,
+		close_on_escape = false,
 		close_on_backdrop = false,
 		group = "dialogs",
 	})
