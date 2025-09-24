@@ -5,6 +5,7 @@ local wibox = require("wibox")
 
 local Popup = {}
 
+-- rudimentäre Widget-Erkennung (awesome 4.x)
 local function is_widget(x)
 	return type(x) == "table"
 		and (
@@ -13,15 +14,24 @@ local function is_widget(x)
 		)
 end
 
--- Wrap ein Root-Widget und stelle NUR Popup-Cycle + Overlay bereit.
--- opts = { on_hide?, scrim_bg? (default "#00000099") }
+-- Wrap ein bereits gebautes Root-Widget (ohne Layout-Meinung)
+-- opts = {
+--   theme?,                 -- optional, nur für scrim default
+--   scrim_bg?,              -- default: "#00000099"
+--   placement?,             -- function(popup, screen, opts) -> unit placement
+--   on_hide?,               -- callback(api)
+--   enable_esc_grabber?,    -- default: true
+--   window_radius?,         -- optional: direkte Fensterform (rounded_rect)
+-- }
 function Popup.wrap(root_widget, opts)
 	assert(is_widget(root_widget), "Popup.wrap: root_widget must be a widget")
 	opts = opts or {}
+	local t = opts.theme or {}
 	local on_hide = opts.on_hide
-	local scrim_bg = opts.scrim_bg or "#00000099"
+	local enable_esc = (opts.enable_esc_grabber ~= false)
+	local scrim_bg = opts.scrim_bg or t.dialog_scrim or "#00000099"
 
-	-- Overlay-Slot (zentriert), aber KEINE Größen/Border-Logik hier!
+	-- Overlay für Dialoge (zentriert, aber ohne Größen-/Chrome-Meinung)
 	local overlay_slot = wibox.widget({ layout = wibox.layout.fixed.vertical })
 	local overlay_root = wibox.widget({
 		{
@@ -33,14 +43,14 @@ function Popup.wrap(root_widget, opts)
 		widget = wibox.container.background,
 	})
 
-	-- Stack: main unten, overlay oben
+	-- Root + Overlay übereinander
 	local container = wibox.widget({
 		root_widget,
 		overlay_root,
 		layout = wibox.layout.stack,
 	})
 
-	-- Popup-Shell (ohne Chrome/Layout; bg transparent)
+	-- Popup-Shell (reiner Lifecycle, bg transparent)
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
@@ -49,12 +59,81 @@ function Popup.wrap(root_widget, opts)
 		type = "dock",
 	})
 
+	-- optional: echte Fensterform mit klick-durchlässigen Ecken
+	do
+		local r = tonumber(opts.window_radius)
+		if r and r > 0 then
+			popup.shape = function(cr, w, h)
+				gears.shape.rounded_rect(cr, w, h, r)
+			end
+			popup.shape_input = popup.shape
+		end
+	end
+
+	-- Positionierung (ohne Größenlogik)
+	local place_fn = opts.placement
+		or function(p, s)
+			local wa = s.workarea or s.geometry
+			local gap = 2
+			local ph = (p.height and p.height > 0) and p.height or (t.total_height or 520)
+			p.x = wa.x
+			p.y = wa.y + wa.height - gap - ph
+		end
+
+	----------------------------------------------------------------
+	-- Outside-Click → Menü zu (keine Hit-Tests nötig)
+	----------------------------------------------------------------
+	local saved_root_buttons = nil
+	local client_click_connected = false
+	local on_client_click = nil
+
+	local function install_outside(api)
+		if not saved_root_buttons then
+			saved_root_buttons = root.buttons()
+			local function on_root_click()
+				if popup.visible then
+					api:hide()
+				end
+			end
+			root.buttons(
+				gears.table.join(
+					saved_root_buttons or {},
+					awful.button({}, 1, on_root_click),
+					awful.button({}, 2, on_root_click),
+					awful.button({}, 3, on_root_click)
+				)
+			)
+		end
+
+		if not client_click_connected then
+			on_client_click = function()
+				if popup.visible then
+					api:hide()
+				end
+			end
+			client.connect_signal("button::press", on_client_click)
+			client_click_connected = true
+		end
+	end
+
+	local function remove_outside()
+		if saved_root_buttons then
+			root.buttons(saved_root_buttons)
+			saved_root_buttons = nil
+		end
+		if client_click_connected and on_client_click then
+			client.disconnect_signal("button::press", on_client_click)
+			on_client_click = nil
+			client_click_connected = false
+		end
+	end
+
 	----------------------------------------------------------------
 	-- ESC-Keygrabber (nur Cycle)
 	----------------------------------------------------------------
 	local esc_id = nil
 	local function start_esc()
-		if esc_id then
+		if not enable_esc or esc_id then
 			return
 		end
 		esc_id = awful.keygrabber.run(function(_, key, ev)
@@ -62,7 +141,6 @@ function Popup.wrap(root_widget, opts)
 				return
 			end
 			if key == "Escape" then
-				-- Kontextsensitiv: zuerst Dialog zu, sonst Menü zu
 				if overlay_root.visible then
 					overlay_root.visible = false
 					overlay_slot:reset()
@@ -81,82 +159,50 @@ function Popup.wrap(root_widget, opts)
 	end
 
 	----------------------------------------------------------------
-	-- Outside-Click (Cycle)
-	----------------------------------------------------------------
-	local saved_root_buttons, outside_root_buttons
-	local client_click_connected = false
-
-	local function is_inside_popup(px, py)
-		local gx, gy, gw, gh = popup.x, popup.y, popup.width, popup.height
-		return px >= gx and px <= gx + gw and py >= gy and py <= gy + gh
-	end
-
-	local function try_close_on_xy(x, y)
-		if popup.visible and not is_inside_popup(x, y) then
-			popup.visible = false
-			return true
-		end
-		return false
-	end
-
-	local function install_outside_listeners()
-		if not saved_root_buttons then
-			saved_root_buttons = root.buttons()
-			local function on_root_click()
-				local c = mouse.coords()
-				try_close_on_xy(c.x, c.y)
-			end
-			outside_root_buttons = gears.table.join(
-				awful.button({}, 1, on_root_click),
-				awful.button({}, 2, on_root_click),
-				awful.button({}, 3, on_root_click)
-			)
-			root.buttons(gears.table.join(saved_root_buttons or {}, outside_root_buttons))
-		end
-		if not client_click_connected then
-			client.connect_signal("button::press", function()
-				local pos = mouse.coords()
-				try_close_on_xy(pos.x, pos.y)
-			end)
-			client_click_connected = true
-		end
-	end
-
-	local function remove_outside_listeners()
-		if saved_root_buttons then
-			root.buttons(saved_root_buttons)
-			saved_root_buttons = nil
-			outside_root_buttons = nil
-		end
-		client_click_connected = false
-	end
-
-	----------------------------------------------------------------
 	-- Öffentliche API (nur Cycle + Overlay)
 	----------------------------------------------------------------
 	local api = {}
-	local placement_fn = nil -- vom Aufrufer gesetzt (layout gehört NICHT hierher)
+	local placement_fn = nil
 
 	function api:set_placement(fn)
 		placement_fn = fn
+	end
+
+	function api:set_window_chrome(opts2)
+		opts2 = opts2 or {}
+		local radius = tonumber(opts2.radius) or tonumber(opts2.window_radius) or tonumber(t.popup_radius)
+		if radius and radius > 0 then
+			popup.shape = function(cr, w, h)
+				gears.shape.rounded_rect(cr, w, h, radius)
+			end
+			popup.shape_input = popup.shape
+		else
+			popup.shape, popup.shape_input = nil, nil
+		end
+		if opts2.border_width ~= nil then
+			popup.border_width = opts2.border_width
+		end
+		if opts2.border_color then
+			popup.border_color = opts2.border_color
+		end
 	end
 
 	function api:is_visible()
 		return popup.visible
 	end
 
-	function api:show(opts2)
-		local s = (opts2 and opts2.screen) or mouse.screen or awful.screen.focused()
+	function api:show(o)
+		local s = (o and o.screen) or mouse.screen or awful.screen.focused()
 		popup.screen = s
 		popup.visible = true
-		install_outside_listeners()
+		install_outside(api)
 		start_esc()
-		-- Platzierung delegiert an init.lua (delayed tick)
-		if placement_fn then
-			gears.timer.delayed_call(function()
-				placement_fn(popup, s, opts2)
-			end)
-		end
+		gears.timer.delayed_call(function()
+			local pf = placement_fn or place_fn
+			if pf then
+				pf(popup, s, o)
+			end
+		end)
 	end
 
 	function api:hide()
@@ -164,7 +210,7 @@ function Popup.wrap(root_widget, opts)
 			return
 		end
 		popup.visible = false
-		remove_outside_listeners()
+		remove_outside()
 		stop_esc()
 		overlay_root.visible = false
 		overlay_slot:reset()
@@ -173,37 +219,39 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
-	function api:toggle(opts2)
+	function api:toggle(o)
 		if popup.visible then
 			self:hide()
 		else
-			self:show(opts2)
+			self:show(o)
 		end
 	end
 
-	-- Dialog-Overlay (layoutneutral; Widget muss bereits korrekt gebaut sein)
-	function api:show_dialog(widget)
-		if not widget then
+	-- Dialog-Overlay (layoutneutral; Widget muss schon fertig gebaut sein)
+	function api:show_dialog(w)
+		if not w then
 			return
 		end
-		if not is_widget(widget) then
-			local ok, built = pcall(wibox.widget, widget)
-			if not ok or not is_widget(built) then
+		if not is_widget(w) then
+			local ok, b = pcall(wibox.widget, w)
+			if not ok or not is_widget(b) then
 				return
 			end
-			widget = built
+			w = b
 		end
 		overlay_slot:reset()
-		overlay_slot:add(widget)
+		overlay_slot:add(w)
 		overlay_root.visible = true
 	end
 
 	function api:hide_dialog()
-		overlay_root.visible = false
-		overlay_slot:reset()
+		if overlay_root.visible then
+			overlay_root.visible = false
+			overlay_slot:reset()
+		end
 	end
 
-	-- Scrim: nur Dialog schließen
+	-- Scrim: nur Dialog schließen (Menü bleibt)
 	overlay_root:buttons(gears.table.join(awful.button({}, 1, function()
 		api:hide_dialog()
 		awesome.emit_signal("menu::dialog_closed")
@@ -212,7 +260,7 @@ function Popup.wrap(root_widget, opts)
 	popup:connect_signal("property::visible", function()
 		if not popup.visible then
 			stop_esc()
-			remove_outside_listeners()
+			remove_outside()
 			overlay_root.visible = false
 			overlay_slot:reset()
 			if type(on_hide) == "function" then
@@ -221,21 +269,34 @@ function Popup.wrap(root_widget, opts)
 		end
 	end)
 
-	-- Nur Re-Placement hooken – die Logik liefert init.lua
 	screen.connect_signal("property::workarea", function(s)
-		if popup.visible and popup.screen == s and placement_fn then
-			placement_fn(popup, s, nil)
+		if popup.visible and popup.screen == s then
+			local pf = placement_fn or place_fn
+			if pf then
+				pf(popup, s, nil)
+			end
 		end
 	end)
 
 	return api
 end
 
--- Back-Compat: build(args) -> wrap(align-vertical(header,cols,footer))
+-- Back-Compat: alter Build-Pfad bleibt nutzbar
 function Popup.build(args)
-	local header, cols, footer = args.header, args.cols, args.footer
-	local root = wibox.widget({ header, cols, footer, layout = wibox.layout.align.vertical })
-	return Popup.wrap(root, { on_hide = args.on_hide, scrim_bg = args.scrim_bg })
+	local root = wibox.widget({
+		args.header,
+		args.cols,
+		args.footer,
+		layout = wibox.layout.align.vertical,
+	})
+	return Popup.wrap(root, {
+		theme = args.theme,
+		placement = args.placement,
+		on_hide = args.on_hide,
+		enable_esc_grabber = (args.enable_esc_grabber ~= false),
+		scrim_bg = args.scrim_bg,
+		window_radius = args.window_radius,
+	})
 end
 
 function Popup.make_launcher(api, icon, beautiful)

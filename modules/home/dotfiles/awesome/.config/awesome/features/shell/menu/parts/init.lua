@@ -16,7 +16,7 @@ local M = {}
 -- Theme-Resolver
 ---------------------------------------------------------------------
 local function resolve_theme(theme)
-	-- 1) fertiges Table
+	-- 1) Fertiges Table
 	if type(theme) == "table" then
 		return theme
 	end
@@ -47,7 +47,7 @@ local function resolve_theme(theme)
 end
 
 ---------------------------------------------------------------------
--- Menü-Popup aufbauen (reines Layout/Chrome/Placement hier!)
+-- Menü-Popup aufbauen
 ---------------------------------------------------------------------
 function M.build_popup(args)
 	args = args or {}
@@ -59,7 +59,6 @@ function M.build_popup(args)
 	-------------------------------------------------------------------
 	local header_api = Header.build(d.user, t)
 	local columns = Columns.build(d.left_items, d.right_items, t)
-
 	local footer_widget, footer_api = Footer.build({
 		power_items = d.power_items,
 		on_search = args.on_search,
@@ -67,7 +66,7 @@ function M.build_popup(args)
 	})
 
 	-------------------------------------------------------------------
-	-- Höhe & feste Constraints (Layout gehört hierher)
+	-- Höhe & feste Constraints
 	-------------------------------------------------------------------
 	local total_h = tonumber(t.total_height) or 650
 	local header_h = tonumber(t.header_h) or 64
@@ -80,14 +79,12 @@ function M.build_popup(args)
 		height = header_h,
 		widget = wibox.container.constraint,
 	})
-
 	local cols_fixed = wibox.widget({
 		columns.widget,
 		strategy = "exact",
 		height = body_h,
 		widget = wibox.container.constraint,
 	})
-
 	local footer_fixed = wibox.widget({
 		footer_widget,
 		strategy = "exact",
@@ -96,9 +93,9 @@ function M.build_popup(args)
 	})
 
 	-------------------------------------------------------------------
-	-- Chrome (Rundung, Border, Farben) – NICHT im popup.lua!
+	-- Abgerundeter Container um alles
 	-------------------------------------------------------------------
-	local chrome = wibox.widget({
+	local rounded = wibox.widget({
 		{
 			header_fixed,
 			cols_fixed,
@@ -110,49 +107,27 @@ function M.build_popup(args)
 			gears.shape.rounded_rect(cr, w, h, tonumber(t.popup_radius) or 12)
 		end,
 		shape_clip = true,
-		shape_border_width = tonumber(t.popup_border_width) or 1,
 		shape_border_color = t.popup_border_color or t.header_bg or "#3A6EA5",
 		widget = wibox.container.background,
 	})
 
-	-- (Optional) Breite erzwingen – sonst automatisch
-	local total_w = tonumber(t.total_width) -- kann nil sein
-	local chrome_box = wibox.widget({
-		chrome,
-		strategy = total_w and "exact" or "min",
-		width = total_w,
-		height = total_h,
-		widget = wibox.container.constraint,
-	})
-
 	-------------------------------------------------------------------
-	-- Popup shell (Cycle/Overlay-only) + Placement kommt von HIER
+	-- Popup-Lifecycle darum wickeln
 	-------------------------------------------------------------------
-	local popup_api = Popup.wrap(chrome_box, {
+	local popup_api = Popup.wrap(rounded, {
+		theme = t,
+		enable_esc_grabber = true,
 		on_hide = function()
-			-- Suche schließen, wenn das Menü kollabiert
 			if footer_api and (footer_api.cancel_search or footer_api.cancel) then
 				pcall(footer_api.cancel_search or footer_api.cancel)
 			end
 		end,
-		scrim_bg = t.dialog_scrim or "#00000099",
 	})
 
-	-- Platzierungsfunktion (unten an die Workarea andocken)
-	local function place_bottom(p, s, _opts)
-		local wa = s.workarea or s.geometry
-		local gap = 2
-		local ph = tonumber(t.total_height) or 650
-		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
-		if p.height ~= ph then
-			p:geometry({ height = ph })
-		end
-		p.x = wa.x
-		p.y = wa.y + wa.height - gap - ph
-	end
-	if popup_api.set_placement then
-		popup_api:set_placement(place_bottom)
-	end
+	popup_api:set_window_chrome({
+		radius = tonumber(t.popup_radius) or 12,
+		border_color = t.popup_border_color or t.header_bg or "#3A6EA5",
+	})
 
 	-------------------------------------------------------------------
 	-- Öffentliche Menü-API
@@ -161,13 +136,12 @@ function M.build_popup(args)
 	local stop_focus = nil
 
 	local function attach_menu_focus()
-		-- Fokus-Items aus Spalten holen
 		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
 
 		if Lib and Lib.focus then
 			if type(Lib.focus.attach_columns) == "function" then
 				return Lib.focus.attach_columns(cols_focus, t, {
-					handle = popup_api, -- für Esc/cleanup
+					handle = popup_api,
 					start_side = "left",
 					wrap = true,
 				})
@@ -187,7 +161,6 @@ function M.build_popup(args)
 
 	function api:show(opts)
 		popup_api:show(opts)
-
 		if stop_focus then
 			pcall(stop_focus)
 			stop_focus = nil
@@ -211,7 +184,6 @@ function M.build_popup(args)
 		end
 	end
 
-	-- Inhalte setzen
 	function api:set_left(items)
 		columns:set_left(items)
 	end
@@ -224,7 +196,6 @@ function M.build_popup(args)
 		header_api:set_user(name, avatar, sub)
 	end
 
-	-- Dialog-Overlay (Widget muss bereits layoutet sein; popup.lua macht kein Layout)
 	function api:show_dialog(w)
 		if stop_focus then
 			pcall(stop_focus)
@@ -294,7 +265,6 @@ function M.build_popup(args)
 		Lib.init(api, { flatten_helpers = false, flatten_focus = false })
 	end
 
-	-- Launcher-Builder
 	function api:make_launcher(icon, beautiful_mod)
 		return Popup.make_launcher(self, icon, beautiful_mod)
 	end
