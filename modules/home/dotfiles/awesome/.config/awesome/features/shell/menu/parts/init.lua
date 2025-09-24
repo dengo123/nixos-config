@@ -1,6 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/parts/init.lua
 local gears = require("gears")
 local wibox = require("wibox")
+local awful = require("awful")
 
 local Header = require("features.shell.menu.parts.header")
 local Columns = require("features.shell.menu.parts.columns")
@@ -52,6 +53,7 @@ end
 function M.build_popup(args)
 	args = args or {}
 	local t = resolve_theme(args.theme)
+	t.unify_focus_hover = true
 	local d = args.data or {}
 
 	-------------------------------------------------------------------
@@ -128,91 +130,6 @@ function M.build_popup(args)
 		radius = tonumber(t.popup_radius) or 12,
 		border_color = t.popup_border_color or t.header_bg or "#3A6EA5",
 	})
-
-	------------------------------------------------------------------
-	-- Container bei sekundär Monitoren zentrieren:
-	---------------------------------------------------------------
-	local content_for_fit = rounded -- falls du eine Constraint-Hülle hast: nimm diese stattdessen
-
-	local function place_smart(p, s, _opts)
-		local wa = s.workarea or s.geometry
-		local gap = 6
-
-		-- Zielhöhe
-		local ph = tonumber(t.total_height) or 650
-		ph = math.min(ph, math.max(wa.height - gap * 2, 1))
-
-		-- Breite per :fit() ermitteln und setzen
-		local function ensure_width()
-			local maxw = math.max(1, wa.width - gap * 2)
-			-- Fit-Kontext (DPI optional)
-			local ctx = {}
-			local dw, _ = content_for_fit:fit(ctx, maxw, ph)
-			dw = tonumber(dw) or maxw
-			dw = math.min(math.max(1, dw), maxw)
-			-- Höhe zuerst setzen (damit fit/Layouts konsistent bleiben), dann Breite
-			p:geometry({ height = ph })
-			p:geometry({ width = dw })
-			return (p.width or 0) > 0, dw
-		end
-
-		local is_primary = (s == screen.primary)
-		local is_portrait = wa.height > wa.width
-
-		local function center_now(dw)
-			local w = dw or (p.width or 0)
-			local x = wa.x + math.floor((wa.width - w) / 2)
-			local y = wa.y + math.floor((wa.height - ph) / 2)
-			p:geometry({ x = x, y = y, width = w, height = ph })
-		end
-
-		if is_primary and not is_portrait then
-			-- Primärer Screen, Querformat: unten andocken wie gehabt
-			local ok, dw = ensure_width()
-			if not ok then
-				gears.timer.delayed_call(function()
-					local _ = ensure_width()
-				end)
-			end
-			p:geometry({
-				x = wa.x,
-				y = wa.y + wa.height - gap - ph,
-				height = ph,
-				-- Breite schon gesetzt; wer will: width = dw
-			})
-			return
-		end
-
-		-- Nicht-primär ODER Portrait: exakt zentrieren
-		local ok, dw = ensure_width()
-		if ok then
-			center_now(dw)
-		else
-			-- ein paar Frames retryn, bis width > 0
-			local tries, max_tries = 0, 30
-			gears.timer.start_new(0.016, function()
-				if not p.visible then
-					return false
-				end
-				tries = tries + 1
-				local ok2, dw2 = ensure_width()
-				center_now(dw2)
-				return (not ok2) and (tries < max_tries)
-			end)
-		end
-	end
-
-	if popup_api.set_placement then
-		popup_api:set_placement(place_smart)
-	end
-
-	-- Bonus: Wenn sich die Layouts des Inhalts ändern, erneut zentrieren
-	content_for_fit:connect_signal("widget::layout_changed", function()
-		local s = popup_api and (awful.screen.focused())
-		if popup_api and popup_api.is_visible and popup_api:is_visible() and s then
-			place_smart(popup_api.popup or nil, s, nil) -- falls du popup nicht offenlegst, wird beim nächsten show() neu platziert
-		end
-	end)
 
 	-------------------------------------------------------------------
 	-- Öffentliche Menü-API

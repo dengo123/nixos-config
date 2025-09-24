@@ -98,7 +98,10 @@ function M.row_widget(item, t, opts)
 
 	-- Hover nur anwenden, wenn vorhanden
 	if type(helpers.apply_hover) == "function" then
-		helpers.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
+		-- NEU: wenn t.unify_focus_hover == true, HOVER NICHT separat anwenden
+		if not t.unify_focus_hover then
+			helpers.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
+		end
 	end
 
 	-- Klick strikt über Lib.actions (falls vorhanden), sonst No-Op

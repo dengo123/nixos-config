@@ -24,6 +24,7 @@ function Focus.attach(items, th, opts)
 	end
 
 	local i = 1
+	local enter_handlers = {} -- zum spätere Disconnect
 
 	local function hi(idx, on)
 		local w = items[idx]
@@ -32,24 +33,42 @@ function Focus.attach(items, th, opts)
 		end
 	end
 
+	local function set_index(new_i)
+		if new_i == i then
+			return
+		end
+		hi(i, false)
+		i = math.max(1, math.min(n, new_i))
+		hi(i, true)
+	end
+
+	-- initialer Fokus
 	hi(i, true)
 
-	-- **Kompatible** Keygrabber-Form (run)
+	-- *** NEU: Maus folgt Fokus (optional, default: an) ***
+	if opts.mouse_follow ~= false then
+		for idx, w in ipairs(items) do
+			if w and w.connect_signal then
+				local on_enter = function()
+					set_index(idx) -- exakt gleiche Visu wie per Pfeiltaste
+				end
+				w:connect_signal("mouse::enter", on_enter)
+				enter_handlers[idx] = on_enter
+			end
+		end
+	end
+
+	-- Keygrabber
 	local kg_id = awful.keygrabber.run(function(_, key, ev)
 		if ev == "release" then
 			return
 		end
 
 		if key == keys.left or key == keys.up then
-			hi(i, false)
-			i = math.max(1, i - 1)
-			hi(i, true)
+			set_index(i - 1)
 		elseif key == keys.right or key == keys.down then
-			hi(i, false)
-			i = math.min(n, i + 1)
-			hi(i, true)
+			set_index(i + 1)
 		elseif key == keys.cancel then
-			-- Dialog/Popup schließen, falls gegeben
 			if opts.handle and opts.handle.close then
 				pcall(function()
 					opts.handle:close()
@@ -79,6 +98,15 @@ function Focus.attach(items, th, opts)
 			pcall(awful.keygrabber.stop, kg_id)
 			kg_id = nil
 		end
+		-- Mouse-Handler sauber entfernen
+		for idx, w in ipairs(items) do
+			local h = enter_handlers[idx]
+			if w and h then
+				pcall(w.disconnect_signal, w, "mouse::enter", h)
+				enter_handlers[idx] = nil
+			end
+		end
+		-- Fokus visual clearen
 		for idx = 1, n do
 			pcall(hi, idx, false)
 		end
