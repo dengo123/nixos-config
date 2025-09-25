@@ -3,11 +3,10 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.lib.theme")
-local Lib = require("features.shell.menu.lib") -- nur der Aggregator
+local Lib = require("features.shell.menu.lib")
 
 local M = {}
 
--- Lib-Auflösung: opts.lib > opts.api.lib > __menu_api.lib > require'd Lib
 local function resolve_lib(opts)
 	opts = opts or {}
 	if opts.lib then
@@ -23,7 +22,7 @@ local function resolve_lib(opts)
 	return Lib
 end
 
--- Reiner UI-Button (keine Logik)
+-- Ein einzelner Button, UI + Fokus/hover Logik, aber noch ohne Aktion
 function M.power_button(item, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
@@ -79,12 +78,6 @@ function M.power_button(item, t, opts)
 		widget = wibox.container.background,
 	})
 
-	-- Hover nur anwenden, wenn vorhanden
-	if type(helpers.apply_hover) == "function" then
-		helpers.apply_hover(box, t, t.power_bg, t.power_bg_hover)
-	end
-
-	-- Keine Default-Logik hier – Clicks werden außen gebunden!
 	local fixed = wibox.widget({
 		box,
 		strategy = "exact",
@@ -93,11 +86,43 @@ function M.power_button(item, t, opts)
 		widget = wibox.container.constraint,
 	})
 
+	-- >>> unified Fokus/hover
+	function fixed:set_focus(on, th2)
+		local tt = theme.with_defaults(th2 or t)
+		local bg_on = tt.power_bg_hover or theme.adjust(tt.power_bg, -12)
+		if on then
+			box.bg, box.fg = bg_on, tt.power_fg
+		else
+			box.bg, box.fg = tt.power_bg, tt.power_fg
+		end
+	end
+
+	fixed:set_focus(false, t)
+
+	if t.unify_focus_hover then
+		box:connect_signal("mouse::enter", function()
+			fixed:set_focus(true, t)
+		end)
+		box:connect_signal("mouse::leave", function()
+			fixed:set_focus(false, t)
+		end)
+	else
+		if type(helpers.apply_hover) == "function" then
+			helpers.apply_hover(box, t, t.power_bg, t.power_bg_hover)
+		end
+	end
+
+	-- Für Focus.attach: Maus-Follow soll auf dem sichtbaren Kasten reagieren
+	fixed.mouse_enter_target = box
+
+	-- Wird in power_bar mit echter Aktion überschrieben
+	function fixed:activate() end
+
 	fixed._click_target = box
 	return fixed
 end
 
--- Rechte Power-Leiste (UI-only) – Clicks -> Lib.actions.click(item)
+-- Power-Bar: gibt jetzt (widget, focus_list) zurück!
 function M.power_bar(power_items, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
@@ -106,40 +131,48 @@ function M.power_bar(power_items, t, opts)
 	local actions = (lib and lib.actions) or nil
 
 	local inner_h = opts.inner_h or t.footer_h or 48
-	local bar = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
+	local row = { layout = wibox.layout.fixed.horizontal, spacing = t.power_bar_spacing }
+	local focus_list = {}
 
 	for _, item in ipairs(power_items or {}) do
-		-- Button-Theme für diese Höhe
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
 		end
 		t_btn._power_inner_h = inner_h
 
-		-- Button bauen
 		local btn = M.power_button(item, t_btn, opts)
-		local fixed = wibox.widget({
+
+		-- Höhe auf die Footer-Row zwingen
+		local fixed_h = wibox.widget({
 			btn,
 			strategy = "exact",
 			height = inner_h,
 			widget = wibox.container.constraint,
 		})
 
-		-- existierende Bindings entfernen (Safety)
+		-- (Sicherheits-)Bindings leeren
 		local target = btn._click_target or btn
 		target:buttons({})
 		btn:buttons({})
 
-		-- EIN Handler: zentral über Lib.actions (falls vorhanden), sonst No-Op
+		-- Genau eine Aktion: zentral via Lib.actions
 		local cb = (actions and type(actions.click) == "function") and actions.click(item) or function() end
 		local bindings = gears.table.join(awful.button({}, 1, cb))
 		target:buttons(bindings)
 		btn:buttons(bindings)
 
-		table.insert(bar, fixed)
+		-- Tastatur-Activate soll dasselbe tun wie Klick
+		function btn:activate()
+			cb()
+		end
+
+		table.insert(row, fixed_h)
+		table.insert(focus_list, btn) -- <<< WICHTIG: Fokus-Item ist der Button mit set_focus/activate
 	end
 
-	return wibox.widget({ bar, halign = "right", widget = wibox.container.place })
+	local placed = wibox.widget({ row, halign = "right", widget = wibox.container.place })
+	return placed, focus_list -- <<< neu: Fokusliste mitgeben
 end
 
 return M

@@ -1,27 +1,16 @@
 -- ~/.config/awesome/features/shell/menu/parts/footer.lua
 local wibox = require("wibox")
-local P = require("features.shell.menu.widgets") -- enthält power_bar()
-local Search = require("features.shell.menu.search") -- deine Search-Implementierung
+local P = require("features.shell.menu.widgets")
+local Search = require("features.shell.menu.search")
 
 local Footer = {}
 
--- Kompatibel:
---   Footer.build(power_items, t)
---   Footer.build({ power_items = ..., t = ..., search = {...} })
 function Footer.build(arg1, arg2)
-	-- ---- Compat Layer ---------------------------------------------------------
-	local opts
-	if type(arg1) == "table" and (arg1.power_items or arg1.t or arg1.search) then
-		opts = arg1
-	else
-		opts = { power_items = arg1, t = arg2 }
-	end
+	local opts = (type(arg1) == "table" and (arg1.power_items or arg1.t or arg1.search)) and arg1
+		or { power_items = arg1, t = arg2 }
 	opts.t = opts.t or {}
 	local t = opts.t
 
-	-- ---------------------------------------------------------------------------
-	-- Footer-Grundlayout (nur Container)
-	-- ---------------------------------------------------------------------------
 	local FOOTER_H = t.footer_h or 48
 	local PAD_T = t.footer_pad_t or 6
 	local PAD_B = t.footer_pad_b or 6
@@ -30,9 +19,6 @@ function Footer.build(arg1, arg2)
 	local FOOTER_BG = t.footer_bg or t.bg or "#235CDB"
 	local FOOTER_FG = t.footer_fg or t.fg or "#FFFFFF"
 
-	-- ---------------------------------------------------------------------------
-	-- Search: komplett gekapselt im Modul features/shell/menu/search/init.lua
-	-- ---------------------------------------------------------------------------
 	local search_cfg = opts.search or {}
 	local search_inst = Search.new({
 		footer_h = FOOTER_H,
@@ -49,18 +35,13 @@ function Footer.build(arg1, arg2)
 		},
 	})
 
-	-- ---------------------------------------------------------------------------
-	-- Power-Buttons rechts (UI-only; Clicks -> Actions)
-	-- ---------------------------------------------------------------------------
-	local powers_right = P.power_bar(opts.power_items or {}, t, { inner_h = inner_h })
+	-- >>> Power-Buttons: Widget + Fokusliste
+	local powers_right, power_focus = P.power_bar(opts.power_items or {}, t, { inner_h = inner_h })
 
-	-- ---------------------------------------------------------------------------
-	-- Footer-Row & Container
-	-- ---------------------------------------------------------------------------
 	local row = wibox.widget({
-		search_inst.widget, -- links: Search-Bar
-		nil, -- mitte: leer/Stretch
-		powers_right, -- rechts: Power-Leiste
+		search_inst.widget,
+		nil,
+		powers_right,
 		expand = "inside",
 		layout = wibox.layout.align.horizontal,
 	})
@@ -80,11 +61,9 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.background,
 	})
 
-	-- ---------------------------------------------------------------------------
-	-- API: Search-Funktionen in bestehende Menü-API injizieren (nicht überschreiben)
-	-- ---------------------------------------------------------------------------
 	local api = rawget(_G, "__menu_api") or {}
 
+	-- Search-API wie gehabt …
 	api.focus_search = function()
 		search_inst.api.focus_local()
 	end
@@ -107,8 +86,12 @@ function Footer.build(arg1, arg2)
 		search_inst.api.set_browser(bin)
 	end
 
-	_G.__search_api = search_inst.api -- optional
+	-- >>> NEU: Fokus-Items der Power-Bar verfügbar machen
+	api.get_power_focus_items = function()
+		return power_focus or {}
+	end
 
+	_G.__search_api = search_inst.api
 	return footer, api
 end
 

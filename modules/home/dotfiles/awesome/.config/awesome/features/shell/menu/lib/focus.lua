@@ -14,7 +14,8 @@ local function norm_keys(k)
 	}
 end
 
---- Linearer Fokus über eine Liste von Items (je Item: :set_focus(on, th), :activate()).
+--- Linearer Fokus über eine Liste von Items.
+--- Erwartet je Item: :set_focus(on, th), :activate(), optional .mouse_enter_target (Widget)
 function Focus.attach(items, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
@@ -24,7 +25,7 @@ function Focus.attach(items, th, opts)
 	end
 
 	local i = 1
-	local enter_handlers = {} -- zum spätere Disconnect
+	local enter_handlers = {} -- [{target=..., cb=...}, ...]
 
 	local function hi(idx, on)
 		local w = items[idx]
@@ -34,26 +35,28 @@ function Focus.attach(items, th, opts)
 	end
 
 	local function set_index(new_i)
+		new_i = math.max(1, math.min(n, new_i))
 		if new_i == i then
 			return
 		end
 		hi(i, false)
-		i = math.max(1, math.min(n, new_i))
+		i = new_i
 		hi(i, true)
 	end
 
 	-- initialer Fokus
 	hi(i, true)
 
-	-- *** NEU: Maus folgt Fokus (optional, default: an) ***
+	-- Maus folgt Fokus (default: an). Nutzen, falls vorhanden: w.mouse_enter_target
 	if opts.mouse_follow ~= false then
 		for idx, w in ipairs(items) do
-			if w and w.connect_signal then
+			local target = (w and w.mouse_enter_target) or w
+			if target and target.connect_signal then
 				local on_enter = function()
-					set_index(idx) -- exakt gleiche Visu wie per Pfeiltaste
+					set_index(idx)
 				end
-				w:connect_signal("mouse::enter", on_enter)
-				enter_handlers[idx] = on_enter
+				target:connect_signal("mouse::enter", on_enter)
+				enter_handlers[idx] = { target = target, cb = on_enter }
 			end
 		end
 	end
@@ -99,12 +102,11 @@ function Focus.attach(items, th, opts)
 			kg_id = nil
 		end
 		-- Mouse-Handler sauber entfernen
-		for idx, w in ipairs(items) do
-			local h = enter_handlers[idx]
-			if w and h then
-				pcall(w.disconnect_signal, w, "mouse::enter", h)
-				enter_handlers[idx] = nil
+		for idx, h in ipairs(enter_handlers) do
+			if h and h.target and h.cb then
+				pcall(h.target.disconnect_signal, h.target, "mouse::enter", h.cb)
 			end
+			enter_handlers[idx] = nil
 		end
 		-- Fokus visual clearen
 		for idx = 1, n do

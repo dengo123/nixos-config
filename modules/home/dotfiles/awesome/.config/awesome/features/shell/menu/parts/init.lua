@@ -153,24 +153,24 @@ function M.build_popup(args)
 
 	local function attach_menu_focus()
 		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
+		local power_focus = {}
+		if footer_api and footer_api.get_power_focus_items then
+			power_focus = footer_api.get_power_focus_items() or {}
+		end
 
-		if Lib and Lib.focus then
-			if type(Lib.focus.attach_columns) == "function" then
-				return Lib.focus.attach_columns(cols_focus, t, {
-					handle = popup_api,
-					start_side = "left",
-					wrap = true,
-				})
-			elseif type(Lib.focus.attach) == "function" then
-				local linear = {}
-				for _, w in ipairs(cols_focus.left or {}) do
-					table.insert(linear, w)
-				end
-				for _, w in ipairs(cols_focus.right or {}) do
-					table.insert(linear, w)
-				end
-				return Lib.focus.attach(linear, t, { handle = popup_api })
-			end
+		local linear = {}
+		for _, w in ipairs(cols_focus.left or {}) do
+			table.insert(linear, w)
+		end
+		for _, w in ipairs(cols_focus.right or {}) do
+			table.insert(linear, w)
+		end
+		for _, w in ipairs(power_focus or {}) do
+			table.insert(linear, w)
+		end
+
+		if Lib and Lib.focus and type(Lib.focus.attach) == "function" then
+			return Lib.focus.attach(linear, t, { handle = popup_api }) -- mouse_follow default=an
 		end
 		return nil
 	end
