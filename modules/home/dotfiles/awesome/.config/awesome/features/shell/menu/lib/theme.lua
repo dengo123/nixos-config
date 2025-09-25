@@ -1,4 +1,4 @@
--- features/shell/menu/theme.lua
+-- features/shell/menu/lib/theme.lua
 local Theme = {}
 
 -- ===== Utils =====
@@ -34,18 +34,19 @@ local function merge(a, b)
 	return o
 end
 
--- ===== Vereinheitlichte Defaults (Container + Widgets) =====
-local DEFAULTS_CONTAINER = {
-	-- Grundfarben
+-- ===== EIN gemeinsames DEFAULTS =====
+local DEFAULTS = {
+	-- Grundfarben (global)
 	bg = "#222222",
 	fg = "#FFFFFF",
+	bg_focus = nil,
 
 	-- Popup / Rahmen
 	popup_radius = 12,
 	popup_border_width = 1,
 	popup_border_color = "#235CDB",
-	popup_bg = "#00000000", -- äußerer Container
-	dialog_bg = "#235CDB", -- Innenfläche / Columns-Hintergrund
+	popup_bg = "#00000000", -- äußerer Container (transparent)
+	dialog_bg = "#235CDB", -- Innenfläche (Columns-Hintergrund)
 
 	-- Header
 	header_bg = "#235CDB",
@@ -62,7 +63,7 @@ local DEFAULTS_CONTAINER = {
 	footer_pad_h = 12,
 	footer_pad_v = 8,
 
-	-- Spalten
+	-- Spalten (Container-Farben)
 	col_left_w = 250,
 	col_right_w = 230,
 	col_spacing = 1,
@@ -74,17 +75,20 @@ local DEFAULTS_CONTAINER = {
 	left_fg = "#000000",
 	right_bg = "#D2E5FA",
 	right_fg = "#000000",
-	border_bg = "235CDB",
+	border_bg = "#235CDB",
 
-	-- Höhe
-	total_height = 536,
-}
-
-local DEFAULTS_WIDGETS = {
-	-- Grundfarben (Widgets)
-	bg = "#235CDB",
-	fg = "#FFFFFF",
-	bg_focus = nil,
+	-- Rows (Widget-Basis)
+	row_bg = "#FFFFFF",
+	row_fg = "#000000",
+	row_bg_hover = nil, -- wird abgeleitet
+	row_h = 48,
+	right_row_h = 40,
+	row_pad_l = 10,
+	row_pad_r = 10,
+	row_pad_t = 4,
+	row_pad_b = 4,
+	row_spacing = 8,
+	list_spacing = 0,
 
 	-- Typografie/Icon
 	font_family = "Sans",
@@ -98,7 +102,6 @@ local DEFAULTS_WIDGETS = {
 	text_size_power = nil,
 	text_min = nil,
 	text_max = nil,
-
 	icon_ratio = 0.90,
 	icon_ratio_header = nil,
 	icon_ratio_rows = nil,
@@ -109,22 +112,7 @@ local DEFAULTS_WIDGETS = {
 	icon_size_rows = nil,
 	icon_size_power = nil,
 
-	-- Rows
-	row_bg = "#FFFFFF",
-	row_fg = "#000000",
-	row_bg_hover = nil, -- wird abgeleitet
-	row_h = 48,
-	right_row_h = 40,
-	row_pad_l = 10,
-	row_pad_r = 10,
-	row_pad_t = 4,
-	row_pad_b = 4,
-	row_spacing = 8,
-	list_spacing = 0,
-
-	-- Footer/Power (für Widgets, falls genutzt)
-	footer_bg = "#235CDB",
-	footer_fg = "#FFFFFF",
+	-- Power Buttons (falls genutzt)
 	power_bg = nil,
 	power_fg = nil,
 	power_bg_hover = nil,
@@ -137,29 +125,29 @@ local DEFAULTS_WIDGETS = {
 	power_spacing = 6,
 	power_icon_size = nil,
 	power_bar_spacing = 0,
+
+	-- Gesamthöhe
+	total_height = 536,
 }
 
--- Vereinheitlichte Defaults (Container hat Vorrang vor Widgets an den gemeinsamen Keys)
-local DEFAULTS = merge(DEFAULTS_WIDGETS, DEFAULTS_CONTAINER)
-
+-- ===== Ableitungen / Normalisierung =====
 local function normalize(t)
-	-- Ableitungen/Kompatibilität
+	-- Fokus & globale Row-Hover (für Komponenten, die keine Seitenfarben nutzen)
 	t.bg_focus = t.bg_focus or adjust(t.bg, -15)
-
-	-- Basis-Hover (global, falls irgendwo verwendet – Rows bekommen seiten-spezifisch, s.u.)
 	t.row_bg_hover = t.row_bg_hover or adjust(t.row_bg, -8)
 
+	-- Power aus Footer ableiten
 	t.power_bg = t.power_bg or t.footer_bg or t.bg
 	t.power_fg = t.power_fg or t.footer_fg or t.fg
 	t.power_bg_hover = t.power_bg_hover or adjust(t.power_bg, -12)
 
-	-- Seitenspezifische Row-Basisfarben
+	-- Seitenspezifische Row-Basisfarben (Deckungsgleich mit Spaltenfarben, wenn nicht anders gesetzt)
 	t.left_row_bg = t.left_row_bg or t.left_bg
 	t.left_row_fg = t.left_row_fg or t.left_fg
 	t.right_row_bg = t.right_row_bg or t.right_bg
 	t.right_row_fg = t.right_row_fg or t.right_fg
 
-	-- Seitenspezifische Hoverfarben (KEIN Fallback mehr auf globales row_bg_hover)
+	-- Seitenspezifisches Hover (WICHTIG: kein Rückfall auf globales row_bg_hover)
 	t.left_row_bg_hover = t.left_row_bg_hover or adjust(t.left_row_bg or t.left_bg or t.row_bg, -8)
 	t.right_row_bg_hover = t.right_row_bg_hover or adjust(t.right_row_bg or t.right_bg or t.row_bg, -8)
 
@@ -176,7 +164,16 @@ function Theme.get(overrides)
 	return Theme.with_defaults(overrides or {})
 end
 
--- Größen-Resolver (kompatibel zu widgets/theme.lua)
+-- Spalten-/Row-Farbpaket (für Columns → Rows)
+function Theme.row_colors(t, side)
+	local left = (side ~= "right")
+	local bg = left and (t.left_row_bg or t.left_bg or t.row_bg) or (t.right_row_bg or t.right_bg or t.row_bg)
+	local fg = left and (t.left_row_fg or t.left_fg or t.row_fg) or (t.right_row_fg or t.right_fg or t.row_fg)
+	local hover = left and (t.left_row_bg_hover or adjust(bg, -8)) or (t.right_row_bg_hover or adjust(bg, -8))
+	return { bg = bg, fg = fg, hover = hover }
+end
+
+-- Typo-/Icon-Resolver (kompatibel zu altem widgets/theme.lua)
 function Theme.resolve_text_size_number(t, eff_h, kind)
 	if kind == "header" and t.text_size_header then
 		return t.text_size_header
@@ -244,15 +241,7 @@ function Theme.resolve_icon_size(t, eff_h, kind)
 	return math.max(1, math.floor(eff_h * ratio + 0.5))
 end
 
-function Theme.row_colors(t, side)
-	local left = (side ~= "right")
-	local bg = left and (t.left_row_bg or t.left_bg or t.row_bg) or (t.right_row_bg or t.right_bg or t.row_bg)
-	local fg = left and (t.left_row_fg or t.left_fg or t.row_fg) or (t.right_row_fg or t.right_fg or t.row_fg)
-	local hover = left and (t.left_row_bg_hover or adjust(bg, -8)) or (t.right_row_bg_hover or adjust(bg, -8))
-	return { bg = bg, fg = fg, hover = hover }
-end
-
--- Utils exportieren (für alten widgets/theme-Code)
+-- Utils exportieren
 Theme.adjust = adjust
 
 return Theme
