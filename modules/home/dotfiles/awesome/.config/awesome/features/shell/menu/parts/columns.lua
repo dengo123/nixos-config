@@ -12,6 +12,7 @@ local function shallow_copy(tbl)
 	end
 	return out
 end
+
 local function pick(...)
 	for i = 1, select("#", ...) do
 		local v = select(i, ...)
@@ -30,8 +31,6 @@ function Columns.build(left_items, right_items, t, opts)
 	local right_colors = Theme.row_colors(t, "right")
 	local left_row_h = pick(t.left_row_h, t.row_h)
 	local right_row_h = pick(t.right_row_h, t.row_h)
-	local left_spacing = pick(t.left_list_spacing, t.list_spacing)
-	local right_spacing = pick(t.right_list_spacing, t.list_spacing)
 
 	-- eigene Opts pro Liste (nicht teilen!)
 	local left_opts = shallow_copy(opts)
@@ -43,8 +42,11 @@ function Columns.build(left_items, right_items, t, opts)
 	right_opts.row_h = right_row_h
 
 	-- Views bauen (Rows lesen ausschließlich opts.colors/row_h)
-	local left_view, left_focus = P.list_widget(left_items or {}, t, left_opts)
-	local right_view, right_focus = P.list_widget(right_items or {}, t, right_opts)
+	local left_focus, right_focus
+	local left_view, lf = P.list_widget(left_items or {}, t, left_opts)
+	left_focus = lf
+	local right_view, rf = P.list_widget(right_items or {}, t, right_opts)
+	right_focus = rf
 
 	-- Spalten-Container (Hintergrund = Spaltenfarbe)
 	local left_col = wibox.widget({

@@ -3,10 +3,11 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local theme = require("features.shell.menu.lib.theme")
-local Lib = require("features.shell.menu.lib")
+local Lib = require("features.shell.menu.lib") -- nur für actions (kein helpers mehr)
 
 local M = {}
 
+-- Nur noch für actions überschreibbar lassen (opts.lib optional)
 local function resolve_lib(opts)
 	opts = opts or {}
 	if opts.lib then
@@ -22,13 +23,10 @@ local function resolve_lib(opts)
 	return Lib
 end
 
--- Ein einzelner Button, UI + Fokus/hover Logik, aber noch ohne Aktion
+-- Ein einzelner Button, UI + unified Fokus/Hover, noch ohne Aktion
 function M.power_button(item, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
-
-	local lib = resolve_lib(opts)
-	local helpers = (lib and lib.helpers) or {}
 
 	local eff_h = t._power_inner_h or t.power_h
 	local pad_t = t.power_pad_t or 0
@@ -86,7 +84,7 @@ function M.power_button(item, t, opts)
 		widget = wibox.container.constraint,
 	})
 
-	-- >>> unified Fokus/hover
+	-- Unified Fokus/Hover (Keyboard == Mouse)
 	function fixed:set_focus(on, th2)
 		local tt = theme.with_defaults(th2 or t)
 		local bg_on = tt.power_bg_hover or theme.adjust(tt.power_bg, -12)
@@ -99,20 +97,15 @@ function M.power_button(item, t, opts)
 
 	fixed:set_focus(false, t)
 
-	if t.unify_focus_hover then
-		box:connect_signal("mouse::enter", function()
-			fixed:set_focus(true, t)
-		end)
-		box:connect_signal("mouse::leave", function()
-			fixed:set_focus(false, t)
-		end)
-	else
-		if type(helpers.apply_hover) == "function" then
-			helpers.apply_hover(box, t, t.power_bg, t.power_bg_hover)
-		end
-	end
+	-- Maus-Events mappen 1:1 auf set_focus (kein helpers.apply_hover mehr)
+	box:connect_signal("mouse::enter", function()
+		fixed:set_focus(true, t)
+	end)
+	box:connect_signal("mouse::leave", function()
+		fixed:set_focus(false, t)
+	end)
 
-	-- Für Focus.attach: Maus-Follow soll auf dem sichtbaren Kasten reagieren
+	-- Für Focus.attach: Fokus soll beim sichtbaren Kasten „einrasten“
 	fixed.mouse_enter_target = box
 
 	-- Wird in power_bar mit echter Aktion überschrieben
@@ -122,7 +115,7 @@ function M.power_button(item, t, opts)
 	return fixed
 end
 
--- Power-Bar: gibt jetzt (widget, focus_list) zurück!
+-- Power-Bar: gibt (widget, focus_list) zurück
 function M.power_bar(power_items, t, opts)
 	t = theme.with_defaults(t)
 	opts = opts or {}
@@ -135,6 +128,7 @@ function M.power_bar(power_items, t, opts)
 	local focus_list = {}
 
 	for _, item in ipairs(power_items or {}) do
+		-- Button-Theme an die Footer-Höhe anpassen
 		local t_btn = {}
 		for k, v in pairs(t) do
 			t_btn[k] = v
@@ -143,7 +137,7 @@ function M.power_bar(power_items, t, opts)
 
 		local btn = M.power_button(item, t_btn, opts)
 
-		-- Höhe auf die Footer-Row zwingen
+		-- Höhe auf Footer-Row zwingen
 		local fixed_h = wibox.widget({
 			btn,
 			strategy = "exact",
@@ -151,28 +145,28 @@ function M.power_bar(power_items, t, opts)
 			widget = wibox.container.constraint,
 		})
 
-		-- (Sicherheits-)Bindings leeren
+		-- Sicherheits-Bindings leeren
 		local target = btn._click_target or btn
 		target:buttons({})
 		btn:buttons({})
 
-		-- Genau eine Aktion: zentral via Lib.actions
+		-- Genau eine Aktion: zentral via Lib.actions (falls vorhanden), sonst No-Op
 		local cb = (actions and type(actions.click) == "function") and actions.click(item) or function() end
 		local bindings = gears.table.join(awful.button({}, 1, cb))
 		target:buttons(bindings)
 		btn:buttons(bindings)
 
-		-- Tastatur-Activate soll dasselbe tun wie Klick
+		-- Tastatur-Activate == Klick
 		function btn:activate()
 			cb()
 		end
 
 		table.insert(row, fixed_h)
-		table.insert(focus_list, btn) -- <<< WICHTIG: Fokus-Item ist der Button mit set_focus/activate
+		table.insert(focus_list, btn) -- Fokus-Item ist der Button selbst
 	end
 
 	local placed = wibox.widget({ row, halign = "right", widget = wibox.container.place })
-	return placed, focus_list -- <<< neu: Fokusliste mitgeben
+	return placed, focus_list
 end
 
 return M
