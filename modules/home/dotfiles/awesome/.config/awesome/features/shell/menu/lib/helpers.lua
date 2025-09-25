@@ -1,5 +1,5 @@
 local wibox = require("wibox")
-local theme = require("features.shell.menu.widgets.theme")
+local theme = require("features.shell.menu.lib.theme")
 
 local M = {}
 

@@ -9,6 +9,7 @@ local Footer = require("features.shell.menu.parts.footer")
 local Popup = require("features.shell.menu.parts.popup")
 local Lib = require("features.shell.menu.lib")
 
+-- unified theme lives in lib/theme
 local ThemeMod_ok, ThemeMod = pcall(require, "features.shell.menu.lib.theme")
 
 local M = {}
@@ -33,7 +34,7 @@ local function resolve_theme(theme)
 		end
 	end
 
-	-- 3) Preset-String (z. B. "luna_xp")
+	-- 3) Preset-String
 	if type(theme) == "string" and ThemeMod_ok and type(ThemeMod[theme]) == "function" then
 		return ThemeMod[theme]()
 	end
@@ -53,7 +54,7 @@ end
 function M.build_popup(args)
 	args = args or {}
 	local t = resolve_theme(args.theme)
-	t.unify_focus_hover = true
+	t.unify_focus_hover = true -- Hover = Fokus-Optik vereinheitlichen
 	local d = args.data or {}
 
 	-------------------------------------------------------------------
@@ -114,11 +115,24 @@ function M.build_popup(args)
 	})
 
 	-------------------------------------------------------------------
-	-- Popup-Lifecycle darum wickeln
+	-- Popup-Lifecycle darum wickeln (mit echter Zentrierung)
 	-------------------------------------------------------------------
 	local popup_api = Popup.wrap(rounded, {
 		theme = t,
 		enable_esc_grabber = true,
+		placement = function(p, s)
+			-- Primary: wie vorher unten-links an die Workarea andocken
+			if s == screen.primary then
+				local wa = s.workarea or s.geometry
+				local gap = 2
+				local ph = (p.height and p.height > 0) and p.height or (t.total_height or 520)
+				p.x = wa.x
+				p.y = wa.y + wa.height - gap - ph
+				return
+			end
+			-- Nicht-Primary: wirklich zentrieren
+			awful.placement.centered(p, { parent = s, honor_workarea = true })
+		end,
 		on_hide = function()
 			if footer_api and (footer_api.cancel_search or footer_api.cancel) then
 				pcall(footer_api.cancel_search or footer_api.cancel)
