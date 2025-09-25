@@ -1,6 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/parts/columns.lua
 local wibox = require("wibox")
 local P = require("features.shell.menu.widgets")
+local Theme = require("features.shell.menu.lib.theme")
 
 local Columns = {}
 
@@ -21,27 +22,36 @@ local function pick(...)
 end
 
 function Columns.build(left_items, right_items, t, opts)
-	local left_t = shallow_copy(t)
-	left_t.row_bg = pick(t.left_bg, t.row_bg)
-	left_t.row_fg = pick(t.left_fg, t.row_fg)
-	left_t.row_h = pick(t.left_row_h, t.row_h)
-	left_t.list_spacing = pick(t.left_list_spacing, t.list_spacing)
+	t = Theme.with_defaults(t)
+	opts = opts or {}
 
-	local right_t = shallow_copy(t)
-	right_t.row_bg = pick(t.right_bg, t.row_bg)
-	right_t.row_fg = pick(t.right_fg, t.row_fg)
-	right_t.row_h = pick(t.right_row_h, t.row_h)
-	right_t.list_spacing = pick(t.right_list_spacing, t.list_spacing)
+	-- Spaltenspezifische Paletten + Höhen
+	local left_colors = Theme.row_colors(t, "left")
+	local right_colors = Theme.row_colors(t, "right")
+	local left_row_h = pick(t.left_row_h, t.row_h)
+	local right_row_h = pick(t.right_row_h, t.row_h)
+	local left_spacing = pick(t.left_list_spacing, t.list_spacing)
+	local right_spacing = pick(t.right_list_spacing, t.list_spacing)
 
-	-- WICHTIG: zweite Rückgabe (Fokus-Items) entgegennehmen
-	local left_view, left_focus = P.list_widget(left_items or {}, left_t, opts)
-	local right_view, right_focus = P.list_widget(right_items or {}, right_t, opts)
+	-- eigene Opts pro Liste (nicht teilen!)
+	local left_opts = shallow_copy(opts)
+	left_opts.colors = left_colors
+	left_opts.row_h = left_row_h
 
+	local right_opts = shallow_copy(opts)
+	right_opts.colors = right_colors
+	right_opts.row_h = right_row_h
+
+	-- Views bauen (Rows lesen ausschließlich opts.colors/row_h)
+	local left_view, left_focus = P.list_widget(left_items or {}, t, left_opts)
+	local right_view, right_focus = P.list_widget(right_items or {}, t, right_opts)
+
+	-- Spalten-Container (Hintergrund = Spaltenfarbe)
 	local left_col = wibox.widget({
 		{ left_view, margins = 0, widget = wibox.container.margin },
 		forced_width = pick(t.col_left_w, 250),
-		bg = left_t.row_bg,
-		fg = left_t.row_fg,
+		bg = left_colors.bg,
+		fg = left_colors.fg,
 		shape = t.col_shape,
 		widget = wibox.container.background,
 	})
@@ -49,12 +59,13 @@ function Columns.build(left_items, right_items, t, opts)
 	local right_col = wibox.widget({
 		{ right_view, margins = 0, widget = wibox.container.margin },
 		forced_width = pick(t.col_right_w, 230),
-		bg = right_t.row_bg,
-		fg = right_t.row_fg,
+		bg = right_colors.bg,
+		fg = right_colors.fg,
 		shape = t.col_shape,
 		widget = wibox.container.background,
 	})
 
+	-- Spalten nebeneinander
 	local cols_inner = wibox.widget({
 		left_col,
 		right_col,
@@ -62,6 +73,7 @@ function Columns.build(left_items, right_items, t, opts)
 		layout = wibox.layout.fixed.horizontal,
 	})
 
+	-- Außencontainer (Columns-Hintergrund)
 	local cols = wibox.widget({
 		{
 			cols_inner,
@@ -78,18 +90,18 @@ function Columns.build(left_items, right_items, t, opts)
 	local api = { widget = cols }
 
 	function api:set_left(items)
-		local v, foc = P.list_widget(items or {}, left_t, opts)
+		-- Farben/Höhen beibehalten
+		local v, foc = P.list_widget(items or {}, t, left_opts)
 		left_view.children = v.children
 		left_focus = foc or {}
 	end
 
 	function api:set_right(items)
-		local v, foc = P.list_widget(items or {}, right_t, opts)
+		local v, foc = P.list_widget(items or {}, t, right_opts)
 		right_view.children = v.children
 		right_focus = foc or {}
 	end
 
-	-- NEU: Fokus-Items nach außen geben
 	function api:get_focus_items()
 		return { left = left_focus or {}, right = right_focus or {} }
 	end

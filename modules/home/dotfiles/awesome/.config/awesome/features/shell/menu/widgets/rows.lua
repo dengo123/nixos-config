@@ -2,12 +2,11 @@
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local theme = require("features.shell.menu.lib.theme")
-local Lib = require("features.shell.menu.lib") -- nur der Aggregator
+local Theme = require("features.shell.menu.lib.theme")
+local Lib = require("features.shell.menu.lib")
 
 local M = {}
 
--- weicher Fallback für fixed_height, falls lib.helpers.fixed_height fehlt
 local function fallback_fixed_height(widget, h)
 	return wibox.widget({
 		widget,
@@ -17,7 +16,6 @@ local function fallback_fixed_height(widget, h)
 	})
 end
 
--- Lib-Auflösung: opts.lib > opts.api.lib > __menu_api.lib > require'd Lib
 local function resolve_lib(opts)
 	opts = opts or {}
 	if opts.lib then
@@ -33,21 +31,30 @@ local function resolve_lib(opts)
 	return Lib
 end
 
+-- erwartet: opts.colors = { bg, fg, hover }, opts.row_h (optional), opts.lib (optional)
 function M.row_widget(item, t, opts)
-	t = theme.with_defaults(t)
+	t = Theme.with_defaults(t)
 	opts = opts or {}
+	t.unify_focus_hover = (t.unify_focus_hover ~= false) -- default: an
 
 	local lib = resolve_lib(opts)
 	local helpers = (lib and lib.helpers) or {}
 	local actions = (lib and lib.actions) or nil
 
-	local eff_h = t.row_h
+	-- === Farben & Höhe kommen *fertig* von Columns ===
+	local COLORS = opts.colors
+		or {
+			bg = t.row_bg,
+			fg = t.row_fg,
+			hover = t.row_bg_hover or Theme.adjust(t.row_bg, -8),
+		}
+	local eff_h = tonumber(opts.row_h) or tonumber(t.row_h) or 48
 	local pad_t = t.row_pad_t or 0
 	local pad_b = t.row_pad_b or 0
 	local avail_h = math.max(eff_h - pad_t - pad_b, 1)
 
-	local icon_px = theme.resolve_icon_size(t, avail_h, "rows")
-	local font = theme.resolve_font(t, avail_h, "rows")
+	local icon_px = Theme.resolve_icon_size(t, avail_h, "rows")
+	local font = Theme.resolve_font(t, avail_h, "rows")
 
 	local hline = wibox.widget({
 		{
@@ -78,15 +85,15 @@ function M.row_widget(item, t, opts)
 		widget = wibox.container.margin,
 	})
 
-	-- inner Background (für Hover)
+	-- Grund-Background aus Columns
 	local bg_box = wibox.widget({
 		content,
-		bg = t.row_bg,
-		fg = t.row_fg,
+		bg = COLORS.bg,
+		fg = COLORS.fg,
 		widget = wibox.container.background,
 	})
 
-	-- äußerer Focus-Rahmen (für Tastatur-Fokus)
+	-- Focus-Hülle (ohne sichtbaren Rahmen)
 	local focus_wrap = wibox.widget({
 		bg = "#00000000",
 		shape = t.row_shape or t.shape or gears.shape.rectangle,
@@ -96,25 +103,18 @@ function M.row_widget(item, t, opts)
 	})
 	focus_wrap:set_widget(bg_box)
 
-	-- Hover nur anwenden, wenn vorhanden
-	if type(helpers.apply_hover) == "function" then
-		-- NEU: wenn t.unify_focus_hover == true, HOVER NICHT separat anwenden
-		if not t.unify_focus_hover then
-			helpers.apply_hover(bg_box, t, t.row_bg, t.row_bg_hover)
-		end
+	-- Maus-Hover NUR wenn nicht unified (bei unified macht set_focus den Hover-Look)
+	if type(helpers.apply_hover) == "function" and not t.unify_focus_hover then
+		helpers.apply_hover(bg_box, t, COLORS.bg, COLORS.hover)
 	end
 
-	-- Klick strikt über Lib.actions (falls vorhanden), sonst No-Op
-	local on_click = nil
-	if actions and type(actions.click) == "function" then
-		on_click = actions.click(item)
-	end
+	-- Click Binding
+	local on_click = (actions and type(actions.click) == "function") and actions.click(item) or nil
 	local bindings = gears.table.join(awful.button({}, 1, on_click or function() end))
 	bg_box:buttons(bindings)
-	-- optional vollflächig:
 	focus_wrap:buttons(bindings)
 
-	-- Optionale Hover-Callbacks aus Item beibehalten
+	-- optionale Item-Hooks behalten
 	bg_box:connect_signal("mouse::enter", function()
 		if item.on_hover_in then
 			item.on_hover_in(item, bg_box)
@@ -126,25 +126,13 @@ function M.row_widget(item, t, opts)
 		end
 	end)
 
-	-- focus API auf dem Focus-Container implementieren
-	function focus_wrap:set_focus(on, th2)
-		local tt = th2 or t
-		local bg_off = tt.row_bg
-		local fg_off = tt.row_fg
-
-		-- Nimm einfach die vorhandene Hover-Farbe aus dem Theme
-		local bg_on = tt.row_bg_hover or bg_off
-		local fg_on = tt.row_focus_fg or tt.row_fg
-
+	-- Tastatur-Fokus == Hover-Look
+	function focus_wrap:set_focus(on)
 		if on then
-			bg_box.bg = bg_on
-			bg_box.fg = fg_on
+			bg_box.bg, bg_box.fg = (COLORS.hover or COLORS.bg), (t.row_focus_fg or COLORS.fg)
 		else
-			bg_box.bg = bg_off
-			bg_box.fg = fg_off
+			bg_box.bg, bg_box.fg = COLORS.bg, COLORS.fg
 		end
-
-		-- Keine Rahmen, keine extra Padding/Shapes:
 		focus_wrap.bg = "#00000000"
 		focus_wrap.shape_border_width = 0
 		bg_box.shape = nil
@@ -157,16 +145,10 @@ function M.row_widget(item, t, opts)
 		end
 	end
 
-	-- fixed_height über Lib.helpers, sonst Fallback
-	local out
-	if type(helpers.fixed_height) == "function" then
-		out = helpers.fixed_height(focus_wrap, eff_h)
-	else
-		out = fallback_fixed_height(focus_wrap, eff_h)
-	end
+	-- Höhe fixieren (Helper oder Fallback)
+	local out = (type(helpers.fixed_height) == "function") and helpers.fixed_height(focus_wrap, eff_h)
+		or fallback_fixed_height(focus_wrap, eff_h)
 
-	-- >>> WICHTIG: Fokus/Activate nach außen durchreichen,
-	-- weil 'out' (constraint) das eigentliche Widget ist, das Focus.attach bekommt
 	function out:set_focus(on, th2)
 		if focus_wrap.set_focus then
 			focus_wrap:set_focus(on, th2)
@@ -182,16 +164,23 @@ function M.row_widget(item, t, opts)
 	return out
 end
 
+-- erwartet: opts.colors (für die gesamte Liste) und/oder opts.row_h
 function M.list_widget(items, t, opts)
-	t = theme.with_defaults(t)
+	t = Theme.with_defaults(t)
+	opts = opts or {}
 
 	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }
 	local focus = {}
 
 	for _, it in ipairs(items or {}) do
-		local row = M.row_widget(it, t, opts)
+		-- pro Item: optional item.colors / item.row_h überschreibt Listen-Opts
+		local row = M.row_widget(it, t, {
+			colors = (it.colors or opts.colors),
+			row_h = (it.row_h or opts.row_h),
+			lib = opts.lib or nil,
+		})
 		table.insert(box, row)
-		table.insert(focus, row) -- Leaf liefert :set_focus/:activate (per Proxy)
+		table.insert(focus, row)
 	end
 
 	return wibox.widget(box), focus

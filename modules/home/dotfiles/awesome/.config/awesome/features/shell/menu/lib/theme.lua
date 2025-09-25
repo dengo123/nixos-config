@@ -145,16 +145,23 @@ local DEFAULTS = merge(DEFAULTS_WIDGETS, DEFAULTS_CONTAINER)
 local function normalize(t)
 	-- Ableitungen/Kompatibilität
 	t.bg_focus = t.bg_focus or adjust(t.bg, -15)
-	t.row_bg_hover = t.row_bg_hover or t.hover_bg or adjust(t.row_bg, -8) -- alias hover_bg -> row_bg_hover
+
+	-- Basis-Hover (global, falls irgendwo verwendet – Rows bekommen seiten-spezifisch, s.u.)
+	t.row_bg_hover = t.row_bg_hover or adjust(t.row_bg, -8)
+
 	t.power_bg = t.power_bg or t.footer_bg or t.bg
 	t.power_fg = t.power_fg or t.footer_fg or t.fg
 	t.power_bg_hover = t.power_bg_hover or adjust(t.power_bg, -12)
 
-	-- Seitenspezifische Row-Farben (falls Widgets das nutzen)
+	-- Seitenspezifische Row-Basisfarben
 	t.left_row_bg = t.left_row_bg or t.left_bg
 	t.left_row_fg = t.left_row_fg or t.left_fg
 	t.right_row_bg = t.right_row_bg or t.right_bg
 	t.right_row_fg = t.right_row_fg or t.right_fg
+
+	-- Seitenspezifische Hoverfarben (KEIN Fallback mehr auf globales row_bg_hover)
+	t.left_row_bg_hover = t.left_row_bg_hover or adjust(t.left_row_bg or t.left_bg or t.row_bg, -8)
+	t.right_row_bg_hover = t.right_row_bg_hover or adjust(t.right_row_bg or t.right_bg or t.row_bg, -8)
 
 	return t
 end
@@ -235,6 +242,14 @@ function Theme.resolve_icon_size(t, eff_h, kind)
 		or DEFAULTS.icon_ratio
 
 	return math.max(1, math.floor(eff_h * ratio + 0.5))
+end
+
+function Theme.row_colors(t, side)
+	local left = (side ~= "right")
+	local bg = left and (t.left_row_bg or t.left_bg or t.row_bg) or (t.right_row_bg or t.right_bg or t.row_bg)
+	local fg = left and (t.left_row_fg or t.left_fg or t.row_fg) or (t.right_row_fg or t.right_fg or t.row_fg)
+	local hover = left and (t.left_row_bg_hover or adjust(bg, -8)) or (t.right_row_bg_hover or adjust(bg, -8))
+	return { bg = bg, fg = fg, hover = hover }
 end
 
 -- Utils exportieren (für alten widgets/theme-Code)
