@@ -46,7 +46,6 @@ in {
 
     nixforge = {
       programs = {
-        hyprpaper = enabled;
         rofi = enabled;
         hyprlock = enabled;
         swaync = enabled;
@@ -55,7 +54,7 @@ in {
       services = {
         hypridle = enabled;
         kanshi = enabled;
-        autorandr = enabled;
+        hyprpaper = enabled;
       };
     };
   };

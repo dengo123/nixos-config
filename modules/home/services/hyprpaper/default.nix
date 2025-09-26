@@ -1,18 +1,14 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
-  cfg = config.${namespace}.programs.hyprpaper;
-in
-{
-  options.${namespace}.programs.hyprpaper = with types; {
+with lib.${namespace}; let
+  cfg = config.${namespace}.services.hyprpaper;
+in {
+  options.${namespace}.services.hyprpaper = with types; {
     enable = mkBoolOpt false "Enable programs.hyprpaper";
   };
 

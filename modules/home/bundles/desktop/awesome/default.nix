@@ -32,6 +32,8 @@ in {
       morewaita-icon-theme
       qogir-icon-theme
       nemo
+      pavucontrol
+      gnome-disks
     ];
   };
 }
