@@ -51,6 +51,8 @@ with lib.${namespace}; {
     services = {
       ollama = enabled;
       virtualisation = enabled;
+      security = enabled;
+      devices = enabled;
     };
     system = {
       boot.grub = enabled;

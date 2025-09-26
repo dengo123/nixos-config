@@ -29,7 +29,6 @@ in {
     home.packages = with pkgs; [
       adwaita-icon-theme
       gnome-system-monitor
-      gnome-control-center
       morewaita-icon-theme
       qogir-icon-theme
       nemo

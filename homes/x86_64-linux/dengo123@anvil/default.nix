@@ -34,6 +34,10 @@ with lib.${namespace}; {
     misc = {
       xdg = enabled;
     };
+
+    services = {
+      polkit-agent = enabled;
+    };
   };
 
   # This value determines the Home Manager release that your

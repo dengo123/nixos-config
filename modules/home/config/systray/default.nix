@@ -13,11 +13,12 @@ with lib.${namespace}; let
   mkTrayService = {
     name,
     exec,
+    after ? ["graphical-session.target"],
   }: {
     "systray-${name}" = {
       Unit = {
         Description = "Systray: ${name}";
-        After = ["graphical-session.target"];
+        After = after;
         PartOf = ["graphical-session.target"];
       };
       Service = {
@@ -44,9 +45,7 @@ with lib.${namespace}; let
     builtins.listToAttrs (
       map (n: {
         name = ".config/autostart/${n}";
-        value = {
-          text = mkHiddenDesktop n;
-        };
+        value.text = mkHiddenDesktop n;
       })
       names
     );
@@ -56,10 +55,13 @@ in {
     startBlueman = mkBoolOpt true "Start Blueman applet (bluetooth) with systemd.";
     startPasystray = mkBoolOpt true "Start pasystray (audio) with systemd.";
     startNmApplet = mkBoolOpt true "Start nm-applet (network) with systemd.";
+    startUdiskie = mkBoolOpt true "Start udiskie (automount tray).";
+    udiskieArgs = mkOpt types.str "--tray --automount --notify --smart-tray" "Extra args for udiskie.";
+    startCopyQ = mkBoolOpt true "Start CopyQ clipboard manager (tray).";
   };
 
   config = mkIf cfg.enable {
-    # 1) systemd --user services (einziger Startpfad)
+    # 1) systemd --user services
     systemd.user.services = mkMerge [
       (mkIf cfg.startBlueman (mkTrayService {
         name = "blueman";
@@ -73,20 +75,36 @@ in {
         name = "nm-applet";
         exec = "${pkgs.networkmanagerapplet}/bin/nm-applet --indicator";
       }))
+      (mkIf cfg.startUdiskie (mkTrayService {
+        name = "udiskie";
+        exec = "${pkgs.udiskie}/bin/udiskie ${cfg.udiskieArgs}";
+        after = [
+          "graphical-session.target"
+          "tray.target"
+        ];
+      }))
+      (mkIf cfg.startCopyQ (mkTrayService {
+        name = "copyq";
+        exec = "${pkgs.copyq}/bin/copyq";
+      }))
     ];
 
-    # 2) Alle möglichen XDG-Autostarts wegdrücken (damit nix doppelt startet)
+    # 2) XDG-Autostarts unterdrücken (damit nichts doppelt läuft)
     home.file = mkMerge [
       (hiddenFilesFrom [
         # Audio
         "pasystray.desktop"
-        # Bluetooth – wir nutzen Blueman, also Blueberry & evtl. Blueman-XDG unterdrücken
-        "blueberry.desktop"
-        "blueberry-tray.desktop"
+        # Bluetooth
         "blueman.desktop"
         "blueman-applet.desktop"
-        # Netzwerk, falls du systemd für nm-applet nutzt
+        "blueberry.desktop"
+        "blueberry-tray.desktop"
+        # Netzwerk
         "nm-applet.desktop"
+        # Laufwerke
+        "udiskie.desktop"
+        # Clipboard
+        "copyq.desktop"
       ])
     ];
   };
