@@ -6,7 +6,7 @@ local wibox = require("wibox")
 local W = require("features.shell.menu.dialogs.parts.widgets")
 local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
-local Lib = require("features.shell.menu.lib") -- ← nur lib, Fokus via Lib.focus
+local Lib = require("features.shell.menu.lib") -- Fokus kommt jetzt aus Lib.focus
 
 local Base = {}
 
@@ -67,7 +67,7 @@ function Base.dialog(opts)
 	opts = opts or {}
 	local th = resolve_theme(opts.theme)
 
-	-- Größe & Segmente kommen von außen (mit sinnvollen Defaults)
+	-- Größe & Segmente
 	local Wd = num(pick(opts.size and opts.size.w, th.dialog_w, 560), 560)
 	local Hd = num(pick(opts.size and opts.size.h, th.dialog_h, 360), 360)
 
@@ -79,7 +79,7 @@ function Base.dialog(opts)
 	local PAD_H = num(pick(th.pad_h, 16), 16)
 	local PAD_V = num(pick(th.pad_v, 14), 14)
 
-	-- dims an Builder reichen (praktisch für Icons/Text)
+	-- dims an Builder reichen
 	local dims = {
 		w = Wd,
 		h = Hd,
@@ -103,9 +103,10 @@ function Base.dialog(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Body (Widget ODER Builder)  — kann jetzt auch focus_items liefern
+	-- Body (Widget ODER Builder) – kann focus_items liefern
 	local body_core, focus_items
 	local close_ref = function() end
+
 	if type(opts.body_builder) == "function" then
 		body_core, focus_items = opts.body_builder(th, dims, function()
 			return close_ref
@@ -130,17 +131,26 @@ function Base.dialog(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Footer
-	local cancel_btn = W.mk_cancel_button(pick(th.cancel_label, "Cancel"), nil, th)
+	-- Footer: Cancel-Button (visuell + fokusfähig)
+	local _cancel_inner = W.mk_cancel_button(pick(th.cancel_label, "Cancel"), nil, th)
+
+	-- Optional: Zielbreite
 	local target_w = th.cancel_width or (Wd > 0 and math.floor(Wd / 7) or nil)
 	if target_w then
-		cancel_btn = wibox.widget({
-			cancel_btn,
+		_cancel_inner = wibox.widget({
+			_cancel_inner,
 			strategy = "exact",
 			width = target_w,
 			widget = wibox.container.constraint,
 		})
 	end
+
+	-- Fokusfähige Hülle um den Cancel-Button (zeigt Hover/Fokus-Hintergrund)
+	local cancel_btn = wibox.widget({
+		_cancel_inner,
+		bg = "#00000000",
+		widget = wibox.container.background,
+	})
 
 	local footer_right = wibox.widget({
 		{ cancel_btn, halign = "right", valign = "center", widget = wibox.container.place },
@@ -160,21 +170,19 @@ function Base.dialog(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Fixhöhen/Stack (Header/Body/Footer sind fix, Body = Hd - Header - Footer)
+	-- Fixhöhen/Stack
 	local header_fixed = wibox.widget({
 		header,
 		strategy = "exact",
 		height = HEADER_H,
 		widget = wibox.container.constraint,
 	})
-
 	local body_fixed = wibox.widget({
 		body,
 		strategy = "exact",
 		height = BODY_H,
 		widget = wibox.container.constraint,
 	})
-
 	local footer_fixed = wibox.widget({
 		footer,
 		strategy = "exact",
@@ -193,11 +201,12 @@ function Base.dialog(opts)
 	local handle = Popup.show(stack, th, {
 		width = Wd,
 		height = Hd,
-		close_on_escape = false, -- wir behandeln Esc im Focus-Controller
+		close_on_escape = false, -- Esc behandeln wir über Fokus-Controller
 		close_on_backdrop = false,
 		group = "dialogs",
 	})
 
+	-- Cancel Klick -> schließen
 	cancel_btn:buttons(gears.table.join(awful.button({}, 1, function()
 		handle.close()
 	end)))
@@ -205,10 +214,35 @@ function Base.dialog(opts)
 	-- close_ref jetzt auf echte Close-Funktion binden
 	close_ref = handle.close
 
-	-- Tastatur-Fokus aktivieren (←/→ + Enter), falls Items vorhanden
-	if type(focus_items) == "table" and #focus_items > 0 and Lib.focus and Lib.focus.attach then
-		local stop_focus = Lib.focus.attach(focus_items, th, { handle = handle })
-		-- Cleanup: Keygrabber stoppen, Fokus-Optik resetten
+	----------------------------------------------------------------------
+	-- Fokus: Body-Items + Cancel mit Lib.focus.attach_dialog
+	----------------------------------------------------------------------
+	-- Cancel visuelle Fokus-API (Keyboard == Hover)
+	if not cancel_btn.set_focus then
+		function cancel_btn:set_focus(on)
+			local on_bg = pick(th.cancel_bg_hover, th.row_bg_hover, th.bg_focus, "#FFFFFF22")
+			local off_bg = pick(th.cancel_bg, "#00000000")
+			self.bg = on and on_bg or off_bg
+		end
+	end
+	if not cancel_btn.activate then
+		function cancel_btn:activate()
+			handle.close()
+		end
+	end
+	cancel_btn.mouse_enter_target = cancel_btn
+
+	if
+		type(focus_items) == "table"
+		and #focus_items > 0
+		and Lib
+		and Lib.focus
+		and type(Lib.focus.attach_dialog) == "function"
+	then
+		local stop_focus = Lib.focus.attach_dialog(focus_items, cancel_btn, th, {
+			handle = handle,
+			mouse_follow = true, -- Maus folgt Fokus
+		})
 		if type(stop_focus) == "function" then
 			local old_close = handle.close
 			handle.close = function(...)

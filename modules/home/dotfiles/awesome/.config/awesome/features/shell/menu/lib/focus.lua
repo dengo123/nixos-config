@@ -355,4 +355,115 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 	end
 end
 
+-- Dialog Fokus
+function Focus.attach_dialog(body_items, cancel_item, th, opts)
+	opts = opts or {}
+	local keys = norm_keys(opts.keys)
+	local items = {}
+	for i = 1, #(body_items or {}) do
+		items[i] = body_items[i]
+	end
+	if cancel_item then
+		table.insert(items, cancel_item)
+	end
+	local n = #items
+	if n == 0 then
+		return function() end
+	end
+
+	local i = 1
+	local enter_handlers = {}
+
+	local function hi(idx, on)
+		local w = items[idx]
+		if w and w.set_focus then
+			pcall(w.set_focus, w, on, th)
+		end
+	end
+	local function set_index(new_i)
+		if new_i == i then
+			return
+		end
+		hi(i, false)
+		i = math.max(1, math.min(n, new_i))
+		hi(i, true)
+	end
+
+	-- initial
+	hi(i, true)
+
+	-- Maus folgt Fokus (optional, default an)
+	if opts.mouse_follow ~= false then
+		for idx, w in ipairs(items) do
+			local tgt = (w and w.mouse_enter_target) or w
+			if tgt and tgt.connect_signal then
+				local h = function()
+					set_index(idx)
+				end
+				tgt:connect_signal("mouse::enter", h)
+				enter_handlers[idx] = { widget = tgt, handler = h }
+			end
+		end
+	end
+
+	-- Keygrabber: links/rechts im Body; ↓ => Cancel; ↑ von Cancel zurück
+	local kg_id = awful.keygrabber.run(function(_, key, ev)
+		if ev == "release" then
+			return
+		end
+
+		if key == keys.left then
+			if i < n then
+				set_index(i - 1)
+			end
+		elseif key == keys.right then
+			if i < n then
+				set_index(i + 1)
+			end
+		elseif key == keys.down then
+			set_index(n) -- immer Cancel
+		elseif key == keys.up then
+			if i == n then
+				set_index(math.max(1, n - 1))
+			else
+				set_index(math.max(1, i - 1))
+			end
+		elseif key == keys.cancel then
+			if opts.handle and opts.handle.close then
+				pcall(function()
+					opts.handle:close()
+				end)
+			elseif opts.handle and opts.handle.hide then
+				pcall(function()
+					opts.handle:hide()
+				end)
+			end
+		else
+			local oks = type(keys.ok) == "table" and keys.ok or { keys.ok }
+			for _, enter in ipairs(oks) do
+				if key == enter then
+					local w = items[i]
+					if w and w.activate then
+						pcall(w.activate, w)
+					end
+					break
+				end
+			end
+		end
+	end)
+
+	-- Stop/Cleanup
+	return function()
+		if kg_id then
+			pcall(awful.keygrabber.stop, kg_id)
+		end
+		for _, e in pairs(enter_handlers) do
+			pcall(e.widget.disconnect_signal, e.widget, "mouse::enter", e.handler)
+		end
+		for idx = 1, n do
+			pcall(hi, idx, false)
+		end
+	end
+end
+
 return Focus
