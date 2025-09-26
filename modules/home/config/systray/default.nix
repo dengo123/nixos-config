@@ -56,7 +56,7 @@ in {
     startPasystray = mkBoolOpt true "Start pasystray (audio) with systemd.";
     startNmApplet = mkBoolOpt true "Start nm-applet (network) with systemd.";
     startUdiskie = mkBoolOpt true "Start udiskie (automount tray).";
-    udiskieArgs = mkOpt types.str "--tray --automount --notify --smart-tray" "Extra args for udiskie.";
+    udiskieArgs = mkOpt types.str "--tray --automount --notify" "Extra args for udiskie.";
     startCopyQ = mkBoolOpt true "Start CopyQ clipboard manager (tray).";
   };
 

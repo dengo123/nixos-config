@@ -1,11 +1,10 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/power/init.lua
-local Base = require("features.shell.menu.dialogs.parts.base")
-local Icons = require("features.shell.menu.dialogs.power.icons")
-local Lib = require("features.shell.menu.lib") -- ← nur lib
+local Base = require("features.shell.menu.dialogs.parts")
+local Lib = require("features.shell.menu.lib")
 
 local M = {}
 
-local policy = { close = "before" } -- wie früher
+local policy = { close = "before" }
 
 local switch_user = [[
   if command -v dm-tool >/dev/null 2>&1; then
@@ -38,11 +37,10 @@ end
 
 function M.power()
 	return Base.dialog({
+		container = "power", -- optional; ist default
 		title = "Turn off Computer",
 		body_builder = function(th, dims, get_close)
-			th.header_h, th.footer_h = dims.header_h, dims.footer_h
-			local geom = Icons.compute_metrics(th, dims.w, dims.h)
-			return Icons.actions_row(build_actions_power(), th, geom, function()
+			return Base.icons_row(build_actions_power(), th, dims, function()
 				return get_close()
 			end)
 		end,
@@ -51,11 +49,10 @@ end
 
 function M.logout()
 	return Base.dialog({
+		container = "power",
 		title = "Log off",
 		body_builder = function(th, dims, get_close)
-			th.header_h, th.footer_h = dims.header_h, dims.footer_h
-			local geom = Icons.compute_metrics(th, dims.w, dims.h)
-			return Icons.actions_row(build_actions_logout(), th, geom, function()
+			return Base.icons_row(build_actions_logout(), th, dims, function()
 				return get_close()
 			end)
 		end,
