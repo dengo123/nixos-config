@@ -52,7 +52,7 @@ with lib.${namespace}; {
       ollama = enabled;
       virtualisation = enabled;
       security = enabled;
-      devices = enabled;
+      udisks2 = enabled;
     };
     system = {
       boot.grub = enabled;
