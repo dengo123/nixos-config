@@ -151,27 +151,41 @@ function M.build_popup(args)
 	local api = {}
 	local stop_focus = nil
 
+	-- ersetzt die bisherige attach_menu_focus()
 	local function attach_menu_focus()
+		-- 1) Spalten-Fokus holen (liefert { left = {...}, right = {...} })
 		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
+
+		-- 2) Power-Fokus holen (Footer muss das bereitstellen)
 		local power_focus = {}
 		if footer_api and footer_api.get_power_focus_items then
 			power_focus = footer_api.get_power_focus_items() or {}
 		end
 
-		local linear = {}
-		for _, w in ipairs(cols_focus.left or {}) do
-			table.insert(linear, w)
-		end
-		for _, w in ipairs(cols_focus.right or {}) do
-			table.insert(linear, w)
-		end
-		for _, w in ipairs(power_focus or {}) do
-			table.insert(linear, w)
+		-- 3) Orchestrator: Links/Rechts mit ↑/↓, Wechsel mit ←/→, unten in Power springen, von Power mit ↑ zurück
+		if Lib and Lib.focus and type(Lib.focus.attach_columns_power) == "function" then
+			return Lib.focus.attach_columns_power(cols_focus.left or {}, cols_focus.right or {}, power_focus or {}, t, {
+				handle = popup_api, -- für Escape etc.
+				mouse_follow = true, -- Maus-Hover aktualisiert Tastaturfokus
+				start_side = "left", -- initial links starten
+			})
 		end
 
+		-- Fallback: alles linear (falls attach_columns_power nicht existiert)
 		if Lib and Lib.focus and type(Lib.focus.attach) == "function" then
-			return Lib.focus.attach(linear, t, { handle = popup_api }) -- mouse_follow default=an
+			local linear = {}
+			for _, w in ipairs(cols_focus.left or {}) do
+				table.insert(linear, w)
+			end
+			for _, w in ipairs(cols_focus.right or {}) do
+				table.insert(linear, w)
+			end
+			for _, w in ipairs(power_focus or {}) do
+				table.insert(linear, w)
+			end
+			return Lib.focus.attach(linear, t, { handle = popup_api })
 		end
+
 		return nil
 	end
 

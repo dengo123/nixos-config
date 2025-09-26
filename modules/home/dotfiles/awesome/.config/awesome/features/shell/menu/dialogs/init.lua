@@ -62,11 +62,6 @@ function M.hotkeys(overrides)
 	return registry.hotkeys(overrides)
 end
 
--- Kompat-Wrapper
-function M.logout_confirm(overrides)
-	return M.logout(overrides)
-end
-
 -- Erweiterbar von außen
 function M.register(name, ctor)
 	assert(type(name) == "string" and name ~= "", "register: name must be non-empty string")
