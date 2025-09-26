@@ -36,7 +36,10 @@ with lib.${namespace}; {
     };
 
     services = {
-      polkit-agent = enabled;
+      polkit-agent = {
+        enable = true;
+        kind = "gnome";
+      };
     };
   };
 

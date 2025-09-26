@@ -15,5 +15,6 @@ in {
   config = mkIf cfg.enable {
     services.udisks2.enable = true;
     security.polkit.enable = true; # falls security.nix nicht aktiv ist
+    services.gvfs.enable = true;
   };
 }
