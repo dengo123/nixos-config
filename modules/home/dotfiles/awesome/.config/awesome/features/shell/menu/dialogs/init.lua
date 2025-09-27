@@ -1,5 +1,4 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/init.lua
--- Zentrale Registry mit Lazy-Loading und klaren Namen (power, logout, hotkeys).
 local M = {}
 
 -- Lazy-Cache für Submodule
@@ -19,7 +18,15 @@ local function load_hotkeys()
 	return _mods.hotkeys
 end
 
--- Wrapper (lassen alle overrides unverändert durch – inkl. theme/embed)
+-- >>> NEU: Control Panel lazy loader
+local function load_control_panel()
+	if not _mods.control_panel then
+		_mods.control_panel = require("features.shell.menu.dialogs.control")
+	end
+	return _mods.control_panel
+end
+
+-- Wrapper
 local function call_power_power(overrides)
 	return load_power().power(overrides)
 end
@@ -35,11 +42,18 @@ local function call_hotkeys(overrides)
 	return load_hotkeys().hotkeys(overrides)
 end
 
+-- >>> NEU: Control Panel Wrapper
+local function call_control_panel(overrides)
+	return load_control_panel().open(overrides)
+end
+
 -- Registry
 local registry = {
 	power = call_power_power,
 	logout = call_power_logout,
 	hotkeys = call_hotkeys,
+	-- >>> NEU:
+	control_panel = call_control_panel,
 }
 
 -- Generischer Öffner
@@ -49,7 +63,7 @@ function M.open(name, overrides)
 	return fn(overrides)
 end
 
--- Sprechende Direkt-Exports
+-- Direkt-Exports
 function M.power(overrides)
 	return registry.power(overrides)
 end
@@ -62,7 +76,12 @@ function M.hotkeys(overrides)
 	return registry.hotkeys(overrides)
 end
 
--- Erweiterbar von außen
+-- >>> NEU:
+function M.control_panel(overrides)
+	return registry.control_panel(overrides)
+end
+
+-- Erweiterbar
 function M.register(name, ctor)
 	assert(type(name) == "string" and name ~= "", "register: name must be non-empty string")
 	assert(type(ctor) == "function", "register: ctor must be a function (overrides -> dialog)")

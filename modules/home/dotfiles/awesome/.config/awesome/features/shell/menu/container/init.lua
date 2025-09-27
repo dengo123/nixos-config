@@ -1,12 +1,12 @@
--- ~/.config/awesome/features/shell/menu/parts/init.lua
+-- ~/.config/awesome/features/shell/menu/container/init.lua
 local gears = require("gears")
 local wibox = require("wibox")
 local awful = require("awful")
 
-local Header = require("features.shell.menu.parts.header")
-local Columns = require("features.shell.menu.parts.columns")
-local Footer = require("features.shell.menu.parts.footer")
-local Popup = require("features.shell.menu.parts.popup")
+local Header = require("features.shell.menu.container.header")
+local Columns = require("features.shell.menu.container.columns")
+local Footer = require("features.shell.menu.container.footer")
+local Popup = require("features.shell.menu.container.popup")
 local Lib = require("features.shell.menu.lib")
 
 -- unified theme lives in lib/theme

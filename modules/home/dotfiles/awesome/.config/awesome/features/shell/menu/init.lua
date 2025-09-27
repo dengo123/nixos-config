@@ -1,5 +1,5 @@
 -- ~/.config/awesome/features/shell/menu/init.lua
-local parts = require("features.shell.menu.parts")
+local container = require("features.shell.menu.container")
 local Lib = require("features.shell.menu.lib")
 local defaults = Lib.defaults()
 local beautiful = require("beautiful")
@@ -27,7 +27,7 @@ function M.setup(cfg)
 	end
 
 	-- Menü aufbauen
-	local api = parts.build_popup({
+	local api = container.build_popup({
 		cfg = cfg,
 		theme = cfg.menu_theme, -- roh durchreichen
 		data = merge_data(cfg.menu_data),

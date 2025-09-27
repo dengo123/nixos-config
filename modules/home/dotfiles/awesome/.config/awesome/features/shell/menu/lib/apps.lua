@@ -81,6 +81,14 @@ D.right_items = {
 		end,
 	},
 
+	{
+		text = "Control Panel",
+		icon = beautiful.awesome_icon,
+		dialog = "control_panel", -- wird über dialogs/init.lua aufgerufen
+		dialog_args = {
+			title = "Control Panel",
+		},
+	},
 	-- Hilfe/Support öffnet Hotkeys-Dialog
 	{
 		text = "Help and Support",

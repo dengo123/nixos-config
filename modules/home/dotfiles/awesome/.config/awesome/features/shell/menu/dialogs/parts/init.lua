@@ -8,24 +8,22 @@ local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
 local Lib = require("features.shell.menu.lib")
 local Containers = require("features.shell.menu.dialogs.parts.containers")
-local Icons = require("features.shell.menu.dialogs.parts.icons") -- <<< NEU
+local Layouts = require("features.shell.menu.dialogs.parts.layouts") -- re-export
 
 local Base = {}
+Base.layouts = Layouts
 
--- re-export so callers can do: Base.icons.... (oder Helper unten)
-Base.icons = Icons -- <<< NEU
-
--- optional: bequeme Wrapper (nutzen das re-exportierte Icons)
-function Base.icons_row(actions, th, dims, get_close_ref) -- <<< NEU
-	local geom = Icons.compute_metrics(th, dims.w, dims.h)
-	return Icons.actions_row(actions, th, geom, get_close_ref)
+-- bequeme Wrapper für Icon-Layouts (nutzen parts/layouts.lua)
+function Base.layouts_row(actions, th, dims, get_close_ref)
+	local geom = Layouts.compute_metrics(th, dims.w, dims.h)
+	return Layouts.actions_row(actions, th, geom, get_close_ref)
 end
 
-function Base.icons_grid(actions, th, dims, opts, get_close_ref) -- <<< NEU
+function Base.layouts_grid(actions, th, dims, opts, get_close_ref)
 	opts = opts or {}
 	opts.dialog_w = dims.w
 	opts.dialog_h = dims.h
-	return Icons.actions_grid(actions, th, opts, get_close_ref)
+	return Layouts.actions_grid(actions, th, opts, get_close_ref)
 end
 
 -- utils -----------------------------------------------------------------
@@ -81,6 +79,23 @@ end
 -- utils -----------------------------------------------------------------
 
 -- public ----------------------------------------------------------------
+-- opts:
+--   container = "power" | "panel" | ...
+--   title
+--   body_builder(th, dims, get_close) -> widget, [focus_items]
+--   body_widget = widget (Alternative zu builder)
+--   theme = { ... }           -- Theme-Overrides (z.B. backdrop)
+--   size = { w=?, h=? }       -- Dialoggröße (Fallbacks aus Theme)
+--   header_h / footer_h       -- optional feste Segmentgrößen
+--   close_on_escape           -- (deprecated) => bitte unter popup.setzen
+--   close_on_backdrop         -- (deprecated) => bitte unter popup.setzen
+--   group                     -- (deprecated) => bitte unter popup.setzen
+--   popup = {
+--     width, height, show_root, close_on_backdrop, close_on_escape, placement, group
+--   }
+--   focus = {
+--     mode = "grid"|"row"|"dialog", cols = 4, start_index = 1, mouse_follow = true
+--   }
 function Base.dialog(opts)
 	opts = opts or {}
 	local th = resolve_theme(opts.theme)
@@ -136,23 +151,30 @@ function Base.dialog(opts)
 	local cancel_btn = wibox.widget({ cancel_inner, bg = "#00000000", widget = wibox.container.background })
 
 	-- Container wählen und zusammensetzen
-	local container_kind = opts.container or "power" -- default = alter Power-Frame
+	local container_kind = opts.container or "power" -- default bewahrt altes Verhalten
 	local stack = Containers.build(container_kind, th, dims, {
 		title = opts.title,
 		body = body_core,
 		cancel_btn = cancel_btn,
 	})
 
-	-- Popup öffnen
+	-- Popup-Optionen zusammenbauen (neu: alles über opts.popup steuerbar)
+	local p = opts.popup or {}
+	local popup_width = num(p.width or Wd, Wd)
+	local popup_height = num(p.height or Hd, Hd)
+
 	local handle = Popup.show(stack, th, {
-		width = Wd,
-		height = Hd,
-		close_on_escape = pick(opts.close_on_escape, false),
-		close_on_backdrop = pick(opts.close_on_backdrop, false),
-		group = pick(opts.group, "dialogs"),
+		width = popup_width,
+		height = popup_height,
+		close_on_escape = pick(p.close_on_escape, opts.close_on_escape, true),
+		close_on_backdrop = pick(p.close_on_backdrop, opts.close_on_backdrop, false),
+		show_root = p.show_root, -- nil | "with_bars" | "full"
+		placement = p.placement, -- optional
+		group = pick(p.group, opts.group, "dialogs"),
+		use_backdrop = p.use_backdrop, -- ← ← ← NEU: false kommt jetzt wirklich an
 	})
 
-	-- Cancel-Verhalten
+	-- Cancel-Verhalten + Fokusindikator fallback
 	if not cancel_btn.set_focus then
 		function cancel_btn:set_focus(on)
 			local on_bg = pick(th.cancel_bg_hover, th.row_bg_hover, th.bg_focus, "#FFFFFF22")
@@ -173,18 +195,34 @@ function Base.dialog(opts)
 	-- Buildern die echte Close-Funktion geben
 	close_ref = handle.close
 
-	-- Fokussteuerung (Body + Cancel)
-	if
-		type(focus_items) == "table"
-		and #focus_items > 0
-		and Lib
-		and Lib.focus
-		and type(Lib.focus.attach_dialog) == "function"
-	then
-		local stop_focus = Lib.focus.attach_dialog(focus_items, cancel_btn, th, {
-			handle = handle,
-			mouse_follow = true,
-		})
+	------------------------------------------------------------------------
+	-- Fokussteuerung auswählbar (grid/row/dialog)
+	------------------------------------------------------------------------
+	local focus_cfg = opts.focus or {}
+	local mode = focus_cfg.mode or "dialog"
+
+	if Lib and Lib.focus and type(focus_items) == "table" and #focus_items > 0 then
+		local stop_focus
+
+		if mode == "grid" and type(Lib.focus.attach_grid) == "function" then
+			stop_focus = Lib.focus.attach_grid(focus_items, th, {
+				cols = focus_cfg.cols or 4,
+				start_index = focus_cfg.start_index or 1,
+				mouse_follow = (focus_cfg.mouse_follow ~= false),
+			})
+		elseif mode == "row" and type(Lib.focus.attach_row) == "function" then
+			stop_focus = Lib.focus.attach_row(focus_items, th, {
+				start_index = focus_cfg.start_index or 1,
+				mouse_follow = (focus_cfg.mouse_follow ~= false),
+			})
+		elseif type(Lib.focus.attach_dialog) == "function" then
+			-- Default: alte Dialog-Navigation (z. B. Body + Cancel)
+			stop_focus = Lib.focus.attach_dialog(focus_items, cancel_btn, th, {
+				handle = handle,
+				mouse_follow = (focus_cfg.mouse_follow ~= false),
+			})
+		end
+
 		if type(stop_focus) == "function" then
 			local old_close = handle.close
 			handle.close = function(...)

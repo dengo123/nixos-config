@@ -35,20 +35,16 @@ in {
   };
 
   config = mkIf cfg.enable {
-    services.xserver = {
-      enable = true;
+    services = {
+      xserver = {
+        enable = true;
 
-      displayManager = {
-        lightdm.enable = true;
+        displayManager = {
+          lightdm.enable = true;
 
-        # Unsere benannte Session
-        sessionPackages = [xsessionPkg];
-        defaultSession = "xsession";
-
-        # optionaler Autologin
-        autoLogin = mkIf cfg.autoLogin.enable {
-          enable = true;
-          user = cfg.autoLogin.user;
+          # Unsere benannte Session
+          sessionPackages = [xsessionPkg];
+          defaultSession = "xsession";
         };
       };
     };

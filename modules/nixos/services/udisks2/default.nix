@@ -16,5 +16,6 @@ in {
     services.udisks2.enable = true;
     security.polkit.enable = true; # falls security.nix nicht aktiv ist
     services.gvfs.enable = true;
+    programs.gnome-disks.enable = true;
   };
 }

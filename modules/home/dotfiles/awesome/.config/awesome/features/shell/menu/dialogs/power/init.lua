@@ -36,11 +36,22 @@ end
 
 function M.power()
 	return Base.dialog({
-		container = "power", -- explizit
+		container = "power",
 		title = "Turn off Computer",
+		theme = {
+			-- Dim-Farbe des Backdrops (nur optisch; Logik kommt aus popup-opts)
+			backdrop = "#00000066",
+		},
+		popup = {
+			-- HIER steuerst du das Root-Verhalten:
+			show_root = "with_bars", -- Wallpaper + Bars sichtbar, Clients versteckt
+			close_on_backdrop = false, -- Klick ins Dunkle schließt
+			close_on_escape = true, -- ESC schließt
+			-- width/height optional überschreiben:
+			-- width = 560, height = 360,
+		},
 		body_builder = function(th, dims, get_close)
-			-- nutzt den Helper, der Icons intern korrekt berechnet
-			return Base.icons_row(actions_power(), th, dims, function()
+			return Base.layouts_row(actions_power(), th, dims, function()
 				return get_close()
 			end)
 		end,
@@ -51,8 +62,14 @@ function M.logout()
 	return Base.dialog({
 		container = "power",
 		title = "Log off",
+		theme = { backdrop = "#00000066" },
+		popup = {
+			show_root = "with_bars",
+			close_on_backdrop = false,
+			close_on_escape = true,
+		},
 		body_builder = function(th, dims, get_close)
-			return Base.icons_row(actions_logout(), th, dims, function()
+			return Base.layouts_row(actions_logout(), th, dims, function()
 				return get_close()
 			end)
 		end,
