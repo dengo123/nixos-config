@@ -4,7 +4,6 @@ local gears = require("gears")
 local wibox = require("wibox")
 
 local W = require("features.shell.menu.dialogs.parts.widgets")
-local Popup = require("features.shell.menu.dialogs.parts.popup")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
 local Lib = require("features.shell.menu.lib")
 local Containers = require("features.shell.menu.dialogs.parts.containers")
@@ -163,7 +162,7 @@ function Base.dialog(opts)
 	local popup_width = num(p.width or Wd, Wd)
 	local popup_height = num(p.height or Hd, Hd)
 
-	local handle = Popup.show(stack, th, {
+	local handle = Containers.popup.show(stack, th, {
 		width = popup_width,
 		height = popup_height,
 		close_on_escape = pick(p.close_on_escape, opts.close_on_escape, true),
