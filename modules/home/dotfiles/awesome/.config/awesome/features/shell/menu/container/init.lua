@@ -163,7 +163,15 @@ function M.build_popup(args)
 
 	local function attach_menu_focus()
 		-- 1) Fokus-Items der Spalten
-		local cols_focus = (columns.get_focus_items and columns:get_focus_items()) or { left = {}, right = {} }
+		local raw = (columns.get_focus_items and columns:get_focus_items()) or {}
+		local cols_focus
+		if raw.left or raw.right then
+			-- alte/menü-spezifische Form mit Feldern
+			cols_focus = { left = raw.left or {}, right = raw.right or {} }
+		else
+			-- N-Spalten-Liste -> auf links/rechts mappen (Menü nutzt eh 2)
+			cols_focus = { left = raw[1] or {}, right = raw[2] or {} }
+		end
 
 		-- 2) Power-Fokus aus Footer
 		local power_focus = {}

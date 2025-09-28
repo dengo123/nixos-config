@@ -77,7 +77,7 @@ end
 -- Bequeme Wrapper für die beiden Layouts
 -- ---------------------------------------------------------------------
 
--- GRID: Icon-Reihe/-Raster (liefert Widget + Fokusliste (linear))
+-- ROW: Icon-Reihe/-Raster (liefert Widget + Fokusliste (linear))
 function Base.layouts_row(actions, th, dims, get_close_ref)
 	local geom = Layouts.row.compute_metrics(th, dims.w, dims.h)
 	local row, items = Layouts.row.actions_row(actions or {}, th, geom, get_close_ref)

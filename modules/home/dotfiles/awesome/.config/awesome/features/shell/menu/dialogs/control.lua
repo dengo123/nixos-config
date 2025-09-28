@@ -1,10 +1,11 @@
--- ~/.config/awesome/features/shell/menu/dialogs/control.lua
+-- ~/.config/awesome/features/shell/menu/dialogs/control/init.lua
 local Base = require("features.shell.menu.dialogs.base")
 local Lib = require("features.shell.menu.lib")
 local Term = require("features.shell.menu.lib.term")
 
 local M = {}
 
+-- Shell-Kette: probiere mehrere Kommandos, notify-send als Hinweis wenn alles fehlt
 local function chain(cmds, title, msg)
 	local parts = {}
 	for _, c in ipairs(cmds) do
@@ -21,8 +22,10 @@ end
 
 local policy = { close = "before" }
 
+-- Roh-Actions (emoji/label/on_press)
 local function build_actions()
 	return {
+		-- Anzeige
 		{
 			emoji = "🖥️",
 			label = "Anzeige",
@@ -36,6 +39,7 @@ local function build_actions()
 			),
 		},
 
+		-- Audio
 		{
 			emoji = "🔊",
 			label = "Audio",
@@ -49,6 +53,7 @@ local function build_actions()
 			end,
 		},
 
+		-- Netzwerk
 		{
 			emoji = "📶",
 			label = "Netzwerk",
@@ -57,8 +62,10 @@ local function build_actions()
 			end,
 		},
 
+		-- Bluetooth
 		{ emoji = "🌀", label = "Bluetooth", on_press = Lib.cmd("blueman-manager", policy) },
 
+		-- Datenträger
 		{
 			emoji = "💽",
 			label = "Datenträger",
@@ -68,6 +75,7 @@ local function build_actions()
 			),
 		},
 
+		-- Drucker
 		{
 			emoji = "🖨️",
 			label = "Drucker",
@@ -77,6 +85,7 @@ local function build_actions()
 			),
 		},
 
+		-- Passwörter
 		{
 			emoji = "🔐",
 			label = "Passwörter",
@@ -86,12 +95,14 @@ local function build_actions()
 			),
 		},
 
+		-- Clipboard
 		{
 			emoji = "📋",
 			label = "Clipboard",
 			on_press = Lib.cmd(chain({ "copyq toggle", "copyq" }, "Clipboard", "Installiere CopyQ."), policy),
 		},
 
+		-- Dateien
 		{
 			emoji = "🗂️",
 			label = "Dateien",
@@ -101,6 +112,7 @@ local function build_actions()
 			),
 		},
 
+		-- Nix Config
 		{
 			emoji = "⚙️",
 			label = "Nix Config",
@@ -109,6 +121,7 @@ local function build_actions()
 			end,
 		},
 
+		-- Update
 		{
 			emoji = "🚀",
 			label = "Update",
@@ -121,17 +134,17 @@ local function build_actions()
 	}
 end
 
--- Hilfsfunktion: Liste in zwei Spalten aufteilen
-local function split_even(a)
-	local left, right = {}, {}
-	for i, it in ipairs(a or {}) do
-		if i % 2 == 1 then
-			table.insert(left, it)
-		else
-			table.insert(right, it)
-		end
+-- Items in N Spalten verteilen (round-robin)
+local function distribute(items, n)
+	n = math.max(1, tonumber(n) or 1)
+	local cols = {}
+	for i = 1, n do
+		cols[i] = {}
 	end
-	return left, right
+	for i, it in ipairs(items or {}) do
+		table.insert(cols[((i - 1) % n) + 1], it)
+	end
+	return cols
 end
 
 function M.open(theme_overrides)
@@ -141,42 +154,40 @@ function M.open(theme_overrides)
 		size = { w = 760, h = 640 },
 		theme = theme_overrides,
 		popup = { use_backdrop = false, close_on_escape = true },
+
+		-- Columns-Fokus aktivieren
 		focus = { mode = "columns", start_col = 1, mouse_follow = true },
 
 		body_builder = function(th, dims, _get_close)
-			-- 1) Actions → rows.lua-kompatible Items
+			-- 1) Actions → rows.lua-kompatible Items (text/icon/on_press)
 			local items = {}
 			for _, a in ipairs(build_actions()) do
 				table.insert(items, {
-					-- rows.lua nutzt 'text' und optional 'icon' (Bild). Emoji geht ins Text.
 					text = (a.emoji and (a.emoji .. " ") or "") .. (a.label or ""),
-					icon = a.icon, -- optional: Bildpfad; bei Emoji einfach nil lassen
-					on_press = a.on_press, -- Lib.actions.click(item) greift das auf
+					icon = a.icon, -- optional (Bildpfad); bei Emoji nil lassen
+					on_press = a.on_press, -- wird von Lib.actions.click(item) aufgerufen
 				})
 			end
 
-			-- 2) In 2 Spalten verteilen (für 3 Spalten unten alternative Variante)
-			local left, right = {}, {}
-			for i, it in ipairs(items) do
-				if i % 2 == 1 then
-					table.insert(left, it)
-				else
-					table.insert(right, it)
-				end
+			-- 2) Spaltenanzahl (2 Standard; 3 wenn im Theme gewünscht)
+			local ncols = tonumber(th.control_columns) or 2
+			local cols_items = distribute(items, ncols)
+
+			-- 3) Columns-Spezifikation (Widths gleich verteilt; Rowhöhe aus Theme oder Fallback)
+			local spec = {}
+			local width_each = 1 / ncols
+			local row_h = th.row_h or 48
+			for i = 1, ncols do
+				table.insert(spec, {
+					key = "col" .. i,
+					width = width_each,
+					items = cols_items[i],
+					row_h = row_h,
+					-- optional: palette = { bg=..., fg=..., hover=... },
+				})
 			end
 
-			-- 3) Columns-Spezifikation (Columns baut selbst Widgets via Widgets.rows.list_widget)
-			local spec = {
-				{ key = "left", width = 0.50, items = left, row_h = th.row_h or 48 },
-				{ key = "right", width = 0.50, items = right, row_h = th.row_h or 48 },
-			}
-
-			-- (→ Für 3 Spalten:
-			-- local c1,c2,c3 = {},{},{}
-			-- for i, it in ipairs(items) do local k=(i-1)%3; (k==0 and table.insert(c1,it)) or (k==1 and table.insert(c2,it)) or table.insert(c3,it) end
-			-- spec = { {key="c1",width=1/3,items=c1,row_h=...}, {key="c2",...}, {key="c3",...} }
-			--)
-
+			-- 4) Columns bauen (liefert widget + Fokuslisten)
 			local widget, focus_lists = Base.layouts_columns(spec, th, dims)
 			return widget, focus_lists
 		end,
