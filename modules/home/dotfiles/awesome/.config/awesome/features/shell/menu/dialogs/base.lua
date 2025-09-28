@@ -261,21 +261,30 @@ function Base.dialog(opts)
 				})
 			end
 		elseif mode == "columns" then
-			-- Erwartet Liste-von-Listen: { {col1_row...}, {col2_row...}, ... }
-			if type(Lib.focus.attach_columns_power_n) == "function" then
-				-- Power-Liste leer (Dialog hat kein Footer-Power-Band)
-				stop_focus = Lib.focus.attach_columns_power_n(focus_items, {}, th, {
+			-- Fokuslisten können {left=..., right=...} ODER {{...},{...}} sein → normalisieren
+			local left, right
+			if focus_items.left or focus_items.right then
+				left, right = focus_items.left or {}, focus_items.right or {}
+			else
+				left, right = focus_items[1] or {}, focus_items[2] or {}
+			end
+
+			-- 2-Spalten-Orchestrator deines Focus-Moduls bevorzugen
+			if type(Lib.focus.attach_columns_power) == "function" then
+				stop_focus = Lib.focus.attach_columns_power(left, right, {}, th, {
 					handle = handle,
 					mouse_follow = (focus_cfg.mouse_follow ~= false),
-					start_col = focus_cfg.start_col or 1,
+					-- start_col: 1 => left, 2 => right
+					start_side = (focus_cfg.start_col == 2) and "right" or "left",
 				})
 			elseif type(Lib.focus.attach) == "function" then
-				-- Fallback: flatten
+				-- Fallback: beide Spalten linearisieren
 				local linear = {}
-				for _, col in ipairs(focus_items or {}) do
-					for _, w in ipairs(col) do
-						table.insert(linear, w)
-					end
+				for _, w in ipairs(left) do
+					table.insert(linear, w)
+				end
+				for _, w in ipairs(right) do
+					table.insert(linear, w)
 				end
 				stop_focus = Lib.focus.attach(linear, th, {
 					handle = handle,
@@ -287,13 +296,13 @@ function Base.dialog(opts)
 			local linear = {}
 			if type(focus_items[1]) == "table" then
 				-- könnte columns-shape sein → flatten
-				for _, col in ipairs(focus_items) do
+				for _, col in ipairs(focus_items or {}) do
 					for _, w in ipairs(col) do
 						table.insert(linear, w)
 					end
 				end
 			else
-				for _, w in ipairs(focus_items) do
+				for _, w in ipairs(focus_items or {}) do
 					table.insert(linear, w)
 				end
 			end
