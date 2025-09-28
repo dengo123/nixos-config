@@ -153,6 +153,7 @@ function M.build_popup(args)
 				pcall(footer_api.cancel_search or footer_api.cancel)
 			end
 		end,
+		window_shape_radius = tonumber(t.popup_radius) or 12,
 	})
 
 	-------------------------------------------------------------------

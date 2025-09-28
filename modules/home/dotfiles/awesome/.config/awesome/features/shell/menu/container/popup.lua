@@ -13,7 +13,10 @@ local function is_widget(x)
 		)
 end
 
--- opts: { theme?, scrim_bg?, placement?, on_hide?, enable_esc_grabber? }
+-- opts: {
+--   theme?, scrim_bg?, placement?, on_hide?, enable_esc_grabber?,
+--   window_shape_radius?   -- Radius fürs Fenster (fallback: theme.popup_radius oder 12)
+-- }
 function Popup.wrap(root_widget, opts)
 	assert(is_widget(root_widget), "Popup.wrap: root_widget must be a widget")
 	opts = opts or {}
@@ -21,6 +24,7 @@ function Popup.wrap(root_widget, opts)
 	local on_hide = opts.on_hide
 	local enable_esc = (opts.enable_esc_grabber ~= false)
 	local scrim_bg = opts.scrim_bg or t.dialog_scrim or "#00000099"
+	local R = tonumber(opts.window_shape_radius or t.popup_radius) or 12
 
 	-- Overlay
 	local overlay_slot = wibox.widget({ layout = wibox.layout.fixed.vertical })
@@ -41,14 +45,28 @@ function Popup.wrap(root_widget, opts)
 		layout = wibox.layout.stack,
 	})
 
-	-- Popup-Shell (transparent; kein Chrome hier!)
+	-- Popup-Shell (transparent) + echte Fensterform setzen
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
 		ontop = true,
 		bg = "#00000000",
 		type = "dock",
+		shape = function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, R)
+		end,
 	})
+
+	-- Eingabe-Maske ebenfalls runden (Ecken sind nicht klickbar)
+	if popup.set_input_shape then
+		popup:set_input_shape(function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, R)
+		end)
+	elseif popup.shape_input ~= nil then
+		popup.shape_input = function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, R)
+		end
+	end
 
 	-- Default-Platzierung
 	local place_fn = opts.placement
@@ -134,6 +152,13 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
+	-- Re-Placement Helper (ohne minimum_height setzen)
+	local function do_place(p, s, o, pf)
+		if p and p.valid and pf then
+			pf(p, s, o)
+		end
+	end
+
 	-- Öffentliche API
 	local api = {}
 	local placement_fn = nil
@@ -152,10 +177,24 @@ function Popup.wrap(root_widget, opts)
 		popup.visible = true
 		install_outside(api)
 		start_esc()
+
+		local pf = placement_fn or place_fn
+
+		-- 1) sofort versuchen
+		do_place(popup, s, o, pf)
+
+		-- 2) im nächsten Tick (nach erstem Layout)
 		gears.timer.delayed_call(function()
-			local pf = placement_fn or place_fn
-			if pf then
-				pf(popup, s, o)
+			do_place(popup, s, o, pf)
+		end)
+
+		-- 3) einmalig nach dem ersten echten Layout-Change der Root-Hierarchie
+		local once_id
+		once_id = container:connect_signal("widget::layout_changed", function()
+			if once_id then
+				container:disconnect_signal("widget::layout_changed", once_id)
+				once_id = nil
+				do_place(popup, s, o, pf)
 			end
 		end)
 	end
@@ -210,15 +249,25 @@ function Popup.wrap(root_widget, opts)
 		awesome.emit_signal("menu::dialog_closed")
 	end)))
 
-	popup:connect_signal("property::visible", function()
-		if not popup.visible then
-			stop_esc()
-			remove_outside()
-			overlay_root.visible = false
-			overlay_slot:reset()
-			if type(on_hide) == "function" then
-				pcall(on_hide, api)
+	-- Bei Geometrieänderung die Form erneut setzen (defensiv) und ggf. neu platzieren
+	popup:connect_signal("property::geometry", function(p)
+		if p and p.valid then
+			p.shape = function(cr, w, h)
+				gears.shape.rounded_rect(cr, w, h, R)
 			end
+			if p.set_input_shape then
+				p:set_input_shape(function(cr, w, h)
+					gears.shape.rounded_rect(cr, w, h, R)
+				end)
+			elseif p.shape_input ~= nil then
+				p.shape_input = function(cr, w, h)
+					gears.shape.rounded_rect(cr, w, h, R)
+				end
+			end
+			-- Re-Placement nach echter Größenänderung
+			local pf = placement_fn or place_fn
+			local s = p.screen or awful.screen.focused()
+			do_place(p, s, nil, pf)
 		end
 	end)
 
@@ -248,6 +297,7 @@ function Popup.build(args)
 		on_hide = args.on_hide,
 		enable_esc_grabber = (args.enable_esc_grabber ~= false),
 		scrim_bg = args.scrim_bg,
+		window_shape_radius = args.window_shape_radius,
 	})
 end
 

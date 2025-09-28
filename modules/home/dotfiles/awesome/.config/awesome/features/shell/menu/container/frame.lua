@@ -26,7 +26,7 @@ function Frame.wrap(args, t, opts)
 	local BW = tonumber(opts.border_width or t.popup_border_width) or 1
 	local BORDC = opts.border_color or t.popup_border_color or t.header_bg or "#3A6EA5"
 	local INNER = opts.inner_bg or t.dialog_bg or "#235CDB"
-	local OUTER = opts.outer_bg or t.popup_bg or INNER
+	local OUTER = opts.outer_bg or t.popup_bg
 	local TOTAL = tonumber(opts.total_height or t.total_height)
 
 	local inner_stack = wibox.widget({
@@ -81,6 +81,11 @@ function Frame.wrap(args, t, opts)
 				widget = wibox.container.background,
 			},
 			bg = OUTER,
+			-- WICHTIG: auch außen runden + clippen!
+			shape = function(cr, w, h)
+				gears.shape.rounded_rect(cr, w, h, R)
+			end,
+			shape_clip = true,
 			widget = wibox.container.background,
 		})
 	end
