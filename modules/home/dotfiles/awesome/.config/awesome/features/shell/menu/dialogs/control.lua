@@ -102,7 +102,10 @@ local function build_actions()
 			emoji = "🚀",
 			label = "Update",
 			on_press = Lib.lua(function()
-				Term.run([[echo "hello from terminal"; sleep 1]])
+				Term.run([[
+    nix flake update --flake ~/nixos-config &&
+    sudo nixos-rebuild switch --flake ~/nixos-config
+  ]])
 			end, policy),
 		},
 	}
@@ -124,7 +127,6 @@ function M.open(theme_overrides)
 	return Base.dialog({
 		container = "panel",
 		title = "Control Panel",
-		size = { w = 760, h = 640 },
 		theme = theme_overrides,
 		popup = { use_backdrop = false, close_on_escape = true },
 		focus = { mode = "columns", start_col = 1, mouse_follow = true },

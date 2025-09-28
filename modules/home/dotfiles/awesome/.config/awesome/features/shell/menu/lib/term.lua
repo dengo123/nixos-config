@@ -11,7 +11,6 @@ local function read_cfg()
 	return { terminal = "xterm" }
 end
 
--- schreibe den Command in ein temporäres Bash-Skript und gib den Pfad zurück
 local function write_temp_script(cmdline)
 	local path = os.tmpname()
 	if not path:match("%.sh$") then
@@ -30,46 +29,37 @@ function M.run(cmdline)
 	local term = (read_cfg().terminal or "xterm"):gsub("%s+$", "")
 	local script = write_temp_script(cmdline)
 
-	local function spawn_argv(argv)
+	local function spawn(argv)
 		return awful.spawn(argv)
 	end
-	local function spawn_sh(sh)
-		return awful.spawn.with_shell(sh)
+	local function sh(cmd)
+		return awful.spawn.with_shell(cmd)
 	end
 
 	if term:find("wezterm") then
-		return spawn_argv({ term, "start", "--", script })
-	elseif term:find("alacritty") then
-		return spawn_argv({ term, "-e", script })
+		return spawn({ term, "start", "--", script })
+	elseif term:find("alacritty") or term:find("foot") or term:find("konsole") then
+		return spawn({ term, "-e", script })
 	elseif term:find("kitty") then
-		return spawn_argv({ term, "--", script })
-	elseif term:find("konsole") then
-		return spawn_argv({ term, "-e", script })
-	elseif term:find("foot") then
-		return spawn_argv({ term, "-e", script })
+		return spawn({ term, "--", script })
 	elseif term:find("gnome%-terminal") then
-		return spawn_argv({ term, "--", script })
+		return spawn({ term, "--", script })
 	elseif term:find("ghostty") then
-		-- 1) bevorzugt: neues Fenster und dort bash -lc <script>
-		local ok = spawn_argv({ term, "+new-window", "-e", "bash", "-lc", script })
+		-- WICHTIG: hinter -e genau EIN String
+		local cmd = string.format("bash -lc %q", script)
+		-- bevorzugt: sauber als argv: {"-e", "<string>"}
+		local ok = spawn({ term, "-e", cmd })
 		if ok then
 			return ok
 		end
-		-- 2) manche Builds: nur -e
-		ok = spawn_argv({ term, "-e", "bash", "-lc", script })
+		-- Fallbacks (nur falls Build -e nicht akzeptiert)
+		ok = spawn({ term, "+new-window", "-e", cmd })
 		if ok then
 			return ok
 		end
-		-- 3) letzter Rettungsanker: Shell-Fallback (falls beide argv-Formen nicht starten)
-		local chain = table.concat({
-			string.format("%q +new-window -e bash -lc %q", term, script),
-			string.format("%q -e bash -lc %q", term, script),
-			string.format("%q -- bash -lc %q", term, script),
-			string.format("xterm -e %q", script),
-		}, " || ")
-		return spawn_sh(chain)
+		return sh(string.format("%q -e %q || xterm -e %q", term, cmd, script))
 	else
-		return spawn_argv({ term, "-e", script })
+		return spawn({ term, "-e", script })
 	end
 end
 

@@ -1,7 +1,7 @@
 -- ~/.config/awesome/system/config.lua
 return {
 	-- Basis
-	terminal = "ghostty",
+	terminal = "kitty",
 	editor = os.getenv("EDITOR") or "nano",
 	modkey = "Mod4",
 	theme = "default/theme.lua", -- oder absoluter Pfad zu deinem Theme
@@ -9,5 +9,5 @@ return {
 	-- Ausgelagerte App-Commands
 	launcher = "launcher", -- z.B. rofi, fuzzel, bemenu ...
 	browser = "firefox", -- oder "librewolf", "chromium", ...
-	files = "thunar || xdg-open ~", -- Dateimanager Fallback
+	files = "nemo || xdg-open ~", -- Dateimanager Fallback
 }
