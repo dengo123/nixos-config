@@ -1,7 +1,6 @@
--- ~/.config/awesome/features/shell/menu/parts/columns.lua
+-- ~/.config/awesome/features/shell/menu/layouts/columns.lua
 local wibox = require("wibox")
 local P = require("features.shell.menu.widgets")
-local Theme = require("features.shell.menu.lib.theme")
 
 local Columns = {}
 
@@ -22,77 +21,58 @@ local function pick(...)
 	end
 end
 
+-- opts unterstützt u.a.:
+--   left_w?, right_w?, spacing?, pad_l?, pad_r?, pad_t?, pad_b?
+--   left_bg?, right_bg?
+--   left_opts?, right_opts?  -- gehen 1:1 an P.list_widget (inkl. colors, row_h)
 function Columns.build(left_items, right_items, t, opts)
-	t = Theme.with_defaults(t)
+	t = t or {}
 	opts = opts or {}
 
-	-- Spaltenspezifische Paletten + Höhen
-	local left_colors = Theme.row_colors(t, "left")
-	local right_colors = Theme.row_colors(t, "right")
-	local left_row_h = pick(t.left_row_h, t.row_h)
-	local right_row_h = pick(t.right_row_h, t.row_h)
+	-- pro Seite eigene opts weiterreichen
+	local left_opts = shallow_copy(opts.left_opts or {})
+	local right_opts = shallow_copy(opts.right_opts or {})
 
-	-- eigene Opts pro Liste (nicht teilen!)
-	local left_opts = shallow_copy(opts)
-	left_opts.colors = left_colors
-	left_opts.row_h = left_row_h
+	local left_view, left_focus = P.list_widget(left_items or {}, t, left_opts)
+	local right_view, right_focus = P.list_widget(right_items or {}, t, right_opts)
 
-	local right_opts = shallow_copy(opts)
-	right_opts.colors = right_colors
-	right_opts.row_h = right_row_h
-
-	-- Views bauen (Rows lesen ausschließlich opts.colors/row_h)
-	local left_focus, right_focus
-	local left_view, lf = P.list_widget(left_items or {}, t, left_opts)
-	left_focus = lf
-	local right_view, rf = P.list_widget(right_items or {}, t, right_opts)
-	right_focus = rf
-
-	-- Spalten-Container (Hintergrund = Spaltenfarbe)
+	-- Spaltenhintergrund (durchgängig) – komplett theme-agnostisch:
 	local left_col = wibox.widget({
 		{ left_view, margins = 0, widget = wibox.container.margin },
-		forced_width = pick(t.col_left_w, 250),
-		bg = left_colors.bg,
-		fg = left_colors.fg,
-		shape = t.col_shape,
+		forced_width = tonumber(opts.left_w) or nil,
+		bg = opts.left_bg, -- <— NEU: optionale Farbe
 		widget = wibox.container.background,
 	})
 
 	local right_col = wibox.widget({
 		{ right_view, margins = 0, widget = wibox.container.margin },
-		forced_width = pick(t.col_right_w, 230),
-		bg = right_colors.bg,
-		fg = right_colors.fg,
-		shape = t.col_shape,
+		forced_width = tonumber(opts.right_w) or nil,
+		bg = opts.right_bg, -- <— NEU: optionale Farbe
 		widget = wibox.container.background,
 	})
 
-	-- Spalten nebeneinander
 	local cols_inner = wibox.widget({
 		left_col,
 		right_col,
-		spacing = pick(t.col_spacing, 1),
+		spacing = tonumber(opts.spacing) or 0,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
-	-- Außencontainer (Columns-Hintergrund)
 	local cols = wibox.widget({
 		{
 			cols_inner,
-			left = pick(t.cols_pad_l, 2),
-			right = pick(t.cols_pad_r, 2),
-			top = pick(t.cols_pad_t, 2),
-			bottom = pick(t.cols_pad_b, 2),
+			left = tonumber(opts.pad_l) or 0,
+			right = tonumber(opts.pad_r) or 0,
+			top = tonumber(opts.pad_t) or 0,
+			bottom = tonumber(opts.pad_b) or 0,
 			widget = wibox.container.margin,
 		},
-		bg = pick(t.dialog_bg, "#235CDB"),
 		widget = wibox.container.background,
 	})
 
 	local api = { widget = cols }
 
 	function api:set_left(items)
-		-- Farben/Höhen beibehalten
 		local v, foc = P.list_widget(items or {}, t, left_opts)
 		left_view.children = v.children
 		left_focus = foc or {}

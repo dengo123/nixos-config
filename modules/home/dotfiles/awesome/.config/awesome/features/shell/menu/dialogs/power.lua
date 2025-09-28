@@ -1,5 +1,5 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/power/init.lua
-local Base = require("features.shell.menu.dialogs.parts")
+local Base = require("features.shell.menu.dialogs.base")
 local Lib = require("features.shell.menu.lib")
 
 local M = {}

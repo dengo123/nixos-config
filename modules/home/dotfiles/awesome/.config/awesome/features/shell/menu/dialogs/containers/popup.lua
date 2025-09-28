@@ -1,13 +1,4 @@
 -- features/shell/menu/dialogs/parts/popup.lua
--- Theme-neutraler Popup-Wrapper:
--- - Kein festes Styling (alles über 'th')
--- - Lifecycle / ESC / Backdrop sauber gekapselt
--- - Backdrop blockt Klicks; schließt nur bei opts.close_on_backdrop=true
--- - show_root-Modi:
---     false/nil: normal (nichts verstecken)
---     "with_bars": Clients ausblenden, Bars sichtbar lassen
---     "full" oder true: Clients und Bars ausblenden (klassischer Power-Screen)
-
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")

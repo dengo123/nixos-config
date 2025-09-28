@@ -1,11 +1,10 @@
--- ~/.config/awesome/features/shell/menu/parts/popup.lua
+-- ~/.config/awesome/features/shell/menu/container/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local Popup = {}
 
--- rudimentäre Widget-Erkennung (awesome 4.x)
 local function is_widget(x)
 	return type(x) == "table"
 		and (
@@ -14,15 +13,7 @@ local function is_widget(x)
 		)
 end
 
--- Wrap ein bereits gebautes Root-Widget (ohne Layout-Meinung)
--- opts = {
---   theme?,                 -- optional, nur für scrim default
---   scrim_bg?,              -- default: "#00000099"
---   placement?,             -- function(popup, screen, opts) -> unit placement
---   on_hide?,               -- callback(api)
---   enable_esc_grabber?,    -- default: true
---   window_radius?,         -- optional: direkte Fensterform (rounded_rect)
--- }
+-- opts: { theme?, scrim_bg?, placement?, on_hide?, enable_esc_grabber? }
 function Popup.wrap(root_widget, opts)
 	assert(is_widget(root_widget), "Popup.wrap: root_widget must be a widget")
 	opts = opts or {}
@@ -31,7 +22,7 @@ function Popup.wrap(root_widget, opts)
 	local enable_esc = (opts.enable_esc_grabber ~= false)
 	local scrim_bg = opts.scrim_bg or t.dialog_scrim or "#00000099"
 
-	-- Overlay für Dialoge (zentriert, aber ohne Größen-/Chrome-Meinung)
+	-- Overlay
 	local overlay_slot = wibox.widget({ layout = wibox.layout.fixed.vertical })
 	local overlay_root = wibox.widget({
 		{
@@ -43,14 +34,14 @@ function Popup.wrap(root_widget, opts)
 		widget = wibox.container.background,
 	})
 
-	-- Root + Overlay übereinander
+	-- Root + Overlay
 	local container = wibox.widget({
 		root_widget,
 		overlay_root,
 		layout = wibox.layout.stack,
 	})
 
-	-- Popup-Shell (reiner Lifecycle, bg transparent)
+	-- Popup-Shell (transparent; kein Chrome hier!)
 	local popup = awful.popup({
 		widget = container,
 		visible = false,
@@ -59,18 +50,7 @@ function Popup.wrap(root_widget, opts)
 		type = "dock",
 	})
 
-	-- optional: echte Fensterform mit klick-durchlässigen Ecken
-	do
-		local r = tonumber(opts.window_radius)
-		if r and r > 0 then
-			popup.shape = function(cr, w, h)
-				gears.shape.rounded_rect(cr, w, h, r)
-			end
-			popup.shape_input = popup.shape
-		end
-	end
-
-	-- Positionierung (ohne Größenlogik)
+	-- Default-Platzierung
 	local place_fn = opts.placement
 		or function(p, s)
 			local wa = s.workarea or s.geometry
@@ -80,9 +60,7 @@ function Popup.wrap(root_widget, opts)
 			p.y = wa.y + wa.height - gap - ph
 		end
 
-	----------------------------------------------------------------
-	-- Outside-Click → Menü zu (keine Hit-Tests nötig)
-	----------------------------------------------------------------
+	-- Outside-Click schließt
 	local saved_root_buttons = nil
 	local client_click_connected = false
 	local on_client_click = nil
@@ -128,9 +106,7 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
-	----------------------------------------------------------------
-	-- ESC-Keygrabber (nur Cycle)
-	----------------------------------------------------------------
+	-- ESC
 	local esc_id = nil
 	local function start_esc()
 		if not enable_esc or esc_id then
@@ -158,33 +134,12 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
-	----------------------------------------------------------------
-	-- Öffentliche API (nur Cycle + Overlay)
-	----------------------------------------------------------------
+	-- Öffentliche API
 	local api = {}
 	local placement_fn = nil
 
 	function api:set_placement(fn)
 		placement_fn = fn
-	end
-
-	function api:set_window_chrome(opts2)
-		opts2 = opts2 or {}
-		local radius = tonumber(opts2.radius) or tonumber(opts2.window_radius) or tonumber(t.popup_radius)
-		if radius and radius > 0 then
-			popup.shape = function(cr, w, h)
-				gears.shape.rounded_rect(cr, w, h, radius)
-			end
-			popup.shape_input = popup.shape
-		else
-			popup.shape, popup.shape_input = nil, nil
-		end
-		if opts2.border_width ~= nil then
-			popup.border_width = opts2.border_width
-		end
-		if opts2.border_color then
-			popup.border_color = opts2.border_color
-		end
 	end
 
 	function api:is_visible()
@@ -227,14 +182,13 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
-	-- Dialog-Overlay (layoutneutral; Widget muss schon fertig gebaut sein)
 	function api:show_dialog(w)
 		if not w then
 			return
 		end
 		if not is_widget(w) then
 			local ok, b = pcall(wibox.widget, w)
-			if not ok or not is_widget(b) then
+			if not ok then
 				return
 			end
 			w = b
@@ -251,7 +205,6 @@ function Popup.wrap(root_widget, opts)
 		end
 	end
 
-	-- Scrim: nur Dialog schließen (Menü bleibt)
 	overlay_root:buttons(gears.table.join(awful.button({}, 1, function()
 		api:hide_dialog()
 		awesome.emit_signal("menu::dialog_closed")
@@ -281,7 +234,7 @@ function Popup.wrap(root_widget, opts)
 	return api
 end
 
--- Back-Compat: alter Build-Pfad bleibt nutzbar
+-- Back-Compat für alten Build-Pfad
 function Popup.build(args)
 	local root = wibox.widget({
 		args.header,
@@ -295,7 +248,6 @@ function Popup.build(args)
 		on_hide = args.on_hide,
 		enable_esc_grabber = (args.enable_esc_grabber ~= false),
 		scrim_bg = args.scrim_bg,
-		window_radius = args.window_radius,
 	})
 end
 
