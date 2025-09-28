@@ -1,79 +1,60 @@
--- features/shell/menu/dialogs/parts/theme.lua
--- Lokales Dialog-Theme (keine beautiful-Abhängigkeit)
--- API:
---   Theme.get(overrides) -> Tabelle (Defaults ¿ overrides)
---   Theme.merge(a, b)    -> flaches Merge (Helper)
+-- features/shell/menu/dialogs/theme.lua
+-- Dialog-Theme (unabhängig von beautiful); liefert alle Keys, die rows/columns erwarten.
 
 local Theme = {}
 
 Theme.defaults = {
-	--------------------------------------------------------------------------
-	-- Geometrie & Layout-Ratios
-	--------------------------------------------------------------------------
+	-- Geometrie
 	dialog_w = 560,
 	dialog_h = 360,
 	dialog_radius = 0,
 	dialog_border_width = 1,
 	dialog_border = "#053193",
 
-	-- Body ergibt sich automatisch = 1 - header_ratio - footer_ratio
-	header_ratio = 0.22, -- ~22% der Gesamthöhe
-	footer_ratio = 0.22, -- ~22% der Gesamthöhe
+	header_ratio = 0.22,
+	footer_ratio = 0.22,
 	header_h = 80,
 	footer_h = 80,
 
-	--------------------------------------------------------------------------
-	-- Farben/Flächen
-	--------------------------------------------------------------------------
+	-- Flächen / Farben (Dialog)
 	header_bg = "#053193",
 	header_fg = "#FFFFFF",
-	body_bg = "#617FD9", -- sichtbar (XP-Blau). Für transparent: "#00000000"
+	body_bg = "#617FD9",
 	body_fg = "#000000",
 	footer_bg = "#053193",
 	footer_fg = "#FFFFFF",
 
-	-- Popup-Container/Backdrop
+	-- Popup/Backdrop
 	dialog_bg = "#053193",
 	backdrop = "#00000066",
 
 	-- Header Typo/Icon
 	header_font_size = 18,
-	header_icon = " XP", -- Emoji
+	header_icon = " XP",
 	header_icon_size = 20,
-	header_icon_path = "", -- PNG/SVG Pfad, z.B. "/home/user/.config/awesome/assets/logo.png"
+	header_icon_path = "",
 
-	--------------------------------------------------------------------------
-	-- Innenabstände (Body)
-	--------------------------------------------------------------------------
+	-- Pads
 	pad_h = 16,
 	pad_v = 14,
 
-	--------------------------------------------------------------------------
-	-- Icon/Action Cards (zentralisiert)
-	--------------------------------------------------------------------------
-	-- Größensteuerung
-	icon_ratio = 0.16, -- Anteil von H_BODY für ICON_SIZE
-	icon_pad = 6, -- Innenpad im Icon-Quadrat
-	icon_cell_pad = 6, -- Außenpad der gesamten Klick-Zelle
-	icon_cell_extra_w = 56, -- horizontale Zugabe für saubere Spalten
-	icon_spacing = 12, -- Abstand Icon ¿ Label (vertikal)
-
-	-- Label-Typo
-	icon_label_size = 12, -- pt
-	icon_label_leading = 1.25, -- Zeilenhöhe-Faktor
-	icon_label_lines = 1, -- 1 Zeile erzwingen
+	-- Icon/Action Cards
+	icon_ratio = 0.16,
+	icon_pad = 6,
+	icon_cell_pad = 6,
+	icon_cell_extra_w = 56,
+	icon_spacing = 12,
+	icon_label_size = 12,
+	icon_label_leading = 1.25,
+	icon_label_lines = 1,
 	icon_label_color = "#FFFFFF",
-
-	-- Icon-Form/Hover
-	icon_shape = "rounded", -- "rect" | "rounded"
-	icon_rounding = 10, -- px (nur für "rounded" relevant)
+	icon_shape = "rounded",
+	icon_rounding = 10,
 	icon_hover_bg = "#FFFFFF22",
 	icon_hover_border = "#2B77FF",
 	icon_hover_bw = 2,
 
-	--------------------------------------------------------------------------
-	-- Footer / Cancel-Button
-	--------------------------------------------------------------------------
+	-- Footer / Cancel
 	cancel_bg = "#F5F5EE",
 	cancel_fg = "#000000",
 	cancel_pad_h = 10,
@@ -83,9 +64,21 @@ Theme.defaults = {
 	cancel_hover_border = "#2B77FF",
 	cancel_hover_bw = 2,
 	-- cancel_width = 120,
+
+	----------------------------------------------------------------
+	-- ¿ WICHTIG: Keys, die rows.lua / columns.lua erwarten
+	-- (wenn du sie nicht überschreibst, werden sie aus body_* abgeleitet)
+	----------------------------------------------------------------
+	row_bg = nil, -- default: body_bg
+	row_fg = nil, -- default: body_fg
+	left_bg = nil, -- default: row_bg
+	left_fg = nil, -- default: row_fg
+	right_bg = nil, -- default: row_bg
+	right_fg = nil, -- default: row_fg
+	row_h = 48, -- Standard-Zeilenhöhe
 }
 
-function Theme.merge(a, b)
+local function merge(a, b)
 	local out = {}
 	for k, v in pairs(a or {}) do
 		out[k] = v
@@ -96,8 +89,25 @@ function Theme.merge(a, b)
 	return out
 end
 
+function Theme.merge(a, b)
+	return merge(a, b)
+end
+
 function Theme.get(overrides)
-	return Theme.merge(Theme.defaults, overrides)
+	local t = merge(Theme.defaults, overrides or {})
+
+	-- Ableitungen: falls nicht explizit gesetzt, nutze body_* als Row-/Spaltenbasis
+	t.row_bg = t.row_bg or t.body_bg
+	t.row_fg = t.row_fg or t.body_fg
+
+	t.left_bg = t.left_bg or t.row_bg
+	t.left_fg = t.left_fg or t.row_fg
+	t.right_bg = t.right_bg or t.row_bg
+	t.right_fg = t.right_fg or t.row_fg
+
+	-- Kennzeichne als ¿roh¿, damit widgets/rows.lua NICHT erneut normalisiert.
+	t.__raw_theme = true
+	return t
 end
 
 return Theme

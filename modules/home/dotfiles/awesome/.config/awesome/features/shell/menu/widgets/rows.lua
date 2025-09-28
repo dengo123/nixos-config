@@ -37,7 +37,9 @@ end
 -- t:    theme table (wird mit Defaults normalisiert)
 -- opts: { colors = {bg, fg, hover}, row_h = number, lib = ... }
 function M.row_widget(item, t, opts)
-	t = Theme.with_defaults(t)
+	if not (t and t.__raw_theme) then
+		t = Theme.with_defaults(t)
+	end
 	opts = opts or {}
 	-- unified focus/hover: Tastatur-Fokus soll exakt wie Maus-Hover aussehen (default: an)
 	local unify = (t.unify_focus_hover ~= false)
@@ -196,7 +198,9 @@ function M.row_widget(item, t, opts)
 end
 
 function M.list_widget(items, t, opts)
-	t = Theme.with_defaults(t)
+	if not (t and t.__raw_theme) then
+		t = Theme.with_defaults(t)
+	end
 	opts = opts or {}
 
 	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }

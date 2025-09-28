@@ -70,6 +70,36 @@ local function resolve_theme(overrides)
 	end
 
 	local merged = (Theme and Theme.merge) and Theme.merge(ui_base, ov) or shallow_merge(ui_base, ov)
+
+	-- ============================================================
+	-- THEME-BRÜCKE (Dialog → Rows/Spalten)
+	-- Verhindert, dass rows/columns auf Menü-Defaults zurückfallen.
+	-- ============================================================
+	-- Mappe body_* aus dem Dialog-Theme auf row_* (für rows.lua)
+	if merged.body_bg and not merged.row_bg then
+		merged.row_bg = merged.body_bg
+	end
+	if merged.body_fg and not merged.row_fg then
+		merged.row_fg = merged.body_fg
+	end
+
+	-- Spaltenflächen (für columns.lua und seitenspezifische Rows)
+	if not merged.left_bg then
+		merged.left_bg = merged.row_bg
+	end
+	if not merged.left_fg then
+		merged.left_fg = merged.row_fg
+	end
+	if not merged.right_bg then
+		merged.right_bg = merged.row_bg
+	end
+	if not merged.right_fg then
+		merged.right_fg = merged.row_fg
+	end
+
+	-- Hinweis: row_bg_hover wird in lib.theme aus row_bg abgeleitet,
+	-- daher müssen wir es hier nicht setzen.
+
 	return (Theme and Theme.get) and Theme.get(merged) or merged
 end
 
