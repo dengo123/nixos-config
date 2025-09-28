@@ -7,7 +7,7 @@ local W = require("features.shell.menu.widgets")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
 local Lib = require("features.shell.menu.lib")
 local Containers = require("features.shell.menu.dialogs.parts.containers")
-local Layouts = require("features.shell.menu.dialogs.parts.layouts") -- re-export
+local Layouts = require("features.shell.menu.layouts.grid") -- re-export
 
 local Base = {}
 Base.layouts = Layouts
