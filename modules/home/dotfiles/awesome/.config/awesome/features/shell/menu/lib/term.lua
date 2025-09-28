@@ -11,25 +11,65 @@ local function read_cfg()
 	return { terminal = "xterm" }
 end
 
--- starte ein Terminal und führe *eine* Shell-Commandline darin aus
+-- schreibe den Command in ein temporäres Bash-Skript und gib den Pfad zurück
+local function write_temp_script(cmdline)
+	local path = os.tmpname()
+	if not path:match("%.sh$") then
+		path = path .. ".sh"
+	end
+	local f = assert(io.open(path, "w"))
+	f:write("#!/usr/bin/env bash\n")
+	f:write("set -euo pipefail\n")
+	f:write(cmdline .. "\n")
+	f:close()
+	os.execute(string.format("chmod +x %q", path))
+	return path
+end
+
 function M.run(cmdline)
 	local term = (read_cfg().terminal or "xterm"):gsub("%s+$", "")
-	local sh = string.format("bash -lc %q", cmdline)
+	local script = write_temp_script(cmdline)
+
+	local function spawn_argv(argv)
+		return awful.spawn(argv)
+	end
+	local function spawn_sh(sh)
+		return awful.spawn.with_shell(sh)
+	end
 
 	if term:find("wezterm") then
-		awful.spawn(string.format("%s start -- %s", term, sh))
+		return spawn_argv({ term, "start", "--", script })
 	elseif term:find("alacritty") then
-		awful.spawn(string.format("%s -e %s", term, sh))
+		return spawn_argv({ term, "-e", script })
 	elseif term:find("kitty") then
-		awful.spawn(string.format("%s -- %s", term, sh))
-	elseif term:find("ghostty") then
-		-- Ghostty: gängig ist `--` um ein Kommando zu übergeben
-		awful.spawn(string.format("%s -- %s", term, sh))
+		return spawn_argv({ term, "--", script })
+	elseif term:find("konsole") then
+		return spawn_argv({ term, "-e", script })
+	elseif term:find("foot") then
+		return spawn_argv({ term, "-e", script })
 	elseif term:find("gnome%-terminal") then
-		awful.spawn(string.format("%s -- %s", term, sh))
+		return spawn_argv({ term, "--", script })
+	elseif term:find("ghostty") then
+		-- 1) bevorzugt: neues Fenster und dort bash -lc <script>
+		local ok = spawn_argv({ term, "+new-window", "-e", "bash", "-lc", script })
+		if ok then
+			return ok
+		end
+		-- 2) manche Builds: nur -e
+		ok = spawn_argv({ term, "-e", "bash", "-lc", script })
+		if ok then
+			return ok
+		end
+		-- 3) letzter Rettungsanker: Shell-Fallback (falls beide argv-Formen nicht starten)
+		local chain = table.concat({
+			string.format("%q +new-window -e bash -lc %q", term, script),
+			string.format("%q -e bash -lc %q", term, script),
+			string.format("%q -- bash -lc %q", term, script),
+			string.format("xterm -e %q", script),
+		}, " || ")
+		return spawn_sh(chain)
 	else
-		-- generischer Fallback
-		awful.spawn(string.format("%s -e %s", term, sh))
+		return spawn_argv({ term, "-e", script })
 	end
 end
 

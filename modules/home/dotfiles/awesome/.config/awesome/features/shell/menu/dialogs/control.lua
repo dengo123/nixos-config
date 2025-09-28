@@ -51,9 +51,7 @@ local function build_actions()
 		{
 			emoji = "📶",
 			label = "Netzwerk",
-			on_press = Lib.lua(function()
-				Term.run("nmtui || nm-connection-editor")
-			end, policy),
+			on_press = Lib.cmd("nm-connection-editor", policy),
 		},
 		{ emoji = "🌀", label = "Bluetooth", on_press = Lib.cmd("blueman-manager", policy) },
 		{
@@ -95,18 +93,16 @@ local function build_actions()
 		},
 		{
 			emoji = "⚙️",
-			label = "Nix Config",
+			label = "Awesome Config",
 			on_press = Lib.lua(function()
-				Term.run("cd ~/nixos-config || cd ~/nixforge || cd ~/.dotfiles; nvim .")
+				Term.run("cd ~/nixos-config/modules/home/dotfiles/awesome/.config/awesome; nvim .")
 			end, policy),
 		},
 		{
 			emoji = "🚀",
 			label = "Update",
 			on_press = Lib.lua(function()
-				Term.run(
-					"sudo nix flake update --flake ~/nixos-config && sudo nixos-rebuild switch --flake ~/nixos-config"
-				)
+				Term.run([[echo "hello from terminal"; sleep 1]])
 			end, policy),
 		},
 	}

@@ -51,6 +51,7 @@ in {
       };
       programs = {
         ghostty = enabled;
+        wezterm = enabled;
         lazygit = enabled;
         tmux = enabled;
         zen = enabled;
