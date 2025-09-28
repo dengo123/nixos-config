@@ -3,7 +3,7 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local W = require("features.shell.menu.dialogs.parts.widgets")
+local W = require("features.shell.menu.widgets")
 local Theme = require("features.shell.menu.dialogs.parts.theme")
 local Lib = require("features.shell.menu.lib")
 local Containers = require("features.shell.menu.dialogs.parts.containers")

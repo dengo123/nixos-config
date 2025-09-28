@@ -1,6 +1,6 @@
 local wibox = require("wibox")
 local gears = require("gears")
-local W = require("features.shell.menu.dialogs.parts.widgets")
+local W = require("features.shell.menu.widgets")
 
 local M = {}
 
