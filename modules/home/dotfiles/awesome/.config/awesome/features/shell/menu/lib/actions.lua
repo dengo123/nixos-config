@@ -216,29 +216,33 @@ end
 -- Dispatcher mit Throttle
 -- item: { dialog, dialog_args, on_press, cmd, bin, argv, policy, id? }
 ---------------------------------------------------------------------
-function Actions.run(item)
+-- NEU:
+function Actions.run(item, close)
 	if not item then
 		return
 	end
 	local key = item_key(item)
 	return throttle(key, 0.22, function()
-		-- Dialog
+		-- Dialog (bewusst ohne Schließen des Menüs/Overlays)
 		if item.dialog then
 			return open_dialog_by_name(item.dialog, item.dialog_args)
 		end
-		-- Callback
+
+		-- Callback-Variante: on_press kann 'close' ignorieren oder nutzen
 		if type(item.on_press) == "function" then
-			return run_with_policy(item.policy, nil, item.on_press)
+			-- NICHT nochmal run_with_policy drumlegen – Factories wie Actions.cmd
+			-- enthalten die Policy bereits innen. Einfach aufrufen und 'close' mitgeben.
+			return item.on_press(close)
 		end
-		-- Shell
+
+		-- Shell / Bin – hier Policy außen anwenden und 'close' weitergeben
 		if item.cmd then
-			return run_with_policy(item.policy, nil, function()
+			return run_with_policy(item.policy, close, function()
 				Actions.run_shell(item.cmd)
 			end)
 		end
-		-- Binär
 		if item.bin then
-			return run_with_policy(item.policy, nil, function()
+			return run_with_policy(item.policy, close, function()
 				Actions.run_bin(item.bin, item.argv)
 			end)
 		end
@@ -247,8 +251,8 @@ end
 
 function Actions.click(item)
 	-- Maus-Mehrfachfeuer wird durch throttle() abgefedert
-	return function()
-		Actions.run(item)
+	return function(close)
+		Actions.run(item, close)
 	end
 end
 

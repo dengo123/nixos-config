@@ -1,11 +1,10 @@
--- ~/.config/awesome/features/shell/menu/dialogs/control/init.lua
+-- ~/.config/awesome/features/shell/menu/dialogs/control.lua
 local Base = require("features.shell.menu.dialogs.base")
 local Lib = require("features.shell.menu.lib")
 local Term = require("features.shell.menu.lib.term")
 
 local M = {}
 
--- Shell-Kette: probiere mehrere Kommandos, notify-send als Hinweis wenn alles fehlt
 local function chain(cmds, title, msg)
 	local parts = {}
 	for _, c in ipairs(cmds) do
@@ -22,10 +21,9 @@ end
 
 local policy = { close = "before" }
 
--- Roh-Actions (emoji/label/on_press)
+-- Roh-Actions (emoji/label/on_press) – überall Policies verwenden
 local function build_actions()
 	return {
-		-- Anzeige
 		{
 			emoji = "🖥️",
 			label = "Anzeige",
@@ -38,34 +36,26 @@ local function build_actions()
 				policy
 			),
 		},
-
-		-- Audio
 		{
 			emoji = "🔊",
 			label = "Audio",
-			on_press = function()
-				local cmd = chain(
+			on_press = Lib.cmd(
+				chain(
 					{ "pavucontrol", "helvum", "qpwgraph" },
 					"Audio",
 					"Installiere pavucontrol / helvum / qpwgraph oder nutze alsamixer."
-				)
-				Lib.cmd(cmd, policy)()
-			end,
+				),
+				policy
+			),
 		},
-
-		-- Netzwerk
 		{
 			emoji = "📶",
 			label = "Netzwerk",
-			on_press = function()
+			on_press = Lib.lua(function()
 				Term.run("nmtui || nm-connection-editor")
-			end,
+			end, policy),
 		},
-
-		-- Bluetooth
 		{ emoji = "🌀", label = "Bluetooth", on_press = Lib.cmd("blueman-manager", policy) },
-
-		-- Datenträger
 		{
 			emoji = "💽",
 			label = "Datenträger",
@@ -74,8 +64,6 @@ local function build_actions()
 				policy
 			),
 		},
-
-		-- Drucker
 		{
 			emoji = "🖨️",
 			label = "Drucker",
@@ -84,8 +72,6 @@ local function build_actions()
 				policy
 			),
 		},
-
-		-- Passwörter
 		{
 			emoji = "🔐",
 			label = "Passwörter",
@@ -94,15 +80,11 @@ local function build_actions()
 				policy
 			),
 		},
-
-		-- Clipboard
 		{
 			emoji = "📋",
 			label = "Clipboard",
 			on_press = Lib.cmd(chain({ "copyq toggle", "copyq" }, "Clipboard", "Installiere CopyQ."), policy),
 		},
-
-		-- Dateien
 		{
 			emoji = "🗂️",
 			label = "Dateien",
@@ -111,30 +93,25 @@ local function build_actions()
 				policy
 			),
 		},
-
-		-- Nix Config
 		{
 			emoji = "⚙️",
 			label = "Nix Config",
-			on_press = function()
+			on_press = Lib.lua(function()
 				Term.run("cd ~/nixos-config || cd ~/nixforge || cd ~/.dotfiles; nvim .")
-			end,
+			end, policy),
 		},
-
-		-- Update
 		{
 			emoji = "🚀",
 			label = "Update",
-			on_press = function()
+			on_press = Lib.lua(function()
 				Term.run(
 					"sudo nix flake update --flake ~/nixos-config && sudo nixos-rebuild switch --flake ~/nixos-config"
 				)
-			end,
+			end, policy),
 		},
 	}
 end
 
--- Items in N Spalten verteilen (round-robin)
 local function distribute(items, n)
 	n = math.max(1, tonumber(n) or 1)
 	local cols = {}
@@ -154,41 +131,61 @@ function M.open(theme_overrides)
 		size = { w = 760, h = 640 },
 		theme = theme_overrides,
 		popup = { use_backdrop = false, close_on_escape = true },
-
-		-- Columns-Fokus aktivieren
 		focus = { mode = "columns", start_col = 1, mouse_follow = true },
 
 		body_builder = function(th, dims, _get_close)
-			-- 1) Actions → rows.lua-kompatible Items (text/icon/on_press)
+			-- 1) Items bauen
 			local items = {}
 			for _, a in ipairs(build_actions()) do
 				table.insert(items, {
 					text = (a.emoji and (a.emoji .. " ") or "") .. (a.label or ""),
-					icon = a.icon, -- optional (Bildpfad); bei Emoji nil lassen
-					on_press = a.on_press, -- wird von Lib.actions.click(item) aufgerufen
+					icon = a.icon,
+					on_press = a.on_press,
 				})
 			end
 
-			-- 2) Spaltenanzahl (2 Standard; 3 wenn im Theme gewünscht)
+			-- 2) Spalten
 			local ncols = tonumber(th.control_columns) or 2
 			local cols_items = distribute(items, ncols)
 
-			-- 3) Columns-Spezifikation (Widths gleich verteilt; Rowhöhe aus Theme oder Fallback)
+			-- 3) Spec
 			local spec = {}
 			local width_each = 1 / ncols
 			local row_h = th.row_h or 48
 			for i = 1, ncols do
-				table.insert(spec, {
-					key = "col" .. i,
-					width = width_each,
-					items = cols_items[i],
-					row_h = row_h,
-					-- optional: palette = { bg=..., fg=..., hover=... },
-				})
+				table.insert(spec, { key = "col" .. i, width = width_each, items = cols_items[i], row_h = row_h })
 			end
 
-			-- 4) Columns bauen (liefert widget + Fokuslisten)
-			local widget, focus_lists = Base.layouts_columns(spec, th, dims)
+			-- 4) Lib mit close-Injection, damit Aktionen den Dialog schließen
+			local function wrap_lib_for_close(lib, get_close)
+				local actions = lib.actions or {}
+				return {
+					helpers = lib.helpers,
+					actions = {
+						click = function(item)
+							local orig = actions.click(item) -- -> function([close])
+							return function()
+								local close = get_close()
+								pcall(orig, close)
+							end
+						end,
+					},
+				}
+			end
+			local wrapped_lib = wrap_lib_for_close(Lib, _get_close)
+
+			-- 5) Columns direkt bauen, damit wir opts.lib setzen können
+			local Columns = require("features.shell.menu.layouts.columns")
+			local api = Columns.build(spec, th, {
+				lib = wrapped_lib,
+				pad_l = dims.pad_h,
+				pad_r = dims.pad_h,
+				pad_t = dims.pad_v,
+				pad_b = dims.pad_v,
+				spacing = th.cols_spacing or 0,
+			})
+			local widget = api.widget
+			local focus_lists = (api.get_focus_items and api:get_focus_items()) or {}
 			return widget, focus_lists
 		end,
 	})
