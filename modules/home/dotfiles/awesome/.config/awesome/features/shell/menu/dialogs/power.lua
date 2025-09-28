@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/dialogs/power/init.lua
+-- ~/.config/awesome/features/shell/menu/dialogs/power.lua
 local Base = require("features.shell.menu.dialogs.base")
 local Lib = require("features.shell.menu.lib")
 
@@ -38,18 +38,14 @@ function M.power()
 	return Base.dialog({
 		container = "power",
 		title = "Turn off Computer",
-		theme = {
-			-- Dim-Farbe des Backdrops (nur optisch; Logik kommt aus popup-opts)
-			backdrop = "#00000066",
-		},
+		theme = { backdrop = "#00000066" },
 		popup = {
-			-- HIER steuerst du das Root-Verhalten:
-			show_root = "with_bars", -- Wallpaper + Bars sichtbar, Clients versteckt
-			close_on_backdrop = false, -- Klick ins Dunkle schließt
-			close_on_escape = true, -- ESC schließt
-			-- width/height optional überschreiben:
-			-- width = 560, height = 360,
+			show_root = "with_bars",
+			close_on_backdrop = false,
+			close_on_escape = true,
 		},
+		-- NEU:
+		focus = { mode = "row", start_index = 1, mouse_follow = true },
 		body_builder = function(th, dims, get_close)
 			return Base.layouts_row(actions_power(), th, dims, function()
 				return get_close()
@@ -68,6 +64,8 @@ function M.logout()
 			close_on_backdrop = false,
 			close_on_escape = true,
 		},
+		-- NEU:
+		focus = { mode = "row", start_index = 1, mouse_follow = true },
 		body_builder = function(th, dims, get_close)
 			return Base.layouts_row(actions_logout(), th, dims, function()
 				return get_close()

@@ -1,4 +1,4 @@
--- features/shell/menu/dialogs/parts/layouts/grid.lua
+-- features/shell/menu/dialogs/parts/layouts/row.lua
 local wibox = require("wibox")
 local Widgets = require("features.shell.menu.widgets") -- zentraler Aggregator
 

@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/shell/menu/dialogs/parts/init.lua
+-- ~/.config/awesome/features/shell/menu/dialogs/base.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -13,7 +13,7 @@ local Containers = require("features.shell.menu.dialogs.containers")
 
 -- Zwei Layouts: grid (Icons) & columns (Menüspalten)
 local Layouts = {
-	grid = require("features.shell.menu.layouts.grid"),
+	row = require("features.shell.menu.layouts.row"),
 	columns = require("features.shell.menu.layouts.columns"),
 }
 
@@ -79,8 +79,8 @@ end
 
 -- GRID: Icon-Reihe/-Raster (liefert Widget + Fokusliste (linear))
 function Base.layouts_row(actions, th, dims, get_close_ref)
-	local geom = Layouts.grid.compute_metrics(th, dims.w, dims.h)
-	local row, items = Layouts.grid.actions_row(actions or {}, th, geom, get_close_ref)
+	local geom = Layouts.row.compute_metrics(th, dims.w, dims.h)
+	local row, items = Layouts.row.actions_row(actions or {}, th, geom, get_close_ref)
 	return row, items
 end
 
@@ -216,7 +216,7 @@ function Base.dialog(opts)
 	if Lib and Lib.focus and focus_items then
 		local stop_focus
 
-		if mode == "grid" then
+		if mode == "row" then
 			-- Erwartet lineare Liste von Buttons (mk_icon_button)
 			if type(Lib.focus.attach_grid) == "function" then
 				stop_focus = Lib.focus.attach_grid(focus_items, th, {
