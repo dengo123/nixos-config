@@ -3,7 +3,8 @@ local awful = require("awful")
 
 local Focus = {}
 
--- Normalisiere Key-Bindings mit Defaults
+-- ---------- helpers ----------
+
 local function norm_keys(k)
 	return {
 		left = (k and k.left) or "Left",
@@ -15,9 +16,76 @@ local function norm_keys(k)
 	}
 end
 
----------------------------------------------------------------------
--- Linearer Fokus über eine Liste (jedes Item: :set_focus(on, th), :activate()).
----------------------------------------------------------------------
+local function call_set_focus(w, on, th)
+	if w and w.set_focus then
+		pcall(w.set_focus, w, on, th)
+	end
+end
+local function call_activate(w)
+	if w and w.activate then
+		pcall(w.activate, w)
+	end
+end
+
+local function ok_hit(keys, key)
+	local oks = (type(keys.ok) == "table") and keys.ok or { keys.ok }
+	for _, k in ipairs(oks) do
+		if key == k then
+			return true
+		end
+	end
+	return false
+end
+
+-- mouse follow for a list (array) of focusable widgets
+local function install_mouse_follow(list, set_index)
+	local handlers = {}
+	for idx, w in ipairs(list or {}) do
+		local tgt = (w and w.mouse_enter_target) or w
+		if tgt and tgt.connect_signal then
+			local h = function()
+				set_index(idx)
+			end
+			tgt:connect_signal("mouse::enter", h)
+			handlers[#handlers + 1] = { obj = tgt, cb = h }
+		end
+	end
+	return function()
+		for _, rec in ipairs(handlers) do
+			if rec.obj and rec.cb then
+				pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
+			end
+		end
+	end
+end
+
+-- one keygrabber to rule them all
+local function run_keygrabber(on_key)
+	local kg_id = awful.keygrabber.run(function(_, key, ev)
+		if ev ~= "release" then
+			on_key(key)
+		end
+	end)
+	return function()
+		if kg_id then
+			pcall(awful.keygrabber.stop, kg_id)
+		end
+	end
+end
+
+local function close_handle(handle)
+	if handle and handle.close then
+		pcall(function()
+			handle:close()
+		end)
+	elseif handle and handle.hide then
+		pcall(function()
+			handle:hide()
+		end)
+	end
+end
+
+-- ---------- 1) linear list ----------
 function Focus.attach(items, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
@@ -27,115 +95,51 @@ function Focus.attach(items, th, opts)
 	end
 
 	local i = 1
-	local mouse_follow = (opts.mouse_follow ~= false)
-	local enter_handlers = {}
-	local kg_id = nil
-
-	local function hi(idx, on)
-		local w = items[idx]
-		if w and w.set_focus then
-			pcall(w.set_focus, w, on, th)
-		end
-	end
-
 	local function set_index(new_i)
+		new_i = math.max(1, math.min(n, new_i))
 		if new_i == i then
 			return
 		end
-		hi(i, false)
-		i = math.max(1, math.min(n, new_i))
-		hi(i, true)
+		call_set_focus(items[i], false, th)
+		i = new_i
+		call_set_focus(items[i], true, th)
 	end
 
-	-- initialer Fokus
-	hi(i, true)
+	-- initial focus
+	call_set_focus(items[i], true, th)
 
-	-- Maus folgt Fokus (optional)
-	if mouse_follow then
-		for idx, w in ipairs(items) do
-			if w and w.connect_signal then
-				local target = w.mouse_enter_target or w
-				if target and target.connect_signal then
-					local on_enter = function()
-						set_index(idx)
-					end
-					target:connect_signal("mouse::enter", on_enter)
-					enter_handlers[idx] = { obj = target, cb = on_enter }
-				end
-			end
-		end
+	local remove_mouse = nil
+	if opts.mouse_follow ~= false then
+		remove_mouse = install_mouse_follow(items, set_index)
+	else
+		remove_mouse = function() end
 	end
 
-	-- Gemeinsamer Cleanup (auch für ESC & Stop)
-	local function cleanup()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-			kg_id = nil
-		end
-		for idx, rec in ipairs(enter_handlers) do
-			if rec and rec.obj and rec.cb then
-				pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
-			end
-			enter_handlers[idx] = nil
-		end
-		for idx2 = 1, n do
-			pcall(hi, idx2, false)
-		end
-	end
-
-	-- Keygrabber
-	kg_id = awful.keygrabber.run(function(_, key, ev)
-		if ev == "release" then
-			return
-		end
-
+	local stop_kg = run_keygrabber(function(key)
 		if key == keys.left or key == keys.up then
 			set_index(i - 1)
 		elseif key == keys.right or key == keys.down then
 			set_index(i + 1)
 		elseif key == keys.cancel then
-			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
-			cleanup()
-			if opts.handle and opts.handle.close then
-				pcall(function()
-					opts.handle:close()
-				end)
-			elseif opts.handle and opts.handle.hide then
-				pcall(function()
-					opts.handle:hide()
-				end)
-			end
-		else
-			local oks = type(keys.ok) == "table" and keys.ok or { keys.ok }
-			for _, enter in ipairs(oks) do
-				if key == enter then
-					local w = items[i]
-					if w and w.activate then
-						pcall(w.activate, w)
-					end
-					break
-				end
-			end
+			close_handle(opts.handle)
+		elseif ok_hit(keys, key) then
+			call_activate(items[i])
 		end
 	end)
 
-	-- Cleanup (Stop-Funktion)
 	return function()
-		cleanup()
+		stop_kg()
+		remove_mouse()
+		for idx = 1, n do
+			call_set_focus(items[idx], false, th)
+		end
 	end
 end
 
----------------------------------------------------------------------
--- Drei-Zonen-Fokus: linke Spalte, rechte Spalte, Power-Leiste
--- - ↑/↓: innerhalb der aktiven Spalte; am Ende ↓ → Power
--- - ←/→: Spaltenwechsel oder innerhalb Power zwischen Buttons
--- - ↑ in Power: zurück zur zuletzt genutzten Spalte
--- - Enter aktiviert, Esc schließt (über opts.handle)
----------------------------------------------------------------------
+-- ---------- 2) two columns + optional power row ----------
 function Focus.attach_columns_power(left_items, right_items, power_items, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
-	local mouse_follow = (opts.mouse_follow ~= false)
 
 	local L, R, P = left_items or {}, right_items or {}, power_items or {}
 	local nL, nR, nP = #L, #R, #P
@@ -143,7 +147,6 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 		return function() end
 	end
 
-	-- Startzone bestimmen
 	local zone = (opts.start_side == "right" and nR > 0) and "right" or "left"
 	if zone == "left" and nL == 0 and nR > 0 then
 		zone = "right"
@@ -151,28 +154,12 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 	if (zone ~= "left" and zone ~= "right") and nP > 0 then
 		zone = "power"
 	end
+	local last_col = (zone == "right") and "right" or "left"
 
 	local iL, iR, iP = 1, 1, 1
-	local last_column = (zone == "right" and "right") or "left"
-	local kg_id = nil
 
-	local function set_focus_list(list, idx, on)
-		local w = list[idx]
-		if w and w.set_focus then
-			pcall(w.set_focus, w, on, th)
-		end
-	end
-
-	local function clear_all_focus()
-		for i = 1, nL do
-			pcall(set_focus_list, L, i, false)
-		end
-		for i = 1, nR do
-			pcall(set_focus_list, R, i, false)
-		end
-		for i = 1, nP do
-			pcall(set_focus_list, P, i, false)
-		end
+	local function set_focus(list, idx, on)
+		call_set_focus(list[idx], on, th)
 	end
 
 	local function enter_zone(new_zone)
@@ -180,310 +167,205 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 			return
 		end
 		if zone == "left" and nL > 0 then
-			set_focus_list(L, iL, false)
+			set_focus(L, iL, false)
 		end
 		if zone == "right" and nR > 0 then
-			set_focus_list(R, iR, false)
+			set_focus(R, iR, false)
 		end
 		if zone == "power" and nP > 0 then
-			set_focus_list(P, iP, false)
+			set_focus(P, iP, false)
 		end
 
 		zone = new_zone
 		if zone == "left" then
-			last_column = "left"
+			last_col = "left"
 		end
 		if zone == "right" then
-			last_column = "right"
+			last_col = "right"
 		end
 
 		if zone == "left" and nL > 0 then
-			set_focus_list(L, iL, true)
+			set_focus(L, iL, true)
 		end
 		if zone == "right" and nR > 0 then
-			set_focus_list(R, iR, true)
+			set_focus(R, iR, true)
 		end
 		if zone == "power" and nP > 0 then
-			set_focus_list(P, iP, true)
+			set_focus(P, iP, true)
 		end
 	end
 
-	local function set_index(list, n, cur_idx, delta)
-		local old = cur_idx
-		cur_idx = math.max(1, math.min(n, cur_idx + delta))
-		if cur_idx ~= old then
-			set_focus_list(list, old, false)
-			set_focus_list(list, cur_idx, true)
+	local function step(list, n, idx, delta)
+		local old = idx
+		idx = math.max(1, math.min(n, idx + delta))
+		if idx ~= old then
+			set_focus(list, old, false)
+			set_focus(list, idx, true)
 		end
-		return cur_idx
+		return idx
 	end
 
-	-- initialen Fokus zeichnen
+	-- initial focus
 	if zone == "left" and nL > 0 then
-		set_focus_list(L, iL, true)
+		set_focus(L, iL, true)
 	end
 	if zone == "right" and nR > 0 then
-		set_focus_list(R, iR, true)
+		set_focus(R, iR, true)
 	end
 	if zone == "power" and nP > 0 then
-		set_focus_list(P, iP, true)
+		set_focus(P, iP, true)
 	end
 
-	-- Maus folgt Fokus (für alle drei Zonen)
-	local enter_handlers = { L = {}, R = {}, P = {} }
-	if mouse_follow then
-		for idx, w in ipairs(L) do
-			if w and w.connect_signal then
-				local h = function()
-					iL = idx
-					enter_zone("left")
-				end
-				w:connect_signal("mouse::enter", h)
-				enter_handlers.L[idx] = { obj = w, cb = h }
-			end
-		end
-		for idx, w in ipairs(R) do
-			if w and w.connect_signal then
-				local h = function()
-					iR = idx
-					enter_zone("right")
-				end
-				w:connect_signal("mouse::enter", h)
-				enter_handlers.R[idx] = { obj = w, cb = h }
-			end
-		end
-		for idx, w in ipairs(P) do
-			local tgt = (w and w.mouse_enter_target) or w
-			if tgt and tgt.connect_signal then
-				local h = function()
-					iP = idx
-					enter_zone("power")
-				end
-				tgt:connect_signal("mouse::enter", h)
-				enter_handlers.P[idx] = { obj = tgt, cb = h }
-			end
+	local remove_mouse = function() end
+	if opts.mouse_follow ~= false then
+		local rmL = install_mouse_follow(L, function(idx)
+			iL = idx
+			enter_zone("left")
+		end)
+		local rmR = install_mouse_follow(R, function(idx)
+			iR = idx
+			enter_zone("right")
+		end)
+		local rmP = install_mouse_follow(P, function(idx)
+			iP = idx
+			enter_zone("power")
+		end)
+		remove_mouse = function()
+			rmL()
+			rmR()
+			rmP()
 		end
 	end
 
-	-- Gemeinsamer Cleanup (auch für ESC & Stop)
-	local function cleanup()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-			kg_id = nil
-		end
-		for _, bucket in pairs(enter_handlers) do
-			for idx, rec in ipairs(bucket) do
-				if rec and rec.obj and rec.cb then
-					pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
-				end
-				bucket[idx] = nil
-			end
-		end
-		clear_all_focus()
-	end
-
-	-- Keygrabber
-	kg_id = awful.keygrabber.run(function(_, key, ev)
-		if ev == "release" then
-			return
-		end
-
+	local stop_kg = run_keygrabber(function(key)
 		if key == keys.left then
 			if zone == "right" and nL > 0 then
 				enter_zone("left")
 			elseif zone == "power" and nP > 0 then
-				iP = set_index(P, nP, iP, -1)
+				iP = step(P, nP, iP, -1)
 			end
 		elseif key == keys.right then
 			if zone == "left" and nR > 0 then
 				enter_zone("right")
 			elseif zone == "power" and nP > 0 then
-				iP = set_index(P, nP, iP, 1)
+				iP = step(P, nP, iP, 1)
 			end
 		elseif key == keys.up then
 			if zone == "power" then
-				if last_column == "right" and nR > 0 then
+				if last_col == "right" and nR > 0 then
 					enter_zone("right")
 				elseif nL > 0 then
 					enter_zone("left")
 				end
 			elseif zone == "left" and nL > 0 then
-				iL = set_index(L, nL, iL, -1)
+				iL = step(L, nL, iL, -1)
 			elseif zone == "right" and nR > 0 then
-				iR = set_index(R, nR, iR, -1)
+				iR = step(R, nR, iR, -1)
 			end
 		elseif key == keys.down then
 			if zone == "left" and nL > 0 then
 				if iL < nL then
-					iL = set_index(L, nL, iL, 1)
+					iL = step(L, nL, iL, 1)
 				elseif nP > 0 then
 					enter_zone("power")
 				end
 			elseif zone == "right" and nR > 0 then
 				if iR < nR then
-					iR = set_index(R, nR, iR, 1)
+					iR = step(R, nR, iR, 1)
 				elseif nP > 0 then
 					enter_zone("power")
 				end
 			end
 		elseif key == keys.cancel then
-			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
-			cleanup()
-			if opts.handle and opts.handle.close then
-				pcall(function()
-					opts.handle:close()
-				end)
-			elseif opts.handle and opts.handle.hide then
-				pcall(function()
-					opts.handle:hide()
-				end)
-			end
-		else
-			local oks = type(keys.ok) == "table" and keys.ok or { keys.ok }
-			for _, enter in ipairs(oks) do
-				if key == enter then
-					local w
-					if zone == "left" and nL > 0 then
-						w = L[iL]
-					elseif zone == "right" and nR > 0 then
-						w = R[iR]
-					elseif zone == "power" and nP > 0 then
-						w = P[iP]
-					end
-					if w and w.activate then
-						pcall(w.activate, w)
-					end
-					break
-				end
-			end
+			close_handle(opts.handle)
+		elseif ok_hit(keys, key) then
+			local w = (zone == "left" and L[iL]) or (zone == "right" and R[iR]) or (zone == "power" and P[iP])
+			call_activate(w)
 		end
 	end)
 
-	-- Cleanup (Stop-Funktion)
 	return function()
-		cleanup()
+		stop_kg()
+		remove_mouse()
+		for x = 1, nL do
+			call_set_focus(L[x], false, th)
+		end
+		for x = 1, nR do
+			call_set_focus(R[x], false, th)
+		end
+		for x = 1, nP do
+			call_set_focus(P[x], false, th)
+		end
 	end
 end
 
----------------------------------------------------------------------
--- Dialog Fokus (Body-Items + Cancel-Item)
----------------------------------------------------------------------
+-- ---------- 3) dialog (body list + optional cancel) ----------
 function Focus.attach_dialog(body_items, cancel_item, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
-	local items = {}
+
+	local list = {}
 	for i = 1, #(body_items or {}) do
-		items[i] = body_items[i]
+		list[i] = body_items[i]
 	end
 	if cancel_item then
-		table.insert(items, cancel_item)
+		list[#list + 1] = cancel_item
 	end
-	local n = #items
+	local n = #list
 	if n == 0 then
 		return function() end
 	end
 
 	local i = 1
-	local enter_handlers = {}
-	local kg_id = nil
-
-	local function hi(idx, on)
-		local w = items[idx]
-		if w and w.set_focus then
-			pcall(w.set_focus, w, on, th)
-		end
-	end
+	local last_body = math.max(1, n - (cancel_item and 1 or 0))
 
 	local function set_index(new_i)
+		new_i = math.max(1, math.min(n, new_i))
 		if new_i == i then
 			return
 		end
-		hi(i, false)
-		i = math.max(1, math.min(n, new_i))
-		hi(i, true)
+		call_set_focus(list[i], false, th)
+		i = new_i
+		call_set_focus(list[i], true, th)
 	end
 
-	-- initial
-	hi(i, true)
+	call_set_focus(list[i], true, th)
 
-	-- Maus folgt Fokus (optional, default an)
+	local remove_mouse = function() end
 	if opts.mouse_follow ~= false then
-		for idx, w in ipairs(items) do
-			local tgt = (w and w.mouse_enter_target) or w
-			if tgt and tgt.connect_signal then
-				local h = function()
-					set_index(idx)
-				end
-				tgt:connect_signal("mouse::enter", h)
-				enter_handlers[idx] = { widget = tgt, handler = h }
-			end
-		end
+		remove_mouse = install_mouse_follow(list, set_index)
 	end
 
-	local function cleanup()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-			kg_id = nil
-		end
-		for _, e in pairs(enter_handlers) do
-			pcall(e.widget.disconnect_signal, e.widget, "mouse::enter", e.handler)
-		end
-		for idx2 = 1, n do
-			pcall(hi, idx2, false)
-		end
-	end
-
-	-- Keygrabber: links/rechts im Body; ↓ => Cancel; ↑ von Cancel zurück
-	kg_id = awful.keygrabber.run(function(_, key, ev)
-		if ev == "release" then
-			return
-		end
-
+	local stop_kg = run_keygrabber(function(key)
 		if key == keys.left then
-			if i > 1 then
+			set_index(i - 1)
+		elseif key == keys.right then
+			set_index(i + 1)
+		elseif key == keys.up then
+			if i == n and cancel_item then
+				set_index(last_body)
+			else
 				set_index(i - 1)
 			end
-		elseif key == keys.right then
-			if i < n then
+		elseif key == keys.down then
+			if cancel_item then
+				set_index(n)
+			else
 				set_index(i + 1)
 			end
-		elseif key == keys.down then
-			set_index(n) -- immer Cancel
-		elseif key == keys.up then
-			if i == n then
-				set_index(math.max(1, n - 1))
-			else
-				set_index(math.max(1, i - 1))
-			end
 		elseif key == keys.cancel then
-			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
-			cleanup()
-			if opts.handle and opts.handle.close then
-				pcall(function()
-					opts.handle:close()
-				end)
-			elseif opts.handle and opts.handle.hide then
-				pcall(function()
-					opts.handle:hide()
-				end)
-			end
-		else
-			local oks = type(keys.ok) == "table" and keys.ok or { keys.ok }
-			for _, enter in ipairs(oks) do
-				if key == enter then
-					local w = items[i]
-					if w and w.activate then
-						pcall(w.activate, w)
-					end
-					break
-				end
-			end
+			close_handle(opts.handle)
+		elseif ok_hit(keys, key) then
+			call_activate(list[i])
 		end
 	end)
 
-	-- Stop/Cleanup
 	return function()
-		cleanup()
+		stop_kg()
+		remove_mouse()
+		for idx = 1, n do
+			call_set_focus(list[idx], false, th)
+		end
 	end
 end
 
