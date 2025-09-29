@@ -6,10 +6,13 @@ local Search = require("features.shell.menu.search")
 local Footer = {}
 
 function Footer.build(arg1, arg2)
+	-- Back-compat: entweder opts-Table oder (power_items, t)
 	local opts = (type(arg1) == "table" and (arg1.power_items or arg1.t or arg1.search)) and arg1
 		or { power_items = arg1, t = arg2 }
+
 	opts.t = opts.t or {}
 	local t = opts.t
+	local deps = opts.deps or {} -- <<< NEU: injizierte Dependencies (styler, lib, ...)
 
 	local FOOTER_H = t.footer_h or 48
 	local PAD_T = t.footer_pad_t or 6
@@ -33,10 +36,11 @@ function Footer.build(arg1, arg2)
 			browser = (search_cfg.web and search_cfg.web.browser) or "firefox",
 			engine = (search_cfg.web and search_cfg.web.engine) or "https://duckduckgo.com/?q=%s",
 		},
+		-- deps = deps, -- optional: nur setzen, falls deine Search-Implementierung das versteht
 	})
 
-	-- >>> Power-Buttons: Widget + Fokusliste
-	local powers_right, power_focus = P.power_bar(opts.power_items or {}, t, { inner_h = inner_h })
+	-- >>> Power-Buttons: Widget + Fokusliste (mit deps weitergereicht)
+	local powers_right, power_focus = P.power_bar(opts.power_items or {}, t, { inner_h = inner_h, deps = deps })
 
 	local row = wibox.widget({
 		search_inst.widget,
@@ -61,9 +65,11 @@ function Footer.build(arg1, arg2)
 		widget = wibox.container.background,
 	})
 
+	-- Menü-API (an globales __menu_api andocken, wenn vorhanden)
 	local api = rawget(_G, "__menu_api") or {}
+	api.deps = deps -- <<< NEU: für nachgelagerte Module sichtbar machen
 
-	-- Search-API wie gehabt …
+	-- Search-API Bridge
 	api.focus_search = function()
 		search_inst.api.focus_local()
 	end
@@ -86,7 +92,7 @@ function Footer.build(arg1, arg2)
 		search_inst.api.set_browser(bin)
 	end
 
-	-- >>> NEU: Fokus-Items der Power-Bar verfügbar machen
+	-- Fokus-Items der Power-Bar bereitstellen
 	api.get_power_focus_items = function()
 		return power_focus or {}
 	end

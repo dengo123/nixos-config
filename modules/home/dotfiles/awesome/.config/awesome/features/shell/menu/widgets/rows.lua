@@ -2,12 +2,10 @@
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
-local Theme = require("features.shell.menu.lib.theme")
-local Lib = require("features.shell.menu.lib")
 
 local M = {}
 
--- Fallback, falls lib.helpers.fixed_height fehlt
+-- Fallback, falls kein helpers.fixed_height vorhanden ist
 local function fallback_fixed_height(widget, h)
 	return wibox.widget({
 		widget,
@@ -17,51 +15,64 @@ local function fallback_fixed_height(widget, h)
 	})
 end
 
--- Lib-Auflösung
-local function resolve_lib(opts)
+-- Dependencies (styler + lib) aus opts ziehen, mit schlanken Fallbacks
+local function resolve_deps(opts)
 	opts = opts or {}
-	if opts.lib then
-		return opts.lib
-	end
-	if opts.api and opts.api.lib then
-		return opts.api.lib
-	end
-	local api = rawget(_G, "__menu_api")
-	if api and api.lib then
-		return api.lib
-	end
-	return Lib
+	local deps = opts.deps or (opts.api and opts.api.deps) or {}
+	local styler = deps.styler
+		or {
+			with_defaults = function(t)
+				return t or {}
+			end,
+			adjust = function(hex, _)
+				return hex
+			end,
+			resolve_icon_size = function(_, h)
+				return math.max(1, math.floor((h or 24) * 0.6 + 0.5))
+			end,
+			resolve_font = function(_, h)
+				return string.format("Sans %d", math.max(8, math.floor((h or 24) * 0.35 + 0.5)))
+			end,
+		}
+	local lib = deps.lib -- darf nil sein
+	return styler, lib
 end
 
--- item: { icon, text, ... }
--- t:    theme table (wird mit Defaults normalisiert)
--- opts: { colors = {bg, fg, hover}, row_h = number, lib = ... }
+-- item: { icon, text, on_hover_in?, on_hover_out?, on_press? ... }
+-- t:    theme table (via styler.with_defaults normalisiert)
+-- opts: { colors = {bg, fg, hover}, row_h = number, deps = { styler, lib } }
 function M.row_widget(item, t, opts)
-	if not (t and t.__raw_theme) then
-		t = Theme.with_defaults(t)
-	end
+	local styler, lib = resolve_deps(opts)
+	t = styler.with_defaults(t or {})
 	opts = opts or {}
-	-- unified focus/hover: Tastatur-Fokus soll exakt wie Maus-Hover aussehen (default: an)
+
+	-- unified focus/hover: Tastaturfokus == Maushover (default: an)
 	local unify = (t.unify_focus_hover ~= false)
 
-	local lib = resolve_lib(opts)
 	local helpers = (lib and lib.helpers) or {}
 
-	-- *** WICHTIG: Farben/Höhe kommen fertig aus Columns (opts.colors/row_h) ***
+	-- Farben/Höhe (i. d. R. von Columns gesetzt)
+	local base_bg = t.row_bg or "#00000000"
+	local base_fg = t.row_fg or "#FFFFFF"
 	local COLORS = opts.colors
 		or {
-			bg = t.row_bg,
-			fg = t.row_fg,
-			hover = t.row_bg_hover or Theme.adjust(t.row_bg, -8),
+			bg = base_bg,
+			fg = base_fg,
+			hover = t.row_bg_hover or styler.adjust(base_bg, -8),
 		}
+	-- sichere Defaults
+	COLORS.bg = COLORS.bg or base_bg
+	COLORS.fg = COLORS.fg or base_fg
+	COLORS.hover = COLORS.hover or COLORS.bg
+
 	local eff_h = tonumber(opts.row_h) or tonumber(t.row_h) or 48
 
 	-- Innenabstände & Metriken
 	local pad_t = t.row_pad_t or 0
 	local pad_b = t.row_pad_b or 0
 	local avail_h = math.max(eff_h - pad_t - pad_b, 1)
-	local icon_px = Theme.resolve_icon_size(t, avail_h, "rows")
-	local font = Theme.resolve_font(t, avail_h, "rows")
+	local icon_px = styler.resolve_icon_size(t, avail_h, "rows")
+	local font = styler.resolve_font(t, avail_h, "rows")
 
 	-- Inhalt
 	local hline = wibox.widget({
@@ -72,8 +83,13 @@ function M.row_widget(item, t, opts)
 			forced_width = icon_px,
 			widget = wibox.widget.imagebox,
 		},
-		{ text = item.text or "", font = font, valign = "center", widget = wibox.widget.textbox },
-		spacing = t.row_spacing,
+		{
+			text = item.text or "",
+			font = font,
+			valign = "center",
+			widget = wibox.widget.textbox,
+		},
+		spacing = t.row_spacing or 8,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
@@ -86,8 +102,8 @@ function M.row_widget(item, t, opts)
 
 	local content = wibox.widget({
 		placed,
-		left = t.row_pad_l,
-		right = t.row_pad_r,
+		left = t.row_pad_l or 0,
+		right = t.row_pad_r or 0,
 		top = pad_t,
 		bottom = pad_b,
 		widget = wibox.container.margin,
@@ -101,7 +117,7 @@ function M.row_widget(item, t, opts)
 		widget = wibox.container.background,
 	})
 
-	-- Fokus-Hülle (ohne Rahmen)
+	-- Fokus-Hülle (deckt die ganze Row)
 	local focus_wrap = wibox.widget({
 		bg = "#00000000",
 		shape = t.row_shape or t.shape or gears.shape.rectangle,
@@ -111,23 +127,20 @@ function M.row_widget(item, t, opts)
 	})
 	focus_wrap:set_widget(bg_box)
 
-	-- --- Hover-Handling ---
-	-- unified: wir zeichnen Hover in set_focus() und steuern Maus separat so,
-	--          dass bei Maus-Over derselbe Look entsteht, aber Keyboard-Fokus Vorrang hat.
+	-- Hover-Handling
 	local is_kb_focus = false
 	if not unify and type(helpers.apply_hover) == "function" then
 		-- alter Weg (nur wenn explizit gewünscht)
 		helpers.apply_hover(bg_box, t, COLORS.bg, COLORS.hover)
 	else
-		-- unified hover
-		bg_box:connect_signal("mouse::enter", function()
+		-- unified: auf der ganzen Row-Hülle lauschen
+		focus_wrap:connect_signal("mouse::enter", function()
 			if not is_kb_focus then
-				bg_box.bg = COLORS.hover or COLORS.bg
-				-- fg optional ändern, falls gewünscht:
-				-- bg_box.fg = t.row_focus_fg or COLORS.fg
+				bg_box.bg = COLORS.hover
+				-- bg_box.fg = t.row_focus_fg or COLORS.fg -- optional
 			end
 		end)
-		bg_box:connect_signal("mouse::leave", function()
+		focus_wrap:connect_signal("mouse::leave", function()
 			if not is_kb_focus then
 				bg_box.bg = COLORS.bg
 				bg_box.fg = COLORS.fg
@@ -135,14 +148,15 @@ function M.row_widget(item, t, opts)
 		end)
 	end
 
-	-- Klick via Lib.actions (falls vorhanden)
+	-- Klick-Callback: lib.actions.click(item) ODER item.on_press
 	local actions = (lib and lib.actions) or nil
-	local on_click = (actions and type(actions.click) == "function") and actions.click(item) or nil
+	local on_click = (actions and type(actions.click) == "function" and actions.click(item)) or item.on_press or nil
+
 	local bindings = gears.table.join(awful.button({}, 1, on_click or function() end))
 	bg_box:buttons(bindings)
 	focus_wrap:buttons(bindings)
 
-	-- optionale Item-Hooks beibehalten
+	-- optionale Item-Hooks
 	bg_box:connect_signal("mouse::enter", function()
 		if item.on_hover_in then
 			item.on_hover_in(item, bg_box)
@@ -154,11 +168,14 @@ function M.row_widget(item, t, opts)
 		end
 	end)
 
+	-- Für Mouse→KB-Fokus-Glue (wichtig!)
+	focus_wrap.mouse_enter_target = focus_wrap
+
 	-- Tastatur-Fokus == Hover-Look
 	function focus_wrap:set_focus(on)
 		is_kb_focus = not not on
 		if on then
-			bg_box.bg = COLORS.hover or COLORS.bg
+			bg_box.bg = COLORS.hover
 			bg_box.fg = t.row_focus_fg or COLORS.fg
 		else
 			bg_box.bg = COLORS.bg
@@ -178,10 +195,10 @@ function M.row_widget(item, t, opts)
 	end
 
 	-- Höhe fixieren
-	local out = (type(helpers.fixed_height) == "function") and helpers.fixed_height(focus_wrap, eff_h)
+	local out = (helpers and type(helpers.fixed_height) == "function") and helpers.fixed_height(focus_wrap, eff_h)
 		or fallback_fixed_height(focus_wrap, eff_h)
 
-	-- Proxy Methoden (wichtig für Focus.attach)
+	-- Proxy-Methoden (für Focus.attach)
 	function out:set_focus(on, th2)
 		if focus_wrap.set_focus then
 			focus_wrap:set_focus(on, th2)
@@ -198,12 +215,11 @@ function M.row_widget(item, t, opts)
 end
 
 function M.list_widget(items, t, opts)
-	if not (t and t.__raw_theme) then
-		t = Theme.with_defaults(t)
-	end
+	local styler = resolve_deps(opts) -- nur den ersten Rückgabewert (styler) verwenden
+	t = styler.with_defaults(t or {})
 	opts = opts or {}
 
-	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing }
+	local box = { layout = wibox.layout.fixed.vertical, spacing = t.list_spacing or 4 }
 	local focus = {}
 
 	for _, it in ipairs(items or {}) do
@@ -211,7 +227,7 @@ function M.list_widget(items, t, opts)
 		local row = M.row_widget(it, t, {
 			colors = (it.colors or opts.colors),
 			row_h = (it.row_h or opts.row_h),
-			lib = opts.lib,
+			deps = opts.deps, -- wichtig: deps weiterreichen
 		})
 		table.insert(box, row)
 		table.insert(focus, row)

@@ -3,10 +3,13 @@
 
 local Theme = {}
 
+-- Versuche Utilities (adjust, etc.) aus dem Menü-Theme zu nutzen
+local Styler_ok, Styler = pcall(require, "features.shell.menu.lib.theme")
+
 Theme.defaults = {
 	-- Geometrie
-	dialog_w = 560,
-	dialog_h = 360,
+	-- dialog_w = 560,
+	-- dialog_h = 360,
 	dialog_radius = 0,
 	dialog_border_width = 1,
 	dialog_border = "#053193",
@@ -66,7 +69,7 @@ Theme.defaults = {
 	-- cancel_width = 120,
 
 	----------------------------------------------------------------
-	-- ¿ WICHTIG: Keys, die rows.lua / columns.lua erwarten
+	-- WICHTIG: Keys, die rows.lua / columns.lua erwarten
 	-- (wenn du sie nicht überschreibst, werden sie aus body_* abgeleitet)
 	----------------------------------------------------------------
 	row_bg = nil, -- default: body_bg
@@ -76,6 +79,9 @@ Theme.defaults = {
 	right_bg = nil, -- default: row_bg
 	right_fg = nil, -- default: row_fg
 	row_h = 48, -- Standard-Zeilenhöhe
+
+	-- Optional: explizite Hover-Farbe; wenn nil, wird sie in Theme.get via adjust(-8) abgeleitet
+	row_bg_hover = nil,
 }
 
 local function merge(a, b)
@@ -104,6 +110,17 @@ function Theme.get(overrides)
 	t.left_fg = t.left_fg or t.row_fg
 	t.right_bg = t.right_bg or t.row_bg
 	t.right_fg = t.right_fg or t.row_fg
+
+	-- >>> Hover-Farbe zuverlässig ableiten (bevorzugt über Styler.adjust(..., -8))
+	if not t.row_bg_hover then
+		local base = t.row_bg or t.body_bg or "#00000000"
+		if Styler_ok and type(Styler.adjust) == "function" then
+			t.row_bg_hover = Styler.adjust(base, -8)
+		else
+			-- Fallback: minimal dunkler via Alpha-Overlay (subtil)
+			t.row_bg_hover = base
+		end
+	end
 
 	-- Kennzeichne als ¿roh¿, damit widgets/rows.lua NICHT erneut normalisiert.
 	t.__raw_theme = true

@@ -59,15 +59,44 @@ function M.build_popup(args)
 	local d = args.data or {}
 
 	-------------------------------------------------------------------
+	-- NEU: zentrale Dependencies/Context (Styler + Lib)
+	-------------------------------------------------------------------
+	local deps = {
+		styler = Theme_ok and Theme or {
+			-- sehr schlanke Fallbacks, wenn Theme nicht geladen ist
+			with_defaults = function(tt)
+				return tt or {}
+			end,
+			adjust = function(hex, _)
+				return hex
+			end,
+			resolve_icon_size = function(_, h)
+				return math.max(1, math.floor((h or 24) * 0.6 + 0.5))
+			end,
+			resolve_font = function(_, h)
+				return string.format("Sans %d", math.max(8, math.floor((h or 24) * 0.35 + 0.5)))
+			end,
+			row_colors = function(tt, side)
+				local bg = (side == "left") and (tt.left_bg or tt.row_bg or tt.body_bg or "#FFFFFF")
+					or (tt.right_bg or tt.row_bg or tt.body_bg or "#FFFFFF")
+				return { bg = bg, fg = tt.row_fg or tt.body_fg or "#000000" }
+			end,
+		},
+		lib = Lib,
+	}
+
+	-------------------------------------------------------------------
 	-- Header / Columns / Footer
 	-------------------------------------------------------------------
-	local header_api = Header.build(d.user, t)
+	-- Header kann deps optional ignorieren; Vorwärtskompatibilität
+	local header_api = Header.build(d.user, t, { deps = deps })
 
 	-- Spalten-Farbpaletten und Zeilenhöhen aus Theme ableiten
-	local left_colors = Theme_ok and Theme.row_colors(t, "left") or { bg = t.left_bg or "#FFFFFF" }
-	local right_colors = Theme_ok and Theme.row_colors(t, "right") or { bg = t.right_bg or "#D2E5FA" }
+	local left_colors = Theme_ok and Theme.row_colors(t, "left") or deps.styler.row_colors(t, "left")
+	local right_colors = Theme_ok and Theme.row_colors(t, "right") or deps.styler.row_colors(t, "right")
 
 	local columns = Columns.build(d.left_items, d.right_items, t, {
+		deps = deps, -- NEU: durchreichen
 		-- Spaltenbreiten/Abstände
 		left_w = tonumber(t.col_left_w) or 250,
 		right_w = tonumber(t.col_right_w) or 230,
@@ -81,14 +110,14 @@ function M.build_popup(args)
 		left_bg = t.left_bg or left_colors.bg,
 		right_bg = t.right_bg or right_colors.bg,
 
-		-- Row-Styles/-Höhen werden an die Rows (P.list_widget) durchgereicht
+		-- Row-Styles/-Höhen werden an die Rows durchgereicht
 		left_opts = {
-			colors = left_colors, -- { bg, fg, hover }
-			row_h = tonumber(t.left_row_h or t.row_h), -- eigene Höhe links
+			colors = left_colors, -- { bg, fg, hover? }
+			row_h = tonumber(t.left_row_h or t.row_h),
 		},
 		right_opts = {
 			colors = right_colors,
-			row_h = tonumber(t.right_row_h or t.row_h), -- eigene Höhe rechts
+			row_h = tonumber(t.right_row_h or t.row_h),
 		},
 	})
 
@@ -96,6 +125,7 @@ function M.build_popup(args)
 		power_items = d.power_items,
 		on_search = args.on_search,
 		t = t,
+		deps = deps, -- NEU: durchreichen
 	})
 
 	-------------------------------------------------------------------
@@ -135,6 +165,7 @@ function M.build_popup(args)
 	-------------------------------------------------------------------
 	local popup_api = Popup.wrap(framed, {
 		theme = t,
+		deps = deps, -- NEU: falls Popup/Launcher daraus lesen
 		enable_esc_grabber = true,
 		placement = function(p, s)
 			-- Primary: unten links andocken, andere Screens: zentrieren
@@ -160,17 +191,22 @@ function M.build_popup(args)
 	-- Öffentliche Menü-API
 	-------------------------------------------------------------------
 	local api = {}
+
+	-- NEU: injiziere deps & back-compat
+	api.deps = deps
+	api.lib = deps.lib
+
 	local stop_focus = nil
 
 	local function attach_menu_focus()
+		local lib = deps.lib or Lib
+
 		-- 1) Fokus-Items der Spalten
 		local raw = (columns.get_focus_items and columns:get_focus_items()) or {}
 		local cols_focus
 		if raw.left or raw.right then
-			-- alte/menü-spezifische Form mit Feldern
 			cols_focus = { left = raw.left or {}, right = raw.right or {} }
 		else
-			-- N-Spalten-Liste -> auf links/rechts mappen (Menü nutzt eh 2)
 			cols_focus = { left = raw[1] or {}, right = raw[2] or {} }
 		end
 
@@ -181,8 +217,8 @@ function M.build_popup(args)
 		end
 
 		-- 3) Orchestrator: Links/Rechts + Power kombinieren
-		if Lib and Lib.focus and type(Lib.focus.attach_columns_power) == "function" then
-			return Lib.focus.attach_columns_power(cols_focus.left or {}, cols_focus.right or {}, power_focus or {}, t, {
+		if lib and lib.focus and type(lib.focus.attach_columns_power) == "function" then
+			return lib.focus.attach_columns_power(cols_focus.left or {}, cols_focus.right or {}, power_focus or {}, t, {
 				handle = popup_api, -- für ESC etc.
 				mouse_follow = true, -- Hover aktualisiert Tastaturfokus
 				start_side = "left", -- initial links
@@ -190,7 +226,7 @@ function M.build_popup(args)
 		end
 
 		-- Fallback: linear
-		if Lib and Lib.focus and type(Lib.focus.attach) == "function" then
+		if lib and lib.focus and type(lib.focus.attach) == "function" then
 			local linear = {}
 			for _, w in ipairs(cols_focus.left or {}) do
 				table.insert(linear, w)
@@ -201,7 +237,7 @@ function M.build_popup(args)
 			for _, w in ipairs(power_focus or {}) do
 				table.insert(linear, w)
 			end
-			return Lib.focus.attach(linear, t, { handle = popup_api })
+			return lib.focus.attach(linear, t, { handle = popup_api })
 		end
 
 		return nil
@@ -314,6 +350,7 @@ function M.build_popup(args)
 	end
 
 	function api:make_launcher(icon, beautiful_mod)
+		-- Popup darf deps lesen (z. B. für Launcher-Theme)
 		return Popup.make_launcher(self, icon, beautiful_mod)
 	end
 

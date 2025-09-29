@@ -32,7 +32,6 @@ local function is_array(t)
 end
 
 -- spec = { { items = {...}, ... }, { items = {...}, ... }, ... }
--- Kurzform erlaubt: spec = { {...}, {...} } mit jeder {...} selbst als Items-Liste
 local function looks_like_spec_array(a)
 	if not is_array(a) then
 		return false
@@ -50,19 +49,14 @@ local function looks_like_spec_array(a)
 	return false
 end
 
--- Robuste Moduserkennung zwischen:
---  - legacy2: build(left_items, right_items, theme, opts)
---  - spec:    build(spec_array, theme, opts)
+-- Robuste Moduserkennung (legacy2 vs spec)
 local function detect_mode(a, b, c, d)
-	-- Menü ruft: build(left_items, right_items, t, opts)
 	if is_array(a) and is_array(b) then
 		return { mode = "legacy2", left_items = a or {}, right_items = b or {}, t = c or {}, opts = d or {} }
 	end
-	-- Control Panel / generisch: build(spec_array, t, opts)
 	if looks_like_spec_array(a) then
 		return { mode = "spec", spec = a, t = b or {}, opts = c or {} }
 	end
-	-- Fallback: als 2-Spalten interpretieren
 	return { mode = "legacy2", left_items = a or {}, right_items = b or {}, t = c or {}, opts = d or {} }
 end
 
@@ -82,8 +76,20 @@ local function mk_column_widget(view, bg, forced_w)
 	return inner
 end
 
+-- Sichert, dass eine Hover-Farbe vorhanden ist
+local function ensure_colors_hover(opt, theme, styler)
+	if not opt or not opt.colors then
+		return
+	end
+	local bg0 = opt.colors.bg or (theme and theme.row_bg) or "#00000000"
+	opt.colors.hover = opt.colors.hover
+		or (theme and theme.row_bg_hover)
+		or (styler and styler.adjust and styler.adjust(bg0, -8))
+		or bg0
+end
+
 -- =========================
--- Builder für N-Spalten-Descriptors
+-- Builder für N-Spalten-Descriptors (spec)
 -- descs[i] = {
 --   items = {...},
 --   width = 0.33 (Ratio 0..1) | 240 (px) | nil,
@@ -96,6 +102,9 @@ local function build_from_descriptors(descs, theme, top_opts)
 	theme = theme or {}
 	top_opts = top_opts or {}
 
+	local deps = top_opts.deps
+	local styler = deps and deps.styler
+
 	local col_widgets, col_focus = {}, {}
 	local any_ratio = false
 	local ratios = {}
@@ -106,7 +115,10 @@ local function build_from_descriptors(descs, theme, top_opts)
 		local row_opts = shallow_copy(d.opts or {})
 		row_opts.colors = row_opts.colors or d.palette
 		row_opts.row_h = row_opts.row_h or d.row_h or theme.row_h
-		row_opts.lib = row_opts.lib or top_opts.lib
+		row_opts.deps = row_opts.deps or deps
+
+		-- Hover-Farbe sicherstellen, falls Palette übergeben wurde
+		ensure_colors_hover(row_opts, theme, styler)
 
 		local view, focus = P.list_widget(items, theme, row_opts)
 
@@ -120,7 +132,7 @@ local function build_from_descriptors(descs, theme, top_opts)
 
 		local colw = mk_column_widget(view, bg, forced_w)
 
-		-- Spacing pro Spalte via Margins (funktioniert mit ratio & flex)
+		-- Spacing pro Spalte via Margins
 		if spacing > 0 then
 			local left_pad = (i > 1) and math.floor(spacing / 2) or 0
 			local right_pad = (i < #descs) and (spacing - math.floor(spacing / 2)) or 0
@@ -187,7 +199,6 @@ local function build_from_descriptors(descs, theme, top_opts)
 		end
 		saved.descs[i].items = items or {}
 		saved.descs[i].opts = shallow_copy(per_col_opts or saved.descs[i].opts or {})
-		-- Einfachheit: komplett neu bauen (wibox erlaubt Hot-Swap)
 		local rebuilt = build_from_descriptors(saved.descs, saved.theme, saved.top_opts)
 		api.widget = rebuilt.widget
 		api.get_focus_items = rebuilt.get_focus_items
@@ -196,7 +207,7 @@ local function build_from_descriptors(descs, theme, top_opts)
 		api.set_col = rebuilt.set_col
 	end
 
-	-- Backward-Compat Helfer bei exakt 2 Spalten:
+	-- Backward-Compat bei 2 Spalten:
 	if #descs == 2 then
 		function api:set_left(items, per_col_opts)
 			api:set_col(1, items, per_col_opts)
@@ -208,11 +219,9 @@ local function build_from_descriptors(descs, theme, top_opts)
 	end
 
 	function api:get_focus_items()
-		-- Für Menü-Kompatibilität mit left/right bei 2 Spalten:
 		if #col_focus == 2 then
 			return { left = col_focus[1] or {}, right = col_focus[2] or {} }
 		end
-		-- 3+ Spalten: Listenform
 		return col_focus
 	end
 
@@ -238,7 +247,6 @@ function Columns.build(a, b, c, d)
 					opts = s.opts,
 				}
 			else
-				-- Kurzform: s ist schon eine Items-Liste
 				descs[i] = { items = s }
 			end
 		end
@@ -247,8 +255,19 @@ function Columns.build(a, b, c, d)
 
 	-- ===== legacy 2-Spalten Pfad =====
 	local t, opts = m.t, m.opts
+	local deps = opts.deps
+	local styler = deps and deps.styler
+
 	local left_opts = shallow_copy(opts.left_opts or {})
 	local right_opts = shallow_copy(opts.right_opts or {})
+
+	-- deps in Row-Opts pushen
+	left_opts.deps = left_opts.deps or deps
+	right_opts.deps = right_opts.deps or deps
+
+	-- Hover-Farbe sicherstellen, wenn Palette/Colors übergeben wurde
+	ensure_colors_hover(left_opts, t, styler)
+	ensure_colors_hover(right_opts, t, styler)
 
 	local left_view, left_focus = P.list_widget(m.left_items or {}, t, left_opts)
 	local right_view, right_focus = P.list_widget(m.right_items or {}, t, right_opts)
@@ -259,7 +278,7 @@ function Columns.build(a, b, c, d)
 	local left_col = mk_column_widget(left_view, left_bg, opts.left_w)
 	local right_col = mk_column_widget(right_view, right_bg, opts.right_w)
 
-	-- Spaltenabstand über Margins (kompatibel mit flex)
+	-- Spaltenabstand
 	local spacing = tonumber(opts.spacing) or 0
 	if spacing > 0 then
 		left_col = wibox.widget({ left_col, right = math.floor(spacing / 2), widget = wibox.container.margin })
@@ -290,6 +309,7 @@ function Columns.build(a, b, c, d)
 	function api:set_left(items, per_col_opts)
 		local new_opts = shallow_copy(opts)
 		new_opts.left_opts = per_col_opts or left_opts
+		new_opts.deps = new_opts.deps or opts.deps
 		local new = Columns.build(items or {}, m.right_items or {}, t, new_opts)
 		api.widget = new.widget
 		api.get_focus_items = new.get_focus_items
@@ -300,6 +320,7 @@ function Columns.build(a, b, c, d)
 	function api:set_right(items, per_col_opts)
 		local new_opts = shallow_copy(opts)
 		new_opts.right_opts = per_col_opts or right_opts
+		new_opts.deps = new_opts.deps or opts.deps
 		local new = Columns.build(m.left_items or {}, items or {}, t, new_opts)
 		api.widget = new.widget
 		api.get_focus_items = new.get_focus_items

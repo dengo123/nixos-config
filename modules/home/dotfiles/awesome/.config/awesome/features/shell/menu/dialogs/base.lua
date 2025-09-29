@@ -112,7 +112,10 @@ end
 -- COLUMNS: n Spalten mit je eigener Palette/Rowhöhe
 -- spec = { { key="left", width=..., palette={bg,fg,hover?}, row_h=?, items={...} }, ... }
 function Base.layouts_columns(spec, th, dims)
-	local api = Layouts.columns.build(spec or {}, th, { lib = Lib })
+	-- WICHTIG: deps (mit lib) weitergeben, damit rows.lua Click-Callbacks erhält
+	local api = Layouts.columns.build(spec or {}, th, {
+		deps = { lib = Lib },
+	})
 	local focus_lists = (api.get_focus_items and api:get_focus_items()) or {}
 	return api.widget, focus_lists
 end

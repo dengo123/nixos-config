@@ -111,16 +111,24 @@ local function build_actions()
 	}
 end
 
-local function distribute(items, n)
-	n = math.max(1, tonumber(n) or 1)
-	local cols = {}
-	for i = 1, n do
-		cols[i] = {}
-	end
-	for i, it in ipairs(items or {}) do
-		table.insert(cols[((i - 1) % n) + 1], it)
-	end
-	return cols
+-- Hilfsfunktion: Höhe aus Zeilenanzahl/Theme/Padding ableiten
+local function compute_dialog_height(th, rows_max, per_col)
+	th = th or {}
+	local header_h = th.header_h or 80
+	local footer_h = th.footer_h or 80
+	local pad_v = th.pad_v or 14
+	local row_h = (per_col and per_col.row_h) or th.row_h or 48
+	local list_sp = th.list_spacing or 4
+
+	-- Columns-Padding, so wie du es an Columns.build übergibst
+	local cols_pad_t = th.cols_pad_t or 2
+	local cols_pad_b = th.cols_pad_b or 2
+
+	-- Body-Höhe = oberes Spaltenpad + Zeilen + Zwischenabstände + unteres Spaltenpad
+	local body_h = cols_pad_t + (rows_max * row_h) + (math.max(rows_max - 1, 0) * list_sp) + cols_pad_b
+
+	-- Gesamthöhe = Header + oberes Dialogpad + Body + unteres Dialogpad + Footer
+	return header_h + pad_v + body_h + pad_v + footer_h
 end
 
 function M.open(theme_overrides)
@@ -132,36 +140,53 @@ function M.open(theme_overrides)
 		focus = { mode = "columns", start_col = 1, mouse_follow = true },
 
 		body_builder = function(th, dims, _get_close)
-			-- 1) Items bauen
+			-- 1) Items bauen (wie bisher)
 			local items = {}
 			for _, a in ipairs(build_actions()) do
-				table.insert(items, {
+				items[#items + 1] = {
 					text = (a.emoji and (a.emoji .. " ") or "") .. (a.label or ""),
 					icon = a.icon,
 					on_press = a.on_press,
-				})
+				}
 			end
 
-			-- 2) Spalten
+			-- 2) Spaltenanzahl & Verteilung
 			local ncols = tonumber(th.control_columns) or 2
-			local cols_items = distribute(items, ncols)
+			local cols_items = (function()
+				local out = {}
+				for i = 1, ncols do
+					out[i] = {}
+				end
+				for i, it in ipairs(items) do
+					out[((i - 1) % ncols) + 1][#out[((i - 1) % ncols) + 1] + 1] = it
+				end
+				return out
+			end)()
 
-			-- 3) Spec
-			local spec = {}
-			local width_each = 1 / ncols
-			local row_h = th.row_h or 48
+			-- 3) rows_max bestimmen
+			local rows_max = 0
 			for i = 1, ncols do
-				table.insert(spec, { key = "col" .. i, width = width_each, items = cols_items[i], row_h = row_h })
+				rows_max = math.max(rows_max, #cols_items[i])
 			end
 
-			-- 4) Lib mit close-Injection, damit Aktionen den Dialog schließen
+			-- 4) Höhe berechnen und an Base.dialog zurückmelden
+			local desired_h = compute_dialog_height(th, rows_max, { row_h = th.row_h or 48 })
+			-- dims wird erst NACH Rückgabe von body_builder in Base gesetzt,
+			-- daher geben wir die Größe via return-„Nebenkanal“ zurück:
+			-- Trick: setze _G.__control_panel_height (oder pack es in th)
+			th._computed_dialog_h = desired_h
+
+			-- 5) Columns bauen (wie gehabt)
+			local Columns = require("features.shell.menu.layouts.columns")
+
+			-- wrapped lib, damit Klicks den Dialog schließen
 			local function wrap_lib_for_close(lib, get_close)
 				local actions = lib.actions or {}
 				return {
 					helpers = lib.helpers,
 					actions = {
 						click = function(item)
-							local orig = actions.click(item) -- -> function([close])
+							local orig = actions.click(item)
 							return function()
 								local close = get_close()
 								pcall(orig, close)
@@ -170,22 +195,30 @@ function M.open(theme_overrides)
 					},
 				}
 			end
-			local wrapped_lib = wrap_lib_for_close(Lib, _get_close)
+			local wrapped_lib = wrap_lib_for_close(require("features.shell.menu.lib"), _get_close)
 
-			-- 5) Columns direkt bauen, damit wir opts.lib setzen können
-			local Columns = require("features.shell.menu.layouts.columns")
-			local api = Columns.build(spec, th, {
-				lib = wrapped_lib,
-				pad_l = dims.pad_h,
-				pad_r = dims.pad_h,
-				pad_t = dims.pad_v,
-				pad_b = dims.pad_v,
+			-- 2-Spalten Build (wenn du spec willst, geht’s analog)
+			local api = Columns.build(cols_items[1], cols_items[2], th, {
+				deps = { lib = wrapped_lib, styler = require("features.shell.menu.lib.theme") },
+				left_opts = { row_h = th.row_h or 48 },
+				right_opts = { row_h = th.row_h or 48 },
+				pad_l = th.pad_h or 16,
+				pad_r = th.pad_h or 16,
+				pad_t = th.pad_v or 14,
+				pad_b = th.pad_v or 14,
 				spacing = th.cols_spacing or 0,
 			})
-			local widget = api.widget
-			local focus_lists = (api.get_focus_items and api:get_focus_items()) or {}
-			return widget, focus_lists
+
+			return api.widget, (api.get_focus_items and api:get_focus_items()) or {}
 		end,
+
+		-- Größe hier setzen: greift VOR Render
+		size = (function()
+			-- wenn body_builder schon lief, nimm berechnete Höhe; sonst Fallback
+			local th = (type(theme_overrides) == "function") and (theme_overrides() or {}) or (theme_overrides or {})
+			local h = rawget(th, "_computed_dialog_h")
+			return h and { h = h } or nil
+		end)(),
 	})
 end
 
