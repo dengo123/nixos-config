@@ -13,6 +13,8 @@ in {
   };
 
   config = mkIf cfg.enable {
-    programs.spotify-player.enable = true;
+    programs.spotify-player = {
+      enable = true;
+    };
   };
 }
