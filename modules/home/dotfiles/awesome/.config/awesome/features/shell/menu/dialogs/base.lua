@@ -52,6 +52,7 @@ local function shallow_merge(a, b)
 	return out
 end
 
+-- Theme-Resolver + Bridge in Menü-Theme
 local function resolve_theme(overrides)
 	local ov = {}
 	if type(overrides) == "function" then
@@ -71,11 +72,8 @@ local function resolve_theme(overrides)
 
 	local merged = (Theme and Theme.merge) and Theme.merge(ui_base, ov) or shallow_merge(ui_base, ov)
 
-	-- ============================================================
-	-- THEME-BRÜCKE (Dialog → Rows/Spalten)
-	-- Verhindert, dass rows/columns auf Menü-Defaults zurückfallen.
-	-- ============================================================
-	-- Mappe body_* aus dem Dialog-Theme auf row_* (für rows.lua)
+	-- ===== THEME-BRÜCKE: Dialog-Keys → Widgets/Rows/Columns =====
+	-- rows.lua erwartet row_*; Dialog liefert body_*
 	if merged.body_bg and not merged.row_bg then
 		merged.row_bg = merged.body_bg
 	end
@@ -83,7 +81,7 @@ local function resolve_theme(overrides)
 		merged.row_fg = merged.body_fg
 	end
 
-	-- Spaltenflächen (für columns.lua und seitenspezifische Rows)
+	-- columns.lua & seitenspezifische Rows
 	if not merged.left_bg then
 		merged.left_bg = merged.row_bg
 	end
@@ -96,9 +94,6 @@ local function resolve_theme(overrides)
 	if not merged.right_fg then
 		merged.right_fg = merged.row_fg
 	end
-
-	-- Hinweis: row_bg_hover wird in lib.theme aus row_bg abgeleitet,
-	-- daher müssen wir es hier nicht setzen.
 
 	return (Theme and Theme.get) and Theme.get(merged) or merged
 end
@@ -216,6 +211,18 @@ function Base.dialog(opts)
 		use_backdrop = p.use_backdrop,
 	})
 
+	------------------------------------------------------------------
+	-- BRIDGE: jedes Close informiert zuerst das Menü-Overlay
+	------------------------------------------------------------------
+	local menu_api = rawget(_G, "__menu_api")
+	local raw_close = handle.close
+	handle.close = function(...)
+		if menu_api and menu_api.hide_dialog then
+			pcall(menu_api.hide_dialog, menu_api)
+		end
+		return raw_close(...)
+	end
+
 	-- Cancel-Verhalten + Fokusindikator fallback
 	if not cancel_btn.set_focus then
 		function cancel_btn:set_focus(on)
@@ -238,7 +245,7 @@ function Base.dialog(opts)
 	close_ref = handle.close
 
 	----------------------------------------------------------------------
-	-- Fokussteuerung: nur "grid" und "columns"; sonst linearer Fallback
+	-- Fokussteuerung: "row" | "columns" | linearer Fallback
 	----------------------------------------------------------------------
 	local focus_cfg = opts.focus or {}
 	local mode = focus_cfg.mode -- nil → Fallback linear
@@ -247,7 +254,7 @@ function Base.dialog(opts)
 		local stop_focus
 
 		if mode == "row" then
-			-- Erwartet lineare Liste von Buttons (mk_icon_button)
+			-- Erwartet lineare Liste (mk_icon_button)
 			if type(Lib.focus.attach_grid) == "function" then
 				stop_focus = Lib.focus.attach_grid(focus_items, th, {
 					cols = focus_cfg.cols or 4,
@@ -261,7 +268,7 @@ function Base.dialog(opts)
 				})
 			end
 		elseif mode == "columns" then
-			-- Fokuslisten können {left=..., right=...} ODER {{...},{...}} sein → normalisieren
+			-- Fokuslisten können { left=..., right=... } ODER {{...},{...}} sein
 			local left, right
 			if focus_items.left or focus_items.right then
 				left, right = focus_items.left or {}, focus_items.right or {}
@@ -269,16 +276,13 @@ function Base.dialog(opts)
 				left, right = focus_items[1] or {}, focus_items[2] or {}
 			end
 
-			-- 2-Spalten-Orchestrator deines Focus-Moduls bevorzugen
 			if type(Lib.focus.attach_columns_power) == "function" then
 				stop_focus = Lib.focus.attach_columns_power(left, right, {}, th, {
 					handle = handle,
 					mouse_follow = (focus_cfg.mouse_follow ~= false),
-					-- start_col: 1 => left, 2 => right
 					start_side = (focus_cfg.start_col == 2) and "right" or "left",
 				})
 			elseif type(Lib.focus.attach) == "function" then
-				-- Fallback: beide Spalten linearisieren
 				local linear = {}
 				for _, w in ipairs(left) do
 					table.insert(linear, w)
@@ -295,7 +299,6 @@ function Base.dialog(opts)
 			-- simpler Fallback: linear (Body + Cancel ans Ende)
 			local linear = {}
 			if type(focus_items[1]) == "table" then
-				-- könnte columns-shape sein → flatten
 				for _, col in ipairs(focus_items or {}) do
 					for _, w in ipairs(col) do
 						table.insert(linear, w)

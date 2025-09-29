@@ -29,6 +29,7 @@ function Focus.attach(items, th, opts)
 	local i = 1
 	local mouse_follow = (opts.mouse_follow ~= false)
 	local enter_handlers = {}
+	local kg_id = nil
 
 	local function hi(idx, on)
 		local w = items[idx]
@@ -65,8 +66,25 @@ function Focus.attach(items, th, opts)
 		end
 	end
 
+	-- Gemeinsamer Cleanup (auch für ESC & Stop)
+	local function cleanup()
+		if kg_id then
+			pcall(awful.keygrabber.stop, kg_id)
+			kg_id = nil
+		end
+		for idx, rec in ipairs(enter_handlers) do
+			if rec and rec.obj and rec.cb then
+				pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
+			end
+			enter_handlers[idx] = nil
+		end
+		for idx2 = 1, n do
+			pcall(hi, idx2, false)
+		end
+	end
+
 	-- Keygrabber
-	local kg_id = awful.keygrabber.run(function(_, key, ev)
+	kg_id = awful.keygrabber.run(function(_, key, ev)
 		if ev == "release" then
 			return
 		end
@@ -76,6 +94,8 @@ function Focus.attach(items, th, opts)
 		elseif key == keys.right or key == keys.down then
 			set_index(i + 1)
 		elseif key == keys.cancel then
+			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
+			cleanup()
 			if opts.handle and opts.handle.close then
 				pcall(function()
 					opts.handle:close()
@@ -99,21 +119,9 @@ function Focus.attach(items, th, opts)
 		end
 	end)
 
-	-- Cleanup
+	-- Cleanup (Stop-Funktion)
 	return function()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-			kg_id = nil
-		end
-		for idx, rec in ipairs(enter_handlers) do
-			if rec and rec.obj and rec.cb then
-				pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
-			end
-			enter_handlers[idx] = nil
-		end
-		for idx = 1, n do
-			pcall(hi, idx, false)
-		end
+		cleanup()
 	end
 end
 
@@ -146,6 +154,7 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 
 	local iL, iR, iP = 1, 1, 1
 	local last_column = (zone == "right" and "right") or "left"
+	local kg_id = nil
 
 	local function set_focus_list(list, idx, on)
 		local w = list[idx]
@@ -256,8 +265,25 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 		end
 	end
 
+	-- Gemeinsamer Cleanup (auch für ESC & Stop)
+	local function cleanup()
+		if kg_id then
+			pcall(awful.keygrabber.stop, kg_id)
+			kg_id = nil
+		end
+		for _, bucket in pairs(enter_handlers) do
+			for idx, rec in ipairs(bucket) do
+				if rec and rec.obj and rec.cb then
+					pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
+				end
+				bucket[idx] = nil
+			end
+		end
+		clear_all_focus()
+	end
+
 	-- Keygrabber
-	local kg_id = awful.keygrabber.run(function(_, key, ev)
+	kg_id = awful.keygrabber.run(function(_, key, ev)
 		if ev == "release" then
 			return
 		end
@@ -290,23 +316,19 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 			if zone == "left" and nL > 0 then
 				if iL < nL then
 					iL = set_index(L, nL, iL, 1)
-				else
-					if nP > 0 then
-						enter_zone("power")
-					end
+				elseif nP > 0 then
+					enter_zone("power")
 				end
 			elseif zone == "right" and nR > 0 then
 				if iR < nR then
 					iR = set_index(R, nR, iR, 1)
-				else
-					if nP > 0 then
-						enter_zone("power")
-					end
+				elseif nP > 0 then
+					enter_zone("power")
 				end
-			elseif zone == "power" then
-				-- kein wrap nach unten
 			end
 		elseif key == keys.cancel then
+			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
+			cleanup()
 			if opts.handle and opts.handle.close then
 				pcall(function()
 					opts.handle:close()
@@ -337,25 +359,15 @@ function Focus.attach_columns_power(left_items, right_items, power_items, th, op
 		end
 	end)
 
-	-- Cleanup
+	-- Cleanup (Stop-Funktion)
 	return function()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-			kg_id = nil
-		end
-		for _, bucket in pairs(enter_handlers) do
-			for idx, rec in ipairs(bucket) do
-				if rec and rec.obj and rec.cb then
-					pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
-				end
-				bucket[idx] = nil
-			end
-		end
-		clear_all_focus()
+		cleanup()
 	end
 end
 
--- Dialog Fokus
+---------------------------------------------------------------------
+-- Dialog Fokus (Body-Items + Cancel-Item)
+---------------------------------------------------------------------
 function Focus.attach_dialog(body_items, cancel_item, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
@@ -373,6 +385,7 @@ function Focus.attach_dialog(body_items, cancel_item, th, opts)
 
 	local i = 1
 	local enter_handlers = {}
+	local kg_id = nil
 
 	local function hi(idx, on)
 		local w = items[idx]
@@ -380,6 +393,7 @@ function Focus.attach_dialog(body_items, cancel_item, th, opts)
 			pcall(w.set_focus, w, on, th)
 		end
 	end
+
 	local function set_index(new_i)
 		if new_i == i then
 			return
@@ -406,14 +420,27 @@ function Focus.attach_dialog(body_items, cancel_item, th, opts)
 		end
 	end
 
+	local function cleanup()
+		if kg_id then
+			pcall(awful.keygrabber.stop, kg_id)
+			kg_id = nil
+		end
+		for _, e in pairs(enter_handlers) do
+			pcall(e.widget.disconnect_signal, e.widget, "mouse::enter", e.handler)
+		end
+		for idx2 = 1, n do
+			pcall(hi, idx2, false)
+		end
+	end
+
 	-- Keygrabber: links/rechts im Body; ↓ => Cancel; ↑ von Cancel zurück
-	local kg_id = awful.keygrabber.run(function(_, key, ev)
+	kg_id = awful.keygrabber.run(function(_, key, ev)
 		if ev == "release" then
 			return
 		end
 
 		if key == keys.left then
-			if i < n then
+			if i > 1 then
 				set_index(i - 1)
 			end
 		elseif key == keys.right then
@@ -429,6 +456,8 @@ function Focus.attach_dialog(body_items, cancel_item, th, opts)
 				set_index(math.max(1, i - 1))
 			end
 		elseif key == keys.cancel then
+			-- ESC: Erst Fokus & Grabber aufräumen, dann schließen
+			cleanup()
 			if opts.handle and opts.handle.close then
 				pcall(function()
 					opts.handle:close()
@@ -454,15 +483,7 @@ function Focus.attach_dialog(body_items, cancel_item, th, opts)
 
 	-- Stop/Cleanup
 	return function()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-		end
-		for _, e in pairs(enter_handlers) do
-			pcall(e.widget.disconnect_signal, e.widget, "mouse::enter", e.handler)
-		end
-		for idx = 1, n do
-			pcall(hi, idx, false)
-		end
+		cleanup()
 	end
 end
 
