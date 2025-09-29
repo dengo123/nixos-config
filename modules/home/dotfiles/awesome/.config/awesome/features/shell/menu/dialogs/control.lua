@@ -1,7 +1,7 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/control.lua
 local Base = require("features.shell.menu.dialogs.base")
 local Lib = require("features.shell.menu.lib")
-local Term = require("features.shell.menu.lib.term")
+local Term = require("features.shell.menu.lib.helpers.term")
 
 local M = {}
 
