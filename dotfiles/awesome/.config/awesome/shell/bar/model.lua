@@ -17,7 +17,7 @@ function M.build(s, opts)
 
 	local tabs = Tabs.build(s, { modkey = modkey }) -- tasks-only tabs
 	local tags = Tags.build(s, {}) -- neuer Indicator
-	local tray = showtray and Systray.build({ base_size = 20 }) or nil
+	local tray = showtray and Systray.build() or nil
 	local clock = Clock.build("%H:%M")
 
 	local start_btn = Start.build(s, {
