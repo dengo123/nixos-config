@@ -1,3 +1,4 @@
+-- shell/bar/widgets/tags.lua
 local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")

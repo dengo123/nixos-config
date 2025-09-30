@@ -15,7 +15,10 @@ function M.build(s, opts)
 	local kb = opts.keyboardlayout
 	local showtray = (opts.systray ~= false)
 
-	local tabs = Tabs.build(s, { modkey = modkey }) -- tasks-only tabs
+	local tabs = Tabs.build(s, {
+		modkey = modkey,
+		group_by_class = true,
+	}) -- tasks-only tabs
 	local tags = Tags.build(s, {}) -- neuer Indicator
 	local tray = showtray and Systray.build() or nil
 	local clock = Clock.build("%H:%M")

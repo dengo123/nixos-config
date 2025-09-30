@@ -3,7 +3,7 @@ local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
-local Theme = require("ui.theme") -- NEU
+local Theme = require("ui.theme")
 
 local M = {}
 
@@ -17,34 +17,132 @@ local function ellipsize(txt, max)
 	return txt:sub(1, math.max(0, max - 1)) .. "…"
 end
 
-function M.build(s, opts)
-	opts = opts or {}
-	local modkey = opts.modkey or "Mod4"
-
-	-- Theme holen
-	local TabsTheme = (Theme and Theme.tabs and Theme.tabs.get and Theme.tabs.get(opts.theme)) or {}
-	local spacing = TabsTheme.spacing or (opts.spacing or 6)
-	local tab_radius = TabsTheme.radius or (opts.tab_radius or beautiful.border_radius or 6)
-	local max_title_len = TabsTheme.title_len or (opts.max_title_len or 18)
-	local icon_size = TabsTheme.icon_size or (opts.icon_size or 16)
-	local pad_h = TabsTheme.pad_h or (opts.pad_h or 8)
-	local pad_v = TabsTheme.pad_v or (opts.pad_v or 3)
-	local inactive_bw = TabsTheme.inactive_border_width or 1
-	local C = TabsTheme.colors or {}
-	local H = tonumber(beautiful.wibar_height) or 28
-	local FIX_W = math.floor((TabsTheme.width_factor or 6) * H) -- 6x Wibar-Höhe
-
-	local tasklist_buttons = gears.table.join(
-		awful.button({}, 1, function(c)
+-- pick lead client in a group: focused on screen, else first non-minimized, else first
+local function pick_lead(clients)
+	if #clients == 0 then
+		return nil
+	end
+	if client.focus then
+		for _, c in ipairs(clients) do
 			if c == client.focus then
-				c.minimized = true
-			else
-				c:emit_signal("request::activate", "tasklist", { raise = true })
+				return c
+			end
+		end
+	end
+	for _, c in ipairs(clients) do
+		if not c.minimized then
+			return c
+		end
+	end
+	return clients[1]
+end
+
+-- build one "group tab" widget for a class
+local function build_group_tab(cls, clients, theme, H, FIX_W)
+	local C = theme.colors or {}
+	local icon_size = theme.icon_size or 16
+	local pad_h = theme.pad_h or 8
+	local pad_v = theme.pad_v or 3
+	local radius = theme.radius or (beautiful.border_radius or 6)
+	local inactive_bw = theme.inactive_border_width or 1
+	local title_len = theme.title_len or 18
+
+	local lead = pick_lead(clients)
+
+	local icon = wibox.widget({
+		widget = wibox.widget.imagebox,
+		resize = true,
+		forced_height = icon_size,
+		forced_width = icon_size,
+		image = (lead and lead.icon) or nil,
+	})
+	local title = wibox.widget({
+		widget = wibox.widget.textbox,
+		markup = ellipsize(cls or (lead and (lead.class or lead.name) or "App"), title_len),
+	})
+
+	local inner = wibox.widget({
+		icon,
+		title,
+		layout = wibox.layout.fixed.horizontal,
+		spacing = 6,
+	})
+
+	local content = wibox.container.margin(inner, pad_h, pad_h, pad_v, pad_v)
+
+	local bgw = wibox.widget({
+		content,
+		widget = wibox.container.background,
+		shape = function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, radius)
+		end,
+		forced_height = H,
+		forced_width = FIX_W,
+	})
+
+	-- initial colors
+	local function refresh_colors()
+		local focused_in_group = false
+		if client.focus then
+			for _, c in ipairs(clients) do
+				if c == client.focus then
+					focused_in_group = true
+					break
+				end
+			end
+		end
+		local bg, fg, bw, bc
+		if focused_in_group then
+			bg = C.focus_bg or beautiful.bg_focus or "#4C6EF5"
+			fg = C.focus_fg or beautiful.fg_focus or "#FFFFFF"
+			bw = 0
+			bc = bg
+		else
+			bg = C.normal_bg or "#00000000"
+			fg = C.normal_fg or beautiful.fg_normal or "#DDDDDD"
+			bw = inactive_bw
+			bc = C.focus_bg or "#4C6EF5"
+		end
+		bgw.bg, bgw.fg = bg, fg
+		bgw.shape_border_width = bw
+		bgw.shape_border_color = bc
+	end
+	refresh_colors()
+
+	-- interactions
+	bgw:buttons(gears.table.join(
+		awful.button({}, 1, function()
+			-- left click: focus/raise lead; if lead invalid, pick a new one
+			if not (lead and lead.valid) then
+				lead = pick_lead(clients)
+			end
+			if lead and lead.valid then
+				lead:emit_signal("request::activate", "group_tab", { raise = true })
 			end
 		end),
-		awful.button({}, 3, function(c)
-			c:emit_signal("request::activate", "tasklist", { raise = true })
-			awful.menu.client_list({ theme = { width = 300 } })
+		awful.button({}, 3, function()
+			-- right click: dropdown of this group's clients (only same class)
+			local items = {}
+			for _, c in ipairs(clients) do
+				local label = c.class or c.name or "App"
+				table.insert(items, {
+					label,
+					function()
+						if c.valid then
+							c:emit_signal("request::activate", "group_menu", { raise = true })
+						end
+					end,
+					c.icon,
+				})
+			end
+			if #items == 0 then
+				return
+			end
+			if _G.__tabs_tag_menu and _G.__tabs_tag_menu.wibox and _G.__tabs_tag_menu.wibox.valid then
+				_G.__tabs_tag_menu:hide()
+			end
+			_G.__tabs_tag_menu = awful.menu({ items = items, theme = { width = 300 } })
+			_G.__tabs_tag_menu:show()
 		end),
 		awful.button({}, 4, function()
 			awful.client.focus.byidx(1)
@@ -52,100 +150,229 @@ function M.build(s, opts)
 		awful.button({}, 5, function()
 			awful.client.focus.byidx(-1)
 		end)
-	)
+	))
 
-	local tasklist = awful.widget.tasklist({
-		screen = s,
-		filter = awful.widget.tasklist.filter.currenttags,
-		buttons = tasklist_buttons,
-		layout = { spacing = spacing, layout = wibox.layout.fixed.horizontal },
+	-- live updates: if focus or client icons/names change
+	client.connect_signal("focus", refresh_colors)
+	client.connect_signal("unfocus", refresh_colors)
 
-		widget_template = {
-			{
-				{
-					{
-						id = "icon_role",
-						widget = wibox.widget.imagebox,
-						resize = true,
-						forced_height = icon_size,
-						forced_width = icon_size,
-					},
-					{
-						id = "title_role",
-						widget = wibox.widget.textbox,
-						ellipsize = "end",
-					},
-					layout = wibox.layout.fixed.horizontal,
-					spacing = 6,
-				},
-				widget = wibox.container.margin,
-				left = pad_h,
-				right = pad_h,
-				top = pad_v,
-				bottom = pad_v,
-			},
-			id = "bg_role",
-			widget = wibox.container.background,
-			shape = function(cr, w, h)
-				gears.shape.rounded_rect(cr, w, h, tab_radius)
-			end,
+	return bgw
+end
 
-			-- fixe Größe: Höhe = Wibar-Höhe, Breite = 6x Wibar-Höhe
-			forced_height = H,
-			forced_width = FIX_W,
-
-			create_callback = function(self, c)
-				self._icon = self:get_children_by_id("icon_role")[1]
-				self._title = self:get_children_by_id("title_role")[1]
-				if self._icon then
-					self._icon.image = c.icon or nil
+-- rebuild groups for a screen: returns a horizontal widget with all group tabs
+local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
+	local by_class = {}
+	for c in
+		awful.client.iterate(function(cc)
+			-- nur Clients, die auf mind. einem ausgewählten Tag von s liegen
+			if not (cc and cc.valid) then
+				return false
+			end
+			if cc.skip_taskbar then
+				return false
+			end
+			if cc.screen ~= s then
+				return false
+			end
+			local tags = cc:tags() or {}
+			for _, t in ipairs(tags) do
+				if t.selected then
+					return true
 				end
-				if self._title then
-					local txt = c.class or c.name or "App"
-					self._title.markup = ellipsize(txt, max_title_len)
-				end
-			end,
+			end
+			return false
+		end)
+	do
+		local key = c.class or (c.name or "App")
+		by_class[key] = by_class[key] or {}
+		table.insert(by_class[key], c)
+	end
 
-			update_callback = function(self, c)
-				if self._icon then
-					self._icon.image = c.icon or nil
-				end
-				if self._title then
-					local txt = c.class or c.name or "App"
-					self._title.markup = ellipsize(txt, max_title_len)
-				end
-
-				local bg, fg, bw, bc
-				if c == client.focus then
-					bg = (C.focus_bg or beautiful.bg_focus or "#4C6EF5")
-					fg = (C.focus_fg or beautiful.fg_focus or "#FFFFFF")
-					bw = 0 -- aktiver Tab OHNE Rand
-					bc = bg
-				elseif c.minimized then
-					bg = (C.minimize_bg or "#00000000")
-					fg = (C.minimize_fg or beautiful.fg_minimize or "#AAAAAA")
-					bw = inactive_bw -- dünner Rand in Fokus-Farbe
-					bc = (C.focus_bg or "#4C6EF5")
-				else
-					bg = (C.normal_bg or "#00000000")
-					fg = (C.normal_fg or beautiful.fg_normal or "#DDDDDD")
-					bw = inactive_bw
-					bc = (C.focus_bg or "#4C6EF5")
-				end
-
-				-- Farben + Border anwenden
-				self.bg, self.fg = bg, fg
-				self.shape_border_width = bw
-				self.shape_border_color = bc
-
-				-- Sicherheit: fixe Maße auch bei Theme-Reload
-				self.forced_height = H
-				self.forced_width = FIX_W
-			end,
-		},
+	local container = wibox.widget({
+		layout = wibox.layout.fixed.horizontal,
+		spacing = spacing,
 	})
 
-	return { tasklist = tasklist }
+	for cls, clients in pairs(by_class) do
+		container:add(build_group_tab(cls, clients, theme, H, FIX_W))
+	end
+
+	return container
+end
+
+function M.build(s, opts)
+	opts = opts or {}
+	local TabsTheme = (Theme and Theme.tabs and Theme.tabs.get and Theme.tabs.get(opts.theme)) or {}
+	local spacing = TabsTheme.spacing or (opts.spacing or 6)
+	local tab_radius = TabsTheme.radius or (opts.tab_radius or beautiful.border_radius or 6) -- kept for inner tabs
+	local max_title_len = TabsTheme.title_len or (opts.max_title_len or 18)
+	local icon_size = TabsTheme.icon_size or (opts.icon_size or 16)
+	local pad_h = TabsTheme.pad_h or (opts.pad_h or 8)
+	local pad_v = TabsTheme.pad_v or (opts.pad_v or 3)
+	local inactive_bw = TabsTheme.inactive_border_width or 1
+	local H = tonumber(beautiful.wibar_height) or 28
+	local FIX_W = math.floor((TabsTheme.width_factor or 6) * H)
+
+	if opts.group_by_class then
+		-- grouped mode
+		local box = wibox.widget({
+			layout = wibox.layout.fixed.horizontal,
+			spacing = spacing,
+		})
+
+		local function refresh()
+			box:reset()
+			local grouped = build_grouped_taskbar(s, TabsTheme, H, FIX_W, spacing)
+			-- grouped returns a container; append its children into box
+			for _, child in ipairs(grouped.children or {}) do
+				box:add(child)
+			end
+		end
+
+		-- refresh on relevant changes
+		local function delayed_refresh()
+			gears.timer.delayed_call(refresh)
+		end
+		client.connect_signal("manage", delayed_refresh)
+		client.connect_signal("unmanage", delayed_refresh)
+		client.connect_signal("property::minimized", delayed_refresh)
+		client.connect_signal("property::name", delayed_refresh)
+		client.connect_signal("property::class", delayed_refresh)
+		client.connect_signal("tagged", delayed_refresh)
+		client.connect_signal("untagged", delayed_refresh)
+		tag.connect_signal("property::selected", delayed_refresh)
+		screen.connect_signal("arrange", delayed_refresh)
+		client.connect_signal("focus", delayed_refresh)
+		client.connect_signal("unfocus", delayed_refresh)
+
+		refresh()
+		return { tasklist = box }
+	else
+		-- fallback: deine bestehende per-client tasklist (unverändert)
+		local tasklist_buttons = gears.table.join(
+			awful.button({}, 1, function(c)
+				if c == client.focus then
+					c.minimized = true
+				else
+					c:emit_signal("request::activate", "tasklist", { raise = true })
+				end
+			end),
+			awful.button({}, 3, function(c)
+				local t = c.first_tag or (c.screen and c.screen.selected_tag)
+				if not t then
+					return
+				end
+				local items = {}
+				for _, cc in ipairs(t:clients()) do
+					local label = cc.class or cc.name or "App"
+					table.insert(items, {
+						label,
+						function()
+							if cc.valid then
+								cc:emit_signal("request::activate", "tag_menu", { raise = true })
+							end
+						end,
+						cc.icon,
+					})
+				end
+				if #items == 0 then
+					return
+				end
+				if _G.__tabs_tag_menu and _G.__tabs_tag_menu.wibox and _G.__tabs_tag_menu.wibox.valid then
+					_G.__tabs_tag_menu:hide()
+				end
+				_G.__tabs_tag_menu = awful.menu({ items = items, theme = { width = 300 } })
+				_G.__tabs_tag_menu:show()
+			end),
+			awful.button({}, 4, function()
+				awful.client.focus.byidx(1)
+			end),
+			awful.button({}, 5, function()
+				awful.client.focus.byidx(-1)
+			end)
+		)
+
+		local tasklist = awful.widget.tasklist({
+			screen = s,
+			filter = awful.widget.tasklist.filter.currenttags,
+			buttons = tasklist_buttons,
+			layout = { spacing = spacing, layout = wibox.layout.fixed.horizontal },
+			widget_template = {
+				{
+					{
+						{
+							id = "icon_role",
+							widget = wibox.widget.imagebox,
+							resize = true,
+							forced_height = icon_size,
+							forced_width = icon_size,
+						},
+						{ id = "title_role", widget = wibox.widget.textbox, ellipsize = "end" },
+						layout = wibox.layout.fixed.horizontal,
+						spacing = 6,
+					},
+					widget = wibox.container.margin,
+					left = pad_h,
+					right = pad_h,
+					top = pad_v,
+					bottom = pad_v,
+				},
+				id = "bg_role",
+				widget = wibox.container.background,
+				shape = function(cr, w, h)
+					gears.shape.rounded_rect(cr, w, h, tab_radius)
+				end,
+				forced_height = H,
+				forced_width = FIX_W,
+				create_callback = function(self, c)
+					self._icon = self:get_children_by_id("icon_role")[1]
+					self._title = self:get_children_by_id("title_role")[1]
+					if self._icon then
+						self._icon.image = c.icon or nil
+					end
+					if self._title then
+						local txt = c.class or c.name or "App"
+						self._title.markup =
+							ellipsize(txt, (Theme.tabs and Theme.tabs.get and Theme.tabs.get().title_len) or 18)
+					end
+				end,
+				update_callback = function(self, c)
+					if self._icon then
+						self._icon.image = c.icon or nil
+					end
+					if self._title then
+						local txt = c.class or c.name or "App"
+						self._title.markup =
+							ellipsize(txt, (Theme.tabs and Theme.tabs.get and Theme.tabs.get().title_len) or 18)
+					end
+					local C = TabsTheme.colors or {}
+					local bg, fg, bw, bc
+					if c == client.focus then
+						bg = (C.focus_bg or beautiful.bg_focus or "#4C6EF5")
+						fg = (C.focus_fg or beautiful.fg_focus or "#FFFFFF")
+						bw = 0
+						bc = bg
+					elseif c.minimized then
+						bg = (C.minimize_bg or "#00000000")
+						fg = (C.minimize_fg or beautiful.fg_minimize or "#AAAAAA")
+						bw = TabsTheme.inactive_border_width or 1
+						bc = (C.focus_bg or "#4C6EF5")
+					else
+						bg = (C.normal_bg or "#00000000")
+						fg = (C.normal_fg or beautiful.fg_normal or "#DDDDDD")
+						bw = TabsTheme.inactive_border_width or 1
+						bc = (C.focus_bg or "#4C6EF5")
+					end
+					self.bg, self.fg = bg, fg
+					self.shape_border_width = bw
+					self.shape_border_color = bc
+					self.forced_height = H
+					self.forced_width = FIX_W
+				end,
+			},
+		})
+		return { tasklist = tasklist }
+	end
 end
 
 return M
