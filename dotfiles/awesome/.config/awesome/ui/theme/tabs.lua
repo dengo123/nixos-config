@@ -4,7 +4,7 @@ local beautiful = require("beautiful")
 local T = {}
 
 local DEFAULTS = {
-	spacing = 6,
+	spacing = 2,
 	radius = function()
 		return beautiful.border_radius or 6
 	end,

@@ -17,7 +17,7 @@ local function ellipsize(txt, max)
 	return txt:sub(1, math.max(0, max - 1)) .. "…"
 end
 
--- pick lead client in a group: focused on screen, else first non-minimized, else first
+-- Lead-Client der Gruppe bestimmen: fokussiert > erster nicht minimierter > erster
 local function pick_lead(clients)
 	if #clients == 0 then
 		return nil
@@ -37,7 +37,7 @@ local function pick_lead(clients)
 	return clients[1]
 end
 
--- build one "group tab" widget for a class
+-- eine Gruppen-Kachel (Tab) bauen
 local function build_group_tab(cls, clients, theme, H, FIX_W)
 	local C = theme.colors or {}
 	local icon_size = theme.icon_size or 16
@@ -80,7 +80,7 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 		forced_width = FIX_W,
 	})
 
-	-- initial colors
+	-- Farben je nach Fokus der Gruppe
 	local function refresh_colors()
 		local focused_in_group = false
 		if client.focus then
@@ -109,10 +109,20 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 	end
 	refresh_colors()
 
-	-- interactions
+	-- Interaktionen
 	bgw:buttons(gears.table.join(
+		-- Linksklick: wenn Gruppe aktiv (ein Client der Gruppe fokussiert) → minimieren,
+		-- sonst Lead der Gruppe fokussieren/raisen
 		awful.button({}, 1, function()
-			-- left click: focus/raise lead; if lead invalid, pick a new one
+			local focused = client.focus
+			if focused then
+				for _, c in ipairs(clients) do
+					if c == focused and c.valid then
+						c.minimized = true
+						return
+					end
+				end
+			end
 			if not (lead and lead.valid) then
 				lead = pick_lead(clients)
 			end
@@ -120,11 +130,12 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 				lead:emit_signal("request::activate", "group_tab", { raise = true })
 			end
 		end),
+
+		-- Rechtsklick: Dropdown NUR mit Clients dieser Gruppe; Label bevorzugt c.name
 		awful.button({}, 3, function()
-			-- right click: dropdown of this group's clients (only same class)
 			local items = {}
 			for _, c in ipairs(clients) do
-				local label = c.class or c.name or "App"
+				local label = c.name or c.class or "App"
 				table.insert(items, {
 					label,
 					function()
@@ -144,6 +155,7 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 			_G.__tabs_tag_menu = awful.menu({ items = items, theme = { width = 300 } })
 			_G.__tabs_tag_menu:show()
 		end),
+
 		awful.button({}, 4, function()
 			awful.client.focus.byidx(1)
 		end),
@@ -152,19 +164,19 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 		end)
 	))
 
-	-- live updates: if focus or client icons/names change
+	-- Live-Farbanpassung nur lokal (kein globales Rebuild)
 	client.connect_signal("focus", refresh_colors)
 	client.connect_signal("unfocus", refresh_colors)
 
 	return bgw
 end
 
--- rebuild groups for a screen: returns a horizontal widget with all group tabs
+-- gruppierte Taskbar für Screen s aufbauen
 local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
 	local by_class = {}
 	for c in
 		awful.client.iterate(function(cc)
-			-- nur Clients, die auf mind. einem ausgewählten Tag von s liegen
+			-- Clients, die auf mind. einem ausgewählten Tag von s liegen
 			if not (cc and cc.valid) then
 				return false
 			end
@@ -193,8 +205,17 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
 		spacing = spacing,
 	})
 
-	for cls, clients in pairs(by_class) do
-		container:add(build_group_tab(cls, clients, theme, H, FIX_W))
+	-- stabile Reihenfolge (alphabetisch, case-insensitive)
+	local keys = {}
+	for cls, _ in pairs(by_class) do
+		table.insert(keys, cls or "")
+	end
+	table.sort(keys, function(a, b)
+		return a:lower() < b:lower()
+	end)
+
+	for _, cls in ipairs(keys) do
+		container:add(build_group_tab(cls, by_class[cls], theme, H, FIX_W))
 	end
 
 	return container
@@ -202,177 +223,45 @@ end
 
 function M.build(s, opts)
 	opts = opts or {}
+	-- Theme
 	local TabsTheme = (Theme and Theme.tabs and Theme.tabs.get and Theme.tabs.get(opts.theme)) or {}
 	local spacing = TabsTheme.spacing or (opts.spacing or 6)
-	local tab_radius = TabsTheme.radius or (opts.tab_radius or beautiful.border_radius or 6) -- kept for inner tabs
-	local max_title_len = TabsTheme.title_len or (opts.max_title_len or 18)
-	local icon_size = TabsTheme.icon_size or (opts.icon_size or 16)
-	local pad_h = TabsTheme.pad_h or (opts.pad_h or 8)
-	local pad_v = TabsTheme.pad_v or (opts.pad_v or 3)
-	local inactive_bw = TabsTheme.inactive_border_width or 1
 	local H = tonumber(beautiful.wibar_height) or 28
 	local FIX_W = math.floor((TabsTheme.width_factor or 6) * H)
 
-	if opts.group_by_class then
-		-- grouped mode
-		local box = wibox.widget({
-			layout = wibox.layout.fixed.horizontal,
-			spacing = spacing,
-		})
+	-- Gruppierte Darstellung (immer aktiv)
+	local box = wibox.widget({
+		layout = wibox.layout.fixed.horizontal,
+		spacing = spacing,
+	})
 
-		local function refresh()
-			box:reset()
-			local grouped = build_grouped_taskbar(s, TabsTheme, H, FIX_W, spacing)
-			-- grouped returns a container; append its children into box
-			for _, child in ipairs(grouped.children or {}) do
-				box:add(child)
-			end
+	local function refresh()
+		box:reset()
+		local grouped = build_grouped_taskbar(s, TabsTheme, H, FIX_W, spacing)
+		-- grouped ist ein Container: seine Kinder in unsere Box übernehmen
+		for _, child in ipairs(grouped.children or {}) do
+			box:add(child)
 		end
-
-		-- refresh on relevant changes
-		local function delayed_refresh()
-			gears.timer.delayed_call(refresh)
-		end
-		client.connect_signal("manage", delayed_refresh)
-		client.connect_signal("unmanage", delayed_refresh)
-		client.connect_signal("property::minimized", delayed_refresh)
-		client.connect_signal("property::name", delayed_refresh)
-		client.connect_signal("property::class", delayed_refresh)
-		client.connect_signal("tagged", delayed_refresh)
-		client.connect_signal("untagged", delayed_refresh)
-		tag.connect_signal("property::selected", delayed_refresh)
-		screen.connect_signal("arrange", delayed_refresh)
-		client.connect_signal("focus", delayed_refresh)
-		client.connect_signal("unfocus", delayed_refresh)
-
-		refresh()
-		return { tasklist = box }
-	else
-		-- fallback: deine bestehende per-client tasklist (unverändert)
-		local tasklist_buttons = gears.table.join(
-			awful.button({}, 1, function(c)
-				if c == client.focus then
-					c.minimized = true
-				else
-					c:emit_signal("request::activate", "tasklist", { raise = true })
-				end
-			end),
-			awful.button({}, 3, function(c)
-				local t = c.first_tag or (c.screen and c.screen.selected_tag)
-				if not t then
-					return
-				end
-				local items = {}
-				for _, cc in ipairs(t:clients()) do
-					local label = cc.class or cc.name or "App"
-					table.insert(items, {
-						label,
-						function()
-							if cc.valid then
-								cc:emit_signal("request::activate", "tag_menu", { raise = true })
-							end
-						end,
-						cc.icon,
-					})
-				end
-				if #items == 0 then
-					return
-				end
-				if _G.__tabs_tag_menu and _G.__tabs_tag_menu.wibox and _G.__tabs_tag_menu.wibox.valid then
-					_G.__tabs_tag_menu:hide()
-				end
-				_G.__tabs_tag_menu = awful.menu({ items = items, theme = { width = 300 } })
-				_G.__tabs_tag_menu:show()
-			end),
-			awful.button({}, 4, function()
-				awful.client.focus.byidx(1)
-			end),
-			awful.button({}, 5, function()
-				awful.client.focus.byidx(-1)
-			end)
-		)
-
-		local tasklist = awful.widget.tasklist({
-			screen = s,
-			filter = awful.widget.tasklist.filter.currenttags,
-			buttons = tasklist_buttons,
-			layout = { spacing = spacing, layout = wibox.layout.fixed.horizontal },
-			widget_template = {
-				{
-					{
-						{
-							id = "icon_role",
-							widget = wibox.widget.imagebox,
-							resize = true,
-							forced_height = icon_size,
-							forced_width = icon_size,
-						},
-						{ id = "title_role", widget = wibox.widget.textbox, ellipsize = "end" },
-						layout = wibox.layout.fixed.horizontal,
-						spacing = 6,
-					},
-					widget = wibox.container.margin,
-					left = pad_h,
-					right = pad_h,
-					top = pad_v,
-					bottom = pad_v,
-				},
-				id = "bg_role",
-				widget = wibox.container.background,
-				shape = function(cr, w, h)
-					gears.shape.rounded_rect(cr, w, h, tab_radius)
-				end,
-				forced_height = H,
-				forced_width = FIX_W,
-				create_callback = function(self, c)
-					self._icon = self:get_children_by_id("icon_role")[1]
-					self._title = self:get_children_by_id("title_role")[1]
-					if self._icon then
-						self._icon.image = c.icon or nil
-					end
-					if self._title then
-						local txt = c.class or c.name or "App"
-						self._title.markup =
-							ellipsize(txt, (Theme.tabs and Theme.tabs.get and Theme.tabs.get().title_len) or 18)
-					end
-				end,
-				update_callback = function(self, c)
-					if self._icon then
-						self._icon.image = c.icon or nil
-					end
-					if self._title then
-						local txt = c.class or c.name or "App"
-						self._title.markup =
-							ellipsize(txt, (Theme.tabs and Theme.tabs.get and Theme.tabs.get().title_len) or 18)
-					end
-					local C = TabsTheme.colors or {}
-					local bg, fg, bw, bc
-					if c == client.focus then
-						bg = (C.focus_bg or beautiful.bg_focus or "#4C6EF5")
-						fg = (C.focus_fg or beautiful.fg_focus or "#FFFFFF")
-						bw = 0
-						bc = bg
-					elseif c.minimized then
-						bg = (C.minimize_bg or "#00000000")
-						fg = (C.minimize_fg or beautiful.fg_minimize or "#AAAAAA")
-						bw = TabsTheme.inactive_border_width or 1
-						bc = (C.focus_bg or "#4C6EF5")
-					else
-						bg = (C.normal_bg or "#00000000")
-						fg = (C.normal_fg or beautiful.fg_normal or "#DDDDDD")
-						bw = TabsTheme.inactive_border_width or 1
-						bc = (C.focus_bg or "#4C6EF5")
-					end
-					self.bg, self.fg = bg, fg
-					self.shape_border_width = bw
-					self.shape_border_color = bc
-					self.forced_height = H
-					self.forced_width = FIX_W
-				end,
-			},
-		})
-		return { tasklist = tasklist }
 	end
+
+	local function delayed_refresh()
+		gears.timer.delayed_call(refresh)
+	end
+
+	-- Rebuild-Trigger: Änderungen an Client-Liste / Tags / Layout
+	client.connect_signal("manage", delayed_refresh)
+	client.connect_signal("unmanage", delayed_refresh)
+	client.connect_signal("property::minimized", delayed_refresh)
+	client.connect_signal("property::name", delayed_refresh)
+	client.connect_signal("property::class", delayed_refresh)
+	client.connect_signal("tagged", delayed_refresh)
+	client.connect_signal("untagged", delayed_refresh)
+	tag.connect_signal("property::selected", delayed_refresh)
+	screen.connect_signal("arrange", delayed_refresh)
+	-- wichtig: KEIN refresh auf focus/unfocus → sonst „springt“ die Leiste
+
+	refresh()
+	return { tasklist = box }
 end
 
 return M
