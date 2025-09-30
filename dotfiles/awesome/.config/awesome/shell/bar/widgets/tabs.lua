@@ -3,6 +3,7 @@ local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
+local Theme = require("ui.theme") -- NEU
 
 local M = {}
 
@@ -19,12 +20,19 @@ end
 function M.build(s, opts)
 	opts = opts or {}
 	local modkey = opts.modkey or "Mod4"
-	local spacing = opts.spacing or 6
-	local tab_radius = opts.tab_radius or beautiful.border_radius or 6
-	local max_title_len = opts.max_title_len or 18
-	local icon_size = opts.icon_size or 16
-	local pad_h = opts.pad_h or 8
-	local pad_v = opts.pad_v or 3
+
+	-- Theme holen
+	local TabsTheme = (Theme and Theme.tabs and Theme.tabs.get and Theme.tabs.get(opts.theme)) or {}
+	local spacing = TabsTheme.spacing or (opts.spacing or 6)
+	local tab_radius = TabsTheme.radius or (opts.tab_radius or beautiful.border_radius or 6)
+	local max_title_len = TabsTheme.title_len or (opts.max_title_len or 18)
+	local icon_size = TabsTheme.icon_size or (opts.icon_size or 16)
+	local pad_h = TabsTheme.pad_h or (opts.pad_h or 8)
+	local pad_v = TabsTheme.pad_v or (opts.pad_v or 3)
+	local inactive_bw = TabsTheme.inactive_border_width or 1
+	local C = TabsTheme.colors or {}
+	local H = tonumber(beautiful.wibar_height) or 28
+	local FIX_W = math.floor((TabsTheme.width_factor or 6) * H) -- 6x Wibar-Höhe
 
 	local tasklist_buttons = gears.table.join(
 		awful.button({}, 1, function(c)
@@ -48,13 +56,9 @@ function M.build(s, opts)
 
 	local tasklist = awful.widget.tasklist({
 		screen = s,
-		filter = awful.widget.tasklist.filter.currenttags, -- NUR Tasks
+		filter = awful.widget.tasklist.filter.currenttags,
 		buttons = tasklist_buttons,
-
-		layout = {
-			spacing = spacing,
-			layout = wibox.layout.fixed.horizontal,
-		},
+		layout = { spacing = spacing, layout = wibox.layout.fixed.horizontal },
 
 		widget_template = {
 			{
@@ -86,10 +90,13 @@ function M.build(s, opts)
 				gears.shape.rounded_rect(cr, w, h, tab_radius)
 			end,
 
-			create_callback = function(self, c, _idx, _objs)
+			-- fixe Größe: Höhe = Wibar-Höhe, Breite = 6x Wibar-Höhe
+			forced_height = H,
+			forced_width = FIX_W,
+
+			create_callback = function(self, c)
 				self._icon = self:get_children_by_id("icon_role")[1]
 				self._title = self:get_children_by_id("title_role")[1]
-				-- Initial
 				if self._icon then
 					self._icon.image = c.icon or nil
 				end
@@ -99,7 +106,7 @@ function M.build(s, opts)
 				end
 			end,
 
-			update_callback = function(self, c, _idx, _objs)
+			update_callback = function(self, c)
 				if self._icon then
 					self._icon.image = c.icon or nil
 				end
@@ -108,22 +115,32 @@ function M.build(s, opts)
 					self._title.markup = ellipsize(txt, max_title_len)
 				end
 
-				-- Zustände einfärben
-				local bg, fg
+				local bg, fg, bw, bc
 				if c == client.focus then
-					bg = beautiful.tasklist_bg_focus or beautiful.bg_focus or "#4C6EF5"
-					fg = beautiful.tasklist_fg_focus or beautiful.fg_focus or "#FFFFFF"
+					bg = (C.focus_bg or beautiful.bg_focus or "#4C6EF5")
+					fg = (C.focus_fg or beautiful.fg_focus or "#FFFFFF")
+					bw = 0 -- aktiver Tab OHNE Rand
+					bc = bg
 				elseif c.minimized then
-					bg = beautiful.tasklist_bg_minimize or "#00000000"
-					fg = beautiful.tasklist_fg_minimize or (beautiful.fg_minimize or "#AAAAAA")
+					bg = (C.minimize_bg or "#00000000")
+					fg = (C.minimize_fg or beautiful.fg_minimize or "#AAAAAA")
+					bw = inactive_bw -- dünner Rand in Fokus-Farbe
+					bc = (C.focus_bg or "#4C6EF5")
 				else
-					bg = beautiful.tasklist_bg_normal or "#00000000"
-					fg = beautiful.tasklist_fg_normal or (beautiful.fg_normal or "#DDDDDD")
+					bg = (C.normal_bg or "#00000000")
+					fg = (C.normal_fg or beautiful.fg_normal or "#DDDDDD")
+					bw = inactive_bw
+					bc = (C.focus_bg or "#4C6EF5")
 				end
-				local bgw = self:get_children_by_id("bg_role")[1]
-				if bgw then
-					bgw.bg, bgw.fg = bg, fg
-				end
+
+				-- Farben + Border anwenden
+				self.bg, self.fg = bg, fg
+				self.shape_border_width = bw
+				self.shape_border_color = bc
+
+				-- Sicherheit: fixe Maße auch bei Theme-Reload
+				self.forced_height = H
+				self.forced_width = FIX_W
 			end,
 		},
 	})

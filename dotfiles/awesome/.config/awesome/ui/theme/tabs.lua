@@ -3,7 +3,6 @@ local beautiful = require("beautiful")
 
 local T = {}
 
--- Defaults + beautiful-Übernahmen
 local DEFAULTS = {
 	spacing = 6,
 	radius = function()
@@ -13,6 +12,10 @@ local DEFAULTS = {
 	pad_v = 3,
 	icon_size = 16,
 	title_len = 18,
+
+	-- NEU: Breite = faktor * wibar_height
+	width_factor = 6, -- 6x Wibar-Höhe
+	inactive_border_width = 1, -- dünner Rand für inaktive Tabs
 
 	colors = {
 		focus_bg = function()
@@ -36,16 +39,13 @@ local DEFAULTS = {
 	},
 }
 
--- optional
-function T.init(_cfg) end
+function T.init(_) end
 
--- Liefert ein aufgelöstes Theme-Objekt (mit finalen Werten)
 function T.get(overrides)
 	overrides = overrides or {}
 	local function v(x)
 		return type(x) == "function" and x() or x
 	end
-
 	local theme = {
 		spacing = overrides.spacing or DEFAULTS.spacing,
 		radius = overrides.radius or v(DEFAULTS.radius),
@@ -53,6 +53,8 @@ function T.get(overrides)
 		pad_v = overrides.pad_v or DEFAULTS.pad_v,
 		icon_size = overrides.icon_size or DEFAULTS.icon_size,
 		title_len = overrides.title_len or DEFAULTS.title_len,
+		width_factor = overrides.width_factor or DEFAULTS.width_factor,
+		inactive_border_width = overrides.inactive_border_width or DEFAULTS.inactive_border_width,
 		colors = {
 			focus_bg = (overrides.colors and overrides.colors.focus_bg) or v(DEFAULTS.colors.focus_bg),
 			focus_fg = (overrides.colors and overrides.colors.focus_fg) or v(DEFAULTS.colors.focus_fg),
