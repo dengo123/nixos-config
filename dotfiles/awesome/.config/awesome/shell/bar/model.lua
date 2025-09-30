@@ -39,7 +39,7 @@ function M.build(s, opts)
 
 	local right = {
 		layout = wibox.layout.fixed.horizontal,
-		spacing = 10,
+		spacing = 0,
 		kb,
 		tray,
 		clock,
