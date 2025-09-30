@@ -2,7 +2,7 @@
 local awful = require("awful")
 
 local M = {
-	menu = require("shell.menu"),
+	-- KEIN menu-Require mehr
 	bar = {
 		model = require("shell.bar.model"),
 		view = require("shell.bar.view"),
@@ -31,7 +31,7 @@ function M.bar.setup(s, opts)
 	return M.bar.view.place(s, model, opts or {})
 end
 
--- High-Level-Init: Workspaces → Windowing → Notify → Menu/Bar
+-- High-Level-Init: Workspaces → Windowing → Notify → Bar (OHNE Menü)
 -- Erwartet { cfg, ui, input }
 function M.init(args)
 	args = args or {}
@@ -50,7 +50,7 @@ function M.init(args)
 		mouse = input.mouse,
 	})
 
-	-- 3) Notifier früh initialisieren (vor Menu/Bar)
+	-- 3) Notifier früh initialisieren
 	M.notify.init({
 		speech = true, -- true = Sprechblase, false = runde Ecken
 		position = "bottom_right",
@@ -62,22 +62,31 @@ function M.init(args)
 		timeout = 3,
 	})
 
-	-- 4) Menü bauen → API + Launcher ins cfg zurückgeben
-	local mw = M.menu.setup(cfg) -- { menu = api, launcher = widget }
-	cfg.mymainmenu = mw.menu
-	cfg.mylauncher = mw.launcher
+	-- 4) KEIN internes Menü, KEIN Launcher-Widget
+	cfg.mymainmenu = nil
+	cfg.mylauncher = nil
+
+	-- Optional: Externen Launcher als Funktion verfügbar machen (für Keybinds)
+	-- Beispiel in system.config.launcher: "rofi -show drun" oder "emacsclient -c"
+	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
+		local cmd = cfg.launcher
+		cfg.launcher_fn = function()
+			awful.spawn.with_shell(cmd)
+		end
+	else
+		cfg.launcher_fn = nil
+	end
 
 	-- 5) Bars pro Screen (Keyboardlayout-Widget einmalig)
 	local mykeyboardlayout = awful.widget.keyboardlayout()
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
-			launcher = cfg.mylauncher,
+			launcher = nil, -- explizit kein Launcher-Widget
 			keyboardlayout = mykeyboardlayout,
 		})
 	end)
 
-	-- cfg zurückschreiben (wichtig für input.apply in system.init)
 	return cfg
 end
 

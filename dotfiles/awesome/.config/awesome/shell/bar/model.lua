@@ -1,10 +1,10 @@
--- ~/.config/awesome/shell/bar/model.lua
 local wibox = require("wibox")
 
 local Tabs = require("shell.bar.widgets.tabs")
+local Tags = require("shell.bar.widgets.tags")
 local Clock = require("shell.bar.widgets.clock")
 local Systray = require("shell.bar.widgets.systray")
-local Start = require("shell.bar.widgets.start") -- <- NEU
+local Start = require("shell.bar.widgets.start")
 
 local M = {}
 
@@ -15,21 +15,24 @@ function M.build(s, opts)
 	local kb = opts.keyboardlayout
 	local showtray = (opts.systray ~= false)
 
-	local tabs = Tabs.build(s, { modkey = modkey })
+	local tabs = Tabs.build(s, { modkey = modkey }) -- tasks-only tabs
+	local tags = Tags.build(s, {}) -- neuer Indicator
 	local tray = showtray and Systray.build({ base_size = 20 }) or nil
 	local clock = Clock.build("%H:%M")
 
 	local start_btn = Start.build(s, {
-		menu = cfg.mymainmenu,
 		label = "Start",
 		icon = cfg.start_icon or cfg.awesome_icon,
+		menu = cfg.mymainmenu, -- kann nil sein
+		on_press = cfg.launcher_fn, -- externer Launcher (optional)
 	})
 
 	local left = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 8,
 		start_btn,
-		tabs.taglist,
+		tags.indicator, -- sitzt zwischen Start und Tabs
+		tabs.tasklist,
 	}
 
 	local center = nil
