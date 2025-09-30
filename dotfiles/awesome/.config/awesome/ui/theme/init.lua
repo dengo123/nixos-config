@@ -1,13 +1,34 @@
--- ~/.config/awesome/theme.lua
-local gears = require("gears")
-local beautiful = require("beautiful")
+-- ~/.config/awesome/ui/theme/init.lua
 local M = {}
-function M.apply(cfg)
-	local path = cfg.theme
-	if not path:match("^/") then
-		path = gears.filesystem.get_themes_dir() .. path
+
+-- Liste der Teil-Themes, die (optional) existieren können
+-- -> einfach neue Namen ergänzen, Datei unter ui/theme/<name>.lua anlegen
+local PARTS = {
+	"tabs",
+	"titlebar",
+	"wibar",
+}
+
+-- Teile laden (optional, ohne Absturz wenn eine Datei fehlt)
+for _, name in ipairs(PARTS) do
+	local ok, mod = pcall(require, "ui.theme." .. name)
+	if ok and type(mod) == "table" then
+		M[name] = mod
 	end
-	beautiful.init(path)
+end
+
+-- Optionaler Init-Hook: ruft .init(cfg) aller registrierten Teile auf
+function M.init(cfg)
+	for _, mod in pairs(M) do
+		if type(mod) == "table" and type(mod.init) == "function" then
+			-- defensiv aufrufen, damit ein fehlerhaftes Teil-Theme nicht alles stoppt
+			local ok, err = pcall(mod.init, cfg)
+			if not ok then
+				-- Wenn du Debug willst, ent-kommentieren:
+				-- naughty.notify({ title = "Theme init error", text = tostring(err) })
+			end
+		end
+	end
 end
 
 return M
