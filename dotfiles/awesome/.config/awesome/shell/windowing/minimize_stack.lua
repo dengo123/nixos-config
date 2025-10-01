@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/windowing/minimize_stack.lua
+-- ~/.config/awesome/shell/windowing/minimize_stack.lua
 local M = {}
 
 -- schwache Keys -> Screens können GC'd werden

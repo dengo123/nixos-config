@@ -4,8 +4,9 @@ local M = {}
 -- Liste der Teil-Themes, die (optional) existieren können
 -- -> einfach neue Namen ergänzen, Datei unter ui/theme/<name>.lua anlegen
 local PARTS = {
+	"notify",
 	"tabs",
-	"titlebar",
+	"windows",
 	"wibar",
 }
 
@@ -25,7 +26,7 @@ function M.init(cfg)
 			local ok, err = pcall(mod.init, cfg)
 			if not ok then
 				-- Wenn du Debug willst, ent-kommentieren:
-				-- naughty.notify({ title = "Theme init error", text = tostring(err) })
+				naughty.notify({ title = "Theme init error", text = tostring(err) })
 			end
 		end
 	end

@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/windowing/rules.lua
+-- ~/.config/awesome/shell/windowing/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 

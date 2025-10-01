@@ -9,7 +9,6 @@ local M = {
 	},
 	workspaces = require("shell.workspaces"),
 	windowing = require("shell.windowing"),
-	notify = require("shell.notify"),
 }
 
 -- interne Helper
@@ -48,21 +47,10 @@ function M.init(args)
 	M.windowing.init({
 		modkey = cfg.modkey,
 		mouse = input.mouse,
+		ui = ui,
 	})
 
-	-- 3) Notifier früh initialisieren
-	M.notify.init({
-		speech = true, -- true = Sprechblase, false = runde Ecken
-		position = "bottom_right",
-		bg = "#F5E6B3",
-		fg = "#000000",
-		border = "#C8B27A",
-		radius = 8,
-		icon_size = 24,
-		timeout = 3,
-	})
-
-	-- 4) KEIN internes Menü, KEIN Launcher-Widget
+	-- 3) KEIN internes Menü, KEIN Launcher-Widget
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 

@@ -14,7 +14,7 @@ function M.init(opts)
 	local TIMEOUT = opts.timeout or 3
 	local ICON_SIZE = opts.icon_size or 24
 	local POS = opts.position or "bottom_right"
-	local SPEECH = opts.speech or false
+	local SPEECH = opts.speech or true
 
 	-- Form (runde Ecken oder „Sprechblase“)
 	-- Zipfel NACH UNTEN (unten rechts)

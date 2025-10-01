@@ -13,7 +13,7 @@ function W.init(_cfg)
 	-- Systray
 	beautiful.systray_pad_h = beautiful.systray_pad_h or 4
 	beautiful.systray_pad_v = beautiful.systray_pad_v or 0
-	beautiful.systray_bg = beautiful.systray_bg or "#1B45B8"
+	beautiful.systray_bg = beautiful.systray_bg or "#0B89E7"
 	beautiful.bg_systray = beautiful.bg_systray or beautiful.systray_bg
 	local h = tonumber(beautiful.wibar_height) or 28
 	beautiful.systray_base_size = beautiful.systray_base_size or math.max(1, h - 6)
