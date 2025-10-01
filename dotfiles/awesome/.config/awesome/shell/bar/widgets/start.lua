@@ -1,38 +1,70 @@
--- ~/.config/awesome/features/shell/widgets/start.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
+local gfs = require("gears.filesystem")
+local gsurface = require("gears.surface")
 
 local M = {}
 
--- opts: { menu=?, label=?, icon=?, bg=?, bg_hover=?, fg=?, shape=?, margin? }
-function M.build(s, opts)
+function M.build(opts)
 	opts = opts or {}
-	local menu = opts.menu -- erwartest du aus shell.init
-	local label = opts.label or "Start"
-	local icon = opts.icon or beautiful.awesome_icon
-	local bg = opts.bg or (beautiful.bg_minimize or "#222222")
-	local bg_hover = opts.bg_hover or (beautiful.bg_focus or "#444444")
-	local fg = opts.fg or (beautiful.fg_normal or "#ffffff")
-	local shape = opts.shape or gears.shape.rounded_rect
-	local margin = opts.margin or { left = 8, right = 10, top = 4, bottom = 4 }
+	local s = opts.screen or (mouse and mouse.screen) or nil
+	local T = assert(opts.theme, "start widget needs opts.theme from ui/theme/start.get(cfg.start)")
 
-	local content = wibox.widget({
+	local H = tonumber(beautiful.wibar_height) or 28
+	local W = math.floor((T.width_factor or 4) * H)
+
+	-- Farben/Shape/Margins
+	local bg, bg_hover, fg = T.bg, (T.bg_hover or T.bg), T.fg
+	local shape = T.shape or gears.shape.rounded_rect
+	local margin = T.margin or { left = 16, right = 16, top = 4, bottom = 4 }
+
+	-- Icon robust laden + feste Größe
+	local icon_path = T.icon
+	if type(icon_path) == "string" and not icon_path:match("^/") then
+		icon_path = gfs.get_configuration_dir() .. icon_path
+	end
+	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
+	if not icon_surface then
+		icon_surface = gsurface.load_uncached(gfs.get_themes_dir() .. "default/icon.png")
+	end
+	local icon_size = T.icon_size or math.floor(H * 0.9)
+	local icon_widget = wibox.widget({
+		image = icon_surface,
+		resize = true,
+		forced_width = icon_size,
+		forced_height = icon_size,
+		widget = wibox.widget.imagebox,
+	})
+
+	-- Label: größer + fett + kursiv via Pango
+	local scale = T.font_size_scale or 1.75
+	local weight = T.font_weight or "bold"
+	local style = T.font_style or "italic"
+	local label_text = T.label or "start"
+	local label_markup = string.format(
+		'<span weight="%s" style="%s" size="%d%%">%s</span>',
+		weight,
+		style,
+		math.floor(100 * scale),
+		label_text
+	)
+	local label_widget = wibox.widget({
+		markup = label_markup,
+		widget = wibox.widget.textbox,
+	})
+
+	local row_inner = wibox.widget({
+		icon_widget,
+		label_widget,
+		spacing = T.spacing or 14, -- Abstand Icon ↔ Text
+		layout = wibox.layout.fixed.horizontal,
+	})
+
+	local row = wibox.widget({
 		{
-			{
-				{
-					image = icon,
-					resize = true,
-					widget = wibox.widget.imagebox,
-				},
-				{
-					text = label,
-					widget = wibox.widget.textbox,
-				},
-				spacing = 6,
-				layout = wibox.layout.fixed.horizontal,
-			},
+			row_inner,
 			left = margin.left,
 			right = margin.right,
 			top = margin.top,
@@ -44,27 +76,56 @@ function M.build(s, opts)
 	})
 
 	local btn = wibox.widget({
-		content,
+		row,
 		bg = bg,
 		shape = shape,
+		forced_width = W, -- z. B. 5× Wibar-Höhe
+		forced_height = (T.fixed_height ~= false) and H or nil,
 		widget = wibox.container.background,
 	})
 
-	-- Hover-Effekt
 	btn:connect_signal("mouse::enter", function()
-		btn.bg = bg_hover
+		if bg_hover then
+			btn.bg = bg_hover
+		end
 	end)
 	btn:connect_signal("mouse::leave", function()
-		btn.bg = bg
+		if bg then
+			btn.bg = bg
+		end
 	end)
 
-	-- Klick → Menü screen-bewusst öffnen/umschalten
-	btn:buttons(gears.table.join(awful.button({}, 1, function()
-		if not menu then
+	-- Klick-Logik
+	local launcher = opts.launcher
+	local terminal = opts.terminal or "xterm"
+	local menu = opts.menu
+	local function run_launcher()
+		if type(launcher) ~= "string" or launcher == "" then
+			awful.spawn.with_shell(terminal)
 			return
 		end
-		menu:toggle({ screen = s or mouse.screen })
-	end)))
+		local L = launcher:lower()
+		if L == "awesome" then
+			if menu and menu.toggle then
+				menu:toggle({ screen = s })
+			elseif menu and menu.show then
+				menu:show({ screen = s })
+			else
+				awful.spawn.with_shell(terminal)
+			end
+			return
+		end
+		if L == "rofi" then
+			awful.spawn.with_shell("rofi -show drun")
+			return
+		end
+		if L == "emacs" then
+			awful.spawn.with_shell("emacsclient -c || emacs")
+			return
+		end
+		awful.spawn.with_shell(launcher)
+	end
+	btn:buttons(gears.table.join(awful.button({}, 1, run_launcher)))
 
 	return btn
 end

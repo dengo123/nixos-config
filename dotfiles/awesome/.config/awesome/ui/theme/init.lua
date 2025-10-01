@@ -4,6 +4,7 @@ local M = {}
 -- Liste der Teil-Themes, die (optional) existieren können
 -- -> einfach neue Namen ergänzen, Datei unter ui/theme/<name>.lua anlegen
 local PARTS = {
+	"start",
 	"menu",
 	"notify",
 	"tabs",

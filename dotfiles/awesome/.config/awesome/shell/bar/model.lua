@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/bar/model.lua
 local wibox = require("wibox")
 
 local Tabs = require("shell.bar.widgets.tabs")
@@ -25,12 +26,14 @@ function M.build(s, opts)
 		TabsTheme = theme.tabs.get(cfg.tabs or {})
 	end
 
+	-- Start-Button-Theme
+	local StartTheme = nil
+	if theme and theme.start and theme.start.get then
+		StartTheme = theme.start.get(cfg.start or {})
+	end
+
 	-- Optional: Menü-Theme (weiß/beige, schwarze Schrift), z. B. aus cfg.menus
 	local MenuTheme = cfg.menus
-
-	-- Weitere Teil-Themes könntest du bei Bedarf genauso ziehen:
-	-- local TagsTheme  = (theme and theme.tags  and theme.tags.get)  and theme.tags.get(cfg.tags  or {})  or nil
-	-- local WibarTheme = (theme and theme.wibar and theme.wibar.get) and theme.wibar.get(cfg.wibar or {}) or nil
 
 	-- === Widgets aufbauen ===
 	local tabs = Tabs.build(s, {
@@ -40,25 +43,34 @@ function M.build(s, opts)
 		menu_theme = MenuTheme, -- << optional: zentrales Dropdown-Theme
 	})
 
-	local tags = Tags.build(s, { -- falls dein Tags-Widget eigene opts will, hier rein
-		-- theme = TagsTheme,
+	local tags = Tags.build(s, {
+		-- falls dein Tags-Widget eigene opts will, hier rein (z. B. theme = ...)
 	})
 
-	local tray = showtray and Systray.build() or nil
+	local tray = showtray
+			and Systray.build({
+				-- eigene (themed) Tray-Rechtsklick-Menüs:
+				menu_theme = MenuTheme,
+				-- pad_h / base_size / bg etc. kannst du bei Bedarf hier setzen
+			})
+		or nil
+
 	local clock = Clock.build("%H:%M")
 
-	local start_btn = Start.build(s, {
-		label = "Start",
-		icon = cfg.start_icon or cfg.awesome_icon,
-		menu = cfg.mymainmenu, -- kann nil sein
-		on_press = cfg.launcher_fn, -- optionaler externer Launcher
+	-- Start-Button: Funktion (Launcher) + Optik (Theme) sauber getrennt
+	local start_btn = Start.build({
+		screen = s,
+		theme = StartTheme, -- Optik aus ui/theme/start.lua:get(cfg.start)
+		launcher = cfg.launcher, -- "rofi" | "emacs" | "awesome" | custom cmd | nil
+		terminal = cfg.terminal, -- Fallback, wenn launcher leer/nil
+		menu = cfg.mymainmenu, -- nötig, wenn launcher == "awesome"
 	})
 
 	local left = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 8,
 		start_btn,
-		tags.indicator,
+		tags.indicator, -- sitzt zwischen Start und Tabs
 		tabs.tasklist,
 	}
 

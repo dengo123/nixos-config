@@ -3,7 +3,7 @@ local beautiful = require("beautiful")
 local W = {}
 
 function W.init(_cfg)
-	beautiful.wibar_height = beautiful.wibar_height or 28
+	beautiful.wibar_height = beautiful.wibar_height or 32
 	beautiful.wibar_bg = beautiful.wibar_bg or "#235CDB"
 	beautiful.wibar_fg = beautiful.wibar_fg or "#FFFFFF"
 

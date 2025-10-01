@@ -1,3 +1,4 @@
+-- shell/init.lua
 local awful = require("awful")
 
 local M = {
