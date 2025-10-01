@@ -30,20 +30,6 @@ return function(modkey)
 		end, { description = "move window up", group = "client" }),
 		awful.key({ modkey, "Shift" }, "Down", function()
 			H.move_client_dir("down")
-		end, { description = "move window down", group = "client" }),
-
-		-- Fenster auf anderen Monitor
-		awful.key({ modkey, "Shift", "Mod1" }, "Left", function()
-			H.move_client_to_screen("left")
-		end, { description = "move window to screen left", group = "client" }),
-		awful.key({ modkey, "Shift", "Mod1" }, "Right", function()
-			H.move_client_to_screen("right")
-		end, { description = "move window to screen right", group = "client" }),
-		awful.key({ modkey, "Shift", "Mod1" }, "Up", function()
-			H.move_client_to_screen("up")
-		end, { description = "move window to screen up", group = "client" }),
-		awful.key({ modkey, "Shift", "Mod1" }, "Down", function()
-			H.move_client_to_screen("down")
-		end, { description = "move window to screen down", group = "client" })
+		end, { description = "move window down", group = "client" })
 	)
 end

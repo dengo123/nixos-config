@@ -1,7 +1,6 @@
 -- ~/.config/awesome/shell/workspaces/init.lua
 local awful = require("awful")
 local tags = require("shell.workspaces.tags")
-local sigs = require("shell.workspaces.screen_signals")
 local layouts = require("shell.workspaces.layouts")
 
 local M = {}
@@ -11,10 +10,9 @@ function M.init(cfg)
 
 	-- Defaults
 	local opts = {
-		wallpaper_fn = cfg.wallpaper_fn or require("ui").wallpaper.set,
-		ensure_one_tag = true,
-		renumber_on_start = true,
-		auto_adapt_layout_on_rotation = true,
+		ensure_one_tag = (cfg.ensure_one_tag ~= false),
+		renumber_on_start = (cfg.renumber_on_start ~= false),
+		auto_adapt_layout_on_rotation = (cfg.auto_adapt_layout_on_rotation ~= false),
 		desktop_deco_fn = cfg.desktop_deco_fn,
 	}
 
@@ -23,9 +21,10 @@ function M.init(cfg)
 		layouts.apply()
 	end
 
-	-- Wallpaper-Signale
-	if opts.wallpaper_fn and sigs and sigs.attach then
-		sigs.attach(opts.wallpaper_fn)
+	-- Optional: einmalig alle Wallpapers anwenden (Hooking passiert in ui/wallpaper.lua)
+	local ui_ok, ui = pcall(require, "ui")
+	if ui_ok and ui.wallpaper and type(ui.wallpaper.apply_all) == "function" then
+		ui.wallpaper.apply_all()
 	end
 
 	-- Optional: Policy-bezogene Signals
@@ -35,9 +34,6 @@ function M.init(cfg)
 
 	-- Pro Screen Initialisierung
 	awful.screen.connect_for_each_screen(function(s)
-		if opts.wallpaper_fn then
-			opts.wallpaper_fn(s) -- einmal initial
-		end
 		if opts.ensure_one_tag and tags and tags.ensure then
 			tags.ensure(s)
 		end
