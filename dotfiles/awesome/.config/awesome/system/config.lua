@@ -10,4 +10,6 @@ return {
 	launcher = nil, -- z.B. rofi, fuzzel, bemenu ...
 	browser = "firefox", -- oder "librewolf", "chromium", ...
 	files = "nemo || xdg-open ~", -- Dateimanager Fallback
+
+	workspaces = "sync", -- oder "core"
 }

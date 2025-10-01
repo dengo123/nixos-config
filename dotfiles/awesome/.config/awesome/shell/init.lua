@@ -1,4 +1,4 @@
--- shell/init.lua
+-- ~/.config/awesome/shell/init.lua
 local awful = require("awful")
 
 local M = {
@@ -10,6 +10,7 @@ local M = {
 	windowing = require("shell.windowing"),
 }
 
+-- Aus ui.* eine Wallpaper-Setter-Funktion extrahieren (falls vorhanden)
 local function resolve_wallpaper_fn(ui)
 	if not ui or not ui.wallpaper then
 		return nil
@@ -23,8 +24,9 @@ local function resolve_wallpaper_fn(ui)
 end
 
 function M.bar.setup(s, opts)
-	local model = M.bar.model.build(s, opts or {})
-	return M.bar.view.place(s, model, opts or {})
+	opts = opts or {}
+	local model = M.bar.model.build(s, opts)
+	return M.bar.view.place(s, model, opts)
 end
 
 -- Erwartet { cfg, ui, input }
@@ -34,10 +36,20 @@ function M.init(args)
 	local ui = args.ui
 	local input = args.input or {}
 
-	-- 1) Workspaces
-	M.workspaces.init({
-		wallpaper_fn = resolve_wallpaper_fn(ui),
-	})
+	-- 1) Workspaces: komplette cfg durchreichen (+ optional wallpaper_fn)
+	do
+		local wcfg = {}
+		for k, v in pairs(cfg) do
+			wcfg[k] = v
+		end
+		-- Falls dein Workspaces-Setup noch eine Wallpaper-Funktion nutzen soll:
+		local wpfn = resolve_wallpaper_fn(ui)
+		if wpfn then
+			wcfg.wallpaper_fn = wpfn
+		end
+
+		M.workspaces.init(wcfg)
+	end
 
 	-- 2) Windowing
 	M.windowing.init({
@@ -50,6 +62,7 @@ function M.init(args)
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 
+	-- 4) Launcher-Funktion (optional)
 	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
 		local cmd = cfg.launcher
 		cfg.launcher_fn = function()
@@ -60,13 +73,11 @@ function M.init(args)
 	end
 
 	-- 5) Bars pro Screen
-	local mykeyboardlayout = awful.widget.keyboardlayout()
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
-			ui = ui, -- << NEU: UI (inkl. ui.theme) weitergeben
+			ui = ui,
 			launcher = nil,
-			keyboardlayout = mykeyboardlayout,
 		})
 	end)
 

@@ -1,7 +1,7 @@
 -- ~/.config/awesome/input/keys/global/tags.lua
 local awful = require("awful")
 local H = require("input.keys.helpers")
-local tags = require("shell.workspaces.core")
+local tags = require("shell.workspaces")
 
 return function(modkey)
 	return awful.util.table.join(

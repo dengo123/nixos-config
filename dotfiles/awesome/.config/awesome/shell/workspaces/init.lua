@@ -15,12 +15,23 @@ function M.init(cfg)
 		desktop_deco_fn = cfg.desktop_deco_fn,
 	}
 
+	-- 0) Implementierung wählen: "core" oder "sync"
+	local flag = tostring(cfg.workspaces or "core"):lower()
+	local useSync = (flag == "sync") or flag:match("sync") ~= nil
+	local impl = useSync and require("shell.workspaces.sync") or core
+
+	-- (optional) Diagnose
+	local okN, naughty = pcall(require, "naughty")
+	if okN then
+		naughty.notify({ title = "Workspaces", text = useSync and "SYNC mode" or "CORE mode" })
+	end
+
 	-- 1) Globale Layoutliste
 	if layouts and layouts.apply then
 		layouts.apply()
 	end
 
-	-- 2) Policies aktivieren (Hooks etc.)
+	-- 2) Policies
 	if policies and policies.layout and policies.layout.init_enforcement then
 		policies.layout.init_enforcement()
 	end
@@ -28,13 +39,13 @@ function M.init(cfg)
 		policies.attach_policy_signals()
 	end
 
-	-- 3) Core-Hooks setzen (Core ruft diese Policy-Funktionen)
+	-- 3) Hooks in core setzen (core ruft diese Policies)
 	core.set_hooks({
 		kill_clients_in_tag = policies.client and policies.client.kill_clients_in_tag or function(_) end,
 		apply_layout_policy = policies.layout and policies.layout.apply_layout_policy or function(_) end,
 	})
 
-	-- 4) Pro Screen
+	-- 4) Pro Screen Grundsetup
 	awful.screen.connect_for_each_screen(function(s)
 		if opts.ensure_one_tag then
 			core.ensure(s)
@@ -50,10 +61,23 @@ function M.init(cfg)
 		end
 	end)
 
-	-- 5) Rotation/Geometrie – Policy hängt bereits Hooks; optional nochmal:
+	-- 5) Rotation/Geometrie
 	if opts.auto_adapt_layout_on_rotation and policies.layout and policies.layout.on_screen_rotation then
 		policies.layout.on_screen_rotation()
 	end
+
+	-- 6) Re-Exports (dieses Modul ist die Abstraktion)
+	M.add = impl.add or core.add
+	M.add_silent = impl.add_silent or core.add_silent
+	M.delete_current = impl.delete_current or core.delete_current
+	M.delete_current_force = impl.delete_current_force or core.delete_current_force
+	M.view_tag_idx = impl.view_tag_idx -- nur im sync-Impl vorhanden
+	M.view_tag_abs = impl.view_tag_abs -- nur im sync-Impl vorhanden
+
+	M.ensure = core.ensure
+	M.renumber = core.renumber
+
+	return M
 end
 
 return M
