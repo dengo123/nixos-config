@@ -1,8 +1,6 @@
--- ~/.config/awesome/shell/init.lua
 local awful = require("awful")
 
 local M = {
-	-- KEIN menu-Require mehr
 	bar = {
 		model = require("shell.bar.model"),
 		view = require("shell.bar.view"),
@@ -11,7 +9,6 @@ local M = {
 	windowing = require("shell.windowing"),
 }
 
--- interne Helper
 local function resolve_wallpaper_fn(ui)
 	if not ui or not ui.wallpaper then
 		return nil
@@ -24,13 +21,11 @@ local function resolve_wallpaper_fn(ui)
 	return nil
 end
 
--- Wrapper: Bar-Setup (Screen → Model → View)
 function M.bar.setup(s, opts)
 	local model = M.bar.model.build(s, opts or {})
 	return M.bar.view.place(s, model, opts or {})
 end
 
--- High-Level-Init: Workspaces → Windowing → Notify → Bar (OHNE Menü)
 -- Erwartet { cfg, ui, input }
 function M.init(args)
 	args = args or {}
@@ -38,24 +33,22 @@ function M.init(args)
 	local ui = args.ui
 	local input = args.input or {}
 
-	-- 1) Workspaces (Wallpaper-Hook aus UI weiterreichen)
+	-- 1) Workspaces
 	M.workspaces.init({
 		wallpaper_fn = resolve_wallpaper_fn(ui),
 	})
 
-	-- 2) Windowing (Rules, Client-Signals, Titlebar) – braucht modkey + mouse
+	-- 2) Windowing
 	M.windowing.init({
 		modkey = cfg.modkey,
 		mouse = input.mouse,
 		ui = ui,
 	})
 
-	-- 3) KEIN internes Menü, KEIN Launcher-Widget
+	-- 3) Kein internes Menü
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 
-	-- Optional: Externen Launcher als Funktion verfügbar machen (für Keybinds)
-	-- Beispiel in system.config.launcher: "rofi -show drun" oder "emacsclient -c"
 	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
 		local cmd = cfg.launcher
 		cfg.launcher_fn = function()
@@ -65,12 +58,13 @@ function M.init(args)
 		cfg.launcher_fn = nil
 	end
 
-	-- 5) Bars pro Screen (Keyboardlayout-Widget einmalig)
+	-- 5) Bars pro Screen
 	local mykeyboardlayout = awful.widget.keyboardlayout()
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
-			launcher = nil, -- explizit kein Launcher-Widget
+			ui = ui, -- << NEU: UI (inkl. ui.theme) weitergeben
+			launcher = nil,
 			keyboardlayout = mykeyboardlayout,
 		})
 	end)
