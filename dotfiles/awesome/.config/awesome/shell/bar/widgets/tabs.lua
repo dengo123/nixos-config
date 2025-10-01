@@ -49,27 +49,54 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 
 	local lead = pick_lead(clients)
 
-	local icon = wibox.widget({
+	-- ICON: feste Größe + zentriert
+	local icon_img = wibox.widget({
 		widget = wibox.widget.imagebox,
 		resize = true,
 		forced_height = icon_size,
 		forced_width = icon_size,
 		image = (lead and lead.icon) or nil,
 	})
-	local title = wibox.widget({
+
+	local icon = wibox.widget({
+		icon_img,
+		widget = wibox.container.place,
+		halign = "center",
+		valign = "center",
+	})
+
+	-- TITEL: vertikal zentrieren
+	local title_raw = wibox.widget({
 		widget = wibox.widget.textbox,
 		markup = ellipsize(cls or (lead and (lead.class or lead.name) or "App"), title_len),
 	})
 
+	local title = wibox.widget({
+		title_raw,
+		widget = wibox.container.place,
+		valign = "center",
+	})
+
+	-- Reihe (Icon + Titel)
 	local inner = wibox.widget({
 		icon,
 		title,
-		layout = wibox.layout.fixed.horizontal,
 		spacing = 6,
+		layout = wibox.layout.fixed.horizontal,
 	})
 
-	local content = wibox.container.margin(inner, pad_h, pad_h, pad_v, pad_v)
+	-- Innenabstände
+	local with_margin = wibox.container.margin(inner, pad_h, pad_h, pad_v, pad_v)
 
+	-- Gesamter Inhalt: linksbündig, vertikal exakt mittig in der Kachel
+	local content = wibox.widget({
+		with_margin,
+		widget = wibox.container.place,
+		halign = "left",
+		valign = "center",
+	})
+
+	-- Hintergrund / Rahmen / Radius
 	local bgw = wibox.widget({
 		content,
 		widget = wibox.container.background,
@@ -176,7 +203,6 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
 	local by_class = {}
 	for c in
 		awful.client.iterate(function(cc)
-			-- Clients, die auf mind. einem ausgewählten Tag von s liegen
 			if not (cc and cc.valid) then
 				return false
 			end
