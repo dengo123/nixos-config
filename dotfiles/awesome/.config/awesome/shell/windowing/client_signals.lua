@@ -15,11 +15,38 @@ _G.__windowing_signals_applied = true
 -- Helpers
 -- ======================
 
+-- NEU: Mindestgeometrie durchsetzen (bevor wir platzieren)
+local function ensure_min_geometry(c)
+	if not (c and c.valid) then
+		return
+	end
+	local g = c:geometry()
+	local w, h = g.width or 0, g.height or 0
+	if w > 0 and h > 0 then
+		return
+	end
+
+	local s = c.screen or awful.screen.focused()
+	local wa = (s and s.workarea) or { x = 0, y = 0, width = 1280, height = 720 }
+	local minw, minh = 160, 120
+	local target_w = math.max(math.floor(wa.width * 0.5), minw)
+	local target_h = math.max(math.floor(wa.height * 0.5), minh)
+	-- nur die fehlenden Dimensionen setzen (falls z. B. nur Höhe 0 ist)
+	if w <= 0 then
+		g.width = target_w
+	end
+	if h <= 0 then
+		g.height = target_h
+	end
+	c:geometry(g)
+end
+
 local function safe_no_offscreen(c)
 	if not (c and c.valid) then
 		return
 	end
-	pcall(awful.placement.no_offscreen, c)
+	ensure_min_geometry(c)
+	pcall(awful.placement.no_offscreen, c, { honor_workarea = true, honor_padding = true })
 end
 
 local function ensure_titlebar_once(c, attach_fn, mouse, tb_opts)
@@ -32,7 +59,6 @@ local function ensure_titlebar_once(c, attach_fn, mouse, tb_opts)
 	end
 end
 
--- Fallback: Maus-Bindings für Titlebar (LMB = Move, RMB = Resize)
 local function default_titlebar_buttons(c)
 	return gears.table.join(
 		awful.button({}, 1, function()
@@ -57,7 +83,6 @@ function M.apply(o)
 	local tb_opts = o.titlebar_opts or { position = "top", size = 28 }
 	local style = o.style -- Theme-Hook: apply_client_style(c)
 
-	-- >>> Sichere Titlebar-Buttons bereitstellen (für Drag/Resize)
 	if type(mouse.titlebar_buttons) ~= "function" then
 		mouse.titlebar_buttons = function(c)
 			return default_titlebar_buttons(c)
@@ -72,6 +97,7 @@ function M.apply(o)
 
 	client.connect_signal("manage", function(c)
 		if awesome.startup and not c.size_hints.user_position and not c.size_hints.program_position then
+			ensure_min_geometry(c) -- NEU
 			safe_no_offscreen(c)
 		end
 		restyle(c)
@@ -100,6 +126,7 @@ function M.apply(o)
 		if c.minimized then
 			MinStack.push(c)
 		else
+			ensure_min_geometry(c) -- NEU
 			safe_no_offscreen(c)
 			restyle(c)
 			c:raise()
@@ -110,15 +137,27 @@ function M.apply(o)
 	client.connect_signal("property::maximized_horizontal", restyle)
 	client.connect_signal("property::maximized_vertical", restyle)
 	client.connect_signal("property::fullscreen", restyle)
-	client.connect_signal("property::floating", restyle)
+
+	-- NEU: Beim Wechsel auf floating Mindestgröße setzen + im Bild halten
+	client.connect_signal("property::floating", function(c)
+		if c.floating then
+			-- ggf. störende Flags entfernen
+			c.maximized, c.maximized_vertical, c.maximized_horizontal, c.fullscreen = false, false, false, false
+			ensure_min_geometry(c)
+			safe_no_offscreen(c)
+		end
+		restyle(c)
+	end)
 
 	client.connect_signal("property::screen", function(c)
+		ensure_min_geometry(c) -- NEU
 		safe_no_offscreen(c)
 		restyle(c)
 	end)
 
 	screen.connect_signal("property::workarea", function(s)
 		for _, c in ipairs(s.clients) do
+			ensure_min_geometry(c) -- NEU
 			safe_no_offscreen(c)
 			restyle(c)
 		end

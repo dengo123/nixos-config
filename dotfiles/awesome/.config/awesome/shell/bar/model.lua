@@ -1,4 +1,7 @@
 -- ~/.config/awesome/shell/bar/model.lua
+local awful = require("awful")
+local gears = require("gears")
+local beautiful = require("beautiful")
 local wibox = require("wibox")
 
 local Tabs = require("shell.bar.widgets.tabs")
@@ -12,65 +15,74 @@ local M = {}
 function M.build(s, opts)
 	opts = opts or {}
 	local cfg = opts.cfg or {}
-	local ui = opts.ui -- kommt aus shell.init → M.bar.setup
+	local ui = opts.ui
 	local modkey = cfg.modkey or "Mod4"
-	local kb = opts.keyboardlayout
 	local showtray = (opts.systray ~= false)
 
 	-- === THEMES zentral aus ui.theme holen ===
 	local theme = ui and ui.theme or nil
 
-	-- Tabs-Theme (erforderlich für Tabs.build)
-	local TabsTheme = nil
-	if theme and theme.tabs and theme.tabs.get then
-		TabsTheme = theme.tabs.get(cfg.tabs or {})
-	end
-
-	-- Start-Button-Theme
-	local StartTheme = nil
-	if theme and theme.start and theme.start.get then
-		StartTheme = theme.start.get(cfg.start or {})
-	end
-
-	-- Optional: Menü-Theme (weiß/beige, schwarze Schrift), z. B. aus cfg.menus
+	local TabsTheme = (theme and theme.tabs and theme.tabs.get) and theme.tabs.get(cfg.tabs or {}) or nil
+	local StartTheme = (theme and theme.start and theme.start.get) and theme.start.get(cfg.start or {}) or nil
 	local MenuTheme = cfg.menus
 
-	-- === Widgets aufbauen ===
+	-- === Widgets ===
 	local tabs = Tabs.build(s, {
 		modkey = modkey,
 		group_by_class = true,
-		theme = TabsTheme, -- << WICHTIG: Tabs-Theme reinreichen
-		menu_theme = MenuTheme, -- << optional: zentrales Dropdown-Theme
+		theme = TabsTheme,
+		menu_theme = MenuTheme,
 	})
 
-	local tags = Tags.build(s, {
-		-- falls dein Tags-Widget eigene opts will, hier rein (z. B. theme = ...)
-	})
+	local tags = Tags.build(s, {})
 
-	local tray = showtray
-			and Systray.build({
-				-- eigene (themed) Tray-Rechtsklick-Menüs:
-				menu_theme = MenuTheme,
-				-- pad_h / base_size / bg etc. kannst du bei Bedarf hier setzen
-			})
-		or nil
+	local tray = showtray and Systray.build({ menu_theme = MenuTheme }) or nil
 
-	local clock = Clock.build("%H:%M")
+	local clock = Clock.build() -- Format/Refresh aus Theme
 
-	-- Start-Button: Funktion (Launcher) + Optik (Theme) sauber getrennt
+	-- Start-Button
 	local start_btn = Start.build({
 		screen = s,
-		theme = StartTheme, -- Optik aus ui/theme/start.lua:get(cfg.start)
-		launcher = cfg.launcher, -- "rofi" | "emacs" | "awesome" | custom cmd | nil
-		terminal = cfg.terminal, -- Fallback, wenn launcher leer/nil
-		menu = cfg.mymainmenu, -- nötig, wenn launcher == "awesome"
+		theme = StartTheme,
+		launcher = cfg.launcher,
+		terminal = cfg.terminal,
+		menu = cfg.mymainmenu,
 	})
 
+	-- === Layoutbox statt keyboardlayout ===
+	if not s.mylayoutbox or not s.mylayoutbox.valid then
+		s.mylayoutbox = awful.widget.layoutbox(s)
+		s.mylayoutbox:buttons(gears.table.join(
+			awful.button({}, 1, function()
+				awful.layout.inc(1)
+			end),
+			awful.button({}, 3, function()
+				awful.layout.inc(-1)
+			end),
+			awful.button({}, 4, function()
+				awful.layout.inc(1)
+			end),
+			awful.button({}, 5, function()
+				awful.layout.inc(-1)
+			end)
+		))
+	end
+
+	local lb = wibox.widget({
+		s.mylayoutbox,
+		left = beautiful.layoutbox_pad_h or 0,
+		right = beautiful.layoutbox_pad_h or 0,
+		top = beautiful.layoutbox_pad_v or 0,
+		bottom = beautiful.layoutbox_pad_v or 0,
+		widget = wibox.container.margin,
+	})
+
+	-- === Sektionen ===
 	local left = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 8,
 		start_btn,
-		tags.indicator, -- sitzt zwischen Start und Tabs
+		tags.indicator,
 		tabs.tasklist,
 	}
 
@@ -79,10 +91,9 @@ function M.build(s, opts)
 	local right = {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = 0,
-		kb,
+		lb, -- <- hier statt kb
 		tray,
 		clock,
-		s.mylayoutbox,
 	}
 
 	return { left = left, center = center, right = right }
