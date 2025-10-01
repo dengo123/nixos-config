@@ -53,8 +53,8 @@ function S.get(overrides)
 
 		-- Größen & Abstände
 		icon_size = overrides.icon_size or math.floor(H * 0.9),
-		spacing = overrides.spacing or 12,
-		margin = overrides.margin or { left = 12, right = 6, top = 2, bottom = 2 },
+		spacing = overrides.spacing or 6,
+		margin = overrides.margin or { left = 12, right = 2, top = 2, bottom = 2 },
 
 		-- Textstil
 		font_size_scale = overrides.font_size_scale or 1.8,
