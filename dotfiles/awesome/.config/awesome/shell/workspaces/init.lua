@@ -61,9 +61,19 @@ function M.init(cfg)
 		end
 	end)
 
-	-- 5) Rotation/Geometrie
+	-- 5) Rotation/Geometrie  (BUGFIX: Leerzeichen vor 'then')
 	if opts.auto_adapt_layout_on_rotation and policies.layout and policies.layout.on_screen_rotation then
 		policies.layout.on_screen_rotation()
+	end
+
+	-- 5b) SELECTION SYNC aktivieren + initial angleichen (nur im Sync-Modus)
+	if useSync and type(impl.init_selection_sync) == "function" then
+		impl.init_selection_sync()
+		-- initial: Primär-Screen-Auswahl auf alle spiegeln
+		local primary = awful.screen.primary
+		if primary and primary.selected_tag and type(impl.view_tag_abs) == "function" then
+			impl.view_tag_abs(primary.selected_tag.index)
+		end
 	end
 
 	-- 6) Re-Exports (dieses Modul ist die Abstraktion)
@@ -71,9 +81,11 @@ function M.init(cfg)
 	M.add_silent = impl.add_silent or core.add_silent
 	M.delete_current = impl.delete_current or core.delete_current
 	M.delete_current_force = impl.delete_current_force or core.delete_current_force
-	M.view_tag_idx = impl.view_tag_idx -- nur im sync-Impl vorhanden
-	M.view_tag_abs = impl.view_tag_abs -- nur im sync-Impl vorhanden
+	-- Sync-spezifisch (nur vorhanden, wenn useSync)
+	M.view_tag_idx = impl.view_tag_idx
+	M.view_tag_abs = impl.view_tag_abs
 
+	-- Basis-API (aus core)
 	M.ensure = core.ensure
 	M.renumber = core.renumber
 
