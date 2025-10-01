@@ -3,6 +3,9 @@ local awful = require("awful")
 
 local P = {}
 
+-- Weak-Key Map: pro Tag den zuletzt gesehenen Layout-Wert merken
+local LAST = setmetatable({}, { __mode = "k" }) -- Keys (Tags) werden weak gehalten
+
 -- Erlaubte Teilmenge je Screen
 local function allowed_for(s)
 	local g = s.geometry
@@ -22,7 +25,7 @@ local function in_allowed(cur, allowed)
 	return false
 end
 
--- fair <-> fair.horizontal normalisieren je Screen-Ausrichtung
+-- fair <-> fair.horizontal an Screen-Ausrichtung anpassen
 local function normalize_for_screen(L, s)
 	local horiz = s.geometry.width >= s.geometry.height
 	if L == awful.layout.suit.fair and not horiz then
@@ -33,7 +36,27 @@ local function normalize_for_screen(L, s)
 	return L
 end
 
--- ENFORCEMENT (mit Guard)
+-- „Bridge“: wenn Benutzer auf horizont. Screen von fair → fair.h (oder umgekehrt auf vertikal) klickt,
+-- springe stattdessen nach max, damit Maus/Mod+Tab sichtbar zwischen den 2 Layouts wechselt.
+local function bridge_sister_to_max(t, s)
+	local horiz = s.geometry.width >= s.geometry.height
+	local prev = LAST[t]
+	local cur = t.layout
+	if horiz then
+		-- fair -> (inc) fair.horizontal -> (bridge) max
+		if prev == awful.layout.suit.fair and cur == awful.layout.suit.fair.horizontal then
+			return awful.layout.suit.max
+		end
+	else
+		-- fair.h -> (inc) fair -> (bridge) max
+		if prev == awful.layout.suit.fair.horizontal and cur == awful.layout.suit.fair then
+			return awful.layout.suit.max
+		end
+	end
+	return nil
+end
+
+-- ENFORCEMENT (mit Guard + Weak-Map)
 function P.enforce_on_tag(t)
 	if not t or not t.screen or t._enforce_busy then
 		return
@@ -41,19 +64,35 @@ function P.enforce_on_tag(t)
 	local s = t.screen
 	local allowed = allowed_for(s)
 
+	-- 1) Bridge prüfen
+	local bridged = bridge_sister_to_max(t, s)
+	if bridged then
+		t._enforce_busy = true
+		t.layout = bridged
+		t._enforce_busy = nil
+		LAST[t] = t.layout
+		return
+	end
+
+	-- 2) fair/fair.h normalisieren
 	local wanted = normalize_for_screen(t.layout, s)
 	if in_allowed(wanted, allowed) and wanted ~= t.layout then
 		t._enforce_busy = true
 		t.layout = wanted
 		t._enforce_busy = nil
+		LAST[t] = t.layout
 		return
 	end
 
+	-- 3) Unerlaubtes Layout => Fallback auf allowed[1] (max)
 	if not in_allowed(t.layout, allowed) then
 		t._enforce_busy = true
-		t.layout = allowed[1] -- Standard = max
+		t.layout = allowed[1]
 		t._enforce_busy = nil
 	end
+
+	-- 4) Zuletzt gesehenes Layout merken
+	LAST[t] = t.layout
 end
 
 function P.enforce_all_on_screen(s)
@@ -66,7 +105,7 @@ function P.enforce_all_on_screen(s)
 	end
 end
 
--- öffentliche Policy-API (für core/init)
+-- öffentliche Policy-API
 function P.apply_layout_policy(s)
 	s = s or awful.screen.focused()
 	if not s or not s.selected_tag then
@@ -84,19 +123,14 @@ function P.on_screen_rotation()
 	screen.connect_signal("property::geometry", P.apply_layout_policy_all)
 end
 
--- Hooks aktivieren
 function P.init_enforcement()
 	tag.disconnect_signal("property::layout", P.enforce_on_tag)
 	tag.connect_signal("property::layout", P.enforce_on_tag)
-	-- initial für alle Screens
 	for s in screen do
 		P.enforce_all_on_screen(s)
 	end
-	-- bei Rotation/Auslösung erneut
 	P.on_screen_rotation()
 end
 
--- optional exportieren (falls wer allowed_for braucht)
 P.allowed_for = allowed_for
-
 return P

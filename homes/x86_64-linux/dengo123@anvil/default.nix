@@ -10,7 +10,7 @@ with lib.${namespace}; {
   nixforge = {
     bundles = {
       common = enabled;
-      development = enabled;
+      shell = enabled;
       office = enabled;
 
       desktop = {
@@ -23,10 +23,6 @@ with lib.${namespace}; {
       git = {
         enable = true;
         username = "dengo123";
-      };
-      nixvim = {
-        enable = true;
-        mode = "full";
       };
       freetube = enabled;
       spotify = enabled;

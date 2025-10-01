@@ -23,6 +23,10 @@ in {
         yazi = enabled;
         zoxide = enabled;
         zsh = enabled;
+        nixvim = {
+          enable = true;
+          mode = "full";
+        };
       };
     };
   };
