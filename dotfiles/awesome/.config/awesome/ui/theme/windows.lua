@@ -113,7 +113,7 @@ function W.init(cfg)
 end
 
 -- Titlebar: Titel LINKS (Icon + Titel), MIDDLE = Drag-Spacer, RIGHT = Buttons
--- Mittlerer Button = TOGGLE FLOATING (dein Wunsch)
+-- Mittlerer Button = TOGGLE FLOATING
 function W.attach_titlebar(c, mouse, opts)
 	if not (c and c.valid) then
 		return
@@ -151,7 +151,7 @@ function W.attach_titlebar(c, mouse, opts)
 			},
 			{ -- RIGHT: Buttons (minimize, floating toggle, close)
 				awful.titlebar.widget.minimizebutton(c),
-				awful.titlebar.widget.floatingbutton(c), -- << hier jetzt Toggle Floating
+				awful.titlebar.widget.floatingbutton(c),
 				awful.titlebar.widget.closebutton(c),
 				spacing = 4,
 				layout = wibox.layout.fixed.horizontal,
@@ -160,7 +160,7 @@ function W.attach_titlebar(c, mouse, opts)
 		})
 end
 
--- Rahmen + runde Ecken
+-- Rahmen + runde Ecken (robust gegen 0×0-Geometrie)
 function W.apply_client_style(c)
 	if not (c and c.valid) then
 		return
@@ -173,12 +173,20 @@ function W.apply_client_style(c)
 	c.border_color = (c == client.focus) and beautiful.border_focus or beautiful.border_normal
 
 	local r = tonumber(beautiful.border_radius) or 0
-	if is_max or r <= 0 then
+
+	-- Bei maximized, minimized oder r<=0: keine Shape-Funktion
+	if is_max or c.minimized or r <= 0 then
 		c.shape = nil
-	else
-		c.shape = function(cr, w, h)
-			gears.shape.rounded_rect(cr, w, h, r)
+		return
+	end
+
+	-- Shape nur anwenden, wenn sinnvolle Abmessungen vorhanden sind
+	c.shape = function(cr, w, h)
+		-- Guard gegen 0/1-Pixel-Zustände beim Minimize/Floating-Toggle
+		if (w or 0) < 2 or (h or 0) < 2 then
+			return -- nichts zeichnen -> kein geometry-Fehler
 		end
+		gears.shape.rounded_rect(cr, w, h, r)
 	end
 end
 
