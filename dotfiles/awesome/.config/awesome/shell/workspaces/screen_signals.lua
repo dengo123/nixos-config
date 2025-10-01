@@ -1,14 +1,5 @@
--- ~/.config/awesome/features/workspaces/screen_signals.lua
-local gears = require("gears")
-
+-- features/workspaces/screen_signals.lua (temporär)
 local M = {}
-
-function M.attach(wallpaper_fn)
-	if wallpaper_fn then
-		screen.connect_signal("property::geometry", function(s)
-			wallpaper_fn(s)
-		end)
-	end
-end
+function M.attach(_) end
 
 return M
