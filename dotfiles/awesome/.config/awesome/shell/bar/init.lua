@@ -12,15 +12,14 @@ local Start = require("shell.bar.widgets.start")
 
 local M = {}
 
--- Baut die Bar für einen Screen. Erwartet args = { cfg, ui, systray? }
 function M.setup(s, args)
 	args = args or {}
 	local cfg = args.cfg or {}
 	local ui = args.ui
+	local menu_api = args.menu_api -- aus shell.init injiziert
 	local modkey = cfg.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
 
-	-- Theme-Module (mit Fallback, falls ui.theme nicht injiziert ist)
 	local theme = ui and ui.theme or nil
 	local wibar_theme = theme and theme.wibar or require("theme.wibar")
 	local tabs_theme = (theme and theme.tabs and theme.tabs.get) and theme.tabs.get(cfg.tabs or {}) or nil
@@ -33,12 +32,20 @@ function M.setup(s, args)
 		group_by_class = true,
 		theme = tabs_theme,
 		menu_theme = menu_theme,
+		-- neue API: Widget + Clients + explizite linke X-Kante
+		menu_api = menu_api
+				and {
+					show_for_widget_with_clients_at = function(widget, clients, anchor)
+						-- anchor = { x_left = <screen-abs-x> }
+						menu_api.show_for_tabs_widget_with_clients_at(s, widget, clients, anchor)
+					end,
+				}
+			or nil,
 	})
 
 	local tags = Tags.build(s, {})
-
 	local tray = showtray and Systray.build({ menu_theme = menu_theme }) or nil
-	local clock = Clock.build() -- liest clock-Keys aus beautiful.*
+	local clock = Clock.build()
 
 	if not s.mylayoutbox or not s.mylayoutbox.valid then
 		s.mylayoutbox = awful.widget.layoutbox(s)
@@ -73,9 +80,17 @@ function M.setup(s, args)
 		launcher = cfg.launcher,
 		terminal = cfg.terminal,
 		menu = cfg.mymainmenu,
+		menu_api = menu_api and {
+			show_for_widget = function(widget)
+				menu_api.show_for_start_widget(s, widget)
+			end,
+			get_start_items = function()
+				return menu_api.get_start_items()
+			end,
+		} or nil,
 	})
 
-	-- Props + Layout aus dem Theme
+	-- Props + Layout aus Theme
 	local props = (wibar_theme.props and wibar_theme.props())
 		or {
 			position = "bottom",
@@ -108,7 +123,6 @@ function M.setup(s, args)
 			right = { layout = wibox.layout.fixed.horizontal, layoutbox, tray, clock },
 		}
 
-	-- Wibar erstellen
 	s.mywibar = awful.wibar({
 		position = props.position or "bottom",
 		screen = s,

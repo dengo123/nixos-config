@@ -2,9 +2,10 @@
 local awful = require("awful")
 
 local M = {
-	bar = require("shell.bar"), -- << neu: ein Modul statt model/view
+	bar = require("shell.bar"),
 	workspaces = require("shell.workspaces"),
 	windowing = require("shell.windowing"),
+	menu = require("shell.menu"), -- << neu
 }
 
 local function resolve_wallpaper_fn(ui)
@@ -27,7 +28,7 @@ function M.init(args)
 	local ui = args.ui
 	local input = args.input or {}
 
-	-- 1) Workspaces inkl. optionaler Wallpaper-Funktion
+	-- 1) Workspaces
 	do
 		local wcfg = {}
 		for k, v in pairs(cfg) do
@@ -47,11 +48,14 @@ function M.init(args)
 		ui = ui,
 	})
 
-	-- 3) Menü/Launcher in cfg neutralisieren (du steuerst das extern)
+	-- 3) Menü initialisieren (stellt get_start_items & show_for_* bereit)
+	M.menu.init({ ui = ui, cfg = cfg })
+
+	-- 4) cfg-Launcher neutralisieren (steuerst du extern)
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 
-	-- 4) Launcher-Funktion (optional)
+	-- 5) Optionaler Launcher-Fn
 	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
 		local cmd = cfg.launcher
 		cfg.launcher_fn = function()
@@ -61,12 +65,12 @@ function M.init(args)
 		cfg.launcher_fn = nil
 	end
 
-	-- 5) Bars pro Screen via shell.bar.setup
+	-- 6) Bars pro Screen – Menü-API durchreichen
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
 			ui = ui,
-			-- systray = true/false optional
+			menu_api = M.menu, -- << nur die API injizieren
 		})
 	end)
 

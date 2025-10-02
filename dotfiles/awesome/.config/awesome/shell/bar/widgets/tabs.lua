@@ -37,9 +37,8 @@ local function pick_lead(clients)
 end
 
 -- == Tab-Element =============================================================
-
-local function build_group_tab(cls, clients, theme, H, FIX_W)
-	-- KEINE FALLBACKS: alles muss vom Theme kommen
+-- menu_api: { show_for_widget_with_clients_at = function(widget, clients, {x_left=<abs>}) end }
+local function build_group_tab(cls, clients, theme, H, FIX_W, menu_api)
 	assert(theme and theme.colors, "tabs.lua: theme.colors fehlt")
 	assert(theme.icon_size, "tabs.lua: theme.icon_size fehlt")
 	assert(theme.pad_h, "tabs.lua: theme.pad_h fehlt")
@@ -124,7 +123,6 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 				end
 			end
 		end
-
 		if focused_in_group then
 			bgw.bg = C.focus_bg
 			bgw.fg = C.focus_fg
@@ -140,6 +138,7 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 	refresh_colors()
 
 	-- Interaktionen
+	-- Linksklick/Scroll bleiben wie gehabt über :buttons()
 	bgw:buttons(gears.table.join(
 		awful.button({}, 1, function()
 			local focused = client.focus
@@ -156,31 +155,6 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 				lead_now:emit_signal("request::activate", "group_tab", { raise = true })
 			end
 		end),
-
-		awful.button({}, 3, function()
-			local items = {}
-			for _, c in ipairs(clients) do
-				local label = c.name or c.class or "App"
-				table.insert(items, {
-					label,
-					function()
-						if c.valid then
-							c:emit_signal("request::activate", "group_menu", { raise = true })
-						end
-					end,
-					c.icon,
-				})
-			end
-			if #items == 0 then
-				return
-			end
-			if _G.__tabs_tag_menu and _G.__tabs_tag_menu.wibox and _G.__tabs_tag_menu.wibox.valid then
-				_G.__tabs_tag_menu:hide()
-			end
-			_G.__tabs_tag_menu = awful.menu({ items = items, theme = { width = 300 } })
-			_G.__tabs_tag_menu:show()
-		end),
-
 		awful.button({}, 4, function()
 			awful.client.focus.byidx(1)
 		end),
@@ -188,6 +162,21 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 			awful.client.focus.byidx(-1)
 		end)
 	))
+
+	-- Rechtsklick: wir brauchen lokale X-Position, daher Widgets-Signal
+	bgw:connect_signal("button::press", function(_, lx, _, button)
+		if button ~= 3 then
+			return
+		end
+		if not (menu_api and menu_api.show_for_widget_with_clients_at) then
+			return
+		end
+		-- linke Kante des Widgets in Screen-Koordinaten:
+		-- mouse.x - lx (lx = lokale X-Koordinate innerhalb des Widgets)
+		local mc = mouse.coords()
+		local x_left = mc.x - (lx or 0)
+		menu_api.show_for_widget_with_clients_at(bgw, clients, { x_left = x_left })
+	end)
 
 	-- lokale Farbanpassung
 	client.connect_signal("focus", refresh_colors)
@@ -197,8 +186,7 @@ local function build_group_tab(cls, clients, theme, H, FIX_W)
 end
 
 -- == Gruppierte Taskbar ======================================================
-
-local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
+local function build_grouped_taskbar(s, theme, H, FIX_W, spacing, menu_api)
 	local by_class = {}
 	for c in
 		awful.client.iterate(function(cc)
@@ -230,7 +218,6 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
 		spacing = spacing,
 	})
 
-	-- stabile (alpha) Reihenfolge
 	local keys = {}
 	for cls in pairs(by_class) do
 		table.insert(keys, cls or "")
@@ -240,22 +227,19 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing)
 	end)
 
 	for _, cls in ipairs(keys) do
-		container:add(build_group_tab(cls, by_class[cls], theme, H, FIX_W))
+		container:add(build_group_tab(cls, by_class[cls], theme, H, FIX_W, menu_api))
 	end
 
 	return container
 end
 
 -- == Public ==================================================================
-
 function M.build(s, opts)
 	opts = opts or {}
 	local theme = assert(opts.theme, "tabs.lua: opts.theme muss injiziert werden (Theme.tabs.get(...))")
+	local menu_api = opts.menu_api -- { show_for_widget_with_clients_at = fn }
 
-	-- Bar-Höhe kommt aus dem (separaten) Wibar-Theme.
 	local H = assert(tonumber(beautiful.wibar_height), "tabs.lua: beautiful.wibar_height fehlt/ungueltig")
-
-	-- Keine Fallbacks hier: width_factor/spacing etc. MUSS aus theme kommen
 	assert(theme.width_factor, "tabs.lua: theme.width_factor fehlt")
 	assert(theme.spacing, "tabs.lua: theme.spacing fehlt")
 
@@ -269,7 +253,7 @@ function M.build(s, opts)
 
 	local function refresh()
 		box:reset()
-		local grouped = build_grouped_taskbar(s, theme, H, FIX_W, spacing)
+		local grouped = build_grouped_taskbar(s, theme, H, FIX_W, spacing, menu_api)
 		for _, child in ipairs(grouped.children or {}) do
 			box:add(child)
 		end
@@ -279,7 +263,6 @@ function M.build(s, opts)
 		gears.timer.delayed_call(refresh)
 	end
 
-	-- Rebuild-Trigger
 	client.connect_signal("manage", delayed_refresh)
 	client.connect_signal("unmanage", delayed_refresh)
 	client.connect_signal("property::minimized", delayed_refresh)
