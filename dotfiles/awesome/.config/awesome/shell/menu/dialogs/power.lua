@@ -1,6 +1,6 @@
 -- ~/.config/awesome/features/shell/menu/dialogs/power.lua
-local Base = require("features.shell.menu.dialogs.base")
-local Lib = require("features.shell.menu.lib")
+local Base = require("shell.menu.dialogs.base")
+local Lib = require("shell.menu.lib")
 
 local M = {}
 local policy = { close = "before" }

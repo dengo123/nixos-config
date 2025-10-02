@@ -1,24 +1,16 @@
--- ~/.config/awesome/features/shell/menu/dialogs/base.lua
+-- ~/.config/awesome/shell/menu/dialogs/base.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
--- Zentrale Widgets + Theme
-local Widgets = require("features.shell.menu.widgets")
-local Theme = require("features.shell.menu.dialogs.theme")
+-- Theme + Container
+local Theme = require("shell.menu.dialogs.theme")
+local Containers = require("shell.menu.dialogs.containers")
 
--- Lib & Container
-local Lib = require("features.shell.menu.lib")
-local Containers = require("features.shell.menu.dialogs.containers")
-
--- Zwei Layouts: grid (Icons) & columns (Menüspalten)
-local Layouts = {
-	row = require("features.shell.menu.layouts.row"),
-	columns = require("features.shell.menu.layouts.columns"),
-}
+-- Zentrale Lib-Aggregation (focus, layout, term, placement, actions, apps, ...)
+local Lib = require("shell.menu.lib")
 
 local Base = {}
-Base.layouts = Layouts
 
 -- ---------------------------------------------------------------------
 -- utils
@@ -52,6 +44,36 @@ local function shallow_merge(a, b)
 	return out
 end
 
+-- Sicheres require (nil bei Fehler)
+local function require_opt(path)
+	local ok, mod = pcall(require, path)
+	return ok and mod or nil
+end
+
+-- Cancel-Button-Factory beschaffen (robust gegen unterschiedliche Exports)
+local function get_cancel_factory()
+	-- bevorzugt neues Modul unter dialogs/widgets
+	local mod = require_opt("shell.menu.dialogs.widgets.cancel")
+	if mod then
+		-- mögliche Export-Varianten abprüfen
+		return mod.mk_cancel_button or mod.make or mod.new or mod[1]
+	end
+	-- Fallback: einfache Text-Schaltfläche
+	return function(label, _icon, th)
+		local tb = wibox.widget({
+			markup = string.format("<b>%s</b>", label or "Cancel"),
+			widget = wibox.widget.textbox,
+		})
+		local bg = wibox.widget({
+			tb,
+			fg = (th and th.row_fg) or "#000000",
+			bg = (th and th.row_bg) or "#FFFFFF",
+			widget = wibox.container.background,
+		})
+		return bg
+	end
+end
+
 -- Theme-Resolver + Bridge in Menü-Theme
 local function resolve_theme(overrides)
 	local ov = {}
@@ -73,7 +95,7 @@ local function resolve_theme(overrides)
 	local merged = (Theme and Theme.merge) and Theme.merge(ui_base, ov) or shallow_merge(ui_base, ov)
 
 	-- ===== THEME-BRÜCKE: Dialog-Keys → Widgets/Rows/Columns =====
-	-- rows.lua erwartet row_*; Dialog liefert body_*
+	-- rows erwarten row_*; Dialog liefert body_*
 	if merged.body_bg and not merged.row_bg then
 		merged.row_bg = merged.body_bg
 	end
@@ -81,43 +103,42 @@ local function resolve_theme(overrides)
 		merged.row_fg = merged.body_fg
 	end
 
-	-- columns.lua & seitenspezifische Rows
-	if not merged.left_bg then
-		merged.left_bg = merged.row_bg
-	end
-	if not merged.left_fg then
-		merged.left_fg = merged.row_fg
-	end
-	if not merged.right_bg then
-		merged.right_bg = merged.row_bg
-	end
-	if not merged.right_fg then
-		merged.right_fg = merged.row_fg
-	end
+	-- columns/linke/rechte Seite defaulten auf row-Styles
+	merged.left_bg = merged.left_bg or merged.row_bg
+	merged.left_fg = merged.left_fg or merged.row_fg
+	merged.right_bg = merged.right_bg or merged.row_bg
+	merged.right_fg = merged.right_fg or merged.row_fg
 
 	return (Theme and Theme.get) and Theme.get(merged) or merged
 end
 
 -- ---------------------------------------------------------------------
--- Bequeme Wrapper für die beiden Layouts
+-- Bequeme Wrapper für die beiden Layouts (über Lib.layout)
 -- ---------------------------------------------------------------------
-
 -- ROW: Icon-Reihe/-Raster (liefert Widget + Fokusliste (linear))
 function Base.layouts_row(actions, th, dims, get_close_ref)
-	local geom = Layouts.row.compute_metrics(th, dims.w, dims.h)
-	local row, items = Layouts.row.actions_row(actions or {}, th, geom, get_close_ref)
-	return row, items
+	local L = Lib and Lib.layout
+	if L and L.row and type(L.row.compute_metrics) == "function" and type(L.row.actions_row) == "function" then
+		local geom = L.row.compute_metrics(th, dims.w, dims.h)
+		local row, items = L.row.actions_row(actions or {}, th, geom, get_close_ref)
+		return row, items
+	end
+	-- Fallback: leere horizontale Box
+	return wibox.widget({ layout = wibox.layout.fixed.horizontal }), {}
 end
 
 -- COLUMNS: n Spalten mit je eigener Palette/Rowhöhe
 -- spec = { { key="left", width=..., palette={bg,fg,hover?}, row_h=?, items={...} }, ... }
 function Base.layouts_columns(spec, th, dims)
-	-- WICHTIG: deps (mit lib) weitergeben, damit rows.lua Click-Callbacks erhält
-	local api = Layouts.columns.build(spec or {}, th, {
-		deps = { lib = Lib },
-	})
-	local focus_lists = (api.get_focus_items and api:get_focus_items()) or {}
-	return api.widget, focus_lists
+	local L = Lib and Lib.layout
+	if L and L.columns and type(L.columns.build) == "function" then
+		-- deps durchreichen, damit Rows/Widgets Zugriff auf Lib haben
+		local api = L.columns.build(spec or {}, th, { deps = { lib = Lib }, dims = dims })
+		local focus_lists = (api.get_focus_items and api:get_focus_items()) or {}
+		return api.widget, focus_lists
+	end
+	-- Fallback: einfache vertikale Box
+	return wibox.widget({ layout = wibox.layout.fixed.vertical }), {}
 end
 
 -- ---------------------------------------------------------------------
@@ -133,7 +154,7 @@ end
 --   header_h / footer_h
 --   popup = { width, height, show_root, close_on_backdrop, close_on_escape, placement, group, use_backdrop }
 --   focus = {
---     mode = "grid" | "columns",
+--     mode = "row" | "columns",
 --     cols = 4, start_index = 1, mouse_follow = true, start_col = 1
 --   }
 function Base.dialog(opts)
@@ -178,7 +199,8 @@ function Base.dialog(opts)
 	end
 
 	-- Cancel-Button (fokusfähig)
-	local cancel_inner = Widgets.mk_cancel_button(pick(th.cancel_label, "Cancel"), nil, th)
+	local mk_cancel = get_cancel_factory()
+	local cancel_inner = mk_cancel(pick(th.cancel_label, "Cancel"), nil, th)
 	local target_w = th.cancel_width or (Wd > 0 and math.floor(Wd / 7) or nil)
 	if target_w then
 		cancel_inner = wibox.widget({
@@ -248,7 +270,7 @@ function Base.dialog(opts)
 	close_ref = handle.close
 
 	----------------------------------------------------------------------
-	-- Fokussteuerung: "row" | "columns" | linearer Fallback
+	-- Fokussteuerung via Lib.focus: "row" | "columns" | linearer Fallback
 	----------------------------------------------------------------------
 	local focus_cfg = opts.focus or {}
 	local mode = focus_cfg.mode -- nil → Fallback linear
@@ -257,7 +279,6 @@ function Base.dialog(opts)
 		local stop_focus
 
 		if mode == "row" then
-			-- Erwartet lineare Liste (mk_icon_button)
 			if type(Lib.focus.attach_grid) == "function" then
 				stop_focus = Lib.focus.attach_grid(focus_items, th, {
 					cols = focus_cfg.cols or 4,
@@ -271,7 +292,6 @@ function Base.dialog(opts)
 				})
 			end
 		elseif mode == "columns" then
-			-- Fokuslisten können { left=..., right=... } ODER {{...},{...}} sein
 			local left, right
 			if focus_items.left or focus_items.right then
 				left, right = focus_items.left or {}, focus_items.right or {}
@@ -299,7 +319,7 @@ function Base.dialog(opts)
 				})
 			end
 		else
-			-- simpler Fallback: linear (Body + Cancel ans Ende)
+			-- simpler linearer Fallback
 			local linear = {}
 			if type(focus_items[1]) == "table" then
 				for _, col in ipairs(focus_items or {}) do

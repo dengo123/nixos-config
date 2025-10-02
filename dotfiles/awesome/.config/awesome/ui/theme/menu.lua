@@ -4,31 +4,45 @@ local gears = require("gears")
 
 local M = {}
 
--- Einfache, feste Vorgaben (keine Overrides per opts)
 function M.init()
-	-- Farben
+	-- Menu-Farben/-Maße/-Shape
 	beautiful.menu_bg_normal = "#FFF7E6"
 	beautiful.menu_fg_normal = "#000000"
 	beautiful.menu_bg_focus = "#F2E7CF"
 	beautiful.menu_fg_focus = "#000000"
-
-	-- Maße
 	beautiful.menu_border_color = "#E6D8BF"
 	beautiful.menu_border_width = 1
 	beautiful.menu_height = 28
 	beautiful.menu_width = 220
-
-	-- Shape
 	beautiful.menu_shape = function(cr, w, h)
 		gears.shape.rounded_rect(cr, w, h, beautiful.border_radius or 6)
 	end
 	beautiful.menu_submenu = "›"
-
-	-- Placement/Rules (global gültig für Start & Tabs)
-	beautiful.menu_gap = 4 -- Abstand zur Bar
-	beautiful.menu_x_padding = 0 -- linker Innenabstand ab Bar/Start
+	beautiful.menu_gap = 4
+	beautiful.menu_x_padding = 0
 	beautiful.menu_align = "left"
-	beautiful.menu_x_offset = 0 -- <<< globaler zusätzlicher X-Offset (negativ = nach links)
+	beautiful.menu_x_offset = 0
+
+	---------------------------------------------------------------------------
+	-- Hotkeys-Popup an Menü-Theme anlehnen
+	---------------------------------------------------------------------------
+	beautiful.hotkeys_bg = beautiful.menu_bg_normal
+	beautiful.hotkeys_fg = beautiful.menu_fg_normal
+	beautiful.hotkeys_border_width = beautiful.menu_border_width
+	beautiful.hotkeys_border_color = beautiful.menu_border_color
+	beautiful.hotkeys_shape = beautiful.menu_shape
+
+	-- Labels/Highlights im Popup
+	beautiful.hotkeys_label_bg = beautiful.menu_bg_focus
+	beautiful.hotkeys_label_fg = beautiful.menu_fg_focus
+	beautiful.hotkeys_modifiers_fg = beautiful.menu_fg_focus -- z.B. für "Ctrl", "Alt", …
+
+	-- Typografie (optional — falls du nichts setzt, nutzt Awesome Defaults)
+	beautiful.hotkeys_font = beautiful.font or "Sans 10"
+	beautiful.hotkeys_description_font = beautiful.font or "Sans 10"
+
+	-- Layout/Abstände (optional)
+	beautiful.hotkeys_group_margin = 12
 end
 
 function M.props()
