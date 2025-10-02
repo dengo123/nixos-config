@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/bar/widgets/start.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -10,46 +11,57 @@ local M = {}
 function M.build(opts)
 	opts = opts or {}
 	local s = opts.screen or (mouse and mouse.screen) or nil
-	local T = assert(opts.theme, "start widget needs opts.theme from ui/theme/start.get(cfg.start)")
+	local T = assert(opts.theme, "start widget: opts.theme (ui/theme/start.get(...)) fehlt")
 
-	local H = tonumber(beautiful.wibar_height) or 28
-	local W = math.floor((T.width_factor or 4) * H)
+	-- HARTE PRÄMISSEN aus dem Theme (keine Fallbacks hier!)
+	assert(T.bg, "start theme: bg fehlt")
+	assert(T.bg_hover, "start theme: bg_hover fehlt")
+	assert(T.fg, "start theme: fg fehlt")
+	assert(T.shape, "start theme: shape fehlt")
+	assert(T.margin, "start theme: margin fehlt")
+	assert(T.icon, "start theme: icon fehlt")
+	assert(T.icon_size, "start theme: icon_size fehlt")
+	assert(T.spacing, "start theme: spacing fehlt")
+	assert(T.font_size_scale, "start theme: font_size_scale fehlt")
+	assert(T.font_weight, "start theme: font_weight fehlt")
+	assert(T.font_style, "start theme: font_style fehlt")
+	assert(T.width_factor, "start theme: width_factor fehlt")
+	assert(T.fixed_height ~= nil, "start theme: fixed_height fehlt (true/false)")
+
+	local H = assert(tonumber(beautiful.wibar_height), "beautiful.wibar_height fehlt/ungueltig")
+	local W = math.floor(T.width_factor * H)
 
 	-- Farben/Shape/Margins
-	local bg, bg_hover, fg = T.bg, (T.bg_hover or T.bg), T.fg
-	local shape = T.shape or gears.shape.rounded_rect
-	local margin = T.margin or { left = 16, right = 16, top = 4, bottom = 4 }
+	local bg, bg_hover, fg = T.bg, T.bg_hover, T.fg
+	local shape = T.shape
+	local margin = T.margin
 
-	-- Icon robust laden + feste Größe
+	-- Icon laden (Theme liefert Pfad oder Surface)
 	local icon_path = T.icon
 	if type(icon_path) == "string" and not icon_path:match("^/") then
 		icon_path = gfs.get_configuration_dir() .. icon_path
 	end
 	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
-	if not icon_surface then
-		icon_surface = gsurface.load_uncached(gfs.get_themes_dir() .. "default/icon.png")
-	end
-	local icon_size = T.icon_size or math.floor(H * 0.9)
+	assert(icon_surface, "start theme: icon konnte nicht geladen werden")
+
 	local icon_widget = wibox.widget({
 		image = icon_surface,
 		resize = true,
-		forced_width = icon_size,
-		forced_height = icon_size,
+		forced_width = T.icon_size,
+		forced_height = T.icon_size,
 		widget = wibox.widget.imagebox,
 	})
 
-	-- Label: größer + fett + kursiv via Pango
-	local scale = T.font_size_scale or 1.75
-	local weight = T.font_weight or "bold"
-	local style = T.font_style or "italic"
-	local label_text = T.label or "start"
+	-- Label via Pango
+	local label_text = assert(T.label, "start theme: label fehlt")
 	local label_markup = string.format(
 		'<span weight="%s" style="%s" size="%d%%">%s</span>',
-		weight,
-		style,
-		math.floor(100 * scale),
+		T.font_weight,
+		T.font_style,
+		math.floor(100 * T.font_size_scale),
 		label_text
 	)
+
 	local label_widget = wibox.widget({
 		markup = label_markup,
 		widget = wibox.widget.textbox,
@@ -58,7 +70,7 @@ function M.build(opts)
 	local row_inner = wibox.widget({
 		icon_widget,
 		label_widget,
-		spacing = T.spacing or 14, -- Abstand Icon ↔ Text
+		spacing = T.spacing,
 		layout = wibox.layout.fixed.horizontal,
 	})
 
@@ -79,26 +91,23 @@ function M.build(opts)
 		row,
 		bg = bg,
 		shape = shape,
-		forced_width = W, -- z. B. 5× Wibar-Höhe
-		forced_height = (T.fixed_height ~= false) and H or nil,
+		forced_width = W,
+		forced_height = T.fixed_height and H or nil,
 		widget = wibox.container.background,
 	})
 
 	btn:connect_signal("mouse::enter", function()
-		if bg_hover then
-			btn.bg = bg_hover
-		end
+		btn.bg = bg_hover
 	end)
 	btn:connect_signal("mouse::leave", function()
-		if bg then
-			btn.bg = bg
-		end
+		btn.bg = bg
 	end)
 
-	-- Klick-Logik
+	-- Klick-Logik (funktional, nicht theme-relevant)
 	local launcher = opts.launcher
 	local terminal = opts.terminal or "xterm"
 	local menu = opts.menu
+
 	local function run_launcher()
 		if type(launcher) ~= "string" or launcher == "" then
 			awful.spawn.with_shell(terminal)
@@ -125,8 +134,8 @@ function M.build(opts)
 		end
 		awful.spawn.with_shell(launcher)
 	end
-	btn:buttons(gears.table.join(awful.button({}, 1, run_launcher)))
 
+	btn:buttons(gears.table.join(awful.button({}, 1, run_launcher)))
 	return btn
 end
 
