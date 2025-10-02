@@ -10,6 +10,7 @@ local PARTS = {
 	"tabs",
 	"windows",
 	"wibar",
+	"power",
 }
 
 -- Teile laden (optional, ohne Absturz wenn eine Datei fehlt)

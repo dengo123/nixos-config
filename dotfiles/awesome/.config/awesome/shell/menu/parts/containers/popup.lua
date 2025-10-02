@@ -1,13 +1,10 @@
--- features/shell/menu/dialogs/parts/popup.lua
+-- ~/.config/awesome/shell/menu/parts/containers/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local Popup, _open = {}, {}
 
--- --------------------------------------------------------------------
--- Utils
--- --------------------------------------------------------------------
 local function nz(x, fb)
 	return x == nil and fb or x
 end
@@ -24,7 +21,6 @@ local function set_clients_visible(scr, on)
 end
 
 local function set_bars_visible(scr, on)
-	-- Erwartet screen.bars = { mybar1, mybar2, ... } o.ä. (optional)
 	for _, bar in pairs(scr.bars or {}) do
 		if bar and bar.visible ~= nil then
 			bar.visible = on
@@ -32,9 +28,6 @@ local function set_bars_visible(scr, on)
 	end
 end
 
--- --------------------------------------------------------------------
--- Public API
--- --------------------------------------------------------------------
 function Popup.close_all()
 	for i = #_open, 1, -1 do
 		local h = _open[i]
@@ -52,12 +45,11 @@ function Popup.show(form_widget, th, opts)
 	local W = assert(opts.width, "popup.show: width required")
 	local H = assert(opts.height, "popup.show: height required")
 
-	local use_backdrop = (opts.use_backdrop ~= false) -- default = true
+	local use_backdrop = (opts.use_backdrop ~= false)
 	local close_on_escape = nz(opts.close_on_escape, true)
-	local close_on_backdrop = nz(opts.close_on_backdrop, false)
+	local close_on_backdrop = nz(opts.close_on_backdrop, false) -- default: NICHT über Backdrop schließen
 	local placement_fn = opts.placement or awful.placement.centered
 
-	-- Root-Modus: Clients/Bars manipulieren
 	local show_root_mode = opts.show_root or false
 	if show_root_mode == true then
 		show_root_mode = "full"
@@ -65,7 +57,6 @@ function Popup.show(form_widget, th, opts)
 	local hide_clients = (show_root_mode == "with_bars") or (show_root_mode == "full")
 	local hide_bars = (show_root_mode == "full")
 
-	-- Backdrop (optional)
 	local backdrop = nil
 	if use_backdrop then
 		backdrop = wibox({
@@ -73,35 +64,18 @@ function Popup.show(form_widget, th, opts)
 			visible = true,
 			ontop = true,
 			type = "splash",
-			bg = nz(th.backdrop, "#00000000"),
+			bg = nz(th.backdrop, "#00000066"),
 		})
 		backdrop.input_passthrough = false
 
 		if show_root_mode == "with_bars" then
-			-- nur Workarea abdunkeln → Bars bleiben sichtbar
 			local wa = s.workarea
 			backdrop:geometry({ x = wa.x, y = wa.y, width = wa.width, height = wa.height })
 		else
 			backdrop:geometry(s.geometry)
 		end
-
-		if close_on_backdrop then
-			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
-				close()
-			end)))
-		else
-			-- Klicks blocken, ohne zu schließen
-			backdrop:buttons(
-				gears.table.join(
-					awful.button({}, 1, function() end),
-					awful.button({}, 2, function() end),
-					awful.button({}, 3, function() end)
-				)
-			)
-		end
 	end
 
-	-- Innencontainer (Optik via Theme)
 	local border_block = wibox.widget({
 		form_widget,
 		bg = nz(th.dialog_bg, "#00000000"),
@@ -129,23 +103,14 @@ function Popup.show(form_widget, th, opts)
 		ontop = true,
 		visible = false,
 		type = "dialog",
-		bg = "#00000000", -- transparent
+		bg = "#00000000",
 		placement = placement_fn,
 		widget = popup_widget,
 	})
 
-	----------------------------------------------------------------------
-	-- Robuster Lifecycle
-	----------------------------------------------------------------------
-	local esc_grabber_id = nil
-	local function stop_esc_grabber()
-		if esc_grabber_id then
-			pcall(function()
-				awful.keygrabber.stop(esc_grabber_id)
-			end)
-			esc_grabber_id = nil
-		end
-	end
+	-- ==== Lifecycle / Close ===================================================
+	local esc_grabber = nil
+	local close = nil -- << vor-deklarieren
 
 	local function remove_from_open()
 		for i = #_open, 1, -1 do
@@ -156,10 +121,12 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	local close -- forward-declared
-
 	local function really_close()
-		stop_esc_grabber()
+		if esc_grabber and esc_grabber.is_running then
+			pcall(function()
+				esc_grabber:stop()
+			end)
+		end
 
 		if popup then
 			popup.visible = false
@@ -168,7 +135,6 @@ function Popup.show(form_widget, th, opts)
 			backdrop.visible = false
 		end
 
-		-- Root-Restore
 		if hide_clients then
 			set_clients_visible(s, true)
 		end
@@ -187,7 +153,6 @@ function Popup.show(form_widget, th, opts)
 		really_close()
 	end
 
-	-- Root hide anwenden
 	if hide_clients then
 		set_clients_visible(s, false)
 	end
@@ -195,22 +160,41 @@ function Popup.show(form_widget, th, opts)
 		set_bars_visible(s, false)
 	end
 
-	-- ESC-Grabber
 	if close_on_escape then
-		esc_grabber_id = awful.keygrabber.run(function(_, key, event)
-			if event == "release" then
-				return
-			end
-			if key == "Escape" then
-				close()
-			end
-		end)
+		esc_grabber = awful.keygrabber({
+			autostart = true,
+			stop_event = "release",
+			keybindings = {
+				{
+					{},
+					"Escape",
+					function()
+						close()
+					end,
+				},
+			},
+		})
 	end
 
 	popup.visible = true
 	placement_fn(popup, { honor_workarea = true })
 
-	-- Guards
+	if backdrop then
+		if close_on_backdrop then
+			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
+				close()
+			end)))
+		else
+			backdrop:buttons(
+				gears.table.join(
+					awful.button({}, 1, function() end),
+					awful.button({}, 2, function() end),
+					awful.button({}, 3, function() end)
+				)
+			)
+		end
+	end
+
 	local function on_tag_selected()
 		close()
 	end
@@ -228,6 +212,23 @@ function Popup.show(form_widget, th, opts)
 	screen.connect_signal("removed", on_screen_removed)
 	screen.connect_signal("added", on_screen_added)
 	screen.connect_signal("primary_changed", on_primary_changed)
+
+	local orig_close = close
+	close = function(...)
+		pcall(function()
+			tag.disconnect_signal("property::selected", on_tag_selected)
+		end)
+		pcall(function()
+			screen.disconnect_signal("removed", on_screen_removed)
+		end)
+		pcall(function()
+			screen.disconnect_signal("added", on_screen_added)
+		end)
+		pcall(function()
+			screen.disconnect_signal("primary_changed", on_primary_changed)
+		end)
+		return orig_close(...)
+	end
 
 	local handle = { close = close, popup = popup, backdrop = backdrop }
 	table.insert(_open, handle)

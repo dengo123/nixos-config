@@ -9,12 +9,12 @@ local function safe_require(path)
 	return nil
 end
 
+-- harte Requires (ohne Layout)
 local Actions = safe_require("shell.menu.lib.actions")
 local Focus = safe_require("shell.menu.lib.focus")
-local Layout = safe_require("shell.menu.lib.layout")
 local Placement = safe_require("shell.menu.lib.placement")
 local Term = safe_require("shell.menu.lib.term")
-local ItemsMod = safe_require("shell.menu.lib.items") -- <- HIER liegen Start+Tabs Items
+local ItemsMod = safe_require("shell.menu.lib.items")
 
 function M.attach(api, opts)
 	opts = opts or {}
@@ -22,7 +22,6 @@ function M.attach(api, opts)
 
 	api.lib.actions = Actions
 	api.lib.focus = Focus
-	api.lib.layout = Layout
 	api.lib.placement = Placement
 	api.lib.term = Term
 	api.lib.items = ItemsMod
@@ -32,9 +31,6 @@ function M.attach(api, opts)
 	end
 	if Focus and type(Focus.init) == "function" then
 		Focus.init(api)
-	end
-	if Layout and type(Layout.init) == "function" then
-		Layout.init(api)
 	end
 	if Placement and type(Placement.init) == "function" then
 		Placement.init(api)
@@ -52,13 +48,6 @@ function M.attach(api, opts)
 	end
 	if opts.flatten_focus and Focus then
 		for k, v in pairs(Focus) do
-			if api[k] == nil then
-				api[k] = v
-			end
-		end
-	end
-	if opts.flatten_layout and Layout then
-		for k, v in pairs(Layout) do
 			if api[k] == nil then
 				api[k] = v
 			end
@@ -94,7 +83,7 @@ for _, k in ipairs(passthrough) do
 	end
 end
 
--- optionaler Convenience-Alias (delegiert direkt ins Items-Modul)
+-- optionaler Convenience-Alias (falls irgendwo genutzt)
 function M.defaults(ctx)
 	if not ItemsMod or type(ItemsMod.build_start) ~= "function" then
 		return nil
@@ -102,7 +91,6 @@ function M.defaults(ctx)
 	return ItemsMod.build_start(ctx)
 end
 
--- Falls du das Items-Modul direkt brauchst:
 M.items = ItemsMod
 
 return M

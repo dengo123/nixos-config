@@ -1,8 +1,10 @@
--- ~/.config/awesome/features/shell/menu/lib/actions.lua
+-- ~/.config/awesome/shell/menu/lib/actions.lua
 local awful = require("awful")
-local gears = require("gears") -- NEU: für delayed_call/start_new
+local gears = require("gears")
 
 local Actions, _api = {}, nil
+
+-- API-Context (optional, wird z. B. via Lib.attach(api) gesetzt)
 function Actions.init(api)
 	_api = api
 end
@@ -10,9 +12,12 @@ end
 local function get_api()
 	return _api or rawget(_G, "__menu_api")
 end
+
+-- -------------------- util helpers --------------------
 local function tbl(x)
 	return type(x) == "table" and x or {}
 end
+
 local function merge(a, b)
 	local o = {}
 	if type(a) == "table" then
@@ -28,13 +33,7 @@ local function merge(a, b)
 	return o
 end
 
----------------------------------------------------------------------
--- Debounce / Guards (ohne gears.timer.seconds)
----------------------------------------------------------------------
-local _cooldown = {} -- key -> true während Cooldown
-local _reentry = false -- globaler Guard gegen Press+Release im selben Frame
-
--- stabiler Schlüssel pro Item
+-- stabiler Schlüssel je Item für throttle
 local function item_key(it)
 	if type(it) ~= "table" then
 		return tostring(it)
@@ -58,14 +57,16 @@ local function item_key(it)
 	return "item:" .. tostring(it)
 end
 
--- throttelt Aufrufe je key für window_s Sekunden (Default ~0.22s)
+-- -------------------- throttle/debounce --------------------
+local _cooldown = {} -- key -> true während Cooldown
+local _reentry = false
+
 local function throttle(key, window_s, fn)
 	local win = tonumber(window_s) or 0.22
 	if _cooldown[key] then
 		return
 	end
 	_cooldown[key] = true
-	-- Timer, der den Cooldown wieder löscht
 	gears.timer.start_new(win, function()
 		_cooldown[key] = nil
 		return false
@@ -73,40 +74,62 @@ local function throttle(key, window_s, fn)
 	return fn()
 end
 
----------------------------------------------------------------------
--- Dialog öffnen (Menü sichtbar lassen)
----------------------------------------------------------------------
+-- -------------------- dialog resolver (NEU) --------------------
+-- Unterstützt neue Struktur:
+--   shell.menu.power (open|show|<callable>)
+--   shell.menu.search (open|show|<callable>)
+local function try_open_module(modname, opts)
+	local ok, mod = pcall(require, modname)
+	if not ok or not mod then
+		return nil
+	end
+
+	-- bevorzugt: .open(opts)
+	if type(mod.open) == "function" then
+		return mod.open(opts)
+	end
+	-- alternativ: .show(opts)
+	if type(mod.show) == "function" then
+		return mod.show(opts)
+	end
+	-- modul selbst callable (return function(opts) ... end)
+	if type(mod) == "function" then
+		return mod(opts)
+	end
+	return nil
+end
+
 local function open_dialog_by_name(name, args)
 	local api = get_api()
-	if not api then
-		return
-	end
-	local Dialogs = require("features.shell.menu.dialogs")
-	local fn = Dialogs and Dialogs[name]
-	if type(fn) ~= "function" then
-		return
-	end
 
-	local theme = (api.get_theme and api:get_theme()) or {}
+	local theme = (api and api.get_theme and api:get_theme()) or {}
 	local opts = merge({ theme = theme, embed = true }, tbl(args))
-	local ok, widget = pcall(fn, opts)
-	if not ok then
+
+	local handle = nil
+	if name == "power" then
+		handle = try_open_module("shell.menu.power", opts)
+	elseif name == "search" then
+		handle = try_open_module("shell.menu.search", opts)
+	else
+		-- unbekannter Dialog-Name → nichts tun
 		return
 	end
 
-	if api.show then
-		pcall(api.show, api)
-	end
-	if api.show_dialog then
-		pcall(api.show_dialog, api, widget)
+	-- optional: Menü-Overlay informieren, falls vorhanden
+	if api then
+		if api.show then
+			pcall(api.show, api)
+		end
+		if api.show_dialog and handle and (handle.widget or handle.popup) then
+			-- falls dein API eine Widget-Bridge erwartet, versuch beides
+			pcall(api.show_dialog, api, handle.widget or handle.popup)
+		end
 	end
 	return true
 end
 
----------------------------------------------------------------------
--- Zentrale Policy-Ausführung
+-- -------------------- policy wrapper --------------------
 -- policy = { close="before"|"after"|"none", menu_close=true|false }
----------------------------------------------------------------------
 local function run_with_policy(policy, fn_close, fn_action)
 	policy = policy or { close = "before" }
 
@@ -120,17 +143,12 @@ local function run_with_policy(policy, fn_close, fn_action)
 	end)
 
 	local function close_dialogs_only()
-		-- 1) Standalone-Dialoge (ältere APIs)
-		local ok, Popup = pcall(require, "features.shell.menu.dialogs.parts.popup")
-		if ok and Popup and type(Popup.close_all) == "function" then
-			pcall(Popup.close_all)
-		end
-		-- 2) Menü-Overlay-Dialog
+		-- Menü-Overlay-Dialog schließen (wenn API vorhanden)
 		local api = get_api()
 		if api and api.hide_dialog then
 			pcall(api.hide_dialog, api)
 		end
-		-- 3) explizites close() vom Dialog-Builder
+		-- explizite close-Funktion (vom Dialog-Handle)
 		if fn_close then
 			pcall(fn_close)
 		end
@@ -166,9 +184,7 @@ local function run_with_policy(policy, fn_close, fn_action)
 	maybe_close_menu()
 end
 
----------------------------------------------------------------------
--- Fabriken
----------------------------------------------------------------------
+-- -------------------- factories --------------------
 function Actions.cmd(cmd, policy)
 	return function(close)
 		run_with_policy(policy, close, function()
@@ -199,7 +215,7 @@ function Actions.signal(sig, payload, policy)
 	end
 end
 
--- Primitive Runner
+-- primitive runner (direkt, ohne policy)
 function Actions.run_shell(cmd)
 	if cmd and #cmd > 0 then
 		awful.spawn.with_shell(cmd)
@@ -212,30 +228,33 @@ function Actions.run_bin(bin, argv)
 	end
 end
 
----------------------------------------------------------------------
--- Dispatcher mit Throttle
--- item: { dialog, dialog_args, on_press, cmd, bin, argv, policy, id? }
----------------------------------------------------------------------
--- NEU:
+-- -------------------- dispatcher --------------------
+-- item:
+--   { dialog="power"|"search", dialog_args=?,
+--     on_press=function(close) ... end,
+--     cmd=string | bin=string, argv={...},
+--     policy={ close="before"|"after"|"none", menu_close=true/false },
+--     id=? (für throttle-key) }
 function Actions.run(item, close)
 	if not item then
 		return
 	end
 	local key = item_key(item)
+
 	return throttle(key, 0.22, function()
-		-- Dialog (bewusst ohne Schließen des Menüs/Overlays)
+		-- 1) Dialog öffnen (ohne Menü sofort zu schließen)
 		if item.dialog then
 			return open_dialog_by_name(item.dialog, item.dialog_args)
 		end
 
-		-- Callback-Variante: on_press kann 'close' ignorieren oder nutzen
+		-- 2) Callback-Variante
 		if type(item.on_press) == "function" then
-			-- NICHT nochmal run_with_policy drumlegen – Factories wie Actions.cmd
-			-- enthalten die Policy bereits innen. Einfach aufrufen und 'close' mitgeben.
+			-- Factories (cmd/lua/signal) kapseln bereits die Policy;
+			-- hier nur weiterreichen:
 			return item.on_press(close)
 		end
 
-		-- Shell / Bin – hier Policy außen anwenden und 'close' weitergeben
+		-- 3) Shell / Bin (mit Policy)
 		if item.cmd then
 			return run_with_policy(item.policy, close, function()
 				Actions.run_shell(item.cmd)
@@ -250,7 +269,6 @@ function Actions.run(item, close)
 end
 
 function Actions.click(item)
-	-- Maus-Mehrfachfeuer wird durch throttle() abgefedert
 	return function(close)
 		Actions.run(item, close)
 	end
