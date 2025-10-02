@@ -2,31 +2,22 @@
 local awful = require("awful")
 
 local M = {
-	bar = {
-		model = require("shell.bar.model"),
-		view = require("shell.bar.view"),
-	},
+	bar = require("shell.bar"), -- << neu: ein Modul statt model/view
 	workspaces = require("shell.workspaces"),
 	windowing = require("shell.windowing"),
 }
 
--- Aus ui.* eine Wallpaper-Setter-Funktion extrahieren (falls vorhanden)
 local function resolve_wallpaper_fn(ui)
 	if not ui or not ui.wallpaper then
 		return nil
 	end
 	if type(ui.wallpaper.set) == "function" then
 		return ui.wallpaper.set
-	elseif type(ui.wallpaper) == "function" then
+	end
+	if type(ui.wallpaper) == "function" then
 		return ui.wallpaper
 	end
 	return nil
-end
-
-function M.bar.setup(s, opts)
-	opts = opts or {}
-	local model = M.bar.model.build(s, opts)
-	return M.bar.view.place(s, model, opts)
 end
 
 -- Erwartet { cfg, ui, input }
@@ -36,18 +27,16 @@ function M.init(args)
 	local ui = args.ui
 	local input = args.input or {}
 
-	-- 1) Workspaces: komplette cfg durchreichen (+ optional wallpaper_fn)
+	-- 1) Workspaces inkl. optionaler Wallpaper-Funktion
 	do
 		local wcfg = {}
 		for k, v in pairs(cfg) do
 			wcfg[k] = v
 		end
-		-- Falls dein Workspaces-Setup noch eine Wallpaper-Funktion nutzen soll:
 		local wpfn = resolve_wallpaper_fn(ui)
 		if wpfn then
 			wcfg.wallpaper_fn = wpfn
 		end
-
 		M.workspaces.init(wcfg)
 	end
 
@@ -58,7 +47,7 @@ function M.init(args)
 		ui = ui,
 	})
 
-	-- 3) Kein internes Menü
+	-- 3) Menü/Launcher in cfg neutralisieren (du steuerst das extern)
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 
@@ -72,12 +61,12 @@ function M.init(args)
 		cfg.launcher_fn = nil
 	end
 
-	-- 5) Bars pro Screen
+	-- 5) Bars pro Screen via shell.bar.setup
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
 			ui = ui,
-			launcher = nil,
+			-- systray = true/false optional
 		})
 	end)
 
