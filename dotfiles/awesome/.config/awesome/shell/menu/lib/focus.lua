@@ -1,10 +1,9 @@
--- ~/.config/awesome/features/shell/menu/lib/focus.lua
+-- ~/.config/awesome/shell/menu/lib/focus.lua
 local awful = require("awful")
 
 local Focus = {}
 
--- --- helpers ---------------------------------------------------------
-
+-- normalize key map
 local function norm_keys(k)
 	return {
 		left = (k and k.left) or "Left",
@@ -59,34 +58,9 @@ local function install_mouse_follow(list, set_index)
 	end
 end
 
-local function run_keygrabber(on_key)
-	local kg_id = awful.keygrabber.run(function(_, key, ev)
-		if ev ~= "release" then
-			on_key(key)
-		end
-	end)
-	return function()
-		if kg_id then
-			pcall(awful.keygrabber.stop, kg_id)
-		end
-	end
-end
-
-local function close_handle(handle)
-	if handle and handle.close then
-		pcall(function()
-			handle:close()
-		end)
-	elseif handle and handle.hide then
-		pcall(function()
-			handle:hide()
-		end)
-	end
-end
-
--- --- einzig öffentliche API: lineare Liste --------------------------
--- items: {widget1, widget2, ...} (Widgets sollten set_focus/activate unterstützen)
--- opts: { keys?, mouse_follow?, handle? }
+-- PUBLIC: linear focus list
+-- items: { w1, w2, ... } each supporting set_focus(on,th) and activate()
+-- opts:  { keys?, mouse_follow?, handle? }
 function Focus.attach(items, th, opts)
 	opts = opts or {}
 	local keys = norm_keys(opts.keys)
@@ -111,21 +85,41 @@ function Focus.attach(items, th, opts)
 
 	local remove_mouse = (opts.mouse_follow == false) and function() end or install_mouse_follow(items, set_index)
 
-	local stop_kg = run_keygrabber(function(key)
-		if key == keys.left or key == keys.up then
-			set_index(i - 1)
-		elseif key == keys.right or key == keys.down then
-			set_index(i + 1)
-		elseif key == keys.cancel then
-			close_handle(opts.handle)
-		elseif ok_hit(keys, key) then
-			call_activate(items[i])
-		end
-	end)
+	-- object-based keygrabber (robust)
+	local kg = awful.keygrabber({
+		autostart = true,
+		stop_event = "release",
+		keypressed_callback = function(_, key)
+			if key == keys.left or key == keys.up then
+				set_index(i - 1)
+			elseif key == keys.right or key == keys.down then
+				set_index(i + 1)
+			elseif key == keys.cancel then
+				if opts.handle and opts.handle.close then
+					-- stop first, then close to avoid any race
+					pcall(function()
+						kg:stop()
+					end)
+					pcall(function()
+						remove_mouse()
+					end)
+					call_set_focus(items[i], false, th)
+					return opts.handle.close()
+				end
+			elseif ok_hit(keys, key) then
+				call_activate(items[i])
+			end
+		end,
+	})
 
+	-- stop function returned to caller
 	return function()
-		stop_kg()
-		remove_mouse()
+		pcall(function()
+			kg:stop()
+		end)
+		pcall(function()
+			remove_mouse()
+		end)
 		for idx = 1, n do
 			call_set_focus(items[idx], false, th)
 		end

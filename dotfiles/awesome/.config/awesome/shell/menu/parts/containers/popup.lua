@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/menu/parts/containers/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -47,7 +46,7 @@ function Popup.show(form_widget, th, opts)
 
 	local use_backdrop = (opts.use_backdrop ~= false)
 	local close_on_escape = nz(opts.close_on_escape, true)
-	local close_on_backdrop = nz(opts.close_on_backdrop, false) -- default: NICHT über Backdrop schließen
+	local close_on_backdrop = nz(opts.close_on_backdrop, false)
 	local placement_fn = opts.placement or awful.placement.centered
 
 	local show_root_mode = opts.show_root or false
@@ -57,6 +56,7 @@ function Popup.show(form_widget, th, opts)
 	local hide_clients = (show_root_mode == "with_bars") or (show_root_mode == "full")
 	local hide_bars = (show_root_mode == "full")
 
+	-- Backdrop
 	local backdrop = nil
 	if use_backdrop then
 		backdrop = wibox({
@@ -67,7 +67,6 @@ function Popup.show(form_widget, th, opts)
 			bg = nz(th.backdrop, "#00000066"),
 		})
 		backdrop.input_passthrough = false
-
 		if show_root_mode == "with_bars" then
 			local wa = s.workarea
 			backdrop:geometry({ x = wa.x, y = wa.y, width = wa.width, height = wa.height })
@@ -76,6 +75,7 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
+	-- Framed content
 	local border_block = wibox.widget({
 		form_widget,
 		bg = nz(th.dialog_bg, "#00000000"),
@@ -108,9 +108,21 @@ function Popup.show(form_widget, th, opts)
 		widget = popup_widget,
 	})
 
-	-- ==== Lifecycle / Close ===================================================
+	----------------------------------------------------------------------
+	-- Lifecycle / Close
+	----------------------------------------------------------------------
 	local esc_grabber = nil
-	local close = nil -- << vor-deklarieren
+	local closed = false
+	local close = nil
+
+	local function stop_keygrabber()
+		if esc_grabber then
+			pcall(function()
+				esc_grabber:stop()
+			end)
+			esc_grabber = nil
+		end
+	end
 
 	local function remove_from_open()
 		for i = #_open, 1, -1 do
@@ -122,11 +134,12 @@ function Popup.show(form_widget, th, opts)
 	end
 
 	local function really_close()
-		if esc_grabber and esc_grabber.is_running then
-			pcall(function()
-				esc_grabber:stop()
-			end)
+		if closed then
+			return
 		end
+		closed = true
+
+		stop_keygrabber()
 
 		if popup then
 			popup.visible = false
@@ -146,7 +159,6 @@ function Popup.show(form_widget, th, opts)
 			popup.widget = nil
 		end
 		remove_from_open()
-		popup, backdrop = nil, nil
 	end
 
 	close = function()
@@ -195,6 +207,14 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
+	-- Extra safety: ensure close if popup gets hidden externally
+	popup:connect_signal("property::visible", function(_, vis)
+		if not vis then
+			close()
+		end
+	end)
+
+	-- Auto-close on environment changes
 	local function on_tag_selected()
 		close()
 	end
@@ -213,7 +233,8 @@ function Popup.show(form_widget, th, opts)
 	screen.connect_signal("added", on_screen_added)
 	screen.connect_signal("primary_changed", on_primary_changed)
 
-	local orig_close = close
+	-- Wrap close to disconnect signals
+	local raw_close = close
 	close = function(...)
 		pcall(function()
 			tag.disconnect_signal("property::selected", on_tag_selected)
@@ -227,7 +248,7 @@ function Popup.show(form_widget, th, opts)
 		pcall(function()
 			screen.disconnect_signal("primary_changed", on_primary_changed)
 		end)
-		return orig_close(...)
+		return raw_close(...)
 	end
 
 	local handle = { close = close, popup = popup, backdrop = backdrop }
