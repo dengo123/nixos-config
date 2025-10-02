@@ -13,7 +13,7 @@ function M.build(opts)
 	local s = opts.screen or (mouse and mouse.screen) or nil
 	local T = assert(opts.theme, "start widget: opts.theme (ui/theme/start.get(...)) fehlt")
 
-	-- HARTE PRÄMISSEN aus dem Theme (keine Fallbacks hier!)
+	-- Harte Theme-Prämissen (keine Fallbacks hier!)
 	assert(T.bg, "start theme: bg fehlt")
 	assert(T.bg_hover, "start theme: bg_hover fehlt")
 	assert(T.fg, "start theme: fg fehlt")
@@ -27,6 +27,7 @@ function M.build(opts)
 	assert(T.font_style, "start theme: font_style fehlt")
 	assert(T.width_factor, "start theme: width_factor fehlt")
 	assert(T.fixed_height ~= nil, "start theme: fixed_height fehlt (true/false)")
+	assert(T.label, "start theme: label fehlt")
 
 	local H = assert(tonumber(beautiful.wibar_height), "beautiful.wibar_height fehlt/ungueltig")
 	local W = math.floor(T.width_factor * H)
@@ -53,13 +54,12 @@ function M.build(opts)
 	})
 
 	-- Label via Pango
-	local label_text = assert(T.label, "start theme: label fehlt")
 	local label_markup = string.format(
 		'<span weight="%s" style="%s" size="%d%%">%s</span>',
 		T.font_weight,
 		T.font_style,
 		math.floor(100 * T.font_size_scale),
-		label_text
+		T.label
 	)
 
 	local label_widget = wibox.widget({
@@ -96,6 +96,7 @@ function M.build(opts)
 		widget = wibox.container.background,
 	})
 
+	-- Hover
 	btn:connect_signal("mouse::enter", function()
 		btn.bg = bg_hover
 	end)
@@ -103,10 +104,11 @@ function M.build(opts)
 		btn.bg = bg
 	end)
 
-	-- Klick-Logik (funktional, nicht theme-relevant)
+	-- Klick-Logik
 	local launcher = opts.launcher
 	local terminal = opts.terminal or "xterm"
 	local menu = opts.menu
+	local menu_api = opts.menu_api -- erwartet: { show_for_widget = function(widget) ... , get_start_items = function() ... end }
 
 	local function run_launcher()
 		if type(launcher) ~= "string" or launcher == "" then
@@ -135,7 +137,17 @@ function M.build(opts)
 		awful.spawn.with_shell(launcher)
 	end
 
-	btn:buttons(gears.table.join(awful.button({}, 1, run_launcher)))
+	-- Buttons: Left = Launcher/Terminal, Right = shell/menu Dropdown
+	btn:buttons(gears.table.join(
+		awful.button({}, 1, run_launcher),
+		awful.button({}, 3, function()
+			if menu_api and menu_api.show_for_widget then
+				-- Menü-Positionierung macht shell/menu: linksbündig über dem Button
+				menu_api.show_for_widget(btn)
+			end
+		end)
+	))
+
 	return btn
 end
 
