@@ -1,7 +1,6 @@
 -- ~/.config/awesome/shell/menu/lib/init.lua
 local M = {}
 
--- --- helper: safe require ---------------------------------------------------
 local function safe_require(path)
 	local ok, mod = pcall(require, path)
 	if ok then
@@ -10,16 +9,13 @@ local function safe_require(path)
 	return nil
 end
 
--- --- core modules (aggregiert; keine Legacy-/features-Fallbacks) -------------
 local Actions = safe_require("shell.menu.lib.actions")
 local Focus = safe_require("shell.menu.lib.focus")
 local Layout = safe_require("shell.menu.lib.layout")
 local Placement = safe_require("shell.menu.lib.placement")
 local Term = safe_require("shell.menu.lib.term")
-local ItemsMod = safe_require("shell.menu.lib.items") -- <— enthält start + tabs items
+local ItemsMod = safe_require("shell.menu.lib.items") -- <- HIER liegen Start+Tabs Items
 
--- --- public: attach aggregator ----------------------------------------------
--- Hängt alle Libs unter api.lib an. Optional: flatten_* um direkt auf api zu legen.
 function M.attach(api, opts)
 	opts = opts or {}
 	api.lib = api.lib or {}
@@ -29,9 +25,8 @@ function M.attach(api, opts)
 	api.lib.layout = Layout
 	api.lib.placement = Placement
 	api.lib.term = Term
-	api.lib.items = ItemsMod -- <- Quelle für Start- & Tabs-Items
+	api.lib.items = ItemsMod
 
-	-- optionale Initializer der Submodule (falls vorhanden)
 	if Actions and type(Actions.init) == "function" then
 		Actions.init(api)
 	end
@@ -48,7 +43,6 @@ function M.attach(api, opts)
 		Term.init(api)
 	end
 
-	-- optional: flatten (APIs direkt auf 'api' legen)
 	if opts.flatten_actions and Actions then
 		for k, v in pairs(Actions) do
 			if api[k] == nil then
@@ -88,20 +82,9 @@ function M.attach(api, opts)
 	return api
 end
 
--- Kompat-Alias für Altcode
 M.init = M.attach
 
--- --- actions passthroughs (optional & gefahrlos) ----------------------------
-local passthrough = {
-	"run",
-	"run_dialog",
-	"run_shell",
-	"run_bin",
-	"cmd",
-	"lua",
-	"signal",
-	"click",
-}
+local passthrough = { "run", "run_dialog", "run_shell", "run_bin", "cmd", "lua", "signal", "click" }
 for _, k in ipairs(passthrough) do
 	M[k] = function(...)
 		if not Actions or not Actions[k] then
@@ -111,20 +94,15 @@ for _, k in ipairs(passthrough) do
 	end
 end
 
--- --- optionale Komfort-Funktion ---------------------------------------------
--- Nutzt ItemsMod.build_start(ctx), falls vorhanden. Rein pass-through.
+-- optionaler Convenience-Alias (delegiert direkt ins Items-Modul)
 function M.defaults(ctx)
-	if not ItemsMod then
+	if not ItemsMod or type(ItemsMod.build_start) ~= "function" then
 		return nil
 	end
-	if type(ItemsMod.build_start) == "function" then
-		return ItemsMod.build_start(ctx)
-	end
-	-- Wenn du keinen Bedarf hast, entferne die Funktion oder lass sie nil zurückgeben.
-	return nil
+	return ItemsMod.build_start(ctx)
 end
 
--- Items-Modul zusätzlich exponieren (falls du's direkt importieren willst)
+-- Falls du das Items-Modul direkt brauchst:
 M.items = ItemsMod
 
 return M
