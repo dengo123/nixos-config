@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/menu/parts/containers/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -37,6 +38,12 @@ function Popup.close_all()
 	end
 end
 
+-- opts:
+--   width (req), height (req)
+--   placement? (default awful.placement.centered)
+--   use_backdrop? (default true)
+--   close_on_backdrop? (default false)  -- Maus, kein Keygrabber!
+--   show_root? = false|"with_bars"|"full"
 function Popup.show(form_widget, th, opts)
 	opts, th = (opts or {}), (th or {})
 	local s = awful.screen.focused()
@@ -45,7 +52,6 @@ function Popup.show(form_widget, th, opts)
 	local H = assert(opts.height, "popup.show: height required")
 
 	local use_backdrop = (opts.use_backdrop ~= false)
-	local close_on_escape = nz(opts.close_on_escape, true)
 	local close_on_backdrop = nz(opts.close_on_backdrop, false)
 	local placement_fn = opts.placement or awful.placement.centered
 
@@ -75,7 +81,7 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	-- Framed content
+	-- Dialogcontainer (Rundung/Rand werden hier gezeichnet)
 	local border_block = wibox.widget({
 		form_widget,
 		bg = nz(th.dialog_bg, "#00000000"),
@@ -108,21 +114,7 @@ function Popup.show(form_widget, th, opts)
 		widget = popup_widget,
 	})
 
-	----------------------------------------------------------------------
-	-- Lifecycle / Close
-	----------------------------------------------------------------------
-	local esc_grabber = nil
-	local closed = false
-	local close = nil
-
-	local function stop_keygrabber()
-		if esc_grabber then
-			pcall(function()
-				esc_grabber:stop()
-			end)
-			esc_grabber = nil
-		end
-	end
+	-- ===== lifecycle ===================================================
 
 	local function remove_from_open()
 		for i = #_open, 1, -1 do
@@ -134,13 +126,6 @@ function Popup.show(form_widget, th, opts)
 	end
 
 	local function really_close()
-		if closed then
-			return
-		end
-		closed = true
-
-		stop_keygrabber()
-
 		if popup then
 			popup.visible = false
 		end
@@ -161,7 +146,7 @@ function Popup.show(form_widget, th, opts)
 		remove_from_open()
 	end
 
-	close = function()
+	local function close()
 		really_close()
 	end
 
@@ -172,25 +157,10 @@ function Popup.show(form_widget, th, opts)
 		set_bars_visible(s, false)
 	end
 
-	if close_on_escape then
-		esc_grabber = awful.keygrabber({
-			autostart = true,
-			stop_event = "release",
-			keybindings = {
-				{
-					{},
-					"Escape",
-					function()
-						close()
-					end,
-				},
-			},
-		})
-	end
-
 	popup.visible = true
 	placement_fn(popup, { honor_workarea = true })
 
+	-- Backdrop Interaktionen (nur Maus, kein Keygrab)
 	if backdrop then
 		if close_on_backdrop then
 			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
@@ -207,14 +177,7 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	-- Extra safety: ensure close if popup gets hidden externally
-	popup:connect_signal("property::visible", function(_, vis)
-		if not vis then
-			close()
-		end
-	end)
-
-	-- Auto-close on environment changes
+	-- Auto-close bei Tag/Screen-Änderungen
 	local function on_tag_selected()
 		close()
 	end
@@ -233,8 +196,7 @@ function Popup.show(form_widget, th, opts)
 	screen.connect_signal("added", on_screen_added)
 	screen.connect_signal("primary_changed", on_primary_changed)
 
-	-- Wrap close to disconnect signals
-	local raw_close = close
+	local orig_close = close
 	close = function(...)
 		pcall(function()
 			tag.disconnect_signal("property::selected", on_tag_selected)
@@ -248,7 +210,7 @@ function Popup.show(form_widget, th, opts)
 		pcall(function()
 			screen.disconnect_signal("primary_changed", on_primary_changed)
 		end)
-		return raw_close(...)
+		return orig_close(...)
 	end
 
 	local handle = { close = close, popup = popup, backdrop = backdrop }

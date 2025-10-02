@@ -74,25 +74,19 @@ local function throttle(key, window_s, fn)
 	return fn()
 end
 
--- -------------------- dialog resolver (NEU) --------------------
--- Unterstützt neue Struktur:
---   shell.menu.power (open|show|<callable>)
---   shell.menu.search (open|show|<callable>)
+-- -------------------- dialog resolver --------------------
 local function try_open_module(modname, opts)
 	local ok, mod = pcall(require, modname)
 	if not ok or not mod then
 		return nil
 	end
 
-	-- bevorzugt: .open(opts)
 	if type(mod.open) == "function" then
 		return mod.open(opts)
 	end
-	-- alternativ: .show(opts)
 	if type(mod.show) == "function" then
 		return mod.show(opts)
 	end
-	-- modul selbst callable (return function(opts) ... end)
 	if type(mod) == "function" then
 		return mod(opts)
 	end
@@ -105,25 +99,25 @@ local function open_dialog_by_name(name, args)
 	local theme = (api and api.get_theme and api:get_theme()) or {}
 	local opts = merge({ theme = theme, embed = true }, tbl(args))
 
+	-- >>> Wichtig: Menü vor Dialog-Open weg (inkl. dessen Keygrabber)
+	if api and api.hide then
+		pcall(api.hide, api)
+	elseif api and api.pause then
+		pcall(api.pause, api)
+	end
+
 	local handle = nil
 	if name == "power" then
 		handle = try_open_module("shell.menu.power", opts)
 	elseif name == "search" then
 		handle = try_open_module("shell.menu.search", opts)
 	else
-		-- unbekannter Dialog-Name → nichts tun
 		return
 	end
 
-	-- optional: Menü-Overlay informieren, falls vorhanden
-	if api then
-		if api.show then
-			pcall(api.show, api)
-		end
-		if api.show_dialog and handle and (handle.widget or handle.popup) then
-			-- falls dein API eine Widget-Bridge erwartet, versuch beides
-			pcall(api.show_dialog, api, handle.widget or handle.popup)
-		end
+	-- Optional: wenn dein Overlay einen Dialog „einrahmt“, aber ohne eigenen Grabber
+	if api and api.show_dialog and handle and (handle.widget or handle.popup) then
+		pcall(api.show_dialog, api, handle.widget or handle.popup)
 	end
 	return true
 end
@@ -133,7 +127,6 @@ end
 local function run_with_policy(policy, fn_close, fn_action)
 	policy = policy or { close = "before" }
 
-	-- Reentrancy-Guard: Press+Release im selben Tick nur 1x
 	if _reentry then
 		return
 	end
@@ -143,12 +136,10 @@ local function run_with_policy(policy, fn_close, fn_action)
 	end)
 
 	local function close_dialogs_only()
-		-- Menü-Overlay-Dialog schließen (wenn API vorhanden)
 		local api = get_api()
 		if api and api.hide_dialog then
 			pcall(api.hide_dialog, api)
 		end
-		-- explizite close-Funktion (vom Dialog-Handle)
 		if fn_close then
 			pcall(fn_close)
 		end
@@ -242,15 +233,13 @@ function Actions.run(item, close)
 	local key = item_key(item)
 
 	return throttle(key, 0.22, function()
-		-- 1) Dialog öffnen (ohne Menü sofort zu schließen)
+		-- 1) Dialog öffnen (Menü wird vorher versteckt)
 		if item.dialog then
 			return open_dialog_by_name(item.dialog, item.dialog_args)
 		end
 
 		-- 2) Callback-Variante
 		if type(item.on_press) == "function" then
-			-- Factories (cmd/lua/signal) kapseln bereits die Policy;
-			-- hier nur weiterreichen:
 			return item.on_press(close)
 		end
 

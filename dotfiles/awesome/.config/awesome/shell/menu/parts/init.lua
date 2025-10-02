@@ -6,7 +6,9 @@ local gears = require("gears")
 local Parts = {}
 Parts.widgets = require("shell.menu.parts.widgets")
 Parts.containers = require("shell.menu.parts.containers")
-local Focus = require("shell.menu.lib").focus
+
+-- >>> ganze Lib ziehen (focus, actions, placement, term, items …)
+local Lib = require("shell.menu.lib")
 
 local function pick(...)
 	for i = 1, select("#", ...) do
@@ -17,17 +19,13 @@ local function pick(...)
 	end
 end
 
-local function num(x, fb)
-	x = tonumber(x)
-	return x ~= nil and x or fb
-end
-
 -- opts:
 --   title, theme, container="power"
---   dims = { w, h, header_h, footer_h, body_h, pad_h, pad_v }   <-- Pflicht (Größenlogik NICHT hier!)
+--   dims = { w, h, header_h, footer_h, body_h, pad_h, pad_v }   <-- Pflicht
 --   build_body = function(th, dims, parts) -> body_widget, focus_items, required_w?
 --   popup = { width?, height?, placement?, close_on_escape?, close_on_backdrop?, use_backdrop? }
 --   focus = { mouse_follow=true/false }
+
 function Parts.open(opts)
 	opts = opts or {}
 	local th = opts.theme or {}
@@ -38,6 +36,36 @@ function Parts.open(opts)
 	assert(type(opts.build_body) == "function", "parts.open: build_body(th,dims,parts) erforderlich")
 	local body_core, focus_items, required_w = opts.build_body(th, dims, Parts)
 	focus_items = focus_items or {}
+
+	-- >>> Fokusfähige Widgets aus beliebigen Layouts/Containern herausfiltern
+	local function flatten_focus(list, out, seen)
+		out = out or {}
+		seen = seen or {}
+
+		if type(list) ~= "table" then
+			return out
+		end
+		if seen[list] then
+			return out
+		end
+		seen[list] = true
+
+		-- Bereits ein fokusfähiges Widget?
+		if (type(list.set_focus) == "function") or (type(list.activate) == "function") then
+			table.insert(out, list)
+			return out
+		end
+
+		-- Rekursiv durch alle Kinder/Keys gehen
+		for _, v in pairs(list) do
+			if type(v) == "table" then
+				flatten_focus(v, out, seen)
+			end
+		end
+		return out
+	end
+
+	focus_items = flatten_focus(focus_items)
 
 	-- Cancel
 	local cancel_inner = Parts.widgets.mk_cancel_button(th.cancel_label or "Cancel", nil, th)
@@ -56,7 +84,7 @@ function Parts.open(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Body (eigene Farbe!)
+	-- Body
 	local body = wibox.widget({
 		{
 			{ body_core, halign = "center", valign = "center", widget = wibox.container.place },
@@ -117,9 +145,10 @@ function Parts.open(opts)
 		group = "dialogs",
 	}
 
+	-- >>> WICHTIG: Popup kommt aus Parts.containers.popup – nicht aus Lib
 	local handle = Parts.containers.popup.show(stack, th, popup_args)
 
-	-- Cancel Verhalten/Fokus (immer schließen – Maus & Tastatur)
+	-- Cancel Verhalten/Fokus
 	if not cancel_btn.set_focus then
 		function cancel_btn:set_focus(on)
 			local on_bg = pick(th.cancel_bg_hover, th.row_bg_hover, th.bg_focus, "#FFFFFF22")
@@ -127,11 +156,9 @@ function Parts.open(opts)
 			self.bg = on and on_bg or off_bg
 		end
 	end
-	-- Klick schließt immer
 	cancel_btn:buttons(gears.table.join(awful.button({}, 1, function()
 		handle.close()
 	end)))
-	-- Tastatur schließt auch
 	if not cancel_btn.activate then
 		function cancel_btn:activate()
 			handle.close()
@@ -139,10 +166,10 @@ function Parts.open(opts)
 	end
 	cancel_btn.mouse_enter_target = cancel_btn
 
-	-- Fokus (linear)
+	-- Fokus (linear) über die Lib
 	table.insert(focus_items, cancel_btn)
-	if Focus and type(Focus.attach) == "function" then
-		local stop = Focus.attach(
+	if Lib and Lib.focus and type(Lib.focus.attach) == "function" then
+		local stop = Lib.focus.attach(
 			focus_items,
 			th,
 			{ handle = handle, mouse_follow = (not opts.focus) or (opts.focus.mouse_follow ~= false) }

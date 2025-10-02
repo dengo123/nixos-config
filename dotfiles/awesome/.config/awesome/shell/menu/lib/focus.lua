@@ -3,7 +3,8 @@ local awful = require("awful")
 
 local Focus = {}
 
--- normalize key map
+-- ---------------- helpers ----------------
+
 local function norm_keys(k)
 	return {
 		left = (k and k.left) or "Left",
@@ -27,39 +28,74 @@ local function call_activate(w)
 	end
 end
 
-local function ok_hit(keys, key)
-	local oks = (type(keys.ok) == "table") and keys.ok or { keys.ok }
-	for _, k in ipairs(oks) do
-		if key == k then
-			return true
-		end
-	end
-	return false
-end
-
 local function install_mouse_follow(list, set_index)
 	local handlers = {}
 	for idx, w in ipairs(list or {}) do
 		local tgt = (w and w.mouse_enter_target) or w
 		if tgt and tgt.connect_signal then
-			local h = function()
+			local cb = function()
 				set_index(idx)
 			end
-			tgt:connect_signal("mouse::enter", h)
-			handlers[#handlers + 1] = { obj = tgt, cb = h }
+			tgt:connect_signal("mouse::enter", cb)
+			handlers[#handlers + 1] = { obj = tgt, cb = cb }
 		end
 	end
 	return function()
-		for _, rec in ipairs(handlers) do
-			if rec.obj and rec.cb then
-				pcall(rec.obj.disconnect_signal, rec.obj, "mouse::enter", rec.cb)
+		for _, h in ipairs(handlers) do
+			if h.obj and h.cb then
+				pcall(h.obj.disconnect_signal, h.obj, "mouse::enter", h.cb)
 			end
 		end
 	end
 end
 
--- PUBLIC: linear focus list
--- items: { w1, w2, ... } each supporting set_focus(on,th) and activate()
+-- Singleton-Keygrabber, verhindert Doppel-Grab
+local current_kg = nil
+
+local function make_keygrabber(bindings)
+	-- alten Grabber sicher beenden
+	if current_kg then
+		pcall(function()
+			current_kg:stop()
+		end)
+		current_kg = nil
+	end
+
+	local kg = awful.keygrabber({
+		autostart = true,
+		-- stop_event = "release",  -- absichtlich NICHT gesetzt
+		keybindings = bindings,
+	})
+
+	current_kg = kg
+
+	-- Rückgabe: Stopp-Funktion für genau diesen Grabber
+	return function()
+		if kg then
+			pcall(function()
+				kg:stop()
+			end)
+		end
+		if current_kg == kg then
+			current_kg = nil
+		end
+	end
+end
+
+local function close_handle(handle)
+	if handle and handle.close then
+		pcall(function()
+			handle:close()
+		end)
+	elseif handle and handle.hide then
+		pcall(function()
+			handle:hide()
+		end)
+	end
+end
+
+-- --------------- public API ----------------
+-- items: {widget1, widget2, ...} (Widgets mit set_focus/activate empfohlen)
 -- opts:  { keys?, mouse_follow?, handle? }
 function Focus.attach(items, th, opts)
 	opts = opts or {}
@@ -83,43 +119,71 @@ function Focus.attach(items, th, opts)
 	-- initial focus
 	call_set_focus(items[i], true, th)
 
+	-- Maus-Follow (optional)
 	local remove_mouse = (opts.mouse_follow == false) and function() end or install_mouse_follow(items, set_index)
 
-	-- object-based keygrabber (robust)
-	local kg = awful.keygrabber({
-		autostart = true,
-		stop_event = "release",
-		keypressed_callback = function(_, key)
-			if key == keys.left or key == keys.up then
-				set_index(i - 1)
-			elseif key == keys.right or key == keys.down then
-				set_index(i + 1)
-			elseif key == keys.cancel then
-				if opts.handle and opts.handle.close then
-					-- stop first, then close to avoid any race
-					pcall(function()
-						kg:stop()
-					end)
-					pcall(function()
-						remove_mouse()
-					end)
-					call_set_focus(items[i], false, th)
-					return opts.handle.close()
-				end
-			elseif ok_hit(keys, key) then
-				call_activate(items[i])
-			end
-		end,
-	})
+	-- Wir wollen den Grabber auch bei ESC sofort stoppen:
+	local stop_kg_ref = function() end
 
-	-- stop function returned to caller
+	local bindings = {
+		{
+			{},
+			keys.left,
+			function()
+				set_index(i - 1)
+			end,
+		},
+		{
+			{},
+			keys.up,
+			function()
+				set_index(i - 1)
+			end,
+		},
+		{
+			{},
+			keys.right,
+			function()
+				set_index(i + 1)
+			end,
+		},
+		{
+			{},
+			keys.down,
+			function()
+				set_index(i + 1)
+			end,
+		},
+		{
+			{},
+			keys.cancel,
+			function()
+				-- Grabber sofort stoppen, dann Handle schließen
+				stop_kg_ref()
+				close_handle(opts.handle)
+			end,
+		},
+	}
+
+	-- OK-Keys (Return, KP_Enter …)
+	local oks = (type(keys.ok) == "table") and keys.ok or { keys.ok }
+	for _, k in ipairs(oks) do
+		table.insert(bindings, {
+			{},
+			k,
+			function()
+				call_activate(items[i])
+			end,
+		})
+	end
+
+	local stop_kg = make_keygrabber(bindings)
+	stop_kg_ref = stop_kg
+
+	-- Cleanup-Funktion für den Aufrufer
 	return function()
-		pcall(function()
-			kg:stop()
-		end)
-		pcall(function()
-			remove_mouse()
-		end)
+		stop_kg()
+		remove_mouse()
 		for idx = 1, n do
 			call_set_focus(items[idx], false, th)
 		end

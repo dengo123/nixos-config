@@ -57,8 +57,6 @@ function M.open(opts)
 		popup = {
 			-- Breite wird von Parts.open anhand required_w gesetzt (oder auto, wenn nil)
 			height = dims.h,
-			close_on_escape = true,
-			close_on_backdrop = false,
 			show_root = "with_bars",
 		},
 		focus = { mouse_follow = true },

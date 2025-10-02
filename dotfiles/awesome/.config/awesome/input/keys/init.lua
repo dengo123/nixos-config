@@ -21,7 +21,8 @@ function M.apply(cfg)
 		require("input.keys.global.state")(modkey),
 		require("input.keys.global.apps")(modkey, cfg),
 		require("input.keys.global.awesome")(modkey),
-		require("input.keys.global.menu")(modkey)
+		require("input.keys.global.menu")(modkey),
+		require("input.keys.global.power")(modkey)
 	)
 
 	-- Export (optional für Zugriff in rc.lua/Rules o.ä.)

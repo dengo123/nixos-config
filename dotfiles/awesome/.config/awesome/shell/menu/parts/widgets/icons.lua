@@ -15,7 +15,7 @@ local function pick(...)
 end
 
 -- Icon-Button (quadratisches Icon + optionales Label, Hover nur am Icon)
--- -> fokusfähig: :set_focus(on, th2) und :activate()
+-- Fokus-API: :set_focus(on, th2) und :activate()
 function M.mk_icon_button(args)
 	args = args or {}
 	local th = args.th or {}
@@ -75,7 +75,6 @@ function M.mk_icon_button(args)
 		local fsz = pick(th.icon_label_size, 18)
 		local leading = pick(th.icon_label_leading, 1.25)
 		label_h = math.ceil(fsz * leading)
-
 		local lbl = wibox.widget({
 			markup = string.format(
 				"<span font='sans %d' color='%s'>%s</span>",
@@ -90,18 +89,12 @@ function M.mk_icon_button(args)
 			forced_height = label_h,
 			widget = wibox.widget.textbox,
 		})
-
 		local label_w = box_side + (th.icon_cell_extra_w or 0)
-		label_block = wibox.widget({
-			lbl,
-			strategy = "exact",
-			width = label_w,
-			widget = wibox.container.constraint,
-		})
+		label_block = wibox.widget({ lbl, strategy = "exact", width = label_w, widget = wibox.container.constraint })
 	end
 
-	local v_spacing = (label_h > 0) and spacing or 0
-	local offset = math.floor((label_h + v_spacing) / 2)
+	local v_spacing = (label_block and label_h > 0) and spacing or 0
+	local offset = math.floor(((label_block and label_h or 0) + v_spacing) / 2)
 
 	local square_centered = wibox.widget({
 		{ hover_square, halign = "center", valign = "center", widget = wibox.container.place },
@@ -136,32 +129,37 @@ function M.mk_icon_button(args)
 		hover_square.shape_border_width = 0
 	end)
 
+	-- Click mit Maus
 	if args.on_press then
 		clickable:buttons(gears.table.join(awful.button({}, 1, function()
 			args.on_press()
 		end)))
 	end
 
-	-- Tastatur-Fokus-API
+	-- ► Fokus-API (selbstenthaltend, keine Upvalue-Fallen)
+	clickable._hover_square = hover_square
+	clickable._th = th
+	clickable._on_press = args.on_press
+
 	function clickable:set_focus(on, th2)
-		local t = th2 or th
+		local t = th2 or self._th or {}
+		local sq = self._hover_square
 		local bg_on = pick(t.icon_focus_bg, t.icon_hover_bg, "#FFFFFF22")
 		local bw_on = pick(t.icon_focus_bw, t.icon_hover_bw, 2)
 		local bor_on = pick(t.icon_focus_border, t.icon_hover_border, "#2B77FF")
-
 		if on then
-			hover_square.bg = bg_on
-			hover_square.shape_border_width = bw_on
-			hover_square.shape_border_color = bor_on
+			sq.bg = bg_on
+			sq.shape_border_width = bw_on
+			sq.shape_border_color = bor_on
 		else
-			hover_square.bg = "#00000000"
-			hover_square.shape_border_width = 0
+			sq.bg = "#00000000"
+			sq.shape_border_width = 0
 		end
 	end
 
 	function clickable:activate()
-		if args.on_press then
-			args.on_press()
+		if self._on_press then
+			self._on_press()
 		end
 	end
 
