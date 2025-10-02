@@ -1,7 +1,10 @@
 -- ~/.config/awesome/shell/menu/init.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
-local Lib = require("shell.menu.lib") -- Aggregator: items + placement (+ actions/focus/term ...)
+
+-- Direkt die Root-Module laden (keine lib/init.lua mehr)
+local Items = require("shell.menu.items")
+local Place = require("shell.menu.placement")
 
 local Menu = {}
 local _ctx = { ui = nil, cfg = nil }
@@ -49,28 +52,22 @@ function Menu.init(args)
 	args = args or {}
 	_ctx.ui = args.ui or {}
 	_ctx.cfg = args.cfg or {}
-
-	-- Stellt Menu.lib.* bereit (items, placement, focus, actions, term, …)
-	Lib.attach(Menu, {})
+	_ctx.dialogs = args.dialogs
+	-- kein Aggregator/Lib.attach mehr nötig
 end
 
--- Start-Items aus lib.items (keine Fallbacks)
+-- Start-Items direkt aus Items-Modul
 function Menu.get_start_items()
-	local items_mod = Menu.lib and Menu.lib.items
-	assert(items_mod and type(items_mod.build_start) == "function", "shell.menu: lib.items.build_start(ctx) fehlt")
-	local items = items_mod.build_start(_ctx)
+	assert(Items and type(Items.build_start) == "function", "shell.menu: items.build_start(ctx) fehlt")
+	local items = Items.build_start(_ctx)
 	assert(type(items) == "table" and #items > 0, "shell.menu: Start-Items leer")
 	return items
 end
 
 -- Tabs: Clients -> Items (strict)
 local function get_client_items(clients)
-	local items_mod = Menu.lib and Menu.lib.items
-	assert(
-		items_mod and type(items_mod.build_clients) == "function",
-		"shell.menu: lib.items.build_clients(clients, ctx) fehlt"
-	)
-	local items = items_mod.build_clients(clients, _ctx)
+	assert(Items and type(Items.build_clients) == "function", "shell.menu: items.build_clients(clients, ctx) fehlt")
+	local items = Items.build_clients(clients, _ctx)
 	assert(type(items) == "table" and #items > 0, "shell.menu: Tabs-Items leer")
 	return items
 end
@@ -80,8 +77,6 @@ end
 -- Tabs-Popup: linksbündig über dem angeklickten Tab (Anchor wird von tabs.lua geliefert)
 function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
 	local items = get_client_items(clients)
-
-	local Place = Menu.lib and Menu.lib.placement
 	assert(Place, "shell.menu: placement-API fehlt")
 
 	ensure_closed()
@@ -99,8 +94,6 @@ end
 -- Start-Popup: linksbündig an der Bar
 function Menu.show_for_start_widget(s, _widget)
 	local items = Menu.get_start_items()
-
-	local Place = Menu.lib and Menu.lib.placement
 	assert(Place, "shell.menu: placement-API fehlt")
 
 	ensure_closed()

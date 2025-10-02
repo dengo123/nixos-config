@@ -5,7 +5,8 @@ local M = {
 	bar = require("shell.bar"),
 	workspaces = require("shell.workspaces"),
 	windowing = require("shell.windowing"),
-	menu = require("shell.menu"), -- << neu
+	launchers = require("shell.launchers"), -- << neu: zentrale Launcher-API
+	menu = require("shell.menu"),
 }
 
 local function resolve_wallpaper_fn(ui)
@@ -21,7 +22,7 @@ local function resolve_wallpaper_fn(ui)
 	return nil
 end
 
--- Erwartet { cfg, ui, input }
+-- args = { cfg, ui, input }
 function M.init(args)
 	args = args or {}
 	local cfg = args.cfg or {}
@@ -48,14 +49,25 @@ function M.init(args)
 		ui = ui,
 	})
 
-	-- 3) Menü initialisieren (stellt get_start_items & show_for_* bereit)
-	M.menu.init({ ui = ui, cfg = cfg })
+	-- 3) Menü initialisieren + Launcher-API injizieren
+	M.menu.init({
+		ui = ui,
+		cfg = cfg,
+		launchers = M.launchers, -- << Menü öffnet Power/Run via dieser API
+	})
+
+	-- 3b) Launcher-API auch anderen Subsystemen (z. B. Keybinds) geben
+	cfg.launchers = M.launchers
+	-- Optional: Backcompat für alten Code, der dialogs erwartet:
+	cfg.dialogs = M.launchers
+	-- Optional global:
+	-- rawset(_G, "__shell_launchers", M.launchers)
 
 	-- 4) cfg-Launcher neutralisieren (steuerst du extern)
 	cfg.mymainmenu = nil
 	cfg.mylauncher = nil
 
-	-- 5) Optionaler Launcher-Fn
+	-- 5) Optionaler „legacy“ Launcher-Fn (Shell-Command)
 	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
 		local cmd = cfg.launcher
 		cfg.launcher_fn = function()
@@ -65,12 +77,12 @@ function M.init(args)
 		cfg.launcher_fn = nil
 	end
 
-	-- 6) Bars pro Screen – Menü-API durchreichen
+	-- 6) Bars pro Screen – Menü-API injizieren
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
 			ui = ui,
-			menu_api = M.menu, -- << nur die API injizieren
+			menu_api = M.menu,
 		})
 	end)
 

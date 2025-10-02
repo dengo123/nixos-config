@@ -12,21 +12,20 @@ local function pick(...)
 	end
 end
 
+-- build(th, dims, { title, body, cancel_btn, footer })  -- footer optional
 function M.build(th, dims, w)
-	-- Defaults speziell für Panel
 	local radius = pick(th.panel_radius, 12)
 	local border_w = pick(th.panel_border_width, 2)
 	local border_color = pick(th.panel_border, pick(th.header_bg, "#235CDB"))
 	local header_h = pick(th.panel_header_h, 28)
 
-	-- schlanker Header mit Titel links, Cancel rechts (X)
+	-- Header: Titel links, X rechts (optional cancel)
 	local title = wibox.widget({
-		text = w.title or "Control Panel",
+		text = w.title or "Launcher",
 		align = "left",
 		valign = "center",
 		widget = wibox.widget.textbox,
 	})
-
 	local closeX = wibox.widget({
 		{ text = "✖", align = "center", valign = "center", widget = wibox.widget.textbox },
 		forced_width = 28,
@@ -35,7 +34,6 @@ function M.build(th, dims, w)
 		bg = "#00000000",
 		widget = wibox.container.background,
 	})
-	-- Klick auf X schließt wie Cancel
 	if w.cancel_btn and w.cancel_btn.activate then
 		closeX:buttons(gears.table.join(require("awful").button({}, 1, function()
 			w.cancel_btn:activate()
@@ -73,10 +71,9 @@ function M.build(th, dims, w)
 		widget = wibox.container.background,
 	})
 
-	-- Panel hat standardmäßig KEIN Footer – Cancel sitzt im Header (X)
+	-- Höhen
 	dims.header_h = header_h
-	dims.footer_h = 0
-	dims.body_h = math.max(0, dims.h - dims.header_h)
+	dims.body_h = math.max(0, dims.h - dims.header_h - (w.footer and dims.footer_h or 0))
 
 	local stack = wibox.widget({
 		{ header, strategy = "exact", height = dims.header_h, widget = wibox.container.constraint },
@@ -84,12 +81,16 @@ function M.build(th, dims, w)
 		layout = wibox.layout.fixed.vertical,
 	})
 
-	-- Rahmen / Radius
-	return wibox.widget({
-		{
+	if w.footer then
+		stack = wibox.widget({
 			stack,
-			widget = wibox.container.margin,
-		},
+			{ w.footer, strategy = "exact", height = dims.footer_h, widget = wibox.container.constraint },
+			layout = wibox.layout.fixed.vertical,
+		})
+	end
+
+	return wibox.widget({
+		stack,
 		shape = function(cr, w_, h_)
 			gears.shape.rounded_rect(cr, w_, h_, radius)
 		end,

@@ -1,19 +1,25 @@
 -- ~/.config/awesome/ui/theme/power.lua
 local Theme = {}
 
+-- Einzige Quelle der Wahrheit für Power-Dialoge
 Theme.defaults = {
 	-- Geometrie
-	dialog_h = 360, -- << set explicitly
-	dialog_radius = 0,
-	dialog_border_width = 1,
+	dialog_w = 0, -- 0 = vom Layout berechnet, sonst px
+	dialog_h = 360,
+	dialog_radius = 8,
+	dialog_border_width = 2,
 	dialog_border = "#1A50B8",
 
-	header_ratio = 0.22,
+	-- Optional: statt fixer Höhen können Ratios greifen
+	header_ratio = 0.22, -- nur genutzt, wenn header_h/footer_h nicht gesetzt
 	footer_ratio = 0.22,
 	header_h = 80,
 	footer_h = 80,
 
-	-- Flächen / Farben (Dialog)
+	-- Flächen/Farben
+	dialog_bg = "#053193",
+	backdrop = "#00000066",
+
 	header_bg = "#1A50B8",
 	header_fg = "#FFFFFF",
 	body_bg = "#0B89E7",
@@ -21,17 +27,14 @@ Theme.defaults = {
 	footer_bg = "#1A50B8",
 	footer_fg = "#FFFFFF",
 
-	-- Popup/Backdrop
-	dialog_bg = "#053193",
-	backdrop = "#00000066",
-
-	-- Header Typo/Icon
+	-- Header-Content
+	header_title = "Turn off Computer",
 	header_font_size = 18,
-	header_icon = " XP",
+	header_icon_text = " XP", -- alternativ:
+	header_icon_path = "ui/assets/flake.png", -- falls Pfad gesetzt, hat Vorrang vor Text
 	header_icon_size = 20,
-	header_icon_path = "",
 
-	-- Pads
+	-- Innenabstände
 	pad_h = 16,
 	pad_v = 14,
 
@@ -50,16 +53,6 @@ Theme.defaults = {
 	icon_hover_bg = "#FFFFFF22",
 	icon_hover_border = "#2B77FF",
 	icon_hover_bw = 2,
-
-	-- Footer / Cancel
-	cancel_bg = "#F5F5EE",
-	cancel_fg = "#000000",
-	cancel_pad_h = 10,
-	cancel_pad_v = 4,
-	cancel_radius = 2,
-	cancel_hover_bg = "#F5F5EE",
-	cancel_hover_border = "#2B77FF",
-	cancel_hover_bw = 2,
 }
 
 local function merge(a, b)
@@ -77,14 +70,8 @@ local function merge(a, b)
 	return out
 end
 
-function Theme.merge(a, b)
-	return merge(a, b)
-end
-
 function Theme.get(overrides)
 	return merge(Theme.defaults, overrides or {})
 end
-
-function Theme.init(_) end
 
 return Theme

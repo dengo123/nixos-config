@@ -45,7 +45,7 @@ function Items.build_start(ctx)
 		{
 			"power",
 			function()
-				local Power = require("shell.menu.power")
+				local Power = require("shell.launchers.power")
 				Power.open()
 			end,
 		},
