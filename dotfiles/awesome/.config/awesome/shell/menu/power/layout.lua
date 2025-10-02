@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/menu/dialogs/layout.lua
+-- ~/.config/awesome/shell/menu/power/layout.lua
 -- Layout nur für Power: baut aus Actions eine Reihe Buttons, liefert auch benötigte Breite zurück
 local wibox = require("wibox")
 local Widgets = require("shell.menu.parts.widgets")

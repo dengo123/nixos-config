@@ -16,10 +16,18 @@ local Placement = safe_require("shell.menu.lib.placement")
 local Term = safe_require("shell.menu.lib.term")
 local ItemsMod = safe_require("shell.menu.lib.items")
 
+-- >>> NEU: Alles, was wir laden, auch am Aggregator exportieren
+M.actions = Actions
+M.focus = Focus
+M.placement = Placement
+M.term = Term
+M.items = ItemsMod
+
 function M.attach(api, opts)
 	opts = opts or {}
 	api.lib = api.lib or {}
 
+	-- immer in api.lib zur Verfügung stellen
 	api.lib.actions = Actions
 	api.lib.focus = Focus
 	api.lib.placement = Placement
@@ -39,6 +47,7 @@ function M.attach(api, opts)
 		Term.init(api)
 	end
 
+	-- optional: flatten = direkt auf api hängen
 	if opts.flatten_actions and Actions then
 		for k, v in pairs(Actions) do
 			if api[k] == nil then
@@ -73,6 +82,7 @@ end
 
 M.init = M.attach
 
+-- Bequeme Passthroughs (falls irgendwo genutzt)
 local passthrough = { "run", "run_dialog", "run_shell", "run_bin", "cmd", "lua", "signal", "click" }
 for _, k in ipairs(passthrough) do
 	M[k] = function(...)
@@ -83,14 +93,12 @@ for _, k in ipairs(passthrough) do
 	end
 end
 
--- optionaler Convenience-Alias (falls irgendwo genutzt)
+-- optionaler Convenience-Alias
 function M.defaults(ctx)
 	if not ItemsMod or type(ItemsMod.build_start) ~= "function" then
 		return nil
 	end
 	return ItemsMod.build_start(ctx)
 end
-
-M.items = ItemsMod
 
 return M

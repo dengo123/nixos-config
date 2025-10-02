@@ -23,7 +23,7 @@ end
 --   title, theme, container="power"
 --   dims = { w, h, header_h, footer_h, body_h, pad_h, pad_v }   <-- Pflicht
 --   build_body = function(th, dims, parts) -> body_widget, focus_items, required_w?
---   popup = { width?, height?, placement?, close_on_escape?, close_on_backdrop?, use_backdrop? }
+--   popup = { width?, height?, placement?, use_backdrop? }
 --   focus = { mouse_follow=true/false }
 
 function Parts.open(opts)
@@ -37,35 +37,17 @@ function Parts.open(opts)
 	local body_core, focus_items, required_w = opts.build_body(th, dims, Parts)
 	focus_items = focus_items or {}
 
-	-- >>> Fokusfähige Widgets aus beliebigen Layouts/Containern herausfiltern
-	local function flatten_focus(list, out, seen)
-		out = out or {}
-		seen = seen or {}
-
-		if type(list) ~= "table" then
-			return out
-		end
-		if seen[list] then
-			return out
-		end
-		seen[list] = true
-
-		-- Bereits ein fokusfähiges Widget?
-		if (type(list.set_focus) == "function") or (type(list.activate) == "function") then
-			table.insert(out, list)
-			return out
-		end
-
-		-- Rekursiv durch alle Kinder/Keys gehen
-		for _, v in pairs(list) do
-			if type(v) == "table" then
-				flatten_focus(v, out, seen)
+	-- >>> Fokusfähige Widgets aus der (flachen) Liste filtern
+	local function collect_focus(list)
+		local out = {}
+		for _, w in ipairs(list or {}) do
+			if w and (type(w.set_focus) == "function" or type(w.activate) == "function") then
+				table.insert(out, w)
 			end
 		end
 		return out
 	end
-
-	focus_items = flatten_focus(focus_items)
+	focus_items = collect_focus(focus_items)
 
 	-- Cancel
 	local cancel_inner = Parts.widgets.mk_cancel_button(th.cancel_label or "Cancel", nil, th)
@@ -133,19 +115,17 @@ function Parts.open(opts)
 		}),
 	})
 
-	-- Popup-Args (korrekte Defaults!)
+	-- Popup-Args (keine Keygrabber-Optionen – ESC kommt aus focus.lua)
 	local p = opts.popup or {}
 	local popup_args = {
 		width = p.width or (required_w and required_w > 0 and required_w or nil),
 		height = p.height or dims.h,
 		placement = p.placement or awful.placement.centered,
-		close_on_escape = (p.close_on_escape ~= false), -- default: true
-		close_on_backdrop = (p.close_on_backdrop == true), -- default: false
 		use_backdrop = (p.use_backdrop ~= false), -- default: true
 		group = "dialogs",
 	}
 
-	-- >>> WICHTIG: Popup kommt aus Parts.containers.popup – nicht aus Lib
+	-- >>> Popup anzeigen (aus Parts.containers.popup)
 	local handle = Parts.containers.popup.show(stack, th, popup_args)
 
 	-- Cancel Verhalten/Fokus

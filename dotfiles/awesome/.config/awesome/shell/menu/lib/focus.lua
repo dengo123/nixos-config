@@ -1,10 +1,11 @@
 -- ~/.config/awesome/shell/menu/lib/focus.lua
+-- Fokussierung ohne keygrabber: temporäre, modale root.keys()-Bindings
 local awful = require("awful")
+local gears = require("gears")
 
 local Focus = {}
 
--- ---------------- helpers ----------------
-
+-- ------------ helpers ------------
 local function norm_keys(k)
 	return {
 		left = (k and k.left) or "Left",
@@ -49,39 +50,6 @@ local function install_mouse_follow(list, set_index)
 	end
 end
 
--- Singleton-Keygrabber, verhindert Doppel-Grab
-local current_kg = nil
-
-local function make_keygrabber(bindings)
-	-- alten Grabber sicher beenden
-	if current_kg then
-		pcall(function()
-			current_kg:stop()
-		end)
-		current_kg = nil
-	end
-
-	local kg = awful.keygrabber({
-		autostart = true,
-		-- stop_event = "release",  -- absichtlich NICHT gesetzt
-		keybindings = bindings,
-	})
-
-	current_kg = kg
-
-	-- Rückgabe: Stopp-Funktion für genau diesen Grabber
-	return function()
-		if kg then
-			pcall(function()
-				kg:stop()
-			end)
-		end
-		if current_kg == kg then
-			current_kg = nil
-		end
-	end
-end
-
 local function close_handle(handle)
 	if handle and handle.close then
 		pcall(function()
@@ -94,8 +62,32 @@ local function close_handle(handle)
 	end
 end
 
--- --------------- public API ----------------
--- items: {widget1, widget2, ...} (Widgets mit set_focus/activate empfohlen)
+-- Alle Mod-Kombinationen, damit „Mod festhalten“ nicht blockiert
+local MODS = {
+	{},
+	{ "Mod4" },
+	{ "Shift" },
+	{ "Control" },
+	{ "Mod1" },
+	{ "Mod4", "Shift" },
+	{ "Mod4", "Control" },
+	{ "Mod4", "Mod1" },
+	{ "Shift", "Control" },
+	{ "Shift", "Mod1" },
+	{ "Control", "Mod1" },
+	{ "Mod4", "Shift", "Control" },
+	{ "Mod4", "Shift", "Mod1" },
+	{ "Mod4", "Control", "Mod1" },
+	{ "Shift", "Control", "Mod1" },
+	{ "Mod4", "Shift", "Control", "Mod1" },
+}
+
+local function add_key(all, mods, key, fn, desc)
+	table.insert(all, awful.key(mods, key, fn, { description = desc or key, group = "focus" }))
+end
+
+-- ------------ public API ------------
+-- items: { widget1, widget2, ... } (Widgets mit :set_focus/:activate empfohlen)
 -- opts:  { keys?, mouse_follow?, handle? }
 function Focus.attach(items, th, opts)
 	opts = opts or {}
@@ -119,73 +111,64 @@ function Focus.attach(items, th, opts)
 	-- initial focus
 	call_set_focus(items[i], true, th)
 
-	-- Maus-Follow (optional)
 	local remove_mouse = (opts.mouse_follow == false) and function() end or install_mouse_follow(items, set_index)
 
-	-- Wir wollen den Grabber auch bei ESC sofort stoppen:
-	local stop_kg_ref = function() end
+	-- 1) Alte global keys sichern
+	local old_global = root.keys() -- Achtung: kann nil sein, abfangen
+	local joined = old_global
 
-	local bindings = {
-		{
-			{},
-			keys.left,
-			function()
-				set_index(i - 1)
-			end,
-		},
-		{
-			{},
-			keys.up,
-			function()
-				set_index(i - 1)
-			end,
-		},
-		{
-			{},
-			keys.right,
-			function()
-				set_index(i + 1)
-			end,
-		},
-		{
-			{},
-			keys.down,
-			function()
-				set_index(i + 1)
-			end,
-		},
-		{
-			{},
-			keys.cancel,
-			function()
-				-- Grabber sofort stoppen, dann Handle schließen
-				stop_kg_ref()
-				close_handle(opts.handle)
-			end,
-		},
-	}
+	-- 2) Temporäre Focus-Keymap bauen (für alle Mod-Kombinationen)
+	local temp = {}
 
-	-- OK-Keys (Return, KP_Enter …)
-	local oks = (type(keys.ok) == "table") and keys.ok or { keys.ok }
-	for _, k in ipairs(oks) do
-		table.insert(bindings, {
-			{},
-			k,
-			function()
-				call_activate(items[i])
-			end,
-		})
+	for _, mods in ipairs(MODS) do
+		add_key(temp, mods, keys.left, function()
+			set_index(i - 1)
+		end, "focus-left")
+		add_key(temp, mods, keys.up, function()
+			set_index(i - 1)
+		end, "focus-up")
+		add_key(temp, mods, keys.right, function()
+			set_index(i + 1)
+		end, "focus-right")
+		add_key(temp, mods, keys.down, function()
+			set_index(i + 1)
+		end, "focus-down")
+		-- ESC schließt Dialog
+		add_key(temp, mods, keys.cancel, function()
+			close_handle(opts.handle)
+		end, "focus-cancel")
 	end
 
-	local stop_kg = make_keygrabber(bindings)
-	stop_kg_ref = stop_kg
+	local oks = (type(keys.ok) == "table") and keys.ok or { keys.ok }
+	for _, k in ipairs(oks) do
+		for _, mods in ipairs(MODS) do
+			add_key(temp, mods, k, function()
+				call_activate(items[i])
+			end, "focus-activate")
+		end
+	end
 
-	-- Cleanup-Funktion für den Aufrufer
+	-- 3) Aktivieren (anhängen, nicht ersetzen)
+	if joined then
+		joined = gears.table.join(joined, table.unpack(temp))
+	else
+		joined = gears.table.join(table.unpack(temp))
+	end
+	root.keys(joined)
+
+	-- Cleanup: alte Keys wiederherstellen, Maus-Follow entfernen, Fokus resetten
 	return function()
-		stop_kg()
-		remove_mouse()
+		-- Fokus-Reset
 		for idx = 1, n do
 			call_set_focus(items[idx], false, th)
+		end
+		remove_mouse()
+		-- alte global keys zurück
+		if old_global then
+			root.keys(old_global)
+		else
+			-- falls vorher nil: alle globalen Keys entfernen
+			root.keys(nil)
 		end
 	end
 end
