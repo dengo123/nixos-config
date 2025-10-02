@@ -1,32 +1,45 @@
--- ~/.config/awesome/ui/theme/menus.lua
+-- ~/.config/awesome/ui/theme/menu.lua
 local beautiful = require("beautiful")
 local gears = require("gears")
 
 local M = {}
 
-function M.init(opts)
-	opts = opts or {}
-	-- Basisfarben (helles Beige, schwarze Schrift)
-	beautiful.menu_bg_normal = opts.bg_normal or "#FFF7E6" -- warmes Weiß/Beige
-	beautiful.menu_fg_normal = opts.fg_normal or "#000000"
+-- Einfache, feste Vorgaben (keine Overrides per opts)
+function M.init()
+	-- Farben
+	beautiful.menu_bg_normal = "#FFF7E6"
+	beautiful.menu_fg_normal = "#000000"
+	beautiful.menu_bg_focus = "#F2E7CF"
+	beautiful.menu_fg_focus = "#000000"
 
-	-- Fokuszustand leicht absetzen (etwas dunkleres Beige)
-	beautiful.menu_bg_focus = opts.bg_focus or "#F2E7CF"
-	beautiful.menu_fg_focus = opts.fg_focus or "#000000"
+	-- Maße
+	beautiful.menu_border_color = "#E6D8BF"
+	beautiful.menu_border_width = 1
+	beautiful.menu_height = 28
+	beautiful.menu_width = 220
 
-	-- Rahmen & Maße
-	beautiful.menu_border_color = opts.border_color or "#E6D8BF"
-	beautiful.menu_border_width = (opts.border_width ~= nil) and opts.border_width or 1
-	beautiful.menu_height = opts.item_height or 28
-	beautiful.menu_width = opts.width or 220
-
-	-- Optionale Eckenrundung (falls gewünscht)
+	-- Shape
 	beautiful.menu_shape = function(cr, w, h)
-		gears.shape.rounded_rect(cr, w, h, opts.radius or (beautiful.border_radius or 6))
+		gears.shape.rounded_rect(cr, w, h, beautiful.border_radius or 6)
 	end
+	beautiful.menu_submenu = "›"
 
-	-- Optional: Submenü-Pfeil (Unicode) statt Icon
-	beautiful.menu_submenu = opts.submenu_arrow or "›"
+	-- Placement/Rules (global gültig für Start & Tabs)
+	beautiful.menu_gap = 4 -- Abstand zur Bar
+	beautiful.menu_x_padding = 0 -- linker Innenabstand ab Bar/Start
+	beautiful.menu_align = "left"
+	beautiful.menu_x_offset = 0 -- <<< globaler zusätzlicher X-Offset (negativ = nach links)
+end
+
+function M.props()
+	return {
+		item_height = beautiful.menu_height,
+		width = beautiful.menu_width,
+		gap = beautiful.menu_gap,
+		x_padding = beautiful.menu_x_padding,
+		align = beautiful.menu_align,
+		x_offset = beautiful.menu_x_offset,
+	}
 end
 
 return M
