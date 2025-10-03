@@ -15,29 +15,14 @@ in {
 
   config = mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      stow
+      pavucontrol
     ];
     ${namespace} = {
-      config = {
-        nix = enabled;
-      };
+      desktop.xsession = enabled;
 
-      hardware = {
-        audio = enabled;
-        networking = enabled;
-        bluetooth = enabled;
-      };
-
-      services = {
-        printing = enabled;
-        tailscale = enabled;
-      };
-
-      system = {
-        fonts = {
-          fontconfig = disabled;
-          packages = with pkgs; [];
-        };
+      programs = {
+        screenshot = enabled;
+        nemo = enabled;
       };
     };
   };

@@ -8,7 +8,7 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.desktop.session;
+  cfg = config.${namespace}.desktop.xsession;
 
   xsessionPkg = pkgs.stdenvNoCC.mkDerivation {
     name = "xsession-desktop";
@@ -24,11 +24,10 @@ with lib.${namespace}; let
       Type=Application
       EOF
     '';
-    # WICHTIG: Session-Namen bereitstellen
     passthru.providedSessions = ["xsession"];
   };
 in {
-  options.${namespace}.desktop.session = with types; {
+  options.${namespace}.desktop.xsession = with types; {
     enable = mkBoolOpt false "Enable X11 session managed by LightDM.";
     autoLogin.enable = mkBoolOpt false "Enable LightDM autologin into xsession.";
     autoLogin.user = mkOpt str "dengo123" "User for autologin.";

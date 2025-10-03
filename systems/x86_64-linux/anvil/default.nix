@@ -27,14 +27,13 @@ with lib.${namespace}; {
     };
     bundles = {
       common = enabled;
+      x11 = enabled;
     };
     desktop.hyprland = {
       enable = false;
       mode = "full";
     };
-    desktop.session = enabled;
     hardware = {
-      bluetooth = enabled;
       cuda = enabled;
       nvidia = {
         enable = true;
@@ -51,8 +50,6 @@ with lib.${namespace}; {
     services = {
       ollama = enabled;
       virtualisation = enabled;
-      security = enabled;
-      udisks2 = enabled;
     };
     system = {
       boot.grub = enabled;
