@@ -26,7 +26,7 @@ function T.init(cfg)
 		width_factor = 6,
 
 		-- Dünner Rand für inaktive Tabs; die RandFARBE kommt aus colors.focus_bg
-		inactive_border_width = dpi(2),
+		inactive_border_width = dpi(1),
 	}
 
 	-- Farben aus injizierter Palette (keine Hexcodes hier)

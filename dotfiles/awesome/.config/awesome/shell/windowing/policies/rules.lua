@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/windowing/policies/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
@@ -11,29 +12,23 @@ local FM_CLASSES = {
 	["org.gnome.Nautilus"] = true,
 	["Org.gnome.Nautilus"] = true,
 	["nautilus"] = true,
-
 	-- KDE Dolphin
 	["Dolphin"] = true,
 	["dolphin"] = true,
-
 	-- Xfce Thunar
 	["Thunar"] = true,
 	["thunar"] = true,
-
 	-- Cinnamon Nemo
 	["Nemo"] = true,
 	["nemo"] = true,
-
 	-- LXDE/LXQt
 	["Pcmanfm"] = true,
 	["pcmanfm"] = true,
 	["pcmanfm-qt"] = true,
 	["Pcmanfm-qt"] = true,
-
 	-- MATE
 	["Caja"] = true,
 	["caja"] = true,
-
 	-- Andere
 	["Spacefm"] = true,
 	["spacefm"] = true,
@@ -52,10 +47,45 @@ local function is_file_manager(c)
 	return FM_CLASSES[cls] or FM_CLASSES[inst]
 end
 
--- === Portrait-Sizing: volle Breite, 1/3 Höhe =================================
--- → hier NUR für File-Manager anwenden; setz 'only_for_fm=false',
---   wenn du es wieder global für alle Floating-Fenster willst.
-local only_for_fm = true
+-- === Terminal-Whitelist =====================================================
+local TERM_CLASSES = {
+	["Alacritty"] = true,
+	["alacritty"] = true,
+	["kitty"] = true,
+	["Kitty"] = true,
+	["st"] = true,
+	["st-256color"] = true,
+	["URxvt"] = true,
+	["urxvt"] = true,
+	["XTerm"] = true,
+	["xterm"] = true,
+	["Gnome-terminal"] = true,
+	["gnome-terminal"] = true,
+	["org.gnome.Terminal"] = true,
+	["Org.gnome.Terminal"] = true,
+	["Konsole"] = true,
+	["konsole"] = true,
+	["xfce4-terminal"] = true,
+	["termite"] = true,
+	["Tilix"] = true,
+	["tilix"] = true,
+	["WezTerm"] = true,
+	["wezterm"] = true,
+	["foot"] = true,
+	["footclient"] = true,
+}
+
+local function is_terminal(c)
+	if not c then
+		return false
+	end
+	local cls = c.class or ""
+	local inst = c.instance or ""
+	return TERM_CLASSES[cls] or TERM_CLASSES[inst]
+end
+
+-- === Portrait-Sizing: volle Breite, 1/3 Höhe ================================
+-- Jetzt **für alle** Floating-Fenster (nicht nur File-Manager)
 local function size_floating_on_portrait(c)
 	if not (c and c.valid) then
 		return
@@ -63,14 +93,12 @@ local function size_floating_on_portrait(c)
 	if not c.floating or c.fullscreen or c.maximized then
 		return
 	end
-	if only_for_fm and not is_file_manager(c) then
-		return
-	end
 
 	local s = c.screen
 	if not s then
 		return
 	end
+
 	local wa = s.workarea
 	local is_portrait = wa.height > wa.width
 	if not is_portrait then
@@ -80,12 +108,12 @@ local function size_floating_on_portrait(c)
 	local w = wa.width
 	local h = math.floor(wa.height / 3)
 	local x = wa.x
-	local y = wa.y + math.floor((wa.height - h) / 2) -- oben: local y = wa.y
+	local y = wa.y + math.floor((wa.height - h) / 2)
 
 	c:geometry({ x = x, y = y, width = w, height = h })
 end
 
-local function hook_portrait_and_fm_floating()
+local function hook_portrait_floating()
 	-- Fallback: File-Manager IMMER floating setzen (falls Rule nicht matcht)
 	client.connect_signal("manage", function(c)
 		if is_file_manager(c) and not c.floating then
@@ -160,7 +188,7 @@ function M.apply(o)
 			},
 		},
 
-		-- Deine Applets: floating + zentriert (aus vorigem Schritt)
+		-- Deine Applets: floating + zentriert
 		{
 			rule_any = {
 				class = {
@@ -171,12 +199,7 @@ function M.apply(o)
 					"Org.gnome.DiskUtility",
 					"org.gnome.DiskUtility",
 				},
-				instance = {
-					"nm-connection-editor",
-					"blueman-manager",
-					"pavucontrol",
-					"gnome-disks",
-				},
+				instance = { "nm-connection-editor", "blueman-manager", "pavucontrol", "gnome-disks" },
 				name = { "Network Connections", "Bluetooth", "GNOME Disks", "Volume Control" },
 			},
 			properties = { floating = true, placement = awful.placement.centered },
@@ -191,15 +214,68 @@ function M.apply(o)
 			properties = { floating = true, placement = awful.placement.centered },
 		},
 
-		-- Titlebars
+		-- Titlebars standardmäßig an (normal/dialog)
 		{
 			rule_any = { type = { "normal", "dialog" } },
 			properties = { titlebars_enabled = true },
 		},
+
+		-- TERMINALS: immer floating + **keine** Titlebar
+		-- (steht bewusst NACH der Titlebar-Regel und überschreibt sie)
+		{
+			rule_any = {
+				class = {
+					"Alacritty",
+					"alacritty",
+					"kitty",
+					"Kitty",
+					"st",
+					"st-256color",
+					"URxvt",
+					"urxvt",
+					"XTerm",
+					"xterm",
+					"Gnome-terminal",
+					"gnome-terminal",
+					"org.gnome.Terminal",
+					"Org.gnome.Terminal",
+					"Konsole",
+					"konsole",
+					"xfce4-terminal",
+					"termite",
+					"Tilix",
+					"tilix",
+					"WezTerm",
+					"wezterm",
+					"foot",
+					"footclient",
+				},
+				instance = {
+					"alacritty",
+					"kitty",
+					"st",
+					"urxvt",
+					"xterm",
+					"gnome-terminal",
+					"konsole",
+					"xfce4-terminal",
+					"termite",
+					"tilix",
+					"wezterm",
+					"foot",
+					"footclient",
+				},
+			},
+			properties = {
+				floating = false,
+				titlebars_enabled = true,
+				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
+			},
+		},
 	}
 
-	-- Hooks aktivieren (Portrait-Sizing + FM-Fallback)
-	hook_portrait_and_fm_floating()
+	-- Hooks aktivieren (Portrait-Sizing für alle Floating-Clients)
+	hook_portrait_floating()
 end
 
 return M
