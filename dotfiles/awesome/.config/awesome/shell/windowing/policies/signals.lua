@@ -1,4 +1,4 @@
--- windowing/policies/signals.lua
+-- ~/.config/awesome/shell/windowing/policies/signals.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -7,40 +7,19 @@ local M = {}
 
 function M.apply(o)
 	o = o or {}
-	local attach_titlebar = o.attach_titlebar
+	local MinStack = o.minimize_stack
 	local focus = o.focus
 	local container = o.container
-	local MinStack = o.minimize_stack
+	local attach_titlebar = o.attach_titlebar
 
-	-- Titlebar anfordern
+	-- Titlebar (unverändert)
 	client.connect_signal("request::titlebars", function(c)
 		if type(attach_titlebar) == "function" then
 			attach_titlebar(c)
-		else
-			local buttons = gears.table.join(
-				awful.button({}, 1, function()
-					c:emit_signal("request::activate", "titlebar", { raise = true })
-					awful.mouse.client.move(c)
-				end),
-				awful.button({}, 3, function()
-					c:emit_signal("request::activate", "titlebar", { raise = true })
-					awful.mouse.client.resize(c)
-				end)
-			)
-			awful.titlebar(c):setup({
-				{
-					awful.titlebar.widget.iconwidget(c),
-					buttons = buttons,
-					layout = wibox.layout.fixed.horizontal,
-				},
-				{ align = "center", widget = awful.titlebar.widget.titlewidget(c) },
-				{ layout = wibox.layout.fixed.horizontal },
-				layout = wibox.layout.align.horizontal,
-			})
 		end
 	end)
 
-	-- Focus-Policy (sloppy + cursor-center)
+	-- Focus-Policy
 	if focus and focus.on_mouse_enter then
 		client.connect_signal("mouse::enter", function(c)
 			focus:on_mouse_enter(c)
@@ -52,7 +31,7 @@ function M.apply(o)
 		end)
 	end
 
-	-- Container-Styling
+	-- Container Styling
 	local function restyle(c)
 		if container and container.apply then
 			container:apply(c)
@@ -72,14 +51,45 @@ function M.apply(o)
 		end
 	end)
 
-	-- Minimize-Stack housekeeping
-	if MinStack and MinStack.remove then
+	-- === Minimize-Stack ===
+	if MinStack then
+		client.connect_signal("property::minimized", function(c)
+			if c.minimized then
+				MinStack.push(c)
+			else
+				MinStack.remove(c)
+			end
+		end)
 		client.connect_signal("unmanage", function(c)
 			MinStack.remove(c)
 		end)
-		client.connect_signal("property::minimized", function(c)
-			if not c.minimized then
-				MinStack.remove(c)
+
+		awesome.connect_signal("windowing::restore_request", function(s)
+			s = s or awful.screen.focused()
+
+			-- 1) eigener Stack
+			local r = MinStack.pop_on_screen(s)
+
+			-- 2) Fallback: irgendeinen minimierten auf dem Screen finden
+			if not r then
+				for cl in
+					awful.client.iterate(function(x)
+						return x and x.valid and x.minimized and x.screen == s
+					end, nil, s)
+				do
+					r = cl
+					break
+				end
+			end
+
+			-- 3) letzter Fallback: awesome interner Restore-Stack
+			if not r then
+				r = awful.client.restore()
+			end
+
+			if r and r.valid then
+				r.minimized = false
+				r:emit_signal("request::activate", "key.unminimize", { raise = true })
 			end
 		end)
 	end

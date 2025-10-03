@@ -1,5 +1,7 @@
 -- ~/.config/awesome/ui/theme/windows.lua
 local beautiful = require("beautiful")
+local xr = require("beautiful.xresources")
+local dpi = xr.apply_dpi
 
 local M = {}
 
@@ -19,6 +21,21 @@ function M.init(cfg)
 	beautiful.titlebar_bg_focus = C.blue_luna
 	beautiful.titlebar_fg_normal = C.gray
 	beautiful.titlebar_fg_focus = C.white
+
+	------------------------------------------------------------------
+	-- Gaps/Padding Defaults (werden von windowing.policies.gaps gelesen)
+	------------------------------------------------------------------
+	-- Innenabstand zwischen Clients (fair etc.)
+	beautiful.useless_gap = dpi(4) -- dein Standard-Gap
+	beautiful.gap_single_client = true -- Gap auch bei 1 Client behalten?
+
+	-- Padding im MAX-Layout (Rand zum Bildschirm)
+	beautiful.max_pad_on = true -- Padding im max-Layout aktivieren?
+	beautiful.max_pad_same_as_gap = true -- Padding = useless_gap?
+	-- Optional: eigenes Padding statt same_as_gap
+	-- beautiful.max_padding = {
+	--   top = dpi(8), right = dpi(8), bottom = dpi(8), left = dpi(8)
+	-- }
 end
 
 -- Nur Stil, keine Logik:
