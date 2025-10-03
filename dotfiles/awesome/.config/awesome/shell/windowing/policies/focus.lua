@@ -1,4 +1,4 @@
--- windowing/policies/focus.lua
+-- ~/.config/awesome/shell/windowing/policies/focus.lua
 local gears = require("gears")
 local awful = require("awful")
 
@@ -11,15 +11,17 @@ function F.init(o)
 	F.raise_on_mouse_focus = o.raise_on_mouse_focus or false
 	F.block_ms = o.block_ms or 150
 
-	F._mouse_recent = false
-	awesome.connect_signal("focus_policy::mouse_recent", function(ms)
-		F._mouse_recent = true
+	-- Nur wenn kürzlich Tastatur-Intent gemeldet wurde, darf zentriert werden
+	F._kbd_recent = false
+	awesome.connect_signal("focus_policy::keyboard_intent", function(ms)
+		F._kbd_recent = true
 		gears.timer.start_new((ms or F.block_ms) / 1000, function()
-			F._mouse_recent = false
+			F._kbd_recent = false
 			return false
 		end)
 	end)
 
+	-- Maus-getriebene Zentrierung komplett unterbinden
 	F._suppress_center = false
 	awesome.connect_signal("ui::suppress_center", function(sec)
 		F._suppress_center = true
@@ -30,6 +32,7 @@ function F.init(o)
 	end)
 end
 
+-- Sloppy focus (Maus → Fokus), ohne Zentrieren
 function F:on_mouse_enter(c)
 	if not F.sloppy_focus then
 		return
@@ -41,14 +44,15 @@ function F:on_mouse_enter(c)
 	if F.raise_on_mouse_focus then
 		c:raise()
 	end
-	awesome.emit_signal("focus_policy::mouse_recent", F.block_ms)
+	-- KEIN keyboard_intent, also kein Zentrieren im on_focus
 end
 
+-- Zentriere nur nach Tastatur-Intent
 function F:on_focus(c)
 	if not F.center_mouse_on_focus then
 		return
 	end
-	if F._mouse_recent or F._suppress_center then
+	if not F._kbd_recent or F._suppress_center then
 		return
 	end
 	if not (c and c.valid) or c.minimized or not c:isvisible() then

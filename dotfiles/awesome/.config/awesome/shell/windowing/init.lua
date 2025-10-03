@@ -4,8 +4,8 @@ local Policies = {
 	rules = require("shell.windowing.policies.rules"),
 	focus = require("shell.windowing.policies.focus"),
 	gaps = require("shell.windowing.policies.gaps"),
-	minimize_stack = require("shell.windowing.policies.minimize_stack"),
-	fullscreen_dim = require("shell.windowing.policies.fullscreen_dim"),
+	minimize_stack = require("shell.windowing.policies.minimize"),
+	fullscreen_dim = require("shell.windowing.policies.fullscreen"),
 }
 local Container = require("shell.windowing.container")
 local Titlebar = require("shell.windowing.titlebar")

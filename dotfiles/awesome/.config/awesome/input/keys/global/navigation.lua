@@ -1,6 +1,10 @@
--- ~/.config/awesome/input/keys/global/navigation.lua
 local awful = require("awful")
 local H = require("input.keys.helpers")
+
+-- Nur wenn eine Tastatur-Interaktion stattfand, darf zentriert werden:
+local function kbd_intent(ms)
+	awesome.emit_signal("focus_policy::keyboard_intent", ms or 250)
+end
 
 local function is_max_layout(s)
 	s = s or awful.screen.focused()
@@ -50,6 +54,7 @@ local function focus_in_list(list, dir)
 	local j = ((idx - 1 + (dir or 1)) % n) + 1
 	local target = list[j]
 	if target and target.valid then
+		kbd_intent()
 		target:emit_signal("request::activate", "keynav", { raise = true })
 	end
 end
@@ -96,6 +101,7 @@ return function(modkey)
 			if is_max_layout() then
 				cycle_all(1)
 			else
+				kbd_intent()
 				awful.client.focus.bydirection("right")
 			end
 		end, { description = "focus next (tabs in max)", group = "client" }),
@@ -104,6 +110,7 @@ return function(modkey)
 			if is_max_layout() then
 				cycle_all(-1)
 			else
+				kbd_intent()
 				awful.client.focus.bydirection("left")
 			end
 		end, { description = "focus previous (tabs in max)", group = "client" }),
@@ -113,6 +120,7 @@ return function(modkey)
 			if is_max_layout() then
 				cycle_same_class(1)
 			else
+				kbd_intent()
 				awful.client.focus.bydirection("up")
 			end
 		end, { description = "focus next of same class (max)", group = "client" }),
@@ -121,29 +129,27 @@ return function(modkey)
 			if is_max_layout() then
 				cycle_same_class(-1)
 			else
+				kbd_intent()
 				awful.client.focus.bydirection("down")
 			end
 		end, { description = "focus prev of same class (max)", group = "client" }),
 
-		-- Fenster bewegen (robust ohne boolesches Kurzschluss-Konstrukt)
+		-- Fenster bewegen
 		awful.key({ modkey, "Shift" }, "Left", function()
 			if H and H.move_client_dir then
 				H.move_client_dir("left")
 			end
 		end, { description = "move window left", group = "client" }),
-
 		awful.key({ modkey, "Shift" }, "Right", function()
 			if H and H.move_client_dir then
 				H.move_client_dir("right")
 			end
 		end, { description = "move window right", group = "client" }),
-
 		awful.key({ modkey, "Shift" }, "Up", function()
 			if H and H.move_client_dir then
 				H.move_client_dir("up")
 			end
 		end, { description = "move window up", group = "client" }),
-
 		awful.key({ modkey, "Shift" }, "Down", function()
 			if H and H.move_client_dir then
 				H.move_client_dir("down")

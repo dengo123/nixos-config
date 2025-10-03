@@ -55,11 +55,6 @@ return function(modkey)
 
 		-- Layout wechseln (next/prev)
 		awful.key({ modkey }, "Tab", layouts.next, { description = "next layout", group = "layout" }),
-		awful.key({ modkey, "Shift" }, "Tab", layouts.prev, { description = "previous layout", group = "layout" }),
-
-		-- Toggle-to-Tile
-		awful.key({ modkey }, "space", function()
-			layouts.toggle_to_tile()
-		end, { description = "toggle to tile", group = "layout" })
+		awful.key({ modkey, "Shift" }, "Tab", layouts.prev, { description = "previous layout", group = "layout" })
 	)
 end

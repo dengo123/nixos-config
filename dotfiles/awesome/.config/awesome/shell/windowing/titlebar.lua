@@ -4,7 +4,7 @@ local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 
-local MinStack = require("shell.windowing.policies.minimize_stack")
+local MinStack = require("shell.windowing.policies.minimize")
 
 local B = {}
 
