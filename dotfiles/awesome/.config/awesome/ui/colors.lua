@@ -15,6 +15,7 @@ local PALETTE = {
 	black = "#000000",
 	gray = "#DDDDDD",
 	transparent = "#00000000",
+	overlay_40 = "#00000066",
 
 	-- Accents
 	red = "#FF6FA3",

@@ -50,9 +50,9 @@ function S.init(cfg)
 		icon = DEFAULT_ICON,
 
 		-- Größen & Abstände
-		icon_size = math.floor(H * 0.9),
+		icon_size = math.floor(H * 1),
 		spacing = dpi(4),
-		margin = { left = dpi(12), right = dpi(12), top = dpi(1), bottom = dpi(1) },
+		margin = { left = dpi(12), right = dpi(12), top = dpi(0), bottom = dpi(0) },
 
 		-- Text
 		font_size_scale = 1.75,
