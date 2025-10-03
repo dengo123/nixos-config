@@ -7,9 +7,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.bundles.common;
+  cfg = config.${namespace}.bundles.x11;
 in {
-  options.${namespace}.bundles.common = with types; {
+  options.${namespace}.bundles.x11 = with types; {
     enable = mkBoolOpt false "Whether or not to enable common configuration.";
   };
 

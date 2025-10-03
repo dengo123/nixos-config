@@ -29,8 +29,10 @@ in {
       };
 
       services = {
+        security = enabled;
         printing = enabled;
         tailscale = enabled;
+        udisks2 = enabled;
       };
 
       system = {

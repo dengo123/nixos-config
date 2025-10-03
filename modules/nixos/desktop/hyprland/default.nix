@@ -63,7 +63,6 @@ in {
       programs = mkIf (cfg.mode == "full") {
         dconf = enabled;
         kde-connect = enabled;
-        nautilus = enabled;
       };
 
       services = mkMerge [
