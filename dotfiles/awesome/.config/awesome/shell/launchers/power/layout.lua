@@ -12,14 +12,6 @@ local function fixed_cell(widget, width)
 	})
 end
 
-local function build_even_row(cells)
-	local row = wibox.widget({ layout = wibox.layout.fixed.horizontal })
-	for i = 1, #cells do
-		row:add(cells[i])
-	end
-	return row
-end
-
 -- Errechne Icon-/Cell-Parameter aus dem Theme
 local function compute_cell_geom(th, body_h)
 	local PAD_H = tonumber(th.pad_h) or 16
@@ -34,7 +26,14 @@ local function compute_cell_geom(th, body_h)
 	local extra_w = tonumber(th.icon_cell_extra_w) or 12
 	local cell_w = icon_size + icon_pad * 2 + cell_pad * 2 + extra_w
 
-	return { pad_h = PAD_H, icon_size = icon_size, cell_w = cell_w }
+	local spacing = tonumber(th.icon_spacing) or 0
+
+	return {
+		pad_h = PAD_H, -- (nur informative Rückgabe; Rand macht der Container)
+		icon_size = icon_size,
+		cell_w = cell_w,
+		spacing = spacing,
+	}
 end
 
 -- actions: { { icon|emoji, label, on_press(close_fn), autoclose? }, ... }
@@ -76,15 +75,22 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 		cells[i] = fixed_cell(btn, g.cell_w)
 	end
 
-	local required_w = (n > 0) and (n * g.cell_w + 2 * g.pad_h) or (2 * g.pad_h)
-
-	local row = build_even_row(cells)
-	row = wibox.widget({
-		row,
-		left = g.pad_h,
-		right = g.pad_h,
-		widget = wibox.container.margin,
+	-- Zeile mit *gleichmäßigem* Zwischenraum
+	local row = wibox.widget({
+		layout = wibox.layout.fixed.horizontal,
+		spacing = g.spacing,
 	})
+	for i = 1, #cells do
+		row:add(cells[i])
+	end
+
+	-- Wichtig: KEIN weiteres left/right-Margin hier!
+	-- Den Außenrand übernimmt dein Container über dims.pad_h.
+
+	-- Breite: Summe Zellen + Summe Zwischenräume + linkes+rechtes Body-Padding
+	local spacing_total = (n > 1) and (n - 1) * g.spacing or 0
+	local required_w = (n > 0) and (n * g.cell_w + spacing_total + 2 * (tonumber(dims.pad_h) or 0))
+		or (2 * (tonumber(dims.pad_h) or 0))
 
 	return row, items, required_w
 end

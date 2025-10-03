@@ -32,15 +32,17 @@ Theme.defaults = {
 	header_font_size = 18,
 	header_icon_text = " XP", -- alternativ:
 	header_icon_path = "ui/assets/flake.png", -- falls Pfad gesetzt, hat Vorrang vor Text
-	header_icon_size = 20,
+	header_icon_size = 56,
+	header_pad_l = 18,
+	header_pad_r = 18,
 
 	-- Innenabstände
-	pad_h = 16,
-	pad_v = 14,
+	pad_h = 24,
+	pad_v = 24,
 
 	-- Icon/Action Cards
-	icon_ratio = 0.22,
-	icon_pad = 6,
+	icon_ratio = 0.33,
+	icon_pad = 0,
 	icon_cell_pad = 6,
 	icon_cell_extra_w = 56,
 	icon_spacing = 12,
@@ -49,10 +51,15 @@ Theme.defaults = {
 	icon_label_lines = 1,
 	icon_label_color = "#FFFFFF",
 	icon_shape = "rounded",
-	icon_rounding = 10,
+	icon_rounding = 14,
 	icon_hover_bg = "#FFFFFF22",
-	icon_hover_border = "#2B77FF",
-	icon_hover_bw = 2,
+	icon_hover_border = "#FFFFFF",
+	icon_hover_bw = 4,
+	icons = {
+		hibernate = "ui/assets/hibernate.png",
+		poweroff = "ui/assets/poweroff.png",
+		reboot = "ui/assets/reboot.png",
+	},
 }
 
 local function merge(a, b)
