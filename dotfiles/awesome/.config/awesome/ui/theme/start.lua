@@ -52,7 +52,7 @@ function S.get(overrides)
 		-- Größen & Abstände
 		icon_size = math.floor(H * 0.9),
 		spacing = 2,
-		margin = { left = 16, right = 4, top = 4, bottom = 4 },
+		margin = { left = 12, right = 4, top = 4, bottom = 4 },
 
 		-- Textstil
 		font_size_scale = 1.75,
