@@ -1,17 +1,16 @@
--- ui/theme/wibar.lua
+-- ~/.config/awesome/ui/theme/wibar.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
 local dpi = xr.apply_dpi
 
 local M = {}
 
--- 🔒 Modul-lokale Helpers (theme-spezifisch)
 local function pick_allowed(src, allow)
 	local out = {}
 	if not src then
 		return out
 	end
-	for k, v in pairs(allow or {}) do
+	for k, _ in pairs(allow or {}) do
 		if src[k] ~= nil then
 			out[k] = src[k]
 		end
@@ -19,23 +18,27 @@ local function pick_allowed(src, allow)
 	return out
 end
 
--- Was darf extern überschrieben werden (nur Abstände/Größen, keine Marke/Farbe)?
+-- erlaubt: nur Maße/Abstände
 local ALLOW = {
 	wibar_height = true,
 	wibar_item_pad_h = true,
 	wibar_item_pad_v = true,
 	layoutbox_pad_h = true,
 	layoutbox_pad_v = true,
+	-- ▼ neu: Tags-Indicator-Overrides
+	tags_indicator_pad_h = true,
+	tags_indicator_pad_v = true,
+	tags_indicator_collapsed_pad_h = true,
+	tags_indicator_fmt = true,
+	tags_indicator_font = true,
 }
 
 function M.init(cfg)
 	local C = cfg.colors
-	local H = cfg.helpers -- <- generisch (ui/helpers.lua)
-
-	-- 1) externe (erlaubte) Overrides einsammeln
+	local H = cfg.helpers
 	local ext = pick_allowed(cfg.wibar or {}, ALLOW)
 
-	-- 2) Quelle der Wahrheit setzen
+	-- Wibar
 	beautiful.wibar_position = "bottom"
 	beautiful.wibar_height = ext.wibar_height or dpi(32)
 	beautiful.wibar_bg = C.blue_luna
@@ -48,6 +51,7 @@ function M.init(cfg)
 	beautiful.wibar_item_pad_h = ext.wibar_item_pad_h or dpi(8)
 	beautiful.wibar_item_pad_v = ext.wibar_item_pad_v or dpi(2)
 
+	-- Systray
 	beautiful.systray_bg = C.blue_light
 	beautiful.systray_fg = beautiful.wibar_fg
 	beautiful.systray_pad_h = dpi(6)
@@ -55,6 +59,7 @@ function M.init(cfg)
 	beautiful.systray_base_size = dpi(18)
 	beautiful.bg_systray = beautiful.systray_bg
 
+	-- Clock
 	beautiful.clock_bg = beautiful.systray_bg
 	beautiful.clock_fg = beautiful.wibar_fg
 	beautiful.clock_pad_h = dpi(12)
@@ -62,6 +67,7 @@ function M.init(cfg)
 	beautiful.clock_format = "%H:%M"
 	beautiful.clock_refresh = 1
 
+	-- Calendar popup
 	beautiful.clock_calendar_enable = true
 	beautiful.clock_calendar_use_menu_theme = false
 	beautiful.clock_calendar_placement = "bottom_right"
@@ -71,10 +77,24 @@ function M.init(cfg)
 	beautiful.clock_calendar_border_color = C.black
 	beautiful.clock_calendar_border_width = 0
 
+	-- Layoutbox
 	beautiful.layoutbox_pad_h = ext.layoutbox_pad_h or dpi(6)
 	beautiful.layoutbox_pad_v = ext.layoutbox_pad_v or 0
 
-	-- 3) abschließend sperren (generischer Helper)
+	-- ▼▼▼ Tags-Indicator (für shell/bar/widgets/tags.lua)
+	beautiful.tags_indicator = {
+		pad_h = ext.tags_indicator_pad_h or dpi(8), -- normaler Innenabstand
+		pad_v = ext.tags_indicator_pad_v or dpi(0),
+		collapsed_pad_h = dpi(6), -- Abstand im kollabierten Zustand
+		fmt = ext.tags_indicator_fmt or "%d", -- Format der Zahl
+		font = ext.tags_indicator_font or beautiful.font, -- Schrift
+		-- optional später: fg/bg etc.
+		-- fg = C.white,
+		-- bg = nil,
+	}
+	-- ▲▲▲
+
+	-- Sperren
 	H.lock_beautiful_keys({
 		"wibar_position",
 		"wibar_height",
@@ -108,6 +128,7 @@ function M.init(cfg)
 		"clock_calendar_border_width",
 		"layoutbox_pad_h",
 		"layoutbox_pad_v",
+		"tags_indicator", -- lockt das Table (Referenz); Feintuning kannst du offen lassen, wenn gewünscht
 	}, "error")
 end
 
