@@ -1,18 +1,14 @@
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.services.homepage-dashboard;
-  hostname = "apollo"; # "${networking.hostName}";
-in
-{
+  hostname = "anvil"; # "${networking.hostName}";
+in {
   options.${namespace}.services.homepage-dashboard = with types; {
     enable = mkBoolOpt false "Enable homepage-dashboard";
   };
@@ -43,7 +39,6 @@ in
                 icon = "jellyfin.png";
                 href = "http://${hostname}:8096";
               };
-
             }
             {
               "Nextcloud" = {

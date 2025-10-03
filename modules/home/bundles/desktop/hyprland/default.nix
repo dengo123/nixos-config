@@ -56,6 +56,7 @@ in {
         kanshi = enabled;
         hyprpaper = enabled;
       };
+      misc.stylix = enabled;
     };
   };
 }

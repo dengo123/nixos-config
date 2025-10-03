@@ -8,9 +8,9 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.programs.stylix;
+  cfg = config.${namespace}.misc.stylix;
 in {
-  options.${namespace}.programs.stylix = with types; {
+  options.${namespace}.misc.stylix = with types; {
     enable = mkBoolOpt false "Enable stylix";
   };
 

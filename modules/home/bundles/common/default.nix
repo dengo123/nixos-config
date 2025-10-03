@@ -48,7 +48,6 @@ in {
       };
       programs = {
         zen = enabled;
-        stylix = enabled;
       };
     };
   };

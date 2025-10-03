@@ -21,7 +21,10 @@ in {
       config = {
         systray = enabled;
       };
-      misc.gtk = enabled;
+      misc = {
+        gtk = enabled;
+        stylix = enabled;
+      };
       services = {
         autorandr = enabled;
       };
