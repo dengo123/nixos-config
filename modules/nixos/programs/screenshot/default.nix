@@ -29,6 +29,8 @@ in {
       (with pkgs; [
         maim
         slop
+        xdotool
+        xclip
       ])
       ++ (
         with pkgs;

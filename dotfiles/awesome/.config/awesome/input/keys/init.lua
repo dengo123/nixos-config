@@ -17,12 +17,13 @@ function M.apply(cfg)
 		require("input.keys.global.navigation")(modkey),
 		require("input.keys.global.tags")(modkey),
 		require("input.keys.global.screens")(modkey),
-		require("input.keys.global.layout")(modkey), -- enthält "promote to master"
+		require("input.keys.global.layout")(modkey),
 		require("input.keys.global.state")(modkey),
 		require("input.keys.global.apps")(modkey, cfg),
 		require("input.keys.global.awesome")(modkey),
 		require("input.keys.global.menu")(modkey),
-		require("input.keys.global.power")(modkey, cfg.dialogs)
+		require("input.keys.global.power")(modkey, cfg.dialogs),
+		require("input.keys.global.screenshot")(modkey)
 	)
 
 	-- Export (optional für Zugriff in rc.lua/Rules o.ä.)
