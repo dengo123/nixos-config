@@ -13,31 +13,19 @@ function M.build(opts)
 	local s = opts.screen or (mouse and mouse.screen) or nil
 	local T = assert(opts.theme, "start widget: opts.theme (ui/theme/start.get(...)) fehlt")
 
-	-- Harte Theme-Prämissen (keine Fallbacks hier!)
-	assert(T.bg, "start theme: bg fehlt")
-	assert(T.bg_hover, "start theme: bg_hover fehlt")
-	assert(T.fg, "start theme: fg fehlt")
-	assert(T.shape, "start theme: shape fehlt")
-	assert(T.margin, "start theme: margin fehlt")
-	assert(T.icon, "start theme: icon fehlt")
-	assert(T.icon_size, "start theme: icon_size fehlt")
-	assert(T.spacing, "start theme: spacing fehlt")
-	assert(T.font_size_scale, "start theme: font_size_scale fehlt")
-	assert(T.font_weight, "start theme: font_weight fehlt")
-	assert(T.font_style, "start theme: font_style fehlt")
-	assert(T.width_factor, "start theme: width_factor fehlt")
-	assert(T.fixed_height ~= nil, "start theme: fixed_height fehlt (true/false)")
-	assert(T.label, "start theme: label fehlt")
+	assert(T.bg and T.bg_hover and T.fg and T.shape and T.margin, "start theme: basis fehlt")
+	assert(T.icon and T.icon_size and T.spacing, "start theme: icon/icon_size/spacing fehlt")
+	assert(T.font_size_scale and T.font_weight and T.font_style, "start theme: font props fehlen")
+	assert(T.width_factor and T.fixed_height ~= nil and T.label, "start theme: width/fixed_height/label fehlt")
 
 	local H = assert(tonumber(beautiful.wibar_height), "start widget: beautiful.wibar_height fehlt/ungueltig")
 	local W = math.floor(T.width_factor * H)
 
-	-- Farben/Shape/Margins
 	local bg, bg_hover, fg = T.bg, T.bg_hover, T.fg
 	local shape = T.shape
 	local margin = T.margin
 
-	-- Icon laden (Theme liefert Pfad oder Surface)
+	-- Icon laden
 	local icon_path = T.icon
 	if type(icon_path) == "string" and not icon_path:match("^/") then
 		icon_path = gfs.get_configuration_dir() .. icon_path
@@ -45,19 +33,26 @@ function M.build(opts)
 	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
 	assert(icon_surface, "start theme: icon konnte nicht geladen werden")
 
-	-- Verfügbare Innenhöhe = Barhöhe - vertikale Margins
+	-- Innenhöhe (Barhöhe minus Margins)
 	local inner_h = H - (margin.top + margin.bottom)
+
+	-- ENTWEDER: feste Pixelgröße, aber max. Innenhöhe
 	local icon_px = math.min(T.icon_size, inner_h)
+
+	-- OPTIONAL (Alternative): relative Skalierung
+	-- local icon_scale = T.icon_scale or 0.95    -- 0..1
+	-- local icon_px    = math.floor(icon_scale * inner_h)
 
 	local icon_widget = wibox.widget({
 		image = icon_surface,
 		resize = true,
+		upscale = true, -- <<<<<< WICHTIG: erlaubt Vergrößern über native Größe
+		downscale = true, -- optional, erlaubt Verkleinern (meist default)
 		forced_width = icon_px,
 		forced_height = icon_px,
 		widget = wibox.widget.imagebox,
 	})
 
-	-- Label via Pango
 	local label_markup = string.format(
 		'<span weight="%s" style="%s" size="%d%%">%s</span>',
 		T.font_weight,
@@ -91,7 +86,6 @@ function M.build(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Button-Container (fixe Höhe an Bar koppeln, falls gewünscht)
 	local btn = wibox.widget({
 		row,
 		bg = bg,
@@ -101,7 +95,6 @@ function M.build(opts)
 		widget = wibox.container.background,
 	})
 
-	-- Hover
 	btn:connect_signal("mouse::enter", function()
 		btn.bg = bg_hover
 	end)
@@ -109,15 +102,14 @@ function M.build(opts)
 		btn.bg = bg
 	end)
 
-	-- Klick-Logik
-	local launcher = opts.launcher -- aus system.config.launcher durchgereicht
+	-- Klick-Logik (wie vereinbart: nil → Menü wie Rechtsklick)
+	local launcher = opts.launcher
 	local terminal = opts.terminal or "xterm"
 	local menu = opts.menu
-	local menu_api = opts.menu_api -- { show_for_widget = fn, get_start_items = fn }
+	local menu_api = opts.menu_api
 
 	local function show_menu()
 		if menu_api and menu_api.show_for_widget then
-			-- Menü-Positionierung macht shell/menu (linksbündig über dem Button)
 			menu_api.show_for_widget(btn)
 			return true
 		end
@@ -125,7 +117,6 @@ function M.build(opts)
 	end
 
 	local function run_launcher()
-		-- Wenn kein launcher definiert (system.config.launcher == nil/""): wie Rechtsklick → Menü
 		if type(launcher) ~= "string" or launcher == "" then
 			if show_menu() then
 				return
@@ -133,11 +124,8 @@ function M.build(opts)
 			awful.spawn.with_shell(terminal)
 			return
 		end
-
 		local L = launcher:lower()
-
 		if L == "awesome" then
-			-- historisches Verhalten: internes Menü
 			if menu and menu.toggle then
 				menu:toggle({ screen = s })
 			elseif menu and menu.show then
@@ -147,22 +135,17 @@ function M.build(opts)
 			end
 			return
 		end
-
 		if L == "rofi" then
 			awful.spawn.with_shell("rofi -show drun")
 			return
 		end
-
 		if L == "emacs" then
 			awful.spawn.with_shell("emacsclient -c || emacs")
 			return
 		end
-
-		-- generischer Shell-Launcher
 		awful.spawn.with_shell(launcher)
 	end
 
-	-- Buttons: Left = Launcher/Terminal/(Menu bei nil), Right = Menü
 	btn:buttons(gears.table.join(
 		awful.button({}, 1, run_launcher),
 		awful.button({}, 3, function()
