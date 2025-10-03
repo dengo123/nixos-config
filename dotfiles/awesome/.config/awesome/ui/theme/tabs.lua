@@ -5,79 +5,81 @@ local dpi = xr.apply_dpi
 
 local T = {}
 
--- Quelle der Wahrheit fürs Tabs-Theming
-local DEFAULTS = {
-	-- Layout
-	spacing = 2,
-	radius = function()
-		return beautiful.border_radius or 6
-	end,
-	pad_h = 8,
-	pad_v = 3,
+-- Setzt die Quelle-der-Wahrheit in beautiful.* anhand der injizierten Palette
+function T.init(cfg)
+	cfg = cfg or {}
+	local C = cfg.colors or {}
 
-	-- Größen
-	icon_size = math.floor((tonumber(beautiful.wibar_height) or 28) * 0.8),
-	title_len = 18,
-	width_factor = 6,
+	-- Größen/Geometrie aus Umgebung ableiten
+	local wibar_h = tonumber(beautiful.wibar_height) or 28
+	local icon_sz = math.floor(wibar_h * 0.8)
 
-	-- Border
-	-- Dünner Rand für inaktive Tabs; Widget nutzt die RandFARBE = focus_bg
-	inactive_border_width = dpi(1),
+	-- Maße/Style (fix)
+	beautiful.tabs = {
+		spacing = dpi(2),
+		radius = dpi(5),
+		pad_h = dpi(8),
+		pad_v = dpi(3),
 
-	-- Farben
-	colors = {
-		accent = "#235CDB",
-		focus_bg = "#1A50B8", -- aktiv: Hintergrund (und auch Border-Farbe der inaktiven Tabs)
-		focus_fg = "#FFFFFF",
-		focus_border = "#00000000", -- ungenutzt im Widget, bleibt zur Vollständigkeit
+		icon_size = icon_sz,
+		title_len = 18,
+		width_factor = 6,
 
-		normal_bg = "#00000000",
-		normal_fg = "#DDDDDD",
-		normal_border = "#1A50B8", -- optionaler Referenzwert; Widget nutzt für Border C.focus_bg
+		-- Dünner Rand für inaktive Tabs; die RandFARBE kommt aus colors.focus_bg
+		inactive_border_width = dpi(2),
+	}
 
-		minimize_bg = "#00000000",
-		minimize_fg = "#AAAAAA",
-		minimize_border = "#00000000",
-	},
-}
+	-- Farben aus injizierter Palette (keine Hexcodes hier)
+	beautiful.tabs_colors = {
+		accent = C.blue_dark,
+		focus_bg = C.blue_dark,
+		focus_fg = C.white,
+		focus_border = C.blue_dark, -- Vollständigkeit; Widget nutzt es ggf. nicht
 
-function T.init(_) end
+		normal_bg = C.transparent,
+		normal_fg = C.gray,
+		normal_border = C.blue_dark, -- Referenz; Widget nutzt meist focus_bg als Border
 
-function T.get(overrides)
-	overrides = overrides or {}
-	local O, C = overrides, (overrides.colors or {})
+		minimize_bg = C.transparent,
+		minimize_fg = C.gray,
+		minimize_border = C.transparent,
+	}
+end
+
+-- Liefert ein konsumierbares Theme-Objekt für widgets/tabs.lua (ohne Overrides)
+function T.get(_)
+	local S = beautiful.tabs or {}
+	local C = beautiful.tabs_colors or {}
+
 	return {
-		-- Layout
-		spacing = (O.spacing ~= nil) and O.spacing or DEFAULTS.spacing,
-		radius = O.radius or DEFAULTS.radius(),
-		pad_h = (O.pad_h ~= nil) and O.pad_h or DEFAULTS.pad_h,
-		pad_v = (O.pad_v ~= nil) and O.pad_v or DEFAULTS.pad_v,
+		-- Layout / Maße
+		spacing = S.spacing,
+		radius = S.radius,
+		pad_h = S.pad_h,
+		pad_v = S.pad_v,
 
 		-- Größen
-		icon_size = (O.icon_size ~= nil) and O.icon_size or DEFAULTS.icon_size,
-		title_len = (O.title_len ~= nil) and O.title_len or DEFAULTS.title_len,
-		width_factor = (O.width_factor ~= nil) and O.width_factor or DEFAULTS.width_factor,
+		icon_size = S.icon_size,
+		title_len = S.title_len,
+		width_factor = S.width_factor,
 
 		-- Border
-		inactive_border_width = (O.inactive_border_width ~= nil) and O.inactive_border_width
-			or DEFAULTS.inactive_border_width,
+		inactive_border_width = S.inactive_border_width,
 
 		-- Farben
 		colors = {
-			accent = C.accent or DEFAULTS.colors.accent,
-			focus_bg = C.focus_bg or DEFAULTS.colors.focus_bg,
-			focus_fg = C.focus_fg or DEFAULTS.colors.focus_fg,
-			focus_border = C.focus_border or DEFAULTS.colors.focus_border,
+			accent = C.accent,
+			focus_bg = C.focus_bg,
+			focus_fg = C.focus_fg,
+			focus_border = C.focus_border,
 
-			normal_bg = C.normal_bg or DEFAULTS.colors.normal_bg,
-			normal_fg = C.normal_fg or DEFAULTS.colors.normal_fg,
-			-- Hinweis: Das Widget nutzt für den inaktiven Rand C.focus_bg.
-			-- normal_border bleibt hier als optionaler Farbreferenzwert.
-			normal_border = C.normal_border or DEFAULTS.colors.normal_border,
+			normal_bg = C.normal_bg,
+			normal_fg = C.normal_fg,
+			normal_border = C.normal_border,
 
-			minimize_bg = C.minimize_bg or DEFAULTS.colors.minimize_bg,
-			minimize_fg = C.minimize_fg or DEFAULTS.colors.minimize_fg,
-			minimize_border = C.minimize_border or DEFAULTS.colors.minimize_border,
+			minimize_bg = C.minimize_bg,
+			minimize_fg = C.minimize_fg,
+			minimize_border = C.minimize_border,
 		},
 	}
 end

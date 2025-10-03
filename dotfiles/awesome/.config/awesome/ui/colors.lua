@@ -8,15 +8,17 @@ local PALETTE = {
 	-- Blues
 	blue_luna = "#235CDB",
 	blue_light = "#0B89E7",
+	blue_dark = "#1A50B8",
 
 	-- Neutrals
 	white = "#FFFFFF",
 	black = "#000000",
-	gray = "#DDDDDD", -- EIN Grauton (vorher gray_light)
+	gray = "#DDDDDD",
+	transparent = "#00000000",
 
 	-- Accents
-	red = "#FF6FA3", -- ehemals pink (rosiges Rot) → jetzt Haupt-ROT
-	pink = "#FF8FBA", -- ehemals light pink → jetzt PINK/Rosa
+	red = "#FF6FA3",
+	pink = "#FF8FBA",
 
 	-- Extras
 	creme = "#FFF7E6",
