@@ -1,10 +1,45 @@
--- ~/.config/awesome/ui/init.lua
-local M = { theme = require("ui.theme"), wallpaper = require("ui.wallpaper") }
-function M.init(cfg)
-	if M.theme and M.theme.init then
-		M.theme.init(cfg)
+-- ui/init.lua
+local Colors = require("ui.colors")
+local Helpers = require("ui.helpers") -- 👈 NEU
+
+local M = {
+	theme = {}, -- will be filled with parts directly
+	wallpaper = require("ui.wallpaper"),
+}
+
+-- list your theme parts here (add/remove freely)
+local PARTS = {
+	"start",
+	"menu",
+	"notify",
+	"tabs",
+	"windows",
+	"wibar",
+	"power",
+}
+
+-- load parts directly: ui/theme/<part>.lua
+for _, name in ipairs(PARTS) do
+	local ok, mod = pcall(require, "ui.theme." .. name)
+	if ok and type(mod) == "table" then
+		M.theme[name] = mod
 	end
-	if M.wallpaper and M.wallpaper.init then
+end
+
+function M.init(cfg)
+	cfg = cfg or {}
+
+	-- Palette & Helpers global an alle Module durchreichen
+	cfg.colors = cfg.colors or Colors.get()
+	cfg.helpers = cfg.helpers or Helpers -- 👈 NEU
+
+	for _, mod in pairs(M.theme) do
+		if type(mod.init) == "function" then
+			pcall(mod.init, cfg)
+		end
+	end
+
+	if M.wallpaper and type(M.wallpaper.init) == "function" then
 		M.wallpaper.init(cfg)
 	end
 	return M

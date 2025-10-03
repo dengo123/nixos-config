@@ -7,30 +7,15 @@ local wibox = require("wibox")
 local W = {}
 
 -- =========================
--- Feste Vorgaben (hart)
+-- Feste Vorgaben (Größen/Position)
 -- =========================
 local BORDER_WIDTH = 2
 local BORDER_RADIUS = 10
-
-local BORDER_NORMAL = "#0B89E7"
-local BORDER_FOCUS = "#235CDB"
-
-local TITLEBAR_POSITION = "top"
+local TITLEBAR_POS = "top"
 local TITLEBAR_HEIGHT = 28
 
-local TITLEBAR_BG_NORMAL = BORDER_NORMAL
-local TITLEBAR_BG_FOCUS = BORDER_FOCUS
-local TITLEBAR_FG_NORMAL = "#DDDDDD"
-local TITLEBAR_FG_FOCUS = "#FFFFFF"
-
--- Button-Farben
-local CLOSE_COLOR = "#FF6FA3" -- rosiges Rot
-local CLOSE_COLOR_HOVER = "#FF8FBA" -- helleres Rosa
-local BTN_WHITE = "#FFFFFF"
-local BTN_WHITE_HOVER = "#BDBDBD"
-
 -- =========================
--- Assets absichern
+-- Titlebar-Assets lokal absichern (nur für windows.lua)
 -- =========================
 local function ensure_titlebar_assets()
 	if
@@ -48,18 +33,14 @@ local function ensure_titlebar_assets()
 	end
 
 	local keys = {
-		-- Close
 		"titlebar_close_button_normal",
 		"titlebar_close_button_focus",
-		-- Minimize
 		"titlebar_minimize_button_normal",
 		"titlebar_minimize_button_focus",
-		-- Floating
 		"titlebar_floating_button_normal_active",
 		"titlebar_floating_button_focus_active",
 		"titlebar_floating_button_normal_inactive",
 		"titlebar_floating_button_focus_inactive",
-		-- Maximize (optional, derzeit ungenutzt)
 		"titlebar_maximized_button_normal_active",
 		"titlebar_maximized_button_focus_active",
 		"titlebar_maximized_button_normal_inactive",
@@ -73,31 +54,24 @@ local function ensure_titlebar_assets()
 end
 
 -- =========================
--- Button-Factory (ohne Tooltips, mit Hover)
+-- Button-Factory (Bildbutton mit Hover-Recolor)
 -- =========================
 local function make_img_button(opts)
 	-- opts = { img, color, color_hover, size, on_click }
 	local bar_h = opts.size or (beautiful.titlebar_height or TITLEBAR_HEIGHT)
-	local inner_size = math.floor(bar_h * 0.90) -- 90% der Titlebar-Höhe
-	local pad = math.floor((bar_h - inner_size) / 2)
+	local inner = math.floor(bar_h * 0.90) -- 90% der Titlebar-Höhe
+	local pad = math.floor((bar_h - inner) / 2)
 
 	local ib = wibox.widget({
 		image = gears.color.recolor_image(opts.img, opts.color),
 		resize = true,
-		forced_width = inner_size,
-		forced_height = inner_size,
+		forced_width = inner,
+		forced_height = inner,
 		widget = wibox.widget.imagebox,
 	})
 
 	local bg = wibox.widget({
-		{
-			ib,
-			left = pad,
-			right = pad,
-			top = pad,
-			bottom = pad,
-			widget = wibox.container.margin,
-		},
+		{ ib, left = pad, right = pad, top = pad, bottom = pad, widget = wibox.container.margin },
 		widget = wibox.container.background,
 	})
 
@@ -107,35 +81,35 @@ local function make_img_button(opts)
 	bg:connect_signal("mouse::leave", function()
 		ib.image = gears.color.recolor_image(opts.img, opts.color)
 	end)
-
 	bg:buttons(gears.table.join(awful.button({}, 1, function()
 		if type(opts.on_click) == "function" then
 			opts.on_click()
 		end
 	end)))
-
 	return bg
 end
 
 -- =========================
--- Init: setzt beautiful.* HART
+-- Init: setzt beautiful.* HART (Farben aus Palette)
 -- =========================
-function W.init()
+function W.init(cfg)
 	ensure_titlebar_assets()
+
+	local C = (cfg and cfg.colors) or require("ui.colors").get()
 
 	-- Rahmen / Farben
 	beautiful.border_width = BORDER_WIDTH
 	beautiful.border_radius = BORDER_RADIUS
-	beautiful.border_normal = BORDER_NORMAL
-	beautiful.border_focus = BORDER_FOCUS
+	beautiful.border_normal = C.blue_light
+	beautiful.border_focus = C.blue_luna
 
 	-- Titlebar
-	beautiful.titlebar_position = TITLEBAR_POSITION
+	beautiful.titlebar_position = TITLEBAR_POS
 	beautiful.titlebar_height = TITLEBAR_HEIGHT
-	beautiful.titlebar_bg_normal = TITLEBAR_BG_NORMAL
-	beautiful.titlebar_bg_focus = TITLEBAR_BG_FOCUS
-	beautiful.titlebar_fg_normal = TITLEBAR_FG_NORMAL
-	beautiful.titlebar_fg_focus = TITLEBAR_FG_FOCUS
+	beautiful.titlebar_bg_normal = C.blue_light
+	beautiful.titlebar_bg_focus = C.blue_luna
+	beautiful.titlebar_fg_normal = C.gray -- einheitlicher Grauton
+	beautiful.titlebar_fg_focus = C.white
 end
 
 -- =========================
@@ -146,7 +120,9 @@ function W.attach_titlebar(c, mouse, _opts)
 		return
 	end
 
-	local pos = beautiful.titlebar_position or TITLEBAR_POSITION
+	local C = (awesome and _G and _G.ui_cfg and _G.ui_cfg.colors) or require("ui.colors").get()
+
+	local pos = beautiful.titlebar_position or TITLEBAR_POS
 	local size = beautiful.titlebar_height or TITLEBAR_HEIGHT
 	local buttons = (mouse and mouse.titlebar_buttons and mouse.titlebar_buttons(c)) or nil
 
@@ -162,11 +138,11 @@ function W.attach_titlebar(c, mouse, _opts)
 		or beautiful.titlebar_floating_button_normal_inactive
 		or beautiful.titlebar_floating_button_normal
 
-	-- Eigene Buttons (ohne Tooltips)
+	-- Buttons mit Palettenfarben
 	local btn_min = make_img_button({
 		img = img_minimize,
-		color = BTN_WHITE,
-		color_hover = BTN_WHITE_HOVER, -- ausgrauen
+		color = C.white,
+		color_hover = C.gray, -- ausgrauen
 		size = size,
 		on_click = function()
 			c.minimized = true
@@ -175,8 +151,8 @@ function W.attach_titlebar(c, mouse, _opts)
 
 	local btn_float = make_img_button({
 		img = img_float,
-		color = BTN_WHITE,
-		color_hover = BTN_WHITE_HOVER, -- ausgrauen
+		color = C.white,
+		color_hover = C.gray,
 		size = size,
 		on_click = function()
 			awful.client.floating.toggle(c)
@@ -185,8 +161,8 @@ function W.attach_titlebar(c, mouse, _opts)
 
 	local btn_close = make_img_button({
 		img = img_close,
-		color = CLOSE_COLOR, -- rosa-rot
-		color_hover = CLOSE_COLOR_HOVER, -- heller bei Hover
+		color = C.red, -- vorher "pink", jetzt rot
+		color_hover = C.pink, -- helleres Rosa
 		size = size,
 		on_click = function()
 			c:kill()
@@ -194,21 +170,21 @@ function W.attach_titlebar(c, mouse, _opts)
 	})
 
 	awful.titlebar(c, { position = pos, size = size }):setup({
-		{ -- LEFT: Icon + Titel (drag)
+		{
 			awful.titlebar.widget.iconwidget(c),
 			title,
 			buttons = buttons,
 			spacing = 6,
 			layout = wibox.layout.fixed.horizontal,
 		},
-		{ -- MIDDLE: leerer Drag-Bereich
+		{
 			nil,
 			nil,
 			nil,
 			buttons = buttons,
 			layout = wibox.layout.align.horizontal,
 		},
-		{ -- RIGHT: unsere Buttons
+		{
 			btn_min,
 			btn_float,
 			btn_close,
@@ -229,15 +205,14 @@ function W.apply_client_style(c)
 
 	local is_max = c.fullscreen or c.maximized or c.maximized_vertical or c.maximized_horizontal
 	c.border_width = is_max and 0 or (beautiful.border_width or BORDER_WIDTH)
-	c.border_color = (c == client.focus) and (beautiful.border_focus or BORDER_FOCUS)
-		or (beautiful.border_normal or BORDER_NORMAL)
+	c.border_color = (c == client.focus) and (beautiful.border_focus or beautiful.border_normal)
+		or beautiful.border_normal
 
 	local r = beautiful.border_radius or BORDER_RADIUS
 	if is_max or c.minimized or r <= 0 then
 		c.shape = nil
 		return
 	end
-
 	c.shape = function(cr, w, h)
 		if (w or 0) < 2 or (h or 0) < 2 then
 			return
@@ -246,7 +221,6 @@ function W.apply_client_style(c)
 	end
 end
 
--- Optionales Hook-Paket
 function W.connect_signals()
 	client.connect_signal("manage", W.apply_client_style)
 	client.connect_signal("focus", W.apply_client_style)

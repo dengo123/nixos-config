@@ -1,3 +1,4 @@
+# modules/home/misc/stylix/default.nix
 {
   config,
   lib,
@@ -11,65 +12,55 @@ with lib.${namespace}; let
   cfg = config.${namespace}.misc.stylix;
 in {
   options.${namespace}.misc.stylix = with types; {
-    enable = mkBoolOpt false "Enable stylix";
+    enable = mkBoolOpt false "Enable Stylix theming.";
   };
 
+  # WICHTIG: Immer importieren (keine config-Referenzen in imports!)
   imports = [inputs.stylix.homeModules.stylix];
 
-  config = mkIf cfg.enable {
-    stylix = {
-      enable = true;
+  config = mkMerge [
+    # 1) Hard-Off: Wenn unser Flag AUS ist, Stylix wirklich komplett abschalten
+    (mkIf (!cfg.enable) {
+      stylix.enable = lib.mkForce false;
+      stylix.autoEnable = lib.mkForce false;
+      # optional defensiv: nichts anfassen
+      stylix.targets.gtk.enable = lib.mkForce false;
+      stylix.iconTheme.enable = lib.mkForce false;
+    })
 
-      autoEnable = true;
-      base16Scheme = import ./base16/catppuccin-mocha.nix;
-      # base16Scheme = builtins.toString ./base16/catppuccin/colors.yaml;
-      cursor = {
-        package = pkgs.bibata-cursors;
-        name = "Bibata-Original-Ice";
-        size = 24;
-      };
-
-      fonts = {
-        monospace = {
-          package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "JetBrainsMono Nerd Font Mono";
-        };
-        sansSerif = {
-          package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "JetBrainsMono Nerd Font Mono";
-        };
-        serif = {
-          package = pkgs.nerd-fonts.jetbrains-mono;
-          name = "JetBrainsMono Nerd Font Mono";
-        };
-        emoji = {
-          package = pkgs.noto-fonts-emoji;
-          name = "Noto Color Emoji";
-        };
-        sizes = {
-          applications = 13;
-          desktop = 13;
-          popups = 13;
-          terminal = 13;
-        };
-      };
-
-      iconTheme = {
+    # 2) Unser gewünschtes Stylix-Setup, nur wenn Flag AN ist
+    (mkIf cfg.enable {
+      stylix = {
         enable = true;
-        package = pkgs.papirus-icon-theme;
-        light = "Papirus-Light";
-        dark = "Papirus-Dark";
-      };
+        autoEnable = true;
 
-      image = ./wallpapers/nixos_waves.png;
+        base16Scheme = import ./base16/catppuccin-mocha.nix;
+        image = ./wallpapers/nixos_waves.png;
 
-      polarity = "dark";
-      targets = {
-        kitty.enable = false;
-        waybar.enable = false;
-        hyprlock.enable = false;
-        neovim.enable = false;
+        cursor = {
+          package = pkgs.bibata-cursors;
+          name = "Bibata-Original-Ice";
+          size = 24;
+        };
+
+        iconTheme = {
+          enable = true;
+          package = pkgs.papirus-icon-theme;
+          light = "Papirus-Light";
+          dark = "Papirus-Dark";
+        };
+        polarity = "light";
+
+        targets = {
+          gtk.enable = false;
+          kitty.enable = false;
+          waybar.enable = false;
+          hyprlock.enable = false;
+          neovim.enable = false;
+        };
       };
-    };
-  };
+      # Libadwaita hell:
+      dconf.settings."org/gnome/desktop/interface".color-scheme = "default";
+    })
+  ];
 }

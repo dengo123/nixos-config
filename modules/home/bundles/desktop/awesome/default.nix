@@ -10,7 +10,7 @@ with lib.${namespace}; let
   cfg = config.${namespace}.bundles.desktop.awesome;
 in {
   options.${namespace}.bundles.desktop.awesome = with types; {
-    enable = mkBoolOpt false "Whether or not to enable desktop hyprland bundle configuration.";
+    enable = mkBoolOpt false "Whether or not to enable desktop awesome bundle configuration.";
   };
 
   config = mkIf cfg.enable {
@@ -22,8 +22,10 @@ in {
         systray = enabled;
       };
       misc = {
-        gtk = enabled;
-        stylix = enabled;
+        gtk = {
+          enable = true;
+          iconTheme = "Papirus-Light"; # or "Adwaita" | "Papirus-Dark"
+        };
       };
       services = {
         autorandr = enabled;
@@ -37,10 +39,6 @@ in {
     };
 
     home.packages = with pkgs; [
-      adwaita-icon-theme
-      gnome-system-monitor
-      morewaita-icon-theme
-      qogir-icon-theme
     ];
   };
 }
