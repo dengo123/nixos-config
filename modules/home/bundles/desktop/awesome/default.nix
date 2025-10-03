@@ -21,8 +21,15 @@ in {
       config = {
         systray = enabled;
       };
+      misc.gtk = enabled;
       services = {
         autorandr = enabled;
+      };
+      programs = {
+        nemo = {
+          enable = true;
+          withBundle = false;
+        };
       };
     };
 
@@ -31,8 +38,6 @@ in {
       gnome-system-monitor
       morewaita-icon-theme
       qogir-icon-theme
-      nemo
-      pavucontrol
     ];
   };
 }

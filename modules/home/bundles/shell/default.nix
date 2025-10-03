@@ -15,11 +15,13 @@ in {
   config = mkIf cfg.enable {
     nixforge = {
       programs = {
+        kitty = enabled;
         atuin = enabled;
         eza = enabled;
         fzf = enabled;
         powerlevel10k = disabled;
         starship = enabled;
+        tmux = enabled;
         yazi = enabled;
         zoxide = enabled;
         zsh = enabled;

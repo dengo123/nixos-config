@@ -40,20 +40,13 @@ in {
       firefox
     ];
     nixforge = {
-      bundles.shell = enabled;
       config = {
         apps = enabled;
       };
       misc = {
-        gtk = disabled; # Done by stylix
-        qt = disabled;
         scripts = enabled;
       };
       programs = {
-        ghostty = enabled;
-        kitty = enabled;
-        lazygit = enabled;
-        tmux = enabled;
         zen = enabled;
         stylix = enabled;
       };

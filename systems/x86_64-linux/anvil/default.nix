@@ -27,12 +27,12 @@ with lib.${namespace}; {
     };
     bundles = {
       common = enabled;
-      x11 = enabled;
     };
     desktop.hyprland = {
       enable = false;
       mode = "full";
     };
+    desktop.xsession = enabled;
     hardware = {
       cuda = enabled;
       nvidia = {
@@ -46,6 +46,7 @@ with lib.${namespace}; {
       nh = enabled;
       nix-ld = enabled;
       ragenix = disabled;
+      screenshot = enabled;
     };
     services = {
       ollama = enabled;
