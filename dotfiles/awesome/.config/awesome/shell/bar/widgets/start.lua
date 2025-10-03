@@ -29,7 +29,7 @@ function M.build(opts)
 	assert(T.fixed_height ~= nil, "start theme: fixed_height fehlt (true/false)")
 	assert(T.label, "start theme: label fehlt")
 
-	local H = assert(tonumber(beautiful.wibar_height), "beautiful.wibar_height fehlt/ungueltig")
+	local H = assert(tonumber(beautiful.wibar_height), "start widget: beautiful.wibar_height fehlt/ungueltig")
 	local W = math.floor(T.width_factor * H)
 
 	-- Farben/Shape/Margins
@@ -45,11 +45,15 @@ function M.build(opts)
 	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
 	assert(icon_surface, "start theme: icon konnte nicht geladen werden")
 
+	-- Verfügbare Innenhöhe = Barhöhe - vertikale Margins
+	local inner_h = H - (margin.top + margin.bottom)
+	local icon_px = math.min(T.icon_size, inner_h)
+
 	local icon_widget = wibox.widget({
 		image = icon_surface,
 		resize = true,
-		forced_width = T.icon_size,
-		forced_height = T.icon_size,
+		forced_width = icon_px,
+		forced_height = icon_px,
 		widget = wibox.widget.imagebox,
 	})
 
@@ -87,6 +91,7 @@ function M.build(opts)
 		widget = wibox.container.background,
 	})
 
+	-- Button-Container (fixe Höhe an Bar koppeln, falls gewünscht)
 	local btn = wibox.widget({
 		row,
 		bg = bg,
@@ -105,18 +110,34 @@ function M.build(opts)
 	end)
 
 	-- Klick-Logik
-	local launcher = opts.launcher
+	local launcher = opts.launcher -- aus system.config.launcher durchgereicht
 	local terminal = opts.terminal or "xterm"
 	local menu = opts.menu
-	local menu_api = opts.menu_api -- erwartet: { show_for_widget = function(widget) ... , get_start_items = function() ... end }
+	local menu_api = opts.menu_api -- { show_for_widget = fn, get_start_items = fn }
+
+	local function show_menu()
+		if menu_api and menu_api.show_for_widget then
+			-- Menü-Positionierung macht shell/menu (linksbündig über dem Button)
+			menu_api.show_for_widget(btn)
+			return true
+		end
+		return false
+	end
 
 	local function run_launcher()
+		-- Wenn kein launcher definiert (system.config.launcher == nil/""): wie Rechtsklick → Menü
 		if type(launcher) ~= "string" or launcher == "" then
+			if show_menu() then
+				return
+			end
 			awful.spawn.with_shell(terminal)
 			return
 		end
+
 		local L = launcher:lower()
+
 		if L == "awesome" then
+			-- historisches Verhalten: internes Menü
 			if menu and menu.toggle then
 				menu:toggle({ screen = s })
 			elseif menu and menu.show then
@@ -126,25 +147,26 @@ function M.build(opts)
 			end
 			return
 		end
+
 		if L == "rofi" then
 			awful.spawn.with_shell("rofi -show drun")
 			return
 		end
+
 		if L == "emacs" then
 			awful.spawn.with_shell("emacsclient -c || emacs")
 			return
 		end
+
+		-- generischer Shell-Launcher
 		awful.spawn.with_shell(launcher)
 	end
 
-	-- Buttons: Left = Launcher/Terminal, Right = shell/menu Dropdown
+	-- Buttons: Left = Launcher/Terminal/(Menu bei nil), Right = Menü
 	btn:buttons(gears.table.join(
 		awful.button({}, 1, run_launcher),
 		awful.button({}, 3, function()
-			if menu_api and menu_api.show_for_widget then
-				-- Menü-Positionierung macht shell/menu: linksbündig über dem Button
-				menu_api.show_for_widget(btn)
-			end
+			show_menu()
 		end)
 	))
 

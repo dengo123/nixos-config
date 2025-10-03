@@ -19,6 +19,8 @@ local PALETTE = {
 	-- Accents
 	red = "#FF6FA3",
 	pink = "#FF8FBA",
+	green = "#27AE60",
+	green_dark = "#1F8F4A",
 
 	-- Extras
 	creme = "#FFF7E6",
