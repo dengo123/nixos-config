@@ -53,6 +53,7 @@ local function make_ui_api()
 				awful.placement.centered(w, { parent = s, honor_workarea = true })
 			end),
 			group = coalesce(opts.group, "launchers"),
+			shape = opts.shape,
 		})
 	end
 

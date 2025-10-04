@@ -104,20 +104,21 @@ function Popup.show(form_widget, th, opts)
 	end
 
 	-- ---------- Popup (reiner Träger; kein Border/Shape hier!) ----------
-	-- form_widget enthält bereits alles (inkl. Border/Radius, falls gewünscht).
-	local popup_widget = wibox.widget({
-		{ form_widget, strategy = "exact", width = W, height = H, widget = wibox.container.constraint },
-		widget = wibox.container.margin,
-	})
-
 	local popup = awful.popup({
 		screen = s,
 		ontop = true,
 		visible = false,
 		type = "dialog",
-		bg = "#00000000", -- komplett transparent; kein eigener Rand/Shape
+		bg = "#00000000", -- bleibt voll transparent
 		placement = placement_fn,
-		widget = popup_widget,
+		shape = opts.shape,
+		widget = wibox.widget({
+			form_widget,
+			strategy = "exact",
+			width = W,
+			height = H,
+			widget = wibox.container.constraint,
+		}),
 	})
 
 	-- ---------- Lifecycle ----------

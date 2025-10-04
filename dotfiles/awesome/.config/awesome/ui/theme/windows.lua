@@ -9,7 +9,7 @@ function M.init(cfg)
 	local C = (cfg and cfg.colors) or require("ui.colors").get()
 
 	-- Rahmen/Farben
-	beautiful.border_width = 2
+	beautiful.border_width = 3
 	beautiful.border_radius = 10
 	beautiful.border_normal = C.blue_light
 	beautiful.border_focus = C.blue_luna

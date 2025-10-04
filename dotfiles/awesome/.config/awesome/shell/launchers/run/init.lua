@@ -97,6 +97,10 @@ function M.open(opts, Lib)
 		use_backdrop = false,
 		show_root = false,
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
+		shape = function(cr, w, h)
+			local r = tonumber(th.panel.panel_radius) or tonumber(th.panel_radius) or 12
+			require("gears").shape.rounded_rect(cr, w, h, r)
+		end,
 	})
 
 	-- Controller (Prompt lifecycle + Provider-Dispatch)
