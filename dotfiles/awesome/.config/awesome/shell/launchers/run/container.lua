@@ -15,11 +15,12 @@ end
 
 -- build(th, dims, { title, body, ok_btn, cancel_btn, footer })  -- footer optional, ok/cancel bevorzugt
 function M.build(th, dims, w)
-	local radius = pick(th.panel_radius, 12)
-	local border_w = pick(th.panel_border_width, 2)
-	local border_color = pick(th.panel_border, pick(th.header_bg, "#235CDB"))
-	local header_h = pick(th.panel_header_h, 28)
-	local footer_h = pick(th.footer_h, dims.footer_h)
+	-- 🔹 Runde Ecken & Rand am OUTER-Container (nicht im Popup)
+	local radius = tonumber(pick(th.panel_radius, 12))
+	local border_w = tonumber(pick(th.panel_border_width, 2)) -- 2px
+	local border_color = pick(th.panel_border, th.header_bg) -- = Header-Farbe
+	local header_h = tonumber(pick(th.header_h, 28)) -- Theme: header_h
+	local footer_h = tonumber(pick(th.footer_h, dims.footer_h))
 
 	-- Header
 	local title = wibox.widget({
@@ -84,11 +85,10 @@ function M.build(th, dims, w)
 			local row = wibox.widget({
 				nil,
 				{
-					-- Reihenfolge: OK (links) – Cancel (rechts)
 					ok_btn or wibox.widget({}),
 					cancel_btn or wibox.widget({}),
 					spacing = pick(th.footer_spacing, 8),
-					layout = wibox.layout.fixed.horizontal,
+					layout = wibox.layout.fixed.horizontal, -- Buttons behalten Eigenbreite
 				},
 				expand = "outside",
 				layout = wibox.layout.align.horizontal,
@@ -110,15 +110,16 @@ function M.build(th, dims, w)
 				widget = wibox.container.background,
 			})
 		else
-			footer = w.footer -- falls extern komplett geliefert
+			footer = w.footer -- komplett extern geliefert
 		end
 	end
 
-	-- Höhen
+	-- Dims ableiten
 	dims.header_h = header_h
 	dims.footer_h = footer and (footer_h or 40) or 0
 	dims.body_h = math.max(0, dims.h - dims.header_h - dims.footer_h)
 
+	-- Stack
 	local stack = wibox.widget({
 		{ header, strategy = "exact", height = dims.header_h, widget = wibox.container.constraint },
 		{ body, strategy = "exact", height = dims.body_h, widget = wibox.container.constraint },
@@ -133,14 +134,16 @@ function M.build(th, dims, w)
 		})
 	end
 
+	-- 🔹 OUTER: runder Container mit Rand (Header-Farbe), 2px dick
 	return wibox.widget({
 		stack,
 		shape = function(cr, w_, h_)
 			gears.shape.rounded_rect(cr, w_, h_, radius)
 		end,
-		border_width = border_w,
-		border_color = border_color,
-		bg = pick(th.panel_bg, pick(th.dialog_bg, "#000000AA")),
+		shape_clip = true, -- Rundungen „schneiden“ Inhalte
+		shape_border_width = border_w, -- 2px
+		shape_border_color = border_color, -- = Header-Farbe
+		bg = pick(th.panel_bg, "#00000000"), -- Panel-Grund (außerhalb Header/Body/Footer)
 		widget = wibox.container.background,
 	})
 end

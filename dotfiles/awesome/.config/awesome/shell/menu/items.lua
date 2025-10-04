@@ -37,6 +37,13 @@ function Items.build_start(ctx)
 			end,
 		},
 		{
+			"run",
+			function()
+				local Launchers = require("shell.launchers")
+				Launchers.open.run()
+			end,
+		},
+		{
 			"reload",
 			function()
 				awesome.restart()
@@ -45,8 +52,8 @@ function Items.build_start(ctx)
 		{
 			"power",
 			function()
-				local Power = require("shell.launchers.power")
-				Power.open()
+				local Launchers = require("shell.launchers")
+				Launchers.open.power()
 			end,
 		},
 	}
