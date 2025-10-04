@@ -37,13 +37,13 @@ function M.get(overrides)
 
 		-- Außenmaße / Rand
 		width = d(520),
-		height = d(340),
+		height = d(280),
 		pad_h = d(14),
 		pad_v = d(12),
 
 		-- Rahmen um das gesamte Panel
 		panel_radius = d(12),
-		panel_bg = C.blue_dark, -- Hintergrund außerhalb von Header/Body/Footer
+		panel_bg = C.blue_luna, -- Hintergrund außerhalb von Header/Body/Footer
 		panel_border = C.blue_luna,
 		panel_border_width = d(2),
 	}
@@ -53,7 +53,6 @@ function M.get(overrides)
 	local search_defaults = {
 		sizes = {
 			height = d(24), -- fixe Höhe der weißen Leiste
-			width_expanded = d(420), -- fixe Breite der weißen Leiste
 		},
 		colors = {
 			bg_active = C.white, -- Feldhintergrund
@@ -62,7 +61,7 @@ function M.get(overrides)
 			cursor_fg = C.white, -- Cursor-Block-Vordergrund
 		},
 		layout = {
-			left = d(12),
+			left = d(6),
 			right = d(12),
 			top = d(6),
 			bottom = d(6),
@@ -85,15 +84,15 @@ function M.get(overrides)
 			fg = C.black,
 			bg = C.creme, -- gleiche Body-Farbe wirkt harmonisch
 			font = "Sans",
-			size = d(12),
+			size = d(10),
 			spacing = d(6),
 		},
 
 		-- Präfixe je Modus (wird links im Feld angezeigt)
 		prefix = {
-			run_mode = "", -- klassischer Run
-			local_mode = "/", -- Files
-			web_mode = "?", -- Web
+			run_mode = "run", -- klassischer Run
+			local_mode = "files", -- Files
+			web_mode = "web", -- Web
 		},
 
 		-- Web-Ziel

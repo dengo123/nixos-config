@@ -5,7 +5,12 @@ local L = {}
 
 local function req(p)
 	local ok, mod = pcall(require, p)
-	assert(ok and mod, ("launchers/init: required module missing: %s"):format(p))
+	if not ok then
+		error(("launchers/init: require failed: %s\n%s"):format(p, tostring(mod)))
+	end
+	if not mod then
+		error(("launchers/init: module returned nil: %s"):format(p))
+	end
 	return mod
 end
 

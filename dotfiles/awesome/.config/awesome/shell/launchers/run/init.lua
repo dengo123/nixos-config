@@ -161,13 +161,46 @@ function M.open(opts, Lib)
 		end,
 	})
 	ctrl.init()
-	ctrl.focus_run()
+
+	-- ✅ API global bereitstellen, damit die Hotkeys umschalten können
+	rawset(_G, "__run_api", ctrl)
+
+	-- ✅ Gewünschten Startmodus respektieren
+	local start_mode = (opts.mode == "local" or opts.mode == "files") and "local"
+		or (opts.mode == "web" and "web")
+		or "run"
+
+	if start_mode == "local" and ctrl.focus_local then
+		ctrl.focus_local()
+	elseif start_mode == "web" and ctrl.focus_web then
+		ctrl.focus_web()
+	else
+		ctrl.focus_run()
+	end
 
 	-- Aktionen binden: Labels -> Funktionen
 	local Actions = (Lib and Lib.actions) or require("shell.launchers.lib.actions")
 	local bound = Actions.bind({ ctrl = ctrl, handle = handle, gears = gears })
 	act_ok = bound["OK"] or act_ok
 	act_cancel = bound["Cancel"] or act_cancel
+
+	-- Beim Schließen die globale API wieder freigeben
+	local function cleanup_api()
+		if rawget(_G, "__run_api") == ctrl then
+			rawset(_G, "__run_api", nil)
+		end
+	end
+
+	if handle and type(handle.on_close) == "function" then
+		handle.on_close(cleanup_api)
+	end
+	if handle and type(handle.close) == "function" then
+		local old_close = handle.close
+		handle.close = function(...)
+			cleanup_api()
+			return old_close(...)
+		end
+	end
 
 	return handle
 end
