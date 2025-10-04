@@ -36,8 +36,8 @@ function M.get(overrides)
 		footer_fg = C.black,
 
 		-- Außenmaße / Rand
-		width = d(520),
-		height = d(280),
+		width = d(420),
+		height = d(240),
 		pad_h = d(14),
 		pad_v = d(12),
 
@@ -80,7 +80,7 @@ function M.get(overrides)
 		hint = {
 			show = true,
 			icon = "🛈",
-			text = "Ctrl + / = Files   ·   Ctrl + Shift + / = Web   ·   Esc = Close",
+			text = "Type the name of a program, folder, document or Internet resource, and NixOS will open it for you.",
 			fg = C.black,
 			bg = C.creme, -- gleiche Body-Farbe wirkt harmonisch
 			font = "Sans",
