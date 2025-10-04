@@ -1,72 +1,122 @@
 -- ~/.config/awesome/ui/theme/run.lua
--- Definiert Größe/Farben des Run-Launchers (Container + Suchleiste).
-local colors = require("ui.colors")
-local H = require("ui.helpers")
+-- Theme für den Run-Launcher (Popup + Searchbar)
+-- Liefert { panel = {...}, search = {...} } und sonst nichts.
+-- Keine harten beautiful-Writes; alles wird vom Launcher konsumiert.
+
+local Colors = require("ui.colors")
+local Helpers = require("ui.helpers")
 
 local M = {}
 
-local function pick(a, b)
-	return (a ~= nil) and a or b
-end
+--- get(overrides?) -> { panel = {...}, search = {...} }
+--  Achtung: Nur Felder zurückgeben, die der Launcher wirklich nutzt.
+function M.get(overrides)
+	overrides = overrides or {}
+	local C, H, d = Colors.get(), Helpers, Helpers.dpi
 
-function M.resolve(opts)
-	opts = opts or {}
-	local C = colors.get and colors.get() or colors
+	-- ========================= Panel (Container) =========================
+	-- Struktur orientiert sich an deinem power/container.lua.
+	local panel_defaults = {
+		-- Titelzeile
+		title = "Run",
+		header_h = d(36),
+		header_bg = C.blue_luna,
+		header_fg = C.white,
+		header_font = "Sans",
+		header_font_size = d(14),
+		header_pad_l = d(12),
+		header_pad_r = d(12),
+		header_pad_v = d(6),
 
-	-- Panel/Container
-	local creme = C.creme or "#f7f2e7"
-	local black = C.black or "#000"
-	local border = (H.adjust_color and H.adjust_color(creme, -14)) or black
+		-- Body / Footer
+		body_bg = C.creme,
+		body_fg = C.black,
+		footer_h = d(52),
+		footer_bg = C.creme,
+		footer_fg = C.black,
 
-	local panel = {
-		title = pick(opts.title, "Run"),
-		width = pick(opts.width, 540),
-		height = pick(opts.height, 120),
-		footer_h = pick(opts.footer_h, 0),
-		radius = pick(opts.panel_radius, 12),
-		border_w = pick(opts.panel_border_width, 1),
-		border = pick(opts.panel_border, border),
-		bg = pick(opts.panel_bg, (H.rgba and H.rgba(black, 0.66)) or "#000000AA"),
-		header_h = pick(opts.panel_header_h, 28),
-		header_bg = pick(opts.panel_header_bg, C.header_bg or "#235CDB"),
-		header_fg = pick(opts.panel_header_fg, C.header_fg or "#FFF"),
-		body_bg = pick(opts.panel_body_bg, C.body_bg or "#1d2f6f"),
-		body_fg = pick(opts.panel_body_fg, C.body_fg or "#FFF"),
+		-- Außenmaße / Rand
+		width = d(520),
+		height = d(340),
+		pad_h = d(14),
+		pad_v = d(12),
+
+		-- Rahmen um das gesamte Panel
+		dialog_bg = C.blue_dark, -- Hintergrund außerhalb von Header/Body/Footer
+		dialog_border = C.blue_luna,
+		dialog_border_width = d(2),
 	}
 
-	-- Search-Bar (innen)
-	local search = {
+	-- ========================= Searchbar (im Body) ======================
+	-- Struktur deckt sich mit run/view.lua und run/init.lua (UI-Mapping).
+	local search_defaults = {
 		sizes = {
-			height = math.max(16, math.floor((panel.footer_h > 0 and panel.footer_h or panel.height) / 3 + 0.5)),
-			width_expanded = pick(opts.search and opts.search.width_expanded, 400),
-			width_collapsed = pick(opts.search and opts.search.width_collapsed, 400),
+			height = d(24), -- fixe Höhe der weißen Leiste
+			width_expanded = d(420), -- fixe Breite der weißen Leiste
 		},
 		colors = {
-			bg_active = pick(opts.search and opts.search.colors and opts.search.colors.bg, C.creme or "#fff"),
-			fg_active = pick(opts.search and opts.search.colors and opts.search.colors.fg, C.black or "#000"),
-			bg_collapsed = "#00000000",
-			cursor_bg = "#00000000",
-			cursor_fg = C.black or "#000",
+			bg_active = C.white, -- Feldhintergrund
+			fg_active = C.black, -- Textfarbe
+			cursor_bg = C.black, -- Cursor-Block-Hintergrund (für set_cursor_style("block"))
+			cursor_fg = C.white, -- Cursor-Block-Vordergrund
 		},
 		layout = {
-			left = 12,
-			right = 12,
-			top = 8,
-			bottom = 8,
-			spacing = 8,
+			left = d(12),
+			right = d(12),
+			top = d(6),
+			bottom = d(6),
+			spacing = d(8),
 		},
-		web = {
-			browser = (opts.search and opts.search.web and opts.search.web.browser) or "firefox",
-			engine = (opts.search and opts.search.web and opts.search.web.engine) or "https://duckduckgo.com/?q=%s",
+
+		-- Schwarzer Rahmen um die Searchbar
+		border_w = d(1),
+		border_color = C.black,
+
+		-- Linkes Label „Open:“ vor der weißen Leiste
+		label_open_text = "Open:",
+		-- label_open_width = d(24),
+
+		-- Hinweiszeile über der Leiste (Icon + Text)
+		hint = {
+			show = true,
+			icon = "🛈",
+			text = "Ctrl + / = Files   ·   Ctrl + Shift + / = Web   ·   Esc = Close",
+			fg = C.black,
+			bg = C.creme, -- gleiche Body-Farbe wirkt harmonisch
+			font = "Sans",
+			size = d(12),
+			spacing = d(6),
 		},
+
+		-- Präfixe je Modus (wird links im Feld angezeigt)
 		prefix = {
-			local_mode = "/", -- files
-			web_mode = "?", -- web
-			run_mode = "", -- apps (default)
+			run_mode = "", -- klassischer Run
+			local_mode = "/", -- Files
+			web_mode = "?", -- Web
+		},
+
+		-- Web-Ziel
+		web = {
+			browser = "firefox",
+			engine = "https://duckduckgo.com/?q=%s",
 		},
 	}
 
-	return { panel = panel, search = search }
+	-- ========================= Merge mit overrides ======================
+	local panel = H.merge(panel_defaults, (overrides.panel or {}))
+	local search = H.merge(search_defaults, (overrides.search or {}))
+
+	return {
+		panel = panel,
+		search = search,
+	}
 end
+
+-- kompatibler Alias (falls an anderer Stelle .resolve genutzt wird)
+M.resolve = M.get
+
+-- Optional: init(cfg) NICHT erforderlich; wir setzen hier nichts auf beautiful.*
+-- Ein leerer init wäre möglich, aber unnötig.
+-- function M.init(_) end
 
 return M

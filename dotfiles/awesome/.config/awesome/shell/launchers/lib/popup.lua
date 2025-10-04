@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/menu/parts/containers/popup.lua
+-- ~/.config/awesome/shell/launchers/lib/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")

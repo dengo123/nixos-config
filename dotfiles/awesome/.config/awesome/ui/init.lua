@@ -7,7 +7,7 @@ local M = {
 	wallpaper = require("ui.wallpaper"),
 }
 
-local PARTS = { "start", "menu", "notify", "tabs", "windows", "wibar", "power" }
+local PARTS = { "start", "menu", "notify", "tabs", "windows", "wibar", "power", "run" }
 
 for _, name in ipairs(PARTS) do
 	local ok, mod = pcall(require, "ui.theme." .. name)
@@ -57,7 +57,7 @@ function M.init(cfg)
 		"tabs_",
 		"start_",
 		"power_", -- weitere Theme-Module
-		-- füge hier weitere Präfixe hinzu, falls du später neue Bereiche einführst
+		"run_",
 	}, "error")
 
 	return M

@@ -1,7 +1,6 @@
--- ~/.config/awesome/shell/menu/lib/actions.lua
+-- ~/.config/awesome/shell/launchers/lib/actions.lua
 local awful = require("awful")
 local gears = require("gears")
-
 local Actions, _api = {}, nil
 
 -- API-Context (optional, wird z. B. via Lib.attach(api) gesetzt)

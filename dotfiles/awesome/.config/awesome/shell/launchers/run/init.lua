@@ -1,73 +1,61 @@
 -- ~/.config/awesome/shell/launchers/run/init.lua
 local awful = require("awful")
-local wibox = require("wibox")
 local gears = require("gears")
 
 local Container = require("shell.launchers.run.container")
 local View = require("shell.launchers.run.view")
-local Ctrlf = require("shell.launchers.run.controller")
 local Providers = require("shell.launchers.run.providers")
+local Controller = require("shell.launchers.run.controller")
 
 local M = {}
 
-local function center(child)
-	return wibox.widget({
-		child,
-		halign = "center",
-		valign = "center",
-		widget = wibox.container.place,
-	})
+local function must(cond, msg)
+	assert(cond, "run/init.lua: " .. msg)
 end
 
--- Theme über opts.theme ODER über eine zentrale UI-API auflösen
-local function resolve_theme(opts, Lib)
-	if opts and opts.theme then
-		return opts.theme
-	end
-	if Lib and Lib.ui_api and Lib.ui_api.resolve_theme then
-		return Lib.ui_api.resolve_theme("run", opts and opts.theme_overrides or nil)
-	end
-	error("run.init: kein Theme verfügbar (erwarte opts.theme ODER Lib.ui_api.resolve_theme('run'))")
-end
-
--- Screen zentral aus Lib.ui_api, sonst Maus/Fokus
-local function resolve_screen(opts, Lib)
-	if Lib and Lib.ui_api and Lib.ui_api.resolve_screen then
-		return Lib.ui_api.resolve_screen(opts)
-	end
-	return (opts and opts.screen) or (mouse and mouse.screen) or awful.screen.focused()
-end
-
-function M.open(opts, injected_lib)
-	opts = opts or {}
-
-	-- Lib wird wie bei power/ injiziert; KEIN Fallback auf andere Popup-Requires!
-	local Lib = injected_lib or require("shell.launchers.lib")
-
-	-- Popup MUSS aus Lib kommen (gleiche Infrastruktur wie power/)
-	assert(
-		Lib and Lib.popup and Lib.popup.show,
-		"run.init: Lib.popup.show fehlt (launchers/init muss L.lib injizieren)"
-	)
-
-	-- THEME + SCREEN
-	local th = resolve_theme(opts, Lib)
-	assert(th and th.panel and th.search, "run.init: Theme unvollständig (erwarte .panel und .search)")
-	local s = resolve_screen(opts, Lib)
-
-	local dims = {
-		w = assert(tonumber(th.panel.width), "run.init: panel.width fehlt/ungültig"),
-		h = assert(tonumber(th.panel.height), "run.init: panel.height fehlt/ungültig"),
-		footer_h = tonumber(th.panel.footer_h) or 0,
+local function dims(panel)
+	local H = assert(tonumber(panel.height), "panel.height missing/invalid")
+	local header = assert(tonumber(panel.header_h), "panel.header_h missing/invalid")
+	local footer = assert(tonumber(panel.footer_h), "panel.footer_h missing/invalid")
+	local pad_h = assert(tonumber(panel.pad_h), "panel.pad_h missing/invalid")
+	local pad_v = assert(tonumber(panel.pad_v), "panel.pad_v missing/invalid")
+	return {
+		w = assert(tonumber(panel.width), "panel.width missing/invalid"),
+		h = H,
+		header_h = header,
+		footer_h = footer,
+		body_h = math.max(0, H - header - footer),
+		pad_h = pad_h,
+		pad_v = pad_v,
 	}
+end
 
-	-- VIEW
+function M.open(opts, Lib)
+	opts = opts or {}
+	Lib = Lib or require("shell.launchers.lib")
+
+	-- ⚠️ ausschließlich injizierte Theme-API
+	must(
+		Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function",
+		"Lib.ui_api.resolve_theme not available (injection required)"
+	)
+	local th = Lib.ui_api.resolve_theme("run", opts.theme or {})
+	must(th and th.panel and th.search, "theme for 'run' must provide {panel, search}")
+
+	local d = dims(th.panel)
+
+	-- Prompt/Textbox
 	local prompt = awful.widget.prompt()
-	local view = View.build({
+	local textbox = prompt.widget
+
+	-- View (Searchbar + Parts für Controller)
+	local ui = {
+		body_width = (th.panel.width - 2 * d.pad_h),
 		height = th.search.sizes.height,
-		width_expanded = th.search.sizes.width_expanded,
+
 		bg_active = th.search.colors.bg_active,
 		fg_active = th.search.colors.fg_active,
+
 		padding = {
 			left = th.search.layout.left,
 			right = th.search.layout.right,
@@ -75,111 +63,77 @@ function M.open(opts, injected_lib)
 			bottom = th.search.layout.bottom,
 		},
 		spacing = th.search.layout.spacing,
-	}, prompt.widget)
+		border_w = th.search.border_w,
+		border_color = th.search.border_color,
 
-	-- CONTROLLER
-	local popup_handle -- forward ref
-	local ctrl = Ctrlf.new({
-		parts = view.parts,
-		sizes = th.search.sizes,
-		colors = th.search.colors,
-		layout = th.search.layout,
-		prefixes = {
-			run_mode = th.search.prefix.run_mode,
-			local_mode = th.search.prefix.local_mode,
-			web_mode = th.search.prefix.web_mode,
+		label_open_text = th.search.label_open_text,
+		label_open_width = th.search.label_open_width, -- optional
+		hint = th.search.hint,
+	}
+	local view = View.build(ui, textbox)
+
+	-- Cancel-Button (gemeinsame Lib)
+	local Cancel = (Lib and Lib.cancel) or require("shell.launchers.lib.cancel")
+	local handle
+	local cancel_btn = Cancel.mk_cancel_button("Cancel", function()
+		if handle and handle.close then
+			handle.close()
+		end
+	end)
+
+	-- Container (Header/Body/Footer)
+	local stack = Container.build(th.panel, d, {
+		title = th.panel.title or opts.title or "Run",
+		body = view.widget,
+		cancel_btn = cancel_btn,
+	})
+
+	-- Popup über injizierte UI-API öffnen
+	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
+	handle = Lib.ui_api.open_panel(stack, th.panel, {
+		use_backdrop = false,
+		show_root = false,
+		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
+	})
+
+	-- Controller (Prompt lifecycle + Provider-Dispatch)
+	local ctrl = Controller.new({
+		awful = awful,
+		gears = gears,
+		parts = {
+			textbox = textbox,
+			prefix_lbl = view.parts.prefix_lbl,
+			inner_margin = view.parts.inner_margin,
+			bg_box = view.parts.field_bg,
+			width_ctl = view.parts.width_ctl,
 		},
+		sizes = { width_expanded = th.search.sizes.width_expanded },
+		colors = {
+			bg_active = th.search.colors.bg_active,
+			fg_active = th.search.colors.fg_active,
+			cursor_bg = th.search.colors.cursor_bg,
+			cursor_fg = th.search.colors.cursor_fg,
+		},
+		layout = {
+			left = th.search.layout.left,
+			right = th.search.layout.right,
+			top = th.search.layout.top,
+			bottom = th.search.layout.bottom,
+		},
+		prefixes = th.search.prefix,
 		providers = Providers,
 		web = th.search.web,
 		home = os.getenv("HOME"),
-		awful = awful,
-		gears = gears,
 		hide_menu_popup = function()
-			if popup_handle and popup_handle.close then
-				popup_handle.close()
+			if handle and handle.close then
+				handle.close()
 			end
 		end,
 	})
 	ctrl.init()
+	ctrl.focus_run()
 
-	-- CONTAINER
-	local panel = Container.build({
-		panel_radius = th.panel.radius,
-		panel_border_width = th.panel.border_w,
-		panel_border = th.panel.border,
-		panel_header_h = th.panel.header_h,
-		panel_header_bg = th.panel.header_bg,
-		panel_header_fg = th.panel.header_fg,
-		panel_body_bg = th.panel.body_bg,
-		panel_body_fg = th.panel.body_fg,
-		panel_bg = th.panel.bg,
-		header_bg = th.panel.header_bg, -- Fallback im Container
-	}, { w = dims.w, h = dims.h, footer_h = dims.footer_h }, {
-		title = th.panel.title or "Run",
-		body = center(view.widget),
-		cancel_btn = {
-			activate = function()
-				ctrl.cancel()
-				if popup_handle and popup_handle.close then
-					popup_handle.close()
-				end
-			end,
-		},
-	})
-
-	-- POPUP (AUSSCHLIESSLICH über injiziertes Lib)
-	popup_handle = Lib.popup.show(panel, th.panel, {
-		screen = s,
-		width = dims.w,
-		height = dims.h,
-		placement = function(w)
-			awful.placement.centered(w, { parent = s, honor_workarea = true })
-		end,
-		use_backdrop = true,
-		show_root = "with_bars",
-		group = "launchers",
-	})
-
-	-- API für Keybinds exponieren
-	rawset(_G, "__run_api", {
-		focus_run = function()
-			ctrl.focus_run()
-		end,
-		focus_local = function()
-			ctrl.focus_local()
-		end,
-		focus_web = function()
-			ctrl.focus_web()
-		end,
-		is_active = function()
-			return ctrl.is_active()
-		end,
-		cancel = function()
-			ctrl.cancel()
-			if popup_handle and popup_handle.close then
-				popup_handle.close()
-			end
-		end,
-	})
-
-	-- Startmodus
-	local start_mode = (opts.mode == "web") and "web" or (opts.mode == "files") and "local" or "run"
-	if start_mode == "web" then
-		ctrl.focus_web()
-	elseif start_mode == "local" then
-		ctrl.focus_local()
-	else
-		ctrl.focus_run()
-	end
-
-	return {
-		close = function()
-			ctrl.cancel()
-			if popup_handle and popup_handle.close then
-				popup_handle.close()
-			end
-		end,
-	}
+	return handle
 end
 
 return M
