@@ -48,16 +48,6 @@ return function(modkey, launchers) -- launchers wird von shell.launchers injizie
 		-- Mod4 + Space → Run (Apps) öffnen oder – falls offen – auf Run-Modus schalten
 		awful.key({ modkey }, "space", function()
 			ensure_and_switch("run")
-		end, { description = "Run-Launcher: Apps (öffnen/umschalten)", group = "apps" }),
-
-		-- Mod4 + / → Files (Local) öffnen/umschalten
-		awful.key({ modkey }, "/", function()
-			ensure_and_switch("files") -- alias → local
-		end, { description = "Run-Launcher: Files (öffnen/umschalten)", group = "apps" }),
-
-		-- Mod4 + Shift + / → Web öffnen/umschalten
-		awful.key({ modkey, "Shift" }, "/", function()
-			ensure_and_switch("web")
-		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" })
+		end, { description = "Run-Launcher: Apps (öffnen/umschalten)", group = "apps" })
 	)
 end
