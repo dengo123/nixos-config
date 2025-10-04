@@ -31,7 +31,7 @@ function M.get(overrides)
 		-- Body / Footer
 		body_bg = C.creme,
 		body_fg = C.black,
-		footer_h = d(52),
+		footer_h = d(80),
 		footer_bg = C.creme,
 		footer_fg = C.black,
 
@@ -74,7 +74,7 @@ function M.get(overrides)
 
 		-- Linkes Label „Open:“ vor der weißen Leiste
 		label_open_text = "Open:",
-		-- label_open_width = d(24),
+		label_open_width = d(36),
 
 		-- Hinweiszeile über der Leiste (Icon + Text)
 		hint = {
@@ -90,9 +90,9 @@ function M.get(overrides)
 
 		-- Präfixe je Modus (wird links im Feld angezeigt)
 		prefix = {
-			run_mode = "run", -- klassischer Run
-			local_mode = "files", -- Files
-			web_mode = "web", -- Web
+			run_mode = "run:", -- klassischer Run
+			local_mode = "files:", -- Files
+			web_mode = "web:", -- Web
 		},
 
 		-- Web-Ziel

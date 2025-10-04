@@ -26,6 +26,7 @@ with lib.${namespace}; {
       };
       freetube = enabled;
       spotify = enabled;
+      gimp = enabled;
     };
     misc = {
       xdg = enabled;

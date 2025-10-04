@@ -25,6 +25,7 @@ in {
       # Video/Audio
       celluloid
       loupe
+      vlc
 
       # File Management
       unrar

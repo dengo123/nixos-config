@@ -44,13 +44,6 @@ return function(modkey, launchers) -- launchers wird von shell.launchers injizie
 		open_in_mode(target_mode)
 	end
 
-	local function close_if_open()
-		local api = get_run_api()
-		if api and api.is_active and api.is_active() and api.cancel then
-			api.cancel()
-		end
-	end
-
 	return gears.table.join(
 		-- Mod4 + Space → Run (Apps) öffnen oder – falls offen – auf Run-Modus schalten
 		awful.key({ modkey }, "space", function()
@@ -65,11 +58,6 @@ return function(modkey, launchers) -- launchers wird von shell.launchers injizie
 		-- Mod4 + Shift + / → Web öffnen/umschalten
 		awful.key({ modkey, "Shift" }, "/", function()
 			ensure_and_switch("web")
-		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" }),
-
-		-- Escape → nur schließen, wenn offen
-		awful.key({}, "Escape", function()
-			close_if_open()
-		end, { description = "Run-Launcher: schließen", group = "apps" })
+		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" })
 	)
 end

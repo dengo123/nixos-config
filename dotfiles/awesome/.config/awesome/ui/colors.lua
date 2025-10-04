@@ -24,7 +24,7 @@ local PALETTE = {
 	green_dark = "#1F8F4A",
 
 	-- Extras
-	creme = "#FFF7E6",
+	creme = "#E4E1D1",
 	creme_focus = "#F2E7CF",
 }
 

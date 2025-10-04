@@ -12,11 +12,11 @@ function M.init(cfg)
 	local H = cfg.helpers or {}
 
 	-- sanft abgedunkelte Border aus Creme (Fallback: schwarz)
-	local border = (H and H.adjust_color) and H.adjust_color(C.creme, -12) or (C.black or "#000000")
-	local bg_focus = C.creme_focus or ((H and H.adjust_color) and H.adjust_color(C.creme, -6) or C.creme)
+	local border = (H and H.adjust_color) and H.adjust_color(C.white, -12) or (C.black or "#000000")
+	local bg_focus = C.white_focus or ((H and H.adjust_color) and H.adjust_color(C.white, -6) or C.creme)
 
 	-- Quelle der Wahrheit: Menü
-	beautiful.menu_bg_normal = C.creme
+	beautiful.menu_bg_normal = C.white
 	beautiful.menu_fg_normal = C.black
 	beautiful.menu_bg_focus = bg_focus
 	beautiful.menu_fg_focus = C.black
