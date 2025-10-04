@@ -34,7 +34,7 @@ function M.open(opts, Lib)
 	opts = opts or {}
 	Lib = Lib or require("shell.launchers.lib")
 
-	-- ⚠️ ausschließlich injizierte Theme-API
+	-- ausschließlich injizierte Theme-API benutzen
 	must(
 		Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function",
 		"Lib.ui_api.resolve_theme not available (injection required)"
@@ -72,25 +72,28 @@ function M.open(opts, Lib)
 	}
 	local view = View.build(ui, textbox)
 
-	-- Cancel-Button (gemeinsame Lib)
-	local Cancel = (Lib and Lib.cancel) or require("shell.launchers.lib.cancel")
-	local handle
-	local cancel_btn = Cancel.mk_cancel_button("Cancel", function()
-		if handle and handle.close then
-			handle.close()
-		end
+	-- Atomare Buttons (Look-only); Aktionen werden später gebunden
+	local Button = (Lib and Lib.button) or require("shell.launchers.lib.button")
+	local act_ok, act_cancel = function() end, function() end
+
+	local ok_btn = Button.mk_button("OK", function()
+		act_ok()
+	end)
+	local cancel_btn = Button.mk_button("Cancel", function()
+		act_cancel()
 	end)
 
-	-- Container (Header/Body/Footer)
+	-- Container (Header/Body/Footer) mit OK & Cancel im Footer (rechtsbündig)
 	local stack = Container.build(th.panel, d, {
 		title = th.panel.title or opts.title or "Run",
 		body = view.widget,
+		ok_btn = ok_btn,
 		cancel_btn = cancel_btn,
 	})
 
-	-- Popup über injizierte UI-API öffnen
+	-- Popup öffnen (ohne Backdrop, ohne Root)
 	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
-	handle = Lib.ui_api.open_panel(stack, th.panel, {
+	local handle = Lib.ui_api.open_panel(stack, th.panel, {
 		use_backdrop = false,
 		show_root = false,
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
@@ -132,6 +135,12 @@ function M.open(opts, Lib)
 	})
 	ctrl.init()
 	ctrl.focus_run()
+
+	-- Aktionen binden: Labels -> Funktionen (immer safe: Prompt stoppt vor Close)
+	local Actions = (Lib and Lib.actions) or require("shell.launchers.lib.actions")
+	local bound = Actions.bind({ ctrl = ctrl, handle = handle, gears = gears })
+	act_ok = bound["OK"] or act_ok
+	act_cancel = bound["Cancel"] or act_cancel
 
 	return handle
 end

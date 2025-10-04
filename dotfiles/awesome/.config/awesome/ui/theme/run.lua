@@ -42,9 +42,10 @@ function M.get(overrides)
 		pad_v = d(12),
 
 		-- Rahmen um das gesamte Panel
-		dialog_bg = C.blue_dark, -- Hintergrund außerhalb von Header/Body/Footer
-		dialog_border = C.blue_luna,
-		dialog_border_width = d(2),
+		panel_radius = d(12),
+		panel_bg = C.blue_dark, -- Hintergrund außerhalb von Header/Body/Footer
+		panel_border = C.blue_luna,
+		panel_border_width = d(2),
 	}
 
 	-- ========================= Searchbar (im Body) ======================

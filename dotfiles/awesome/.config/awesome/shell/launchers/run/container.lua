@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/launchers/run/container.lua
 local wibox = require("wibox")
 local gears = require("gears")
 
@@ -12,14 +13,15 @@ local function pick(...)
 	end
 end
 
--- build(th, dims, { title, body, cancel_btn, footer })  -- footer optional
+-- build(th, dims, { title, body, ok_btn, cancel_btn, footer })  -- footer optional, ok/cancel bevorzugt
 function M.build(th, dims, w)
 	local radius = pick(th.panel_radius, 12)
 	local border_w = pick(th.panel_border_width, 2)
 	local border_color = pick(th.panel_border, pick(th.header_bg, "#235CDB"))
 	local header_h = pick(th.panel_header_h, 28)
+	local footer_h = pick(th.footer_h, dims.footer_h)
 
-	-- Header: Titel links, X rechts (optional cancel)
+	-- Header
 	local title = wibox.widget({
 		text = w.title or "Launcher",
 		align = "left",
@@ -57,6 +59,7 @@ function M.build(th, dims, w)
 		widget = wibox.container.background,
 	})
 
+	-- Body
 	local body = wibox.widget({
 		{
 			w.body,
@@ -71,9 +74,50 @@ function M.build(th, dims, w)
 		widget = wibox.container.background,
 	})
 
+	-- Footer: OK + Cancel rechtsbündig, vertikal mittig
+	local footer = nil
+	do
+		local ok_btn = w.ok_btn
+		local cancel_btn = w.cancel_btn
+
+		if not w.footer and (ok_btn or cancel_btn) then
+			local row = wibox.widget({
+				nil,
+				{
+					-- Reihenfolge: OK (links) – Cancel (rechts)
+					ok_btn or wibox.widget({}),
+					cancel_btn or wibox.widget({}),
+					spacing = pick(th.footer_spacing, 8),
+					layout = wibox.layout.fixed.horizontal,
+				},
+				expand = "outside",
+				layout = wibox.layout.align.horizontal,
+			})
+
+			footer = wibox.widget({
+				{ row, halign = "right", valign = "center", widget = wibox.container.place },
+				left = pick(th.footer_pad_h, th.pad_h, 12),
+				right = pick(th.footer_pad_h, th.pad_h, 12),
+				top = pick(th.footer_pad_v, th.pad_v, 8),
+				bottom = pick(th.footer_pad_v, th.pad_v, 8),
+				widget = wibox.container.margin,
+			})
+
+			footer = wibox.widget({
+				footer,
+				bg = pick(th.panel_footer_bg, pick(th.footer_bg, pick(th.panel_body_bg, "#1d2f6f"))),
+				fg = pick(th.panel_footer_fg, pick(th.footer_fg, "#FFFFFF")),
+				widget = wibox.container.background,
+			})
+		else
+			footer = w.footer -- falls extern komplett geliefert
+		end
+	end
+
 	-- Höhen
 	dims.header_h = header_h
-	dims.body_h = math.max(0, dims.h - dims.header_h - (w.footer and dims.footer_h or 0))
+	dims.footer_h = footer and (footer_h or 40) or 0
+	dims.body_h = math.max(0, dims.h - dims.header_h - dims.footer_h)
 
 	local stack = wibox.widget({
 		{ header, strategy = "exact", height = dims.header_h, widget = wibox.container.constraint },
@@ -81,10 +125,10 @@ function M.build(th, dims, w)
 		layout = wibox.layout.fixed.vertical,
 	})
 
-	if w.footer then
+	if footer then
 		stack = wibox.widget({
 			stack,
-			{ w.footer, strategy = "exact", height = dims.footer_h, widget = wibox.container.constraint },
+			{ footer, strategy = "exact", height = dims.footer_h, widget = wibox.container.constraint },
 			layout = wibox.layout.fixed.vertical,
 		})
 	end
