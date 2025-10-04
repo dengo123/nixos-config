@@ -1,27 +1,29 @@
--- shell/menu/search/controller.lua
--- Verantwortlich für: State, Styles umschalten, Root-Click-Watcher, Prompt-Lifecycle.
+-- ~/.config/awesome/shell/launchers/run/controller.lua
+-- Verantwortlich für: Prompt-Lifecycle & Dispatch zu den Providern.
+-- Annahmen:
+--   ctx.parts   = { textbox, prefix_lbl, inner_margin, bg_box, width_ctl }
+--   ctx.sizes   = { width_expanded, width_collapsed, height? }
+--   ctx.colors  = { bg_active, bg_collapsed?, fg_active, cursor_bg, cursor_fg }
+--   ctx.layout  = { left, right, top, bottom }
+--   ctx.prefixes= { run_mode, local_mode, web_mode }
+--   ctx.providers = { run_search(q), local_search(q, HOME), web_search(q, ENGINE_FMT, BROWSER) }
+--   ctx.web     = { browser, engine }
+--   ctx.home    = $HOME
+--   ctx.awful, ctx.gears
+--   ctx.hide_menu_popup()  -- optional: schließt den umgebenden Popup
 
 local M = {}
 
-local function try(fn)
-	return function(...)
-		local ok = pcall(fn, ...)
-		return ok
+local function try(fn, ...)
+	if type(fn) ~= "function" then
+		return false
 	end
+	local ok, _ = pcall(fn, ...)
+	return ok
 end
 
 function M.new(ctx)
-	-- Erwartet:
-	-- ctx.parts = { textbox, prefix_lbl, inner_margin, bg_box, width_ctl }
-	-- ctx.sizes = { width_expanded, width_collapsed }
-	-- ctx.colors = { bg_active, bg_collapsed, fg_active, cursor_bg, cursor_fg }
-	-- ctx.layout = { left, right, top, bottom }
-	-- ctx.prefixes = { local_mode, web_mode }
-	-- ctx.providers = Providers
-	-- ctx.web = { browser, engine }
-	-- ctx.home = HOME
-	-- ctx.awful, ctx.gears
-	-- ctx.hide_menu_popup (fn)
+	assert(ctx and ctx.parts and ctx.parts.textbox, "run.controller: ctx.parts.textbox required")
 
 	local awful, gears = ctx.awful, ctx.gears
 	local textbox = ctx.parts.textbox
@@ -30,122 +32,108 @@ function M.new(ctx)
 	local bg_box = ctx.parts.bg_box
 	local width_ctl = ctx.parts.width_ctl
 
-	local WIDTH_EXP = ctx.sizes.width_expanded
-	local WIDTH_COL = ctx.sizes.width_collapsed
+	local WIDTH_EXP = (ctx.sizes and ctx.sizes.width_expanded) or 400
 
-	local BG_ACTIVE = ctx.colors.bg_active
-	local BG_COLLAPSED = ctx.colors.bg_collapsed
-	local FG_ACTIVE = ctx.colors.fg_active
-	local CURSOR_BG = ctx.colors.cursor_bg
-	local CURSOR_FG = ctx.colors.cursor_fg
+	local BG_ACTIVE = (ctx.colors and ctx.colors.bg_active) or "#FFFFFF"
+	local FG_ACTIVE = (ctx.colors and ctx.colors.fg_active) or "#000000"
+	local CURSOR_BG = (ctx.colors and ctx.colors.cursor_bg) or "#00000000"
+	local CURSOR_FG = (ctx.colors and ctx.colors.cursor_fg) or FG_ACTIVE
 
-	local PAD_L, PAD_R, PAD_T, PAD_B = ctx.layout.left, ctx.layout.right, ctx.layout.top, ctx.layout.bottom
+	local PAD_L = (ctx.layout and ctx.layout.left) or 12
+	local PAD_R = (ctx.layout and ctx.layout.right) or 12
+	local PAD_T = (ctx.layout and ctx.layout.top) or 8
+	local PAD_B = (ctx.layout and ctx.layout.bottom) or 8
 
-	local PREFIX_LOCAL = ctx.prefixes.local_mode
-	local PREFIX_WEB = ctx.prefixes.web_mode
+	local PREFIX_RUN = (ctx.prefixes and ctx.prefixes.run_mode) or ""
+	local PREFIX_LOCAL = (ctx.prefixes and ctx.prefixes.local_mode) or "/"
+	local PREFIX_WEB = (ctx.prefixes and ctx.prefixes.web_mode) or "?"
 
-	local Providers = ctx.providers
-	local BROWSER = ctx.web.browser
-	local ENGINE_FMT = ctx.web.engine
+	local Providers = ctx.providers or {}
 	local HOME = ctx.home
+	local BROWSER = ctx.web and ctx.web.browser
+	local ENGINE = ctx.web and ctx.web.engine
 
 	local state = {
 		prompt_running = false,
-		collapsed = true,
-		saved_root_buttons = nil,
-		ignore_next_root_click = false,
-		mode = "local",
+		mode = "run", -- default: Apps
 	}
 
-	local function detach_root_click_watcher()
-		if state.saved_root_buttons then
-			root.buttons(state.saved_root_buttons)
-			state.saved_root_buttons = nil
+	local function apply_active_style()
+		-- feste, „expandte“ Optik (keine Collapse-Logik mehr)
+		if bg_box then
+			bg_box.bg = BG_ACTIVE
 		end
-	end
-
-	local function attach_root_click_watcher()
-		if not state.saved_root_buttons then
-			state.saved_root_buttons = root.buttons()
+		if inner_margin then
+			inner_margin.left, inner_margin.right = PAD_L, PAD_R
+			inner_margin.top, inner_margin.bottom = PAD_T, PAD_B
 		end
-		root.buttons(gears.table.join(awful.button({}, 1, function()
-			if state.ignore_next_root_click then
-				return
-			end
-			if state.prompt_running then
-				try(awful.keygrabber.stop)()
-			end
-			state.prompt_running = false
-			-- einklappen
-			bg_box.bg = BG_COLLAPSED
-			inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = 0, 0, 0, 0
-			bg_box.forced_width = WIDTH_COL
-			width_ctl.width = WIDTH_COL
+		if width_ctl then
+			width_ctl.width = WIDTH_EXP
 			width_ctl:emit_signal("widget::layout_changed")
-			state.collapsed = true
-			detach_root_click_watcher()
-		end)))
+		end
+		-- Textbox-Farben
+		try(function()
+			textbox.bg = BG_ACTIVE
+		end)
+		try(function()
+			textbox.fg = FG_ACTIVE
+		end)
+		try(function()
+			textbox.bg_cursor = CURSOR_BG
+		end)
+		try(function()
+			textbox.fg_cursor = CURSOR_FG
+		end)
 	end
 
-	local function apply_collapsed_style()
-		state.collapsed = true
-		bg_box.bg = BG_COLLAPSED
-		inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = 0, 0, 0, 0
-		bg_box.forced_width = WIDTH_COL
-		width_ctl.width = WIDTH_COL
-		width_ctl:emit_signal("widget::layout_changed")
-	end
-
-	local function apply_expanded_style()
-		state.collapsed = false
-		bg_box.bg = BG_ACTIVE
-		inner_margin.left, inner_margin.right, inner_margin.top, inner_margin.bottom = PAD_L, PAD_R, PAD_T, PAD_B
-		bg_box.forced_width = WIDTH_EXP
-		width_ctl.width = WIDTH_EXP
-		width_ctl:emit_signal("widget::layout_changed")
+	local function clear_text()
+		try(function()
+			textbox:set_text("")
+		end)
+		if prefix_lbl then
+			prefix_lbl.text = ""
+		end
 	end
 
 	local function stop_prompt()
 		if state.prompt_running then
 			state.prompt_running = false
 		end
-		try(awful.keygrabber.stop)()
+		-- zweimal stoppen ist ok (Workaround für rennende Grabber)
+		try(awful.keygrabber.stop)
 		gears.timer.delayed_call(function()
-			try(awful.keygrabber.stop)()
+			try(awful.keygrabber.stop)
 		end)
-		try(function()
-			if textbox.set_text then
-				textbox:set_text("")
-			end
-		end)()
-		prefix_lbl.text = ""
-		detach_root_click_watcher()
+		clear_text()
 	end
 
-	local function collapse()
-		stop_prompt()
-		apply_collapsed_style()
+	local function dispatch(mode, q)
+		if mode == "local" then
+			if Providers.local_search then
+				Providers.local_search(q, HOME)
+			end
+		elseif mode == "web" then
+			if Providers.web_search then
+				Providers.web_search(q, ENGINE, BROWSER)
+			end
+		else -- "run" (Apps)
+			if Providers.run_search then
+				Providers.run_search(q)
+			end
+		end
 	end
 
 	local function run_prompt(mode)
-		state.mode = mode or "local"
-		prefix_lbl.text = (state.mode == "local") and PREFIX_LOCAL or PREFIX_WEB
+		state.mode = mode or "run"
+		if prefix_lbl then
+			prefix_lbl.text = (state.mode == "local") and PREFIX_LOCAL
+				or (state.mode == "web") and PREFIX_WEB
+				or PREFIX_RUN
+		end
 
 		gears.timer.delayed_call(function()
 			state.prompt_running = true
-			-- Sicherheit: Styles auf dem Textfeld
-			try(function()
-				textbox.bg = BG_ACTIVE
-			end)()
-			try(function()
-				textbox.fg = FG_ACTIVE
-			end)()
-			try(function()
-				textbox.bg_cursor = CURSOR_BG
-			end)()
-			try(function()
-				textbox.fg_cursor = CURSOR_FG
-			end)()
+			apply_active_style()
 
 			awful.prompt.run({
 				prompt = "",
@@ -155,24 +143,23 @@ function M.new(ctx)
 
 				exe_callback = function(q)
 					q = (q or ""):match("^%s*(.-)%s*$")
-					if state.mode == "local" then
-						Providers.local_search(q, HOME)
-					else
-						Providers.web_search(q, ENGINE_FMT, BROWSER)
-					end
-					collapse()
+					dispatch(state.mode, q)
+					stop_prompt()
 					if ctx.hide_menu_popup then
 						ctx.hide_menu_popup()
 					end
 				end,
 
 				done_callback = function()
-					collapse()
+					stop_prompt()
+					if ctx.hide_menu_popup then
+						ctx.hide_menu_popup()
+					end
 				end,
 
 				keypressed_callback = function(mod, key)
 					if (not mod or #mod == 0) and key == "Escape" then
-						collapse()
+						stop_prompt()
 						if ctx.hide_menu_popup then
 							ctx.hide_menu_popup()
 						end
@@ -184,60 +171,32 @@ function M.new(ctx)
 		end)
 	end
 
-	local function expand_and_start(mode)
-		stop_prompt()
-		apply_expanded_style()
-		attach_root_click_watcher()
-		run_prompt(mode or "local")
-	end
-
 	-- Public API
 	local api = {
-		-- lifecycle
+		-- Styling einmal setzen (fixed-Layout)
 		init = function()
-			apply_collapsed_style()
+			apply_active_style()
 		end,
-		bind_mouse = function(widget)
-			widget:buttons(gears.table.join(
-				awful.button({}, 1, function()
-					state.ignore_next_root_click = true
-					gears.timer.delayed_call(function()
-						state.ignore_next_root_click = false
-					end)
-					expand_and_start("local")
-				end),
-				awful.button({}, 3, function()
-					state.ignore_next_root_click = true
-					gears.timer.delayed_call(function()
-						state.ignore_next_root_click = false
-					end)
-					expand_and_start("web")
-				end)
-			))
+		-- Modi
+		focus_run = function()
+			run_prompt("run")
 		end,
-
-		-- external controls
 		focus_local = function()
-			expand_and_start("local")
+			run_prompt("local")
 		end,
 		focus_web = function()
-			expand_and_start("web")
+			run_prompt("web")
 		end,
+		-- Lifecycle
 		cancel = function()
-			collapse()
+			stop_prompt()
 		end,
-
-		-- state queries
 		is_active = function()
 			return state.prompt_running
 		end,
-		is_collapsed = function()
-			return state.collapsed
-		end,
-
-		-- runtime config
+		-- Runtime-Config (optional)
 		set_engine = function(s)
-			ENGINE_FMT = s or ENGINE_FMT
+			ENGINE = s or ENGINE
 		end,
 		set_browser = function(b)
 			BROWSER = b or BROWSER
