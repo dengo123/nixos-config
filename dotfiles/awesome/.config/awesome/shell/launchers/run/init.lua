@@ -1,6 +1,7 @@
 -- ~/.config/awesome/shell/launchers/run/init.lua
 local awful = require("awful")
 local gears = require("gears")
+local wibox = require("wibox")
 
 local Container = require("shell.launchers.run.container")
 local View = require("shell.launchers.run.view")
@@ -34,7 +35,7 @@ function M.open(opts, Lib)
 	opts = opts or {}
 	Lib = Lib or require("shell.launchers.lib")
 
-	-- ausschließlich injizierte Theme-API benutzen
+	-- Theme via injizierter UI-API
 	must(
 		Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function",
 		"Lib.ui_api.resolve_theme not available (injection required)"
@@ -48,7 +49,7 @@ function M.open(opts, Lib)
 	local prompt = awful.widget.prompt()
 	local textbox = prompt.widget
 
-	-- View (Searchbar + Parts für Controller)
+	-- View (Searchbar + Parts)
 	local ui = {
 		body_width = (th.panel.width - 2 * d.pad_h),
 		height = th.search.sizes.height,
@@ -67,14 +68,36 @@ function M.open(opts, Lib)
 		border_color = th.search.border_color,
 
 		label_open_text = th.search.label_open_text,
-		label_open_width = th.search.label_open_width, -- optional
+		label_open_width = th.search.label_open_width,
 		hint = th.search.hint,
 	}
 	local view = View.build(ui, textbox)
 
-	-- Atomare Buttons (Look-only); Aktionen werden später gebunden
+	-- ===== Searchbar exakt in die MITTE DES BODY setzen (Footer ignorieren) =====
+	local bar_h = th.search.sizes.height
+
+	-- Höhe der Hint-Zeile (falls aktiv) grob bestimmen:
+	local hint = th.search.hint or {}
+	local hint_enabled = (hint.show ~= false) and (hint.text and #tostring(hint.text) > 0)
+	local pad_t = tonumber(th.search.layout.top) or 6
+	local spacing = tonumber(hint.spacing) or 6
+	local hint_sz = tonumber(hint.size) or 12
+	-- view.lua setzt für die Hint-Zeile: top = pad_t, bottom = 0 und darunter spacing
+	local hint_h = hint_enabled and (pad_t + hint_sz + spacing) or 0
+
+	-- T so wählen, dass: T + hint_h + bar_h/2 = d.body_h/2
+	local offset_in_body = math.max(0, math.floor(d.body_h / 2 - (hint_h + bar_h / 2)))
+
+	local body_widget = wibox.widget({
+		view.widget,
+		top = offset_in_body,
+		widget = wibox.container.margin,
+	})
+
+	-- Buttons (Look-only), Aktionen werden nach Controller gebunden
 	local Button = (Lib and Lib.button) or require("shell.launchers.lib.button")
-	local act_ok, act_cancel = function() end, function() end
+	local act_ok = function() end
+	local act_cancel = function() end
 
 	local ok_btn = Button.mk_button("OK", function()
 		act_ok()
@@ -83,15 +106,15 @@ function M.open(opts, Lib)
 		act_cancel()
 	end)
 
-	-- Container (Header/Body/Footer) mit OK & Cancel im Footer (rechtsbündig)
+	-- Container (Header/Body/Footer)
 	local stack = Container.build(th.panel, d, {
 		title = th.panel.title or opts.title or "Run",
-		body = view.widget,
+		body = body_widget,
 		ok_btn = ok_btn,
 		cancel_btn = cancel_btn,
 	})
 
-	-- Popup öffnen (ohne Backdrop, ohne Root)
+	-- Popup öffnen: ohne Backdrop/Root, ABER mit Fenster-Shape (runde Ecken!)
 	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
 	local handle = Lib.ui_api.open_panel(stack, th.panel, {
 		use_backdrop = false,
@@ -99,7 +122,7 @@ function M.open(opts, Lib)
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
 		shape = function(cr, w, h)
 			local r = tonumber(th.panel.panel_radius) or tonumber(th.panel_radius) or 12
-			require("gears").shape.rounded_rect(cr, w, h, r)
+			gears.shape.rounded_rect(cr, w, h, r)
 		end,
 	})
 
@@ -140,7 +163,7 @@ function M.open(opts, Lib)
 	ctrl.init()
 	ctrl.focus_run()
 
-	-- Aktionen binden: Labels -> Funktionen (immer safe: Prompt stoppt vor Close)
+	-- Aktionen binden: Labels -> Funktionen
 	local Actions = (Lib and Lib.actions) or require("shell.launchers.lib.actions")
 	local bound = Actions.bind({ ctrl = ctrl, handle = handle, gears = gears })
 	act_ok = bound["OK"] or act_ok
