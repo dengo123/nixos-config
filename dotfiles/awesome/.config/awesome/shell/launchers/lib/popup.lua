@@ -1,10 +1,26 @@
 -- ~/.config/awesome/shell/launchers/lib/popup.lua
+-- Reiner Popup-Lifecycle (ohne Border/Shape/Radius-Zeichnung!)
+-- Borders, Shapes, Radius etc. werden ausschließlich in den Containern der
+-- einzelnen Launcher (run/container.lua, power/container.lua) gezeichnet.
+--
+-- API:
+--   local Popup = require("shell.launchers.lib.popup")
+--   local h = Popup.show(form_widget, theme, {
+--     screen=..., width=..., height=...,
+--     placement=awful.placement.centered,
+--     use_backdrop=true, close_on_backdrop=false,
+--     show_root=false|"with_bars"|"full",
+--     group="launchers",
+--   })
+--   h.close()
+
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local Popup, _open = {}, {}
 
+-- ================== Utils ==================
 local function nz(x, fb)
 	return x == nil and fb or x
 end
@@ -38,31 +54,37 @@ function Popup.close_all()
 	end
 end
 
+-- ================== Main ==================
 -- opts:
---   width (req), height (req)
+--   screen, width (req), height (req)
 --   placement? (default awful.placement.centered)
 --   use_backdrop? (default true)
---   close_on_backdrop? (default false)  -- Maus, kein Keygrabber!
---   show_root? = false|"with_bars"|"full"
+--   close_on_backdrop? (default false)
+--   show_root? = false|"with_bars"|"full" (default "with_bars")
+--   group? (nur Tagging/Debug)
 function Popup.show(form_widget, th, opts)
 	opts, th = (opts or {}), (th or {})
-	local s = awful.screen.focused()
 
+	local s = opts.screen or awful.screen.focused()
 	local W = assert(opts.width, "popup.show: width required")
 	local H = assert(opts.height, "popup.show: height required")
 
-	local use_backdrop = (opts.use_backdrop ~= false)
-	local close_on_backdrop = nz(opts.close_on_backdrop, false)
 	local placement_fn = opts.placement or awful.placement.centered
+	local use_backdrop = nz(opts.use_backdrop, true)
+	local close_on_backdrop = nz(opts.close_on_backdrop, false)
 
-	local show_root_mode = opts.show_root or false
+	local show_root_mode = opts.show_root
+	if show_root_mode == nil then
+		show_root_mode = "with_bars"
+	end
 	if show_root_mode == true then
 		show_root_mode = "full"
 	end
+
 	local hide_clients = (show_root_mode == "with_bars") or (show_root_mode == "full")
 	local hide_bars = (show_root_mode == "full")
 
-	-- Backdrop
+	-- ---------- Backdrop (optional) ----------
 	local backdrop = nil
 	if use_backdrop then
 		backdrop = wibox({
@@ -70,7 +92,7 @@ function Popup.show(form_widget, th, opts)
 			visible = true,
 			ontop = true,
 			type = "splash",
-			bg = nz(th.backdrop, "#00000066"),
+			bg = nz(th.backdrop, "#00000066"), -- nur Backdrop-Farbe
 		})
 		backdrop.input_passthrough = false
 		if show_root_mode == "with_bars" then
@@ -81,26 +103,10 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	-- Dialogcontainer (Rundung/Rand werden hier gezeichnet)
-	local border_block = wibox.widget({
-		form_widget,
-		bg = nz(th.dialog_bg, "#00000000"),
-		shape = function(cr, w, h)
-			local r = tonumber(th.dialog_radius) or 0
-			if r > 0 then
-				gears.shape.rounded_rect(cr, w, h, r)
-			else
-				gears.shape.rectangle(cr, w, h)
-			end
-		end,
-		shape_clip = true,
-		shape_border_width = tonumber(th.dialog_border_width) or 0,
-		shape_border_color = nz(th.dialog_border, "#00000000"),
-		widget = wibox.container.background,
-	})
-
+	-- ---------- Popup (reiner Träger; kein Border/Shape hier!) ----------
+	-- form_widget enthält bereits alles (inkl. Border/Radius, falls gewünscht).
 	local popup_widget = wibox.widget({
-		{ border_block, strategy = "exact", width = W, height = H, widget = wibox.container.constraint },
+		{ form_widget, strategy = "exact", width = W, height = H, widget = wibox.container.constraint },
 		widget = wibox.container.margin,
 	})
 
@@ -109,13 +115,12 @@ function Popup.show(form_widget, th, opts)
 		ontop = true,
 		visible = false,
 		type = "dialog",
-		bg = "#00000000",
+		bg = "#00000000", -- komplett transparent; kein eigener Rand/Shape
 		placement = placement_fn,
 		widget = popup_widget,
 	})
 
-	-- ===== lifecycle ===================================================
-
+	-- ---------- Lifecycle ----------
 	local function remove_from_open()
 		for i = #_open, 1, -1 do
 			if _open[i] and _open[i].popup == popup then
@@ -160,7 +165,7 @@ function Popup.show(form_widget, th, opts)
 	popup.visible = true
 	placement_fn(popup, { honor_workarea = true })
 
-	-- Backdrop Interaktionen (nur Maus, kein Keygrab)
+	-- Backdrop-Interaktion
 	if backdrop then
 		if close_on_backdrop then
 			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
@@ -177,7 +182,7 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	-- Auto-close bei Tag/Screen-Änderungen
+	-- Auto-Close bei Tag/Screen-Änderungen
 	local function on_tag_selected()
 		close()
 	end
@@ -213,7 +218,7 @@ function Popup.show(form_widget, th, opts)
 		return orig_close(...)
 	end
 
-	local handle = { close = close, popup = popup, backdrop = backdrop }
+	local handle = { close = close, popup = popup, backdrop = backdrop, screen = s, group = opts.group or "launchers" }
 	table.insert(_open, handle)
 	return handle
 end
