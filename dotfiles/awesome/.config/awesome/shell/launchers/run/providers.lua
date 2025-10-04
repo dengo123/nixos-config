@@ -29,13 +29,18 @@ function P.run_search(query)
 		return
 	end
 
-	local q_escaped = re_escape(q)
+	-- Shell-sicher quoten (wie %q in string.format)
+	local function sh_quote(s)
+		s = tostring(s or "")
+		-- Einfache, POSIX-kompatible Quoting-Variante:
+		return "'" .. s:gsub("'", "'\"'\"'") .. "'"
+	end
 
-	-- WICHTIG: [=[ ... ]=] statt [[ ... ]] wegen "]]" in der Regex
-	local sh = string.format(
-		[=[
+	-- Skript als Roh-Template mit eigenem Platzhalter __Q__
+	local tmpl = [=[#!/bin/sh
 set -eu
-Q=%q
+
+Q=__Q__
 paths="${XDG_DATA_HOME:-$HOME/.local/share}/applications /usr/share/applications"
 
 list_files() {
@@ -48,7 +53,9 @@ list_files() {
   fi
 }
 
-# 1) schneller Dateiname-Containment
+pick=""
+
+# 1) schneller Dateiname-Containment (case-insensitive)
 pick="$(list_files | awk -v q="$Q" 'BEGIN{IGNORECASE=1}
 {
   f=$0; sub(/.*\//,"",f)
@@ -56,30 +63,49 @@ pick="$(list_files | awk -v q="$Q" 'BEGIN{IGNORECASE=1}
 }
 ')"
 
-# 2) Fallback: Inhalt (Name[...] oder Exec enthält Q, case-insensitive)
+# 2) Fallback: Inhalt (Name[...] oder Exec enthält Q)
 if [ -z "${pick:-}" ] && command -v grep >/dev/null 2>&1; then
-  # ^Name oder ^Name[xx]=  ODER  ^Exec=
-  pick="$(list_files | xargs -r grep -IlE "(^Name(\[[^]]*\])?=.*%s.*|^Exec=.*%s.*)" 2>/dev/null | head -n1 || true)"
+  pick="$(list_files | xargs -r grep -IlE '^(Name(\[[^]]*\])?=.*'"$Q"'|Exec=.*'"$Q"')' 2>/dev/null | head -n1 || true)"
 fi
 
-[ -n "${pick:-}" ] || exit 0
+if [ -z "${pick:-}" ]; then
+  # 3) Nichts gefunden → wie Awesome-Default: Befehl direkt versuchen
+  if command -v "$Q" >/dev/null 2>&1; then
+    nohup "$Q" >/dev/null 2>&1 &
+    exit 0
+  fi
+  nohup sh -c "$Q" >/dev/null 2>&1 || true &
+  exit 0
+fi
 
 base="${pick##*/}"
-app="${base%%.desktop}"   # doppelt %% damit Lua-formatter nicht stolpert
+app="${base%%.desktop}"
 
-# starten mit gtk-launch; Fallback dex/gio
+# 4) Starten über gtk-launch / dex / oder Exec= parsen
 if command -v gtk-launch >/dev/null 2>&1; then
-  exec gtk-launch -- "$app" >/dev/null 2>&1 &
-elif command -v dex >/dev/null 2>&1; then
-  exec dex "$pick" >/dev/null 2>&1 &
-else
-  exec gio open "$pick" >/dev/null 2>&1 &
+  nohup gtk-launch -- "$app" >/dev/null 2>&1 &
+  exit 0
 fi
-]=],
-		q,
-		q_escaped,
-		q_escaped
-	)
+
+if command -v dex >/dev/null 2>&1; then
+  nohup dex "$pick" >/dev/null 2>&1 &
+  exit 0
+fi
+
+# 5) Exec= parsen (Field-Codes entfernen) und ausführen
+exec_line="$(grep -m1 -E '^Exec=' "$pick" | sed 's/^Exec=//')"
+exec_cmd="$(printf '%s' "$exec_line" \
+  | sed -E 's/%[fFuUdDnNickvm]//g' \
+  | sed -E 's/%[FURL]//g' \
+  | sed -E 's/%./ /g')"
+
+if [ -n "$exec_cmd" ]; then
+  nohup sh -c "$exec_cmd" >/dev/null 2>&1 &
+fi
+]=]
+
+	-- __Q__ durch sicher gequoteten Query ersetzen
+	local sh = tmpl:gsub("__Q__", sh_quote(q))
 
 	awful.spawn.with_shell(sh)
 end
