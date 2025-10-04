@@ -50,9 +50,6 @@ return function(modkey, launchers)
 		end, { description = "Run-Launcher: Files (öffnen/umschalten)", group = "apps" }),
 		awful.key({ modkey, "Shift" }, "/", function()
 			ensure_and_switch("web")
-		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" }),
-		awful.key({}, "Escape", function()
-			close_if_open()
-		end, { description = "Run-Launcher: schließen", group = "apps" })
+		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" })
 	)
 end

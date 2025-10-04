@@ -6,6 +6,7 @@ local wibox = require("wibox")
 local Container = require("shell.launchers.run.container")
 local View = require("shell.launchers.run.view")
 local Providers = require("shell.launchers.run.providers")
+local Complete = require("shell.launchers.run.complete")
 local Controller = require("shell.launchers.run.controller")
 
 local M = {}
@@ -152,6 +153,7 @@ function M.open(opts, Lib)
 		},
 		prefixes = th.search.prefix,
 		providers = Providers,
+		complete = Complete,
 		web = th.search.web,
 		home = os.getenv("HOME"),
 		hide_menu_popup = function()
