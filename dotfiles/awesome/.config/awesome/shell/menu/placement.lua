@@ -59,4 +59,31 @@ function P.x_left_on_bar(s)
 	return base + pad + off
 end
 
+-- === Höhe & Koordinaten-Helfer ============================================
+
+function P.item_height()
+	return assert(tonumber(beautiful.menu_height), "theme: beautiful.menu_height ungültig")
+end
+
+function P.total_height(n_items)
+	local h = P.item_height()
+	return h * (n_items or 0)
+end
+
+-- Koordinaten für Tabs-Menü (links am Tab-Anker, vertikal über/unter Wibar)
+function P.coords_for_tabs(s, anchor_left_x, n_items)
+	local total_h = P.total_height(n_items)
+	local x = P.x_left_from_anchor(s, anchor_left_x)
+	local y = P.y_over_bar(s, total_h)
+	return x, y
+end
+
+-- Koordinaten für Start-Menü (links an der Bar)
+function P.coords_for_start(s, n_items)
+	local total_h = P.total_height(n_items)
+	local x = P.x_left_on_bar(s)
+	local y = P.y_over_bar(s, total_h)
+	return x, y
+end
+
 return P
