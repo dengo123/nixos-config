@@ -73,9 +73,9 @@ in {
         strip_trailing_spaces = "smart";
         clipboard_control = "write-clipboard write-primary read-clipboard read-primary";
       };
-      extraConfig = ''
-        mouse_map right press ungrabbed paste_from_clipboard
-      '';
+      # extraConfig = ''
+      #   mouse_map right press ungrabbed paste_from_clipboard
+      # '';
     };
   };
 }

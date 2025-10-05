@@ -6,13 +6,15 @@ local P = {}
 -- Weak-Key Map: pro Tag den zuletzt gesehenen Layout-Wert merken
 local LAST = setmetatable({}, { __mode = "k" }) -- Keys (Tags) werden weak gehalten
 
--- Erlaubte Teilmenge je Screen
+-- Erlaubte Teilmenge je Screen (inkl. tile-Varianten)
 local function allowed_for(s)
 	local g = s.geometry
 	if g.width >= g.height then
-		return { awful.layout.suit.max, awful.layout.suit.fair } -- horizontal
+		-- Landscape: max, fair, tile (Master links)
+		return { awful.layout.suit.max, awful.layout.suit.fair, awful.layout.suit.tile }
 	else
-		return { awful.layout.suit.max, awful.layout.suit.fair.horizontal } -- vertikal
+		-- Portrait: max, fair.horizontal, tile.top (Master oben)
+		return { awful.layout.suit.max, awful.layout.suit.fair.horizontal, awful.layout.suit.tile.top }
 	end
 end
 
@@ -25,34 +27,51 @@ local function in_allowed(cur, allowed)
 	return false
 end
 
--- fair <-> fair.horizontal an Screen-Ausrichtung anpassen
+-- fair/tile ↔ fair.horizontal/tile.top an Screen-Ausrichtung anpassen
 local function normalize_for_screen(L, s)
 	local horiz = s.geometry.width >= s.geometry.height
+	-- fair
 	if L == awful.layout.suit.fair and not horiz then
 		return awful.layout.suit.fair.horizontal
 	elseif L == awful.layout.suit.fair.horizontal and horiz then
 		return awful.layout.suit.fair
 	end
+	-- tile
+	if L == awful.layout.suit.tile and not horiz then
+		return awful.layout.suit.tile.top
+	elseif L == awful.layout.suit.tile.top and horiz then
+		return awful.layout.suit.tile
+	end
 	return L
 end
 
--- „Bridge“: wenn Benutzer auf horizont. Screen von fair → fair.h (oder umgekehrt auf vertikal) klickt,
--- springe stattdessen nach max, damit Maus/Mod+Tab sichtbar zwischen den 2 Layouts wechselt.
+-- Bridge: bei Wechsel zur Schwester-Variante (fair↔fair.h, tile↔tile.top) → zu max bridgen,
+-- damit beim Durchschalten ein sichtbarer “dritter” Zustand existiert.
 local function bridge_sister_to_max(t, s)
 	local horiz = s.geometry.width >= s.geometry.height
 	local prev = LAST[t]
 	local cur = t.layout
+
 	if horiz then
-		-- fair -> (inc) fair.horizontal -> (bridge) max
+		-- fair -> fair.horizontal → bridge zu max
 		if prev == awful.layout.suit.fair and cur == awful.layout.suit.fair.horizontal then
 			return awful.layout.suit.max
 		end
+		-- tile -> tile.top → bridge zu max
+		if prev == awful.layout.suit.tile and cur == awful.layout.suit.tile.top then
+			return awful.layout.suit.max
+		end
 	else
-		-- fair.h -> (inc) fair -> (bridge) max
+		-- fair.horizontal -> fair → bridge zu max
 		if prev == awful.layout.suit.fair.horizontal and cur == awful.layout.suit.fair then
 			return awful.layout.suit.max
 		end
+		-- tile.top -> tile → bridge zu max
+		if prev == awful.layout.suit.tile.top and cur == awful.layout.suit.tile then
+			return awful.layout.suit.max
+		end
 	end
+
 	return nil
 end
 
@@ -64,7 +83,7 @@ function P.enforce_on_tag(t)
 	local s = t.screen
 	local allowed = allowed_for(s)
 
-	-- 1) Bridge prüfen
+	-- 1) Bridge prüfen (schwesterliches Layout → max)
 	local bridged = bridge_sister_to_max(t, s)
 	if bridged then
 		t._enforce_busy = true
@@ -74,7 +93,7 @@ function P.enforce_on_tag(t)
 		return
 	end
 
-	-- 2) fair/fair.h normalisieren
+	-- 2) fair/fair.h UND tile/tile.top normalisieren
 	local wanted = normalize_for_screen(t.layout, s)
 	if in_allowed(wanted, allowed) and wanted ~= t.layout then
 		t._enforce_busy = true

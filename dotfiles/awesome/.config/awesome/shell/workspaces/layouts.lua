@@ -7,7 +7,9 @@ local M = {}
 M.list = {
 	awful.layout.suit.max,
 	awful.layout.suit.fair,
+	awful.layout.suit.tile,
 	awful.layout.suit.fair.horizontal,
+	awful.layout.suit.tile.top,
 }
 
 function M.apply()

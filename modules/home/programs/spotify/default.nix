@@ -1,4 +1,5 @@
 {
+  pkgs,
   config,
   lib,
   namespace,
@@ -20,5 +21,6 @@ in {
         login_redirect_uri = "http://127.0.0.1:8989/login";
       };
     };
+    home.packages = with pkgs; [cava];
   };
 }
