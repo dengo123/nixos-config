@@ -17,8 +17,53 @@ function V.build(ui, textbox)
 	-- Hint (optional)
 	local hint_row = nil
 	if ui.hint and ui.hint.show ~= false and ui.hint.text and #ui.hint.text > 0 then
+		local gfs = require("gears.filesystem")
+		local naughty_ok, naughty = pcall(require, "naughty") -- optional debug
 		local icon_w = nil
-		if ui.hint.icon and #tostring(ui.hint.icon) > 0 then
+		local icon_size = tonumber(ui.hint.icon_size) or tonumber(ui.hint.size) or 20
+
+		-- 1) Bild-Icon (Pfad)
+		if ui.hint.icon_path and #tostring(ui.hint.icon_path) > 0 then
+			local path = tostring(ui.hint.icon_path)
+			local readable = gfs.file_readable(path)
+
+			-- (A) Direkt mit Pfad (oft reicht das)
+			if readable then
+				icon_w = wibox.widget({
+					image = path,
+					resize = true,
+					forced_height = icon_size,
+					forced_width = icon_size,
+					valign = "center",
+					halign = "center",
+					widget = wibox.widget.imagebox,
+				})
+			end
+
+			-- (B) Fallback: Surface laden, falls (A) nicht sichtbar war
+			if not icon_w and readable then
+				local surf
+				if gears.surface and gears.surface.load_uncached then
+					surf = gears.surface.load_uncached(path)
+				elseif gears.surface and gears.surface.load then
+					surf = gears.surface.load(path)
+				end
+				if surf then
+					icon_w = wibox.widget({
+						image = surf,
+						resize = true,
+						forced_height = icon_size,
+						forced_width = icon_size,
+						valign = "center",
+						halign = "center",
+						widget = wibox.widget.imagebox,
+					})
+				end
+			end
+		end
+
+		-- 2) Fallback: Unicode/Text-Icon
+		if not icon_w and ui.hint.icon and #tostring(ui.hint.icon) > 0 then
 			icon_w = wibox.widget({
 				markup = string.format(
 					"<span font='%s %d'>%s</span>",
@@ -31,6 +76,8 @@ function V.build(ui, textbox)
 				widget = wibox.widget.textbox,
 			})
 		end
+
+		-- 3) Text
 		local txt_w = wibox.widget({
 			markup = string.format(
 				"<span font='%s %d'>%s</span>",
@@ -42,12 +89,14 @@ function V.build(ui, textbox)
 			valign = "center",
 			widget = wibox.widget.textbox,
 		})
+
 		local inner = wibox.widget({
 			icon_w or wibox.widget({}),
 			txt_w,
-			spacing = ui.hint.spacing or 6,
+			spacing = ui.hint.icon_spacing or 6,
 			layout = wibox.layout.fixed.horizontal,
 		})
+
 		hint_row = wibox.widget({
 			{ inner, left = pad_l, right = pad_r, top = pad_t, bottom = 0, widget = wibox.container.margin },
 			bg = ui.hint.bg or "#00000000",

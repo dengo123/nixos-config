@@ -1,10 +1,9 @@
 -- ~/.config/awesome/ui/theme/run.lua
--- Theme für den Run-Launcher (Popup + Searchbar)
--- Liefert { panel = {...}, search = {...} } und sonst nichts.
--- Keine harten beautiful-Writes; alles wird vom Launcher konsumiert.
-
 local Colors = require("ui.colors")
 local Helpers = require("ui.helpers")
+local gfs = require("gears.filesystem") -- NEU
+
+local ASSETS = gfs.get_configuration_dir() .. "ui/assets/" -- ~/.config/awesome/ui/assets/
 
 local M = {}
 
@@ -62,10 +61,10 @@ function M.get(overrides)
 		},
 		layout = {
 			left = d(6),
-			right = d(12),
-			top = d(6),
-			bottom = d(6),
-			spacing = d(8),
+			right = d(6),
+			top = d(0),
+			bottom = d(0),
+			spacing = d(0),
 		},
 
 		-- Schwarzer Rahmen um die Searchbar
@@ -79,13 +78,15 @@ function M.get(overrides)
 		-- Hinweiszeile über der Leiste (Icon + Text)
 		hint = {
 			show = true,
-			icon = "🛈",
+			icon_path = ASSETS .. "Run_2001.png",
+			icon_size = d(36),
+			icon_spacing = d(4),
 			text = "Type the name of a program, folder, document or Internet resource, and NixOS will open it for you.",
 			fg = C.black,
 			bg = C.creme, -- gleiche Body-Farbe wirkt harmonisch
 			font = "Sans",
 			size = d(10),
-			spacing = d(6),
+			spacing = d(24),
 		},
 
 		-- Präfixe je Modus (wird links im Feld angezeigt)
