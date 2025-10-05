@@ -1,19 +1,25 @@
 -- ~/.config/awesome/shell/menu/init.lua
 -- Eigenständiges Menü auf Basis von awful.menu
--- - Keine Backdrops, keine Struts/Docks
--- - Click-to-Close (Klick außerhalb des Menüs)
+-- - Kein Backdrop, keine Struts/Docks
+-- - Click-to-Close via temporären Root-Buttons + Client-Click-Signal
 -- - ESC-to-Close (Keygrabber)
--- - Platzierung komplett aus shell/menu/placement.lua
+-- - Platzierung aus shell/menu/placement.lua
 
 local awful = require("awful")
 local beautiful = require("beautiful")
+local gears = require("gears")
 
 local Items = require("shell.menu.items")
 local Place = require("shell.menu.placement")
 
 local Menu = {}
 local _ctx = { ui = nil, cfg = nil, dialogs = nil }
-local _state = { menu = nil }
+local _state = {
+	menu = nil,
+	keygrab = nil,
+	root_btns = nil, -- gespeicherte Root-Buttons
+	client_cb = nil, -- temporärer Client-Click-Handler
+}
 
 -- ---------------------------------------------------------------------------
 -- Theme-Block (bewusst strikt: Keys müssen gesetzt sein)
@@ -67,57 +73,13 @@ local function get_client_items(clients)
 end
 
 -- ---------------------------------------------------------------------------
--- Click-to-Close & ESC-to-Close
-local _mousegrabber_running = false
-local _keygrabber_token = nil
-
-local function stop_mousegrabber()
-	if _mousegrabber_running then
-		pcall(function()
-			mousegrabber.stop()
-		end) -- <-- global mousegrabber
-		_mousegrabber_running = false
-	end
-end
-
-local function stop_keygrabber()
-	if _keygrabber_token ~= nil then
-		pcall(function()
-			awful.keygrabber.stop(_keygrabber_token)
-		end)
-		_keygrabber_token = nil
-	end
-end
-
-local function point_in_rect(mx, my, r)
-	return mx >= r.x and mx < (r.x + r.width) and my >= r.y and my < (r.y + r.height)
-end
-
-local function start_click_to_close()
-	if not (_state.menu and _state.menu.wibox and _state.menu.wibox.valid) then
+-- ESC-to-Close
+local function start_keygrab()
+	if _state.keygrab then
 		return
 	end
-	local wb = _state.menu.wibox
-	_mousegrabber_running = true
-	mousegrabber.run(function(m) -- <-- global mousegrabber
-		-- Schließen bei beliebigem Klick außerhalb der Menü-Wibox
-		if m.buttons[1] or m.buttons[2] or m.buttons[3] or m.buttons[4] or m.buttons[5] then
-			local g = wb:geometry()
-			if not point_in_rect(m.x, m.y, g) then
-				Menu.hide()
-				return false
-			end
-		end
-		return true
-	end, "left_ptr")
-end
-
-local function start_esc_to_close()
-	_keygrabber_token = awful.keygrabber.run(function(_, key, event)
-		if event == "release" then
-			return
-		end
-		if key == "Escape" then
+	_state.keygrab = awful.keygrabber.run(function(_, key, event)
+		if event == "press" and key == "Escape" then
 			Menu.hide()
 			return false
 		end
@@ -125,10 +87,59 @@ local function start_esc_to_close()
 	end)
 end
 
+local function stop_keygrab()
+	if _state.keygrab then
+		pcall(function()
+			awful.keygrabber.stop(_state.keygrab)
+		end)
+	end
+	_state.keygrab = nil
+end
+
+-- Click-to-Close: temporäre Root-Buttons + Client-Klick
+local function arm_click_to_close()
+	-- Root: alte Buttons sichern, temporär erweitern
+	_state.root_btns = root.buttons()
+	local closer = function()
+		Menu.hide()
+	end
+	local tmp = gears.table.join(
+		_state.root_btns or {},
+		awful.button({}, 1, closer),
+		awful.button({}, 2, closer),
+		awful.button({}, 3, closer)
+	)
+	root.buttons(tmp)
+
+	-- Clients: jeder Klick irgendwo in einem Client schließt Menü
+	_state.client_cb = function(_c, _x, _y, _button)
+		Menu.hide()
+	end
+	client.connect_signal("button::press", _state.client_cb)
+end
+
+local function disarm_click_to_close()
+	-- Root-Buttons wiederherstellen
+	if _state.root_btns then
+		pcall(function()
+			root.buttons(_state.root_btns)
+		end)
+	end
+	_state.root_btns = nil
+
+	-- Client-Signal lösen
+	if _state.client_cb then
+		pcall(function()
+			client.disconnect_signal("button::press", _state.client_cb)
+		end)
+	end
+	_state.client_cb = nil
+end
+
 -- ---------------------------------------------------------------------------
 -- Cleanup
 local function ensure_closed()
-	-- Menü zu
+	-- Menü schließen
 	if _state.menu and _state.menu.wibox and _state.menu.wibox.valid then
 		pcall(function()
 			_state.menu:hide()
@@ -136,9 +147,9 @@ local function ensure_closed()
 	end
 	_state.menu = nil
 
-	-- Grabber stoppen
-	stop_mousegrabber()
-	stop_keygrabber()
+	-- Grabber/Sniffer aus
+	stop_keygrab()
+	disarm_click_to_close()
 end
 
 -- ---------------------------------------------------------------------------
@@ -168,8 +179,8 @@ function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
 	end
 
 	-- Click-to-Close + ESC-to-Close aktivieren
-	start_click_to_close()
-	start_esc_to_close()
+	arm_click_to_close()
+	start_keygrab()
 end
 
 -- Start-Popup: linksbündig an der Bar
@@ -193,8 +204,8 @@ function Menu.show_for_start_widget(s, _widget)
 		end)
 	end
 
-	start_click_to_close()
-	start_esc_to_close()
+	arm_click_to_close()
+	start_keygrab()
 end
 
 -- Optional: klassisches Main-Menu (z. B. für Tests)

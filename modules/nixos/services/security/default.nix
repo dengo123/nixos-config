@@ -27,6 +27,7 @@ in {
           )) { return polkit.Result.YES; }
         });
       '';
+      pam.services.xscreensaver.enable = true;
     };
   };
 }

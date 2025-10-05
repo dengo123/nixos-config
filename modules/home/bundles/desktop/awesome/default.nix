@@ -24,11 +24,12 @@ in {
       misc = {
         gtk = {
           enable = true;
-          iconTheme = "Papirus-Light"; # or "Adwaita" | "Papirus-Dark"
+          iconTheme = "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
         };
       };
       services = {
         autorandr = enabled;
+        xscreensaver = enabled;
       };
       programs = {
         nemo = {

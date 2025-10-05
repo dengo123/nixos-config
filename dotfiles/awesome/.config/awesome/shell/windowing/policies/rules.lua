@@ -7,29 +7,22 @@ local M = {}
 
 -- === File-Manager-Whitelist (WM_CLASS class/instance) =======================
 local FM_CLASSES = {
-	-- GNOME Files / Nautilus
 	["Nautilus"] = true,
 	["org.gnome.Nautilus"] = true,
 	["Org.gnome.Nautilus"] = true,
 	["nautilus"] = true,
-	-- KDE Dolphin
 	["Dolphin"] = true,
 	["dolphin"] = true,
-	-- Xfce Thunar
 	["Thunar"] = true,
 	["thunar"] = true,
-	-- Cinnamon Nemo
 	["Nemo"] = true,
 	["nemo"] = true,
-	-- LXDE/LXQt
 	["Pcmanfm"] = true,
 	["pcmanfm"] = true,
 	["pcmanfm-qt"] = true,
 	["Pcmanfm-qt"] = true,
-	-- MATE
 	["Caja"] = true,
 	["caja"] = true,
-	-- Andere
 	["Spacefm"] = true,
 	["spacefm"] = true,
 	["Krusader"] = true,
@@ -37,7 +30,6 @@ local FM_CLASSES = {
 	["Double Commander"] = true,
 	["doublecmd"] = true,
 }
-
 local function is_file_manager(c)
 	if not c then
 		return false
@@ -74,7 +66,6 @@ local TERM_CLASSES = {
 	["foot"] = true,
 	["footclient"] = true,
 }
-
 local function is_terminal(c)
 	if not c then
 		return false
@@ -85,7 +76,6 @@ local function is_terminal(c)
 end
 
 -- === Portrait-Sizing: volle Breite, 1/3 Höhe ================================
--- Jetzt **für alle** Floating-Fenster (nicht nur File-Manager)
 local function size_floating_on_portrait(c)
 	if not (c and c.valid) then
 		return
@@ -93,39 +83,32 @@ local function size_floating_on_portrait(c)
 	if not c.floating or c.fullscreen or c.maximized then
 		return
 	end
-
 	local s = c.screen
 	if not s then
 		return
 	end
-
 	local wa = s.workarea
 	local is_portrait = wa.height > wa.width
 	if not is_portrait then
 		return
 	end
-
 	local w = wa.width
 	local h = math.floor(wa.height / 3)
 	local x = wa.x
 	local y = wa.y + math.floor((wa.height - h) / 2)
-
 	c:geometry({ x = x, y = y, width = w, height = h })
 end
 
 local function hook_portrait_floating()
-	-- Fallback: File-Manager IMMER floating setzen (falls Rule nicht matcht)
 	client.connect_signal("manage", function(c)
 		if is_file_manager(c) and not c.floating then
 			c.floating = true
 		end
 		gears.timer.delayed_call(size_floating_on_portrait, c)
 	end)
-
 	client.connect_signal("property::floating", function(c)
 		size_floating_on_portrait(c)
 	end)
-
 	screen.connect_signal("property::geometry", function(s)
 		for _, c in ipairs(s.clients) do
 			size_floating_on_portrait(c)
@@ -182,10 +165,7 @@ function M.apply(o)
 					"doublecmd",
 				},
 			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-			},
+			properties = { floating = true, placement = awful.placement.centered },
 		},
 
 		-- Deine Applets: floating + zentriert
@@ -205,23 +185,43 @@ function M.apply(o)
 			properties = { floating = true, placement = awful.placement.centered },
 		},
 
-		-- Generische Utilities/Dialogs: floating
+		-- XScreenSaver Demo/Prefs/Settings: **perma floating + zentriert**
+		-- (laut xprop: WM_CLASS=".xscreensaver-demo-wrapped")
 		{
 			rule_any = {
-				type = { "dialog", "utility", "toolbar", "splash" },
-				role = { "pop-up", "Preferences" },
+				class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
+				instance = { ".xscreensaver-demo-wrapped", "xscreensaver", "xscreensaver-demo" },
+				name = { "XScreenSaver", "XScreenSaver Preferences" },
 			},
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				-- titlebars_enabled = true, -- optional
+			},
+		},
+
+		-- Generischer Fallback: *alles*, was im Titel mit "XScreenSaver:" beginnt
+		{
+			rule_any = {},
+			properties = {},
+			callback = function(c)
+				if c.name and c.name:match("^XScreenSaver:") then
+					c.floating = true
+					awful.placement.centered(c)
+				end
+			end,
+		},
+
+		-- Generische Utilities/Dialogs: floating
+		{
+			rule_any = { type = { "dialog", "utility", "toolbar", "splash" }, role = { "pop-up", "Preferences" } },
 			properties = { floating = true, placement = awful.placement.centered },
 		},
 
 		-- Titlebars standardmäßig an (normal/dialog)
-		{
-			rule_any = { type = { "normal", "dialog" } },
-			properties = { titlebars_enabled = true },
-		},
+		{ rule_any = { type = { "normal", "dialog" } }, properties = { titlebars_enabled = true } },
 
-		-- TERMINALS: immer floating + **keine** Titlebar
-		-- (steht bewusst NACH der Titlebar-Regel und überschreibt sie)
+		-- Terminals: tiled, Titlebar an
 		{
 			rule_any = {
 				class = {
@@ -274,7 +274,7 @@ function M.apply(o)
 		},
 	}
 
-	-- Hooks aktivieren (Portrait-Sizing für alle Floating-Clients)
+	-- Hooks (Portrait-Sizing für alle Floating-Clients)
 	hook_portrait_floating()
 end
 

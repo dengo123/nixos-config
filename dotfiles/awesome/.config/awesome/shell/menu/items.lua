@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/menu/lib/items.lua
+-- ~/.config/awesome/shell/menu/items.lua
 local awful = require("awful")
 local hotkeys_popup = require("awful.hotkeys_popup")
 
@@ -43,6 +43,15 @@ function Items.build_start(ctx)
 				Launchers.open.run()
 			end,
 		},
+
+		-- ⬇︎ Neuer Eintrag: XScreenSaver Einstellungen (GUI)
+		{
+			"screensaver",
+			function()
+				awful.spawn.with_shell("xscreensaver-settings")
+			end,
+		},
+
 		{
 			"reload",
 			function()
