@@ -29,8 +29,10 @@ in {
       };
       services = {
         autorandr = enabled;
-        xscreensaver = enabled;
-        lightlocker = enabled;
+        xidlehook = {
+          enable = true;
+          useXSS = enabled;
+        };
       };
       programs = {
         nemo = {

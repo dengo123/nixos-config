@@ -1,3 +1,4 @@
+# systems/x86_64-linux/anvil/default.nix
 {
   lib,
   namespace,
@@ -35,7 +36,6 @@ with lib.${namespace}; {
     desktop.xsession = {
       enable = true;
       autoLogin = enabled;
-      lightLocker = enabled;
     };
     hardware = {
       cuda = enabled;
