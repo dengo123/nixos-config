@@ -32,7 +32,14 @@ with lib.${namespace}; {
       enable = false;
       mode = "full";
     };
-    desktop.xsession = enabled;
+    desktop.xsession = {
+      enable = true;
+      autoLogin = enabled;
+      idleLock = {
+        enable = true;
+        minutes = 5;
+      };
+    };
     hardware = {
       cuda = enabled;
       nvidia = {

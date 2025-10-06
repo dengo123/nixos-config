@@ -31,11 +31,10 @@ local FM_CLASSES = {
 	["doublecmd"] = true,
 }
 local function is_file_manager(c)
-	if not c then
+	if not (c and c.valid) then
 		return false
 	end
-	local cls = c.class or ""
-	local inst = c.instance or ""
+	local cls, inst = c.class or "", c.instance or ""
 	return FM_CLASSES[cls] or FM_CLASSES[inst]
 end
 
@@ -67,31 +66,37 @@ local TERM_CLASSES = {
 	["footclient"] = true,
 }
 local function is_terminal(c)
-	if not c then
+	if not (c and c.valid) then
 		return false
 	end
-	local cls = c.class or ""
-	local inst = c.instance or ""
+	local cls, inst = c.class or "", c.instance or ""
 	return TERM_CLASSES[cls] or TERM_CLASSES[inst]
 end
 
--- === Portrait-Sizing: volle Breite, 1/3 Höhe ================================
-local function size_floating_on_portrait(c)
+-- === Portrait-Autosize Kernlogik ============================================
+local function portrait_autosize_apply(c)
 	if not (c and c.valid) then
 		return
 	end
+	-- Nur wenn die Regel/Property gesetzt wurde:
+	if not c.portrait_autosize then
+		return
+	end
+
+	-- Wie bisher: nur floating, nicht maximized/fullscreen
 	if not c.floating or c.fullscreen or c.maximized then
 		return
 	end
+
 	local s = c.screen
 	if not s then
 		return
 	end
 	local wa = s.workarea
-	local is_portrait = wa.height > wa.width
-	if not is_portrait then
+	if wa.height <= wa.width then
 		return
-	end
+	end -- nur im Portrait-Screen
+
 	local w = wa.width
 	local h = math.floor(wa.height / 3)
 	local x = wa.x
@@ -99,24 +104,29 @@ local function size_floating_on_portrait(c)
 	c:geometry({ x = x, y = y, width = w, height = h })
 end
 
-local function hook_portrait_floating()
+local function hook_portrait_autosize()
+	-- Beim Manage: nach dem Setzen der Rules kurz anwenden
 	client.connect_signal("manage", function(c)
-		if is_file_manager(c) and not c.floating then
-			c.floating = true
-		end
-		gears.timer.delayed_call(size_floating_on_portrait, c)
+		-- File-Manager standardmäßig floating, siehe Rules unten
+		gears.timer.delayed_call(portrait_autosize_apply, c)
 	end)
+
+	-- Wenn der Floating-State wechselt, ggf. neu anwenden
 	client.connect_signal("property::floating", function(c)
-		size_floating_on_portrait(c)
+		portrait_autosize_apply(c)
 	end)
+
+	-- Bei Screen-Geometrieänderung alle betroffenen Clients des Screens prüfen
 	screen.connect_signal("property::geometry", function(s)
 		for _, c in ipairs(s.clients) do
-			size_floating_on_portrait(c)
+			portrait_autosize_apply(c)
 		end
 	end)
 end
 
+-- =============================================================================
 function M.apply(o)
+	o = o or {}
 	local modkey = o.modkey
 	local mouse = o.mouse
 
@@ -135,7 +145,7 @@ function M.apply(o)
 			},
 		},
 
-		-- File-Manager: immer floating + zentriert
+		-- File-Manager: floating + centered + Portrait-Autosize aktiv
 		{
 			rule_any = {
 				class = {
@@ -165,10 +175,14 @@ function M.apply(o)
 					"doublecmd",
 				},
 			},
-			properties = { floating = true, placement = awful.placement.centered },
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				portrait_autosize = true, -- <── NEU: nur diese kriegen die Portrait-Auto-Größe
+			},
 		},
 
-		-- Deine Applets: floating + zentriert
+		-- Deine Applets/Prefs: floating + centered (ohne Portrait-Autosize)
 		{
 			rule_any = {
 				class = {
@@ -182,11 +196,14 @@ function M.apply(o)
 				instance = { "nm-connection-editor", "blueman-manager", "pavucontrol", "gnome-disks" },
 				name = { "Network Connections", "Bluetooth", "GNOME Disks", "Volume Control" },
 			},
-			properties = { floating = true, placement = awful.placement.centered },
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				portrait_autosize = true,
+			},
 		},
 
-		-- XScreenSaver Demo/Prefs/Settings: **perma floating + zentriert**
-		-- (laut xprop: WM_CLASS=".xscreensaver-demo-wrapped")
+		-- XScreenSaver Demo/Prefs
 		{
 			rule_any = {
 				class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
@@ -196,32 +213,24 @@ function M.apply(o)
 			properties = {
 				floating = true,
 				placement = awful.placement.centered,
-				-- titlebars_enabled = true, -- optional
+				portrait_autosize = true,
 			},
-		},
-
-		-- Generischer Fallback: *alles*, was im Titel mit "XScreenSaver:" beginnt
-		{
-			rule_any = {},
-			properties = {},
-			callback = function(c)
-				if c.name and c.name:match("^XScreenSaver:") then
-					c.floating = true
-					awful.placement.centered(c)
-				end
-			end,
 		},
 
 		-- Generische Utilities/Dialogs: floating
 		{
 			rule_any = { type = { "dialog", "utility", "toolbar", "splash" }, role = { "pop-up", "Preferences" } },
-			properties = { floating = true, placement = awful.placement.centered },
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				portrait_autosize = true,
+			},
 		},
 
-		-- Titlebars standardmäßig an (normal/dialog)
+		-- Titlebars standardmäßig an
 		{ rule_any = { type = { "normal", "dialog" } }, properties = { titlebars_enabled = true } },
 
-		-- Terminals: tiled, Titlebar an
+		-- Terminals: tiled, Titlebar an (KEIN portrait_autosize → werden nicht angerührt)
 		{
 			rule_any = {
 				class = {
@@ -270,12 +279,25 @@ function M.apply(o)
 				floating = false,
 				titlebars_enabled = true,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
+				-- kein portrait_autosize hier ⇒ Terminals bleiben unbeeinflusst
 			},
+		},
+
+		-- Fallback: Alles mit Titelbeginn "XScreenSaver:" zentrieren + floating
+		{
+			rule = {},
+			properties = {},
+			callback = function(c)
+				if c.name and c.name:match("^XScreenSaver:") then
+					c.floating = true
+					awful.placement.centered(c)
+				end
+			end,
 		},
 	}
 
-	-- Hooks (Portrait-Sizing für alle Floating-Clients)
-	hook_portrait_floating()
+	-- Hooks aktivieren (arbeitet NUR auf Clients mit properties.portrait_autosize=true)
+	hook_portrait_autosize()
 end
 
 return M
