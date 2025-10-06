@@ -35,27 +35,30 @@ in {
     autoLogin.enable = mkBoolOpt false "Enable LightDM autologin into xsession.";
     autoLogin.user = mkOpt str "dengo123" "User for autologin.";
 
-    # ——— Idle-Lock via xautolock (nur Minuten; locker per extraOptions) ———
-    idleLock.enable = mkBoolOpt false "Lock on idle using xautolock + LightDM (dm-tool lock).";
-    idleLock.minutes = mkOpt int 15 "Idle timeout in minutes for xautolock.";
-
     # Greeter
     greeter.activeMonitor = mkOpt str "primary" "Monitor for login box.";
-    greeter.position = mkOpt str "50%x50%" "Login box position.";
+    greeter.position = mkOpt str "50%x50%" "Login box position (e.g. 50%x50%).";
     greeter.iconTheme = mkOpt str "Papirus-Dark" "Greeter icon theme.";
     greeter.cursorTheme = mkOpt str "Bibata-Original-Ice" "Greeter cursor theme.";
     greeter.cursorSize = mkOpt int 24 "Greeter cursor size.";
+    greeter.backgroundColor = mkOpt str "#235CDB" "Greeter fallback background color.";
+    greeter.backgroundImage =
+      mkOpt (nullOr str) null
+      "Optional wallpaper path; overrides background color.";
 
-    # Monitore
+    # Monitors
     monitors.primary.output = mkOpt str "DP-4" "Primary output";
     monitors.primary.mode = mkOpt str "1920x1080" "Primary mode";
     monitors.primary.rotate = mkOpt str "normal" "Primary rotation";
-    monitors.primary.pos = mkOpt str "1080x420" "Primary pos";
+    monitors.primary.pos = mkOpt str "1080x420" "Primary position";
 
     monitors.portrait.output = mkOpt str "DP-2" "Portrait output";
     monitors.portrait.mode = mkOpt str "1920x1080" "Portrait base mode";
     monitors.portrait.rotate = mkOpt str "left" "Portrait rotation";
-    monitors.portrait.pos = mkOpt str "0x0" "Portrait pos";
+    monitors.portrait.pos = mkOpt str "0x0" "Portrait position";
+
+    # LightDM-gestütztes Locking via light-locker (nur An/Aus)
+    lightLocker.enable = mkBoolOpt false "Start light-locker (locks via LightDM after the X11 screensaver activates).";
   };
 
   config = mkIf cfg.enable {
@@ -74,9 +77,16 @@ in {
           icon-theme-name=${cfg.greeter.iconTheme}
           cursor-theme-name=${cfg.greeter.cursorTheme}
           cursor-theme-size=${toString cfg.greeter.cursorSize}
+          user-background=false
+          background=${
+            if cfg.greeter.backgroundImage != null
+            then cfg.greeter.backgroundImage
+            else cfg.greeter.backgroundColor
+          }
         '';
       };
 
+      # Monitor layout before greeter
       setupCommands = ''
         ${XR} --output ${cfg.monitors.portrait.output} --mode ${cfg.monitors.portrait.mode} \
               --rotate ${cfg.monitors.portrait.rotate} --pos ${cfg.monitors.portrait.pos}
@@ -90,19 +100,7 @@ in {
       '';
     };
 
-    # ✅ xautolock: nutze *nur* die offiziell vorhandenen Felder
-    services.xserver.xautolock = mkIf cfg.idleLock.enable {
-      enable = true;
-      time = cfg.idleLock.minutes; # Minuten
-      enableNotifier = false; # optional
-      # WICHTIG: -locker als ZWEI Argumente übergeben
-      extraOptions = [
-        "-locker"
-        "${pkgs.lightdm}/bin/dm-tool lock"
-        "-secure"
-      ];
-    };
-
+    # Optional: autologin
     services.xserver.displayManager.lightdm.extraConfig = mkIf cfg.autoLogin.enable ''
       autologin-user=${cfg.autoLogin.user}
       autologin-user-timeout=0
@@ -110,9 +108,28 @@ in {
       greeter-show-manual-login=true
     '';
 
+    # Light-locker als systemd User-Service (keine zusätzlichen Optionen)
+    systemd.user.services.light-locker = mkIf cfg.lightLocker.enable {
+      description = "light-locker (LightDM lock after X11 screensaver activates)";
+      after = ["graphical-session.target"];
+      partOf = ["graphical-session.target"];
+      wantedBy = ["graphical-session.target"];
+      serviceConfig = {
+        Environment = [
+          "XDG_SESSION_TYPE=x11"
+          "DISPLAY=:0"
+          "XAUTHORITY=%h/.Xauthority"
+        ];
+        ExecStart = "${pkgs.lightlocker}/bin/light-locker";
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
+    };
+
     environment.systemPackages = with pkgs; [
       papirus-icon-theme
       bibata-cursors
+      lightlocker
     ];
   };
 }

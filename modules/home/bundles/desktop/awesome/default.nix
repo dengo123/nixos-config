@@ -30,6 +30,7 @@ in {
       services = {
         autorandr = enabled;
         xscreensaver = enabled;
+        lightlocker = enabled;
       };
       programs = {
         nemo = {

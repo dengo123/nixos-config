@@ -35,10 +35,7 @@ with lib.${namespace}; {
     desktop.xsession = {
       enable = true;
       autoLogin = enabled;
-      idleLock = {
-        enable = true;
-        minutes = 5;
-      };
+      lightLocker = enabled;
     };
     hardware = {
       cuda = enabled;
