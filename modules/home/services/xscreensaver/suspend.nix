@@ -16,18 +16,19 @@ with lib.${namespace}; let
     PENDING=""
     ${pkgs.xscreensaver}/bin/xscreensaver-command -watch | while read -r line; do
       case "$line" in
-        # Aktivierung des Savers (egal ob Blank oder "Same Random Savers") → Timer starten
         BLANK*|LOCK*)
-          if [ -n "$PENDING" ] && kill -0 "$PENDING" 2>/dev/null; then kill "$PENDING" 2>/dev/null || true; fi
+          if [ -n "$PENDING" ] && kill -0 "$PENDING" 2>/dev/null; then
+            kill "$PENDING" 2>/dev/null || true
+          fi
           ( sleep "$TIMEOUT" && ${pkgs.systemd}/bin/systemctl suspend ) &
           PENDING=$!
           ;;
-        # Nutzeraktivität → Timer verwerfen
         UNBLANK*|UNLOCK*)
-          if [ -n "$PENDING" ] && kill -0 "$PENDING" 2>/dev/null; then kill "$PENDING" 2>/dev/null || true; fi
+          if [ -n "$PENDING" ] && kill -0 "$PENDING" 2>/dev/null; then
+            kill "$PENDING" 2>/dev/null || true
+          fi
           ;;
       esac
-      # RUN*/CHANGE*/TIMEOUT* werden ignoriert; der Timer läuft weiter während der Saver aktiv ist
     done
   '';
 in {
@@ -52,7 +53,9 @@ in {
         Restart = "always";
         RestartSec = 1;
       };
-      Install.WantedBy = ["graphical-session.target"];
+      Install = {
+        WantedBy = ["graphical-session.target"];
+      };
     };
   };
 }
