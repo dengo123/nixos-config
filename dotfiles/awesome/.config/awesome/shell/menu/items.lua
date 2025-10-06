@@ -43,8 +43,6 @@ function Items.build_start(ctx)
 				Launchers.open.run()
 			end,
 		},
-
-		-- ⬇︎ Neuer Eintrag: XScreenSaver Einstellungen (GUI)
 		{
 			"screensaver",
 			function()
@@ -56,6 +54,12 @@ function Items.build_start(ctx)
 			"reload",
 			function()
 				awesome.restart()
+			end,
+		},
+		{
+			"lock",
+			function()
+				awful.spawn({ "dm-tool", "lock" })
 			end,
 		},
 		{

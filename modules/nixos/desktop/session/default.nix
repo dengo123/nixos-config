@@ -81,6 +81,11 @@ in {
             then cfg.greeter.backgroundImage
             else cfg.greeter.backgroundColor
           }
+
+          # Panel unten,  Links: Power | Mitte: leer | Rechts: Clock
+          panel-position=bottom
+          indicators=~power;~spacer;~clock
+          clock-format=%H:%M
         '';
       };
 
@@ -97,6 +102,17 @@ in {
         ${XR} --output DP-5   --off || true
       '';
     };
+
+    # Panel/Leisten-CSS für den LightDM GTK Greeter
+    environment.etc."lightdm/lightdm-gtk-greeter.css".text = ''
+      #panel {
+        background: #1A50B8;
+        min-height: 32px;
+        padding: 0;
+      }
+      #panel .indicator { padding: 0 8px; }
+      #clock { font-weight: 600; }
+    '';
 
     # Autologin (optional)
     services.xserver.displayManager.lightdm.extraConfig = mkIf cfg.autoLogin.enable ''

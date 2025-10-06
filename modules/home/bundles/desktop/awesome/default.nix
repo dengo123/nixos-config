@@ -29,9 +29,10 @@ in {
       };
       services = {
         autorandr = enabled;
-        xidlehook = {
+        xscreensaver = {
           enable = true;
-          useXSS = enabled;
+          delaySeconds = 300;
+          lockerCmd = "${pkgs.lightlocker}/bin/light-locker-command -l";
         };
       };
       programs = {
