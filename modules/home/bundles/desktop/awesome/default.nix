@@ -31,8 +31,7 @@ in {
         autorandr = enabled;
         xscreensaver = {
           enable = true;
-          delaySeconds = 300;
-          lockerCmd = "${pkgs.lightlocker}/bin/light-locker-command -l";
+          afterSeconds = 900;
         };
       };
       programs = {
