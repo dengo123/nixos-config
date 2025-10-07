@@ -41,7 +41,6 @@ in {
     greeter.iconTheme = mkOpt str "Papirus-Dark" "Greeter icon theme.";
     greeter.cursorTheme = mkOpt str "Bibata-Original-Ice" "Greeter cursor theme.";
     greeter.cursorSize = mkOpt int 24 "Greeter cursor size.";
-    # Hintergrund: Farbe (#235CDB) oder optionales Bild überschreibt Farbe
     greeter.backgroundColor = mkOpt str "#235CDB" "Fallback background color for the greeter.";
     greeter.backgroundImage =
       mkOpt (nullOr str) null
@@ -89,19 +88,45 @@ in {
         '';
       };
 
-      # Monitor-Layout vor dem Greeter
-      setupCommands = ''
-        ${XR} --output ${cfg.monitors.portrait.output} --mode ${cfg.monitors.portrait.mode} \
-              --rotate ${cfg.monitors.portrait.rotate} --pos ${cfg.monitors.portrait.pos}
-        ${XR} --output ${cfg.monitors.primary.output} --primary --mode ${cfg.monitors.primary.mode} \
-              --rotate ${cfg.monitors.primary.rotate} --pos ${cfg.monitors.primary.pos}
-        ${XR} --output HDMI-0 --off || true
-        ${XR} --output DP-0   --off || true
-        ${XR} --output DP-1   --off || true
-        ${XR} --output DP-3   --off || true
-        ${XR} --output DP-5   --off || true
-      '';
+      # EINMAL definieren, Autologin-Teil optional anhängen
+      lightdm.extraConfig =
+        ''
+          [Seat:*]
+          display-setup-script=/etc/lightdm/display-setup.sh
+          greeter-setup-script=/etc/lightdm/display-setup.sh
+        ''
+        + optionalString cfg.autoLogin.enable ''
+          autologin-user=${cfg.autoLogin.user}
+          autologin-user-timeout=0
+          allow-guest=false
+          greeter-show-manual-login=true
+        '';
     };
+
+    # Script: läuft beim Greeter-Start UND wenn der Greeter wieder erscheint (z.B. nach Resume)
+    environment.etc."lightdm/display-setup.sh".text = ''
+      #!/bin/sh
+      XR="${XR}"
+
+      # Portrait zuerst, dann Primary – Reihenfolge ist wichtig für Positionierung
+      "$XR" --output ${cfg.monitors.portrait.output} \
+            --mode ${cfg.monitors.portrait.mode} \
+            --rotate ${cfg.monitors.portrait.rotate} \
+            --pos ${cfg.monitors.portrait.pos} || true
+
+      "$XR" --output ${cfg.monitors.primary.output} --primary \
+            --mode ${cfg.monitors.primary.mode} \
+            --rotate ${cfg.monitors.primary.rotate} \
+            --pos ${cfg.monitors.primary.pos} || true
+
+      # Unerwünschte Ausgänge abschalten (best effort)
+      "$XR" --output HDMI-0 --off 2>/dev/null || true
+      "$XR" --output DP-0   --off 2>/dev/null || true
+      "$XR" --output DP-1   --off 2>/dev/null || true
+      "$XR" --output DP-3   --off 2>/dev/null || true
+      "$XR" --output DP-5   --off 2>/dev/null || true
+    '';
+    environment.etc."lightdm/display-setup.sh".mode = "0755";
 
     # Panel/Leisten-CSS für den LightDM GTK Greeter
     environment.etc."lightdm/lightdm-gtk-greeter.css".text = ''
@@ -112,14 +137,6 @@ in {
       }
       #panel .indicator { padding: 0 8px; }
       #clock { font-weight: 600; }
-    '';
-
-    # Autologin (optional)
-    services.xserver.displayManager.lightdm.extraConfig = mkIf cfg.autoLogin.enable ''
-      autologin-user=${cfg.autoLogin.user}
-      autologin-user-timeout=0
-      allow-guest=false
-      greeter-show-manual-login=true
     '';
 
     # Greeter-Assets
