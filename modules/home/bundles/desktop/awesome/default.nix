@@ -31,10 +31,7 @@ in {
         autorandr = enabled;
         xscreensaver = {
           enable = true;
-          suspend = {
-            enable = true;
-            afterOffSeconds = 10;
-          };
+          suspend = enabled;
         };
       };
       programs = {
