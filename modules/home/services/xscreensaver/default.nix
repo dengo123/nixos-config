@@ -107,7 +107,9 @@ in {
     # Alte Struktur wiederhergestellt:
     suspend = {
       enable = mkBoolOpt false "Suspend the system on DPMS-Off (with optional timer).";
-      afterOffSeconds = mkOpt int 0 "Seconds to wait after DPMS-Off before suspending (0 = immediately).";
+      afterOffSeconds =
+        mkOpt int 900
+        "Seconds to wait after DPMS-Off before suspending (0 = immediately).";
       checkInterval = mkOpt int 5 "Polling interval for DPMS state (seconds).";
       holdOffSeconds =
         mkOpt int 10

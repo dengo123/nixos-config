@@ -11,5 +11,5 @@ return {
 	browser = "firefox", -- oder "librewolf", "chromium", ...
 	files = "nemo || xdg-open ~", -- Dateimanager Fallback
 
-	workspaces = "sync", -- oder "core"
+	workspaces = "core", -- "core || sync"
 }

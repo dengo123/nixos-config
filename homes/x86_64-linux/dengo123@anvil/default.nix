@@ -27,6 +27,7 @@ with lib.${namespace}; {
       freetube = enabled;
       spotify = enabled;
       gimp = enabled;
+      discord = enabled;
     };
     misc = {
       xdg = enabled;

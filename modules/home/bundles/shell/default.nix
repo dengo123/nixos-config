@@ -15,7 +15,6 @@ in {
   config = mkIf cfg.enable {
     nixforge = {
       programs = {
-        kitty = enabled;
         atuin = enabled;
         eza = enabled;
         fzf = enabled;
