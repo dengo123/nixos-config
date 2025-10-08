@@ -277,7 +277,7 @@ function M.apply(o)
 			},
 			properties = {
 				floating = false,
-				titlebars_enabled = true,
+				titlebars_enabled = false,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
 				-- kein portrait_autosize hier ⇒ Terminals bleiben unbeeinflusst
 			},

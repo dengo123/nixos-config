@@ -21,6 +21,7 @@ in {
       killall
       tldr
       wget
+      ripgrep
 
       # Video/Audio
       celluloid

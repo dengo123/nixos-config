@@ -31,7 +31,10 @@ in {
         autorandr = enabled;
         xscreensaver = {
           enable = true;
-          suspend = enabled;
+          suspend = {
+            enable = true;
+            secondsToSuspend = 0;
+          };
         };
       };
       programs = {
@@ -44,6 +47,7 @@ in {
     };
 
     home.packages = with pkgs; [
+      pavucontrol
     ];
   };
 }

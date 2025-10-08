@@ -4,6 +4,10 @@ local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 
+-- optionales System-Config
+local syscfg_ok, syscfg = pcall(require, "system.config")
+syscfg = syscfg_ok and syscfg or {}
+
 local M = {}
 
 local function ellipsize(txt, max)
@@ -16,7 +20,7 @@ local function ellipsize(txt, max)
 	return txt:sub(1, math.max(0, max - 1)) .. "…"
 end
 
--- Lead-Client der Gruppe bestimmen: fokussiert > erster nicht minimierter > erster
+-- Lead-Client: fokussiert > erster nicht minimierter > erster
 local function pick_lead(clients)
 	if #clients == 0 then
 		return nil
@@ -38,7 +42,7 @@ end
 
 -- == Tab-Element =============================================================
 -- menu_api: { show_for_widget_with_clients_at = function(widget, clients, {x_left=<abs>}) end }
-local function build_group_tab(cls, clients, theme, H, FIX_W, menu_api)
+local function build_group_tab(label, clients, theme, H, FIX_W, menu_api)
 	assert(theme and theme.colors, "tabs.lua: theme.colors fehlt")
 	assert(theme.icon_size, "tabs.lua: theme.icon_size fehlt")
 	assert(theme.pad_h, "tabs.lua: theme.pad_h fehlt")
@@ -75,7 +79,7 @@ local function build_group_tab(cls, clients, theme, H, FIX_W, menu_api)
 	-- TITEL
 	local title_raw = wibox.widget({
 		widget = wibox.widget.textbox,
-		markup = ellipsize(cls or (lead and (lead.class or lead.name) or "App"), title_len),
+		markup = ellipsize(label or (lead and (lead.class or lead.name) or "App"), title_len),
 	})
 	local title = wibox.widget({
 		title_raw,
@@ -138,7 +142,6 @@ local function build_group_tab(cls, clients, theme, H, FIX_W, menu_api)
 	refresh_colors()
 
 	-- Interaktionen
-	-- Linksklick/Scroll bleiben wie gehabt über :buttons()
 	bgw:buttons(gears.table.join(
 		awful.button({}, 1, function()
 			local focused = client.focus
@@ -163,22 +166,17 @@ local function build_group_tab(cls, clients, theme, H, FIX_W, menu_api)
 		end)
 	))
 
-	-- Rechtsklick: wir brauchen lokale X-Position, daher Widgets-Signal
+	-- Rechtsklick: Kontextmenü (defensiv)
+	local has_menu = (type(menu_api) == "table" and type(menu_api.show_for_widget_with_clients_at) == "function")
 	bgw:connect_signal("button::press", function(_, lx, _, button)
-		if button ~= 3 then
+		if button ~= 3 or not has_menu then
 			return
 		end
-		if not (menu_api and menu_api.show_for_widget_with_clients_at) then
-			return
-		end
-		-- linke Kante des Widgets in Screen-Koordinaten:
-		-- mouse.x - lx (lx = lokale X-Koordinate innerhalb des Widgets)
 		local mc = mouse.coords()
 		local x_left = mc.x - (lx or 0)
 		menu_api.show_for_widget_with_clients_at(bgw, clients, { x_left = x_left })
 	end)
 
-	-- lokale Farbanpassung
 	client.connect_signal("focus", refresh_colors)
 	client.connect_signal("unfocus", refresh_colors)
 
@@ -213,10 +211,7 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing, menu_api)
 		table.insert(by_class[key], c)
 	end
 
-	local container = wibox.widget({
-		layout = wibox.layout.fixed.horizontal,
-		spacing = spacing,
-	})
+	local container = wibox.widget({ layout = wibox.layout.fixed.horizontal, spacing = spacing })
 
 	local keys = {}
 	for cls in pairs(by_class) do
@@ -229,6 +224,24 @@ local function build_grouped_taskbar(s, theme, H, FIX_W, spacing, menu_api)
 	for _, cls in ipairs(keys) do
 		container:add(build_group_tab(cls, by_class[cls], theme, H, FIX_W, menu_api))
 	end
+	return container
+end
+
+-- == Ungruppierte Taskbar (ein Tab pro Client) ===============================
+local function build_single_taskbar(s, theme, H, FIX_W, spacing, menu_api)
+	local container = wibox.widget({ layout = wibox.layout.fixed.horizontal, spacing = spacing })
+	local t = s.selected_tag
+	if not t then
+		return container
+	end
+
+	-- feste Reihenfolge: tag:clients()
+	for _, c in ipairs(t:clients() or {}) do
+		if c.valid and not c.skip_taskbar and c.screen == s then
+			local label = c.name or c.class or "App"
+			container:add(build_group_tab(label, { c }, theme, H, FIX_W, menu_api))
+		end
+	end
 
 	return container
 end
@@ -237,7 +250,7 @@ end
 function M.build(s, opts)
 	opts = opts or {}
 	local theme = assert(opts.theme, "tabs.lua: opts.theme muss injiziert werden (Theme.tabs.get(...))")
-	local menu_api = opts.menu_api -- { show_for_widget_with_clients_at = fn }
+	local menu_api = opts.menu_api -- optional
 
 	local H = assert(tonumber(beautiful.wibar_height), "tabs.lua: beautiful.wibar_height fehlt/ungueltig")
 	assert(theme.width_factor, "tabs.lua: theme.width_factor fehlt")
@@ -246,15 +259,23 @@ function M.build(s, opts)
 	local FIX_W = math.floor(theme.width_factor * H)
 	local spacing = theme.spacing
 
-	local box = wibox.widget({
-		layout = wibox.layout.fixed.horizontal,
-		spacing = spacing,
-	})
+	-- Modus robust aus system.config.tabs / opts.mode bestimmen (wie workspaces)
+	local flag = tostring(opts.mode or syscfg.tabs or "group"):lower()
+	local useSingle = (flag == "single") or (flag:match("single") ~= nil)
+
+	local box = wibox.widget({ layout = wibox.layout.fixed.horizontal, spacing = spacing })
 
 	local function refresh()
 		box:reset()
-		local grouped = build_grouped_taskbar(s, theme, H, FIX_W, spacing, menu_api)
-		for _, child in ipairs(grouped.children or {}) do
+		local built = (useSingle and build_single_taskbar or build_grouped_taskbar)(
+			s,
+			theme,
+			H,
+			FIX_W,
+			spacing,
+			menu_api
+		)
+		for _, child in ipairs(built.children or {}) do
 			box:add(child)
 		end
 	end
@@ -263,6 +284,7 @@ function M.build(s, opts)
 		gears.timer.delayed_call(refresh)
 	end
 
+	-- Signals
 	client.connect_signal("manage", delayed_refresh)
 	client.connect_signal("unmanage", delayed_refresh)
 	client.connect_signal("property::minimized", delayed_refresh)

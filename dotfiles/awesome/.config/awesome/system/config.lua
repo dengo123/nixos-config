@@ -12,4 +12,5 @@ return {
 	files = "nemo || xdg-open ~", -- Dateimanager Fallback
 
 	workspaces = "core", -- "core || sync"
+	tabs = "single", -- "single || group"
 }

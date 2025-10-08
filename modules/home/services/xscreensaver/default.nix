@@ -10,23 +10,19 @@ with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.services.xscreensaver;
 
-  # DPMS/Saver-Watcher:
-  # - DPMS "Monitor is Off" stabil (>= HOLD):
-  #     -> armt einmalig einen Suspend-Timer (AFTER Sekunden)
-  # - Fallback: Saver aktiv ohne DPMS-Off (Grace):
-  #     -> ebenfalls einmalig Suspend-Timer
-  # - Abbruch, wenn Monitor wieder an ODER Saver nicht mehr aktiv:
-  #     -> Timer wird verworfen
-  #
-  # Hinweis: KEIN Greeter/Lock vor Suspend. Der Greeter kommt NACH Resume
-  # durch das systemweite Security/Resume-Hook (loginctl lock-sessions).
+  # Minimaler DPMS/Saver-Watcher:
+  # - DPMS "Monitor is Off" stabil (HOLD) -> suspender Timer (AFTER)
+  # - Fallback: Saver aktiv ohne DPMS-Off (Grace) -> ebenfalls Timer
+  # - Abbruch: wenn Monitor wieder an ODER Saver nicht mehr aktiv -> Timer cancel
   xssSuspendDPMS = pkgs.writeShellScript "xss-suspend-dpms.sh" ''
     set -eu
 
-    CHECK_INTERVAL=${toString cfg.suspend.checkInterval}
-    HOLD=${toString cfg.suspend.holdOffSeconds}
-    AFTER=${toString cfg.suspend.afterOffSeconds}
+    # interne Defaults
+    CHECK_INTERVAL=5
+    HOLD=10
     SAVER_GRACE=15
+
+    AFTER='${toString cfg.suspend.secondsToSuspend}'
 
     XSET=${pkgs.xorg.xset}/bin/xset
     SYSTEMCTL=${pkgs.systemd}/bin/systemctl
@@ -40,9 +36,8 @@ with lib.${namespace}; let
     SAVER_ACTIVE=0
     SAVER_WAIT=0
 
-    log() { "$LOGGER" -t xss-suspend -- "$*"; echo "$*"; }
-
-    log "start: DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY AFTER=$AFTER HOLD=$HOLD INT=$CHECK_INTERVAL"
+    log(){ "$LOGGER" -t xss-suspend -- "$*"; echo "$*"; }
+    log "start: AFTER=$AFTER HOLD=$HOLD INT=$CHECK_INTERVAL (no greeter/locker)"
 
     # Saver-Events beobachten (parallel)
     ( "$XSCMD" -watch | while read -r line; do
@@ -91,7 +86,6 @@ with lib.${namespace}; let
             arm_suspend_once
           fi
         else
-          # Weder DPMS-Off noch Saver aktiv -> evtl. scharfen Timer verwerfen
           SAVER_WAIT=0
           cancel_suspend
         fi
@@ -104,16 +98,11 @@ in {
   options.${namespace}.services.xscreensaver = with types; {
     enable = mkBoolOpt false "Enable XScreenSaver daemon.";
 
-    # Alte Struktur wiederhergestellt:
     suspend = {
-      enable = mkBoolOpt false "Suspend the system on DPMS-Off (with optional timer).";
-      afterOffSeconds =
-        mkOpt int 900
-        "Seconds to wait after DPMS-Off before suspending (0 = immediately).";
-      checkInterval = mkOpt int 5 "Polling interval for DPMS state (seconds).";
-      holdOffSeconds =
-        mkOpt int 10
-        "Require DPMS Off to persist this long before the suspend timer is armed.";
+      enable = mkBoolOpt false "Suspend the system after DPMS-Off or saver fallback.";
+      secondsToSuspend =
+        mkOpt int 300
+        "Seconds to wait after DPMS-Off (or saver fallback) before suspending (0 = immediately).";
     };
   };
 
@@ -130,7 +119,7 @@ in {
 
     systemd.user.services."xss-suspend" = mkIf cfg.suspend.enable {
       Unit = {
-        Description = "Suspend on DPMS-Off/Saver inactivity (no greeter pre-suspend)";
+        Description = "Suspend on DPMS-Off/Saver inactivity (no greeter/locker)";
         After = ["graphical-session.target"];
         PartOf = ["graphical-session.target"];
       };

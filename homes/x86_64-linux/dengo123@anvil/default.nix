@@ -28,6 +28,7 @@ with lib.${namespace}; {
       spotify = enabled;
       gimp = enabled;
       discord = enabled;
+      doom = enabled;
     };
     misc = {
       xdg = enabled;

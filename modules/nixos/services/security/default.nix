@@ -37,10 +37,10 @@ with lib.${namespace}; let
   '';
 in {
   options.${namespace}.services.security = with types; {
-    enable = mkBoolOpt false "Core security (polkit, rtkit)";
+    enable = mkBoolOpt true "Core security (polkit, rtkit)";
     allowPowerActions = mkBoolOpt false "Add permissive polkit rules for reboot/poweroff";
-    allowSuspendLock = mkBoolOpt true "Allow suspend/lock via logind without auth (wheel/users)";
-    greeterAfterResume = mkBoolOpt true "After resume, switch to LightDM greeter.";
+    allowSuspendLock = mkBoolOpt false "Allow suspend/lock via logind without auth (wheel/users)";
+    greeterAfterResume = mkBoolOpt false "After resume, switch to LightDM greeter.";
   };
 
   config = mkIf cfg.enable (mkMerge [
@@ -60,26 +60,51 @@ in {
       powerManagement.resumeCommands = ''
         ${pkgs.bash}/bin/bash -eu <<'EOF'
         DMTOOL=${pkgs.lightdm}/bin/dm-tool
+        SH=${pkgs.bash}/bin/bash
 
-        # kurzes Settle nach dem Aufwachen
+        # 1) kurzes Settle, dann zum Greeter schalten (D-Bus, DISPLAY-frei)
         sleep 0.4
-
-        # bis zu ~3s versuchen (15*0.2s), falls LightDM noch nicht lauscht
         i=0
         while [ $i -lt 15 ]; do
-          # Variante 1: expliziter Seat-Pfad
           if XDG_SEAT_PATH=/org/freedesktop/DisplayManager/Seat0 "$DMTOOL" switch-to-greeter 2>/dev/null; then
-            exit 0
+            break
           fi
-          # Variante 2: --seat seat0
           if "$DMTOOL" --seat seat0 switch-to-greeter 2>/dev/null; then
-            exit 0
+            break
           fi
           sleep 0.2
           i=$((i+1))
         done
 
-        # kein harter Fehler, einfach weiter
+        # 2) Greeter-X neu layouten (auch nach Hibernate), indem wir dein
+        #    /etc/lightdm/display-setup.sh im Kontext des Greeter-X ausführen.
+        #    Wir finden eine passende XAUTHORITY-Datei und laufen als 'lightdm'.
+        run_in_greeter_x() {
+          # Mögliche XAUTHORITY-Pfade je nach LightDM/Distribution:
+          for XA in \
+            /run/lightdm/root/:0 \
+            /var/run/lightdm/root/:0 \
+            /run/lightdm/greeter/Xauthority \
+            /var/lib/lightdm/.Xauthority
+          do
+            if [ -r "$XA" ]; then
+              DISPLAY=:0 XAUTHORITY="$XA" exec "$@"
+              return 0
+            fi
+          done
+          return 1
+        }
+
+        if [ -x /etc/lightdm/display-setup.sh ]; then
+          # als lightdm-User ausführen (falls vorhanden), sonst root (best effort)
+          if id lightdm >/dev/null 2>&1; then
+            run_in_greeter_x su -s /bin/sh lightdm -c /etc/lightdm/display-setup.sh \
+              || run_in_greeter_x /etc/lightdm/display-setup.sh || true
+          else
+            run_in_greeter_x /etc/lightdm/display-setup.sh || true
+          fi
+        fi
+
         exit 0
         EOF
       '';

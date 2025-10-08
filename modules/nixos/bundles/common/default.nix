@@ -16,7 +16,6 @@ in {
   config = mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
       stow
-      pavucontrol
     ];
     ${namespace} = {
       config = {
@@ -30,7 +29,11 @@ in {
       };
 
       services = {
-        security = enabled;
+        security = {
+          allowPowerActions = true;
+          allowSuspendLock = true;
+          greeterAfterResume = true;
+        };
         printing = enabled;
         tailscale = enabled;
         udisks2 = enabled;

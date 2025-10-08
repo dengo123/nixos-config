@@ -14,6 +14,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nix-doom-emacs-unstraightened = {
+      url = "github:marienz/nix-doom-emacs-unstraightened";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    inputs.doom-config = {
+      url = "path:./dotfiles/doom";
+      flake = false;
+    };
+
     nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 

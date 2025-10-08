@@ -1,4 +1,4 @@
--- ~/.config/awesome/features/workspaces/tags/client_policy.lua
+-- ~/.config/awesome/shell/workspaces/policies/client_policy.lua
 
 local M = {}
 

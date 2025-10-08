@@ -1,3 +1,4 @@
+# modules/home/programs/nixvim/default.nix
 {
   inputs,
   pkgs,

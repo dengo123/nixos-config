@@ -1,5 +1,5 @@
+-- ~/.config/awesome/input/keys/global/navigation.lua
 local awful = require("awful")
-local H = require("input.keys.helpers")
 
 -- Nur wenn eine Tastatur-Interaktion stattfand, darf zentriert werden:
 local function kbd_intent(ms)
@@ -11,24 +11,17 @@ local function is_max_layout(s)
 	return awful.layout.get(s) == awful.layout.suit.max
 end
 
--- Clients des aktiven Tags sammeln (sichtbar, nicht minimized)
-local function clients_on_tag(s, predicate)
+-- Alle Clients des ausgewählten Tags in stabiler Tag-Reihenfolge
+local function clients_of_selected_tag(s, include_minimized)
 	s = s or awful.screen.focused()
 	local t = s.selected_tag
 	if not t then
 		return {}
 	end
 	local out = {}
-	for _, c in ipairs(s.clients) do
-		if c.valid and not c.minimized then
-			local on_tag = false
-			for _, tc in ipairs(c:tags()) do
-				if tc == t then
-					on_tag = true
-					break
-				end
-			end
-			if on_tag and (not predicate or predicate(c)) then
+	for _, c in ipairs(t:clients() or {}) do
+		if c.valid and not c.skip_taskbar and c.screen == s then
+			if include_minimized or not c.minimized then
 				table.insert(out, c)
 			end
 		end
@@ -40,8 +33,7 @@ local function focus_in_list(list, dir)
 	if #list == 0 then
 		return
 	end
-	local cur = client.focus
-	local idx = 0
+	local cur, idx = client.focus, 0
 	if cur then
 		for i, c in ipairs(list) do
 			if c == cur then
@@ -50,110 +42,83 @@ local function focus_in_list(list, dir)
 			end
 		end
 	end
-	local n = #list
-	local j = ((idx - 1 + (dir or 1)) % n) + 1
+	local j = ((idx - 1 + (dir or 1)) % #list) + 1
 	local target = list[j]
 	if target and target.valid then
+		if target.minimized then
+			target.minimized = false
+		end
 		kbd_intent()
 		target:emit_signal("request::activate", "keynav", { raise = true })
 	end
 end
 
-local function resolve_screen()
-	if client.focus and client.focus.valid then
-		return client.focus.screen
-	end
-	if mouse and mouse.screen then
-		return mouse.screen
-	end
-	return awful.screen.focused()
-end
-
-local function cycle_all(dir)
-	local s = resolve_screen()
-	local list = clients_on_tag(s, function(c)
-		return awful.client.focus.filter(c)
-	end)
-	focus_in_list(list, dir)
-end
-
-local function cycle_same_class(dir)
-	local cur = client.focus
-	if not (cur and cur.valid and cur.class) then
-		cycle_all(dir)
-		return
-	end
-	local s = cur.screen or resolve_screen()
-	local cls = cur.class
-	local list = clients_on_tag(s, function(c)
-		return awful.client.focus.filter(c) and c.class == cls
-	end)
-	if #list <= 1 then
-		return
-	end
+-- Max: stumpf über alle Clients des aktiven Tags cyclen
+local function cycle_max(dir)
+	local s = (client.focus and client.focus.valid) and client.focus.screen or awful.screen.focused()
+	local list = clients_of_selected_tag(s, true) -- include minimized
 	focus_in_list(list, dir)
 end
 
 return function(modkey)
 	return awful.util.table.join(
-		-- Fokus bewegen: in max ⇒ zyklisch durch alle/tabs, sonst bydirection
+		-- Fokus bewegen
 		awful.key({ modkey }, "Right", function()
 			if is_max_layout() then
-				cycle_all(1)
+				cycle_max(1)
 			else
 				kbd_intent()
 				awful.client.focus.bydirection("right")
 			end
-		end, { description = "focus next (tabs in max)", group = "client" }),
-
+		end, { description = "focus next (max: cycle all / tiled: →)", group = "client" }),
 		awful.key({ modkey }, "Left", function()
 			if is_max_layout() then
-				cycle_all(-1)
+				cycle_max(-1)
 			else
 				kbd_intent()
 				awful.client.focus.bydirection("left")
 			end
-		end, { description = "focus previous (tabs in max)", group = "client" }),
-
-		-- Bonus: in max innerhalb gleicher Klasse
+		end, { description = "focus prev (max: cycle all / tiled: ←)", group = "client" }),
 		awful.key({ modkey }, "Up", function()
-			if is_max_layout() then
-				cycle_same_class(1)
-			else
+			if not is_max_layout() then
 				kbd_intent()
 				awful.client.focus.bydirection("up")
 			end
-		end, { description = "focus next of same class (max)", group = "client" }),
+		end, { description = "focus up (tiled)", group = "client" }),
 
 		awful.key({ modkey }, "Down", function()
-			if is_max_layout() then
-				cycle_same_class(-1)
-			else
+			if not is_max_layout() then
 				kbd_intent()
 				awful.client.focus.bydirection("down")
 			end
-		end, { description = "focus prev of same class (max)", group = "client" }),
+		end, { description = "focus down (tiled)", group = "client" }),
 
-		-- Fenster bewegen
-		awful.key({ modkey, "Shift" }, "Left", function()
-			if H and H.move_client_dir then
-				H.move_client_dir("left")
-			end
-		end, { description = "move window left", group = "client" }),
+		-- Fenster verschieben (nur tiled; in max absichtlich nichts)
 		awful.key({ modkey, "Shift" }, "Right", function()
-			if H and H.move_client_dir then
-				H.move_client_dir("right")
+			if not is_max_layout() then
+				kbd_intent()
+				awful.client.swap.bydirection("right")
 			end
-		end, { description = "move window right", group = "client" }),
+		end, { description = "move window right (tiled)", group = "client" }),
+		awful.key({ modkey, "Shift" }, "Left", function()
+			if not is_max_layout() then
+				kbd_intent()
+				awful.client.swap.bydirection("left")
+			end
+		end, { description = "move window left (tiled)", group = "client" }),
+
 		awful.key({ modkey, "Shift" }, "Up", function()
-			if H and H.move_client_dir then
-				H.move_client_dir("up")
+			if not is_max_layout() then
+				kbd_intent()
+				awful.client.swap.bydirection("up")
 			end
-		end, { description = "move window up", group = "client" }),
+		end, { description = "move window up (tiled)", group = "client" }),
+
 		awful.key({ modkey, "Shift" }, "Down", function()
-			if H and H.move_client_dir then
-				H.move_client_dir("down")
+			if not is_max_layout() then
+				kbd_intent()
+				awful.client.swap.bydirection("down")
 			end
-		end, { description = "move window down", group = "client" })
+		end, { description = "move window down (tiled)", group = "client" })
 	)
 end
