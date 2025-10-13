@@ -19,6 +19,28 @@ in {
       cmake
       python3
       devenv
+      # Essentials
+      git
+      ripgrep
+      fd
+      just
+      # Lua
+      lua-language-server
+      stylua
+      luacheck
+      # Nix
+      nixd
+      alejandra
+      # Python
+      pyright
+      black
+      ruff
+      # JSON/TOML/YAML
+      vscode-langservers-extracted
+      yaml-language-server
+      taplo
+      jq
+      yamlfmt
     ];
 
     programs.direnv = {

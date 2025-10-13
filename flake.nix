@@ -1,3 +1,4 @@
+# flake.nix
 {
   description = "The NixForge – In the crucible of code, systems awaken";
 
@@ -19,7 +20,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    inputs.doom-config = {
+    doom-config = {
       url = "path:./dotfiles/doom";
       flake = false;
     };

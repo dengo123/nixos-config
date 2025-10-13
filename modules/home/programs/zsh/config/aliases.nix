@@ -13,7 +13,8 @@
 
   v = "nvim";
   n = "nano";
-  e = "emacs";
+  e = "emacsclient -c -a ''";
+  et = "emacsclient -c -a '' -e '(vterm)'";
 
   r = "reboot";
   p = "poweroff";

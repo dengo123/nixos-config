@@ -48,3 +48,5 @@
 (setq custom-file (expand-file-name "custom.el" doom-user-dir))
 (when (file-exists-p custom-file) (load custom-file nil t))
 
+;; eigene elisp laden
+(add-to-list 'load-path (expand-user-file "lisp" doom-user-dir))

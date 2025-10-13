@@ -1,4 +1,7 @@
+# homes/x86_64-linux/dengo123@anvil/default.nix
 {
+  inputs,
+  pkgs,
   lib,
   namespace,
   ...
@@ -28,7 +31,11 @@ with lib.${namespace}; {
       spotify = enabled;
       gimp = enabled;
       discord = enabled;
-      doom = enabled;
+      doom = {
+        enable = true;
+        doomDir = inputs."doom-config";
+        emacs = pkgs.emacs;
+      };
     };
     misc = {
       xdg = enabled;

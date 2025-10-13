@@ -1,3 +1,4 @@
+# modules/home/programs/doom/default.nix
 {
   inputs,
   pkgs,
@@ -12,32 +13,32 @@ with lib.${namespace}; let
 in {
   options.${namespace}.programs.doom = with types; {
     enable = mkBoolOpt false "Enable Doom Emacs via Unstraightened.";
-    # Dein Doom-Config-Ordner (init.el, config.el, packages.el)
     doomDir =
       mkOpt (oneOf [
         path
         str
       ])
-      ./dot-doom "Pfad zu deiner Doom-Konfiguration.";
+      ./dot-doom "Pfad zu deiner Doom-Konfiguration (init.el, config.el, packages.el).";
+
+    # <<— nur Package (kein String)
+    emacs = mkOpt types.package pkgs.emacs "Emacs-Paket (z. B. pkgs.emacs oder pkgs.emacs-pgtk).";
   };
 
-  # Upstream HM-Modul (Unstraightened) einbinden
-  imports = [
-    inputs.nix-doom-emacs-unstraightened.homeModule
-  ];
+  imports = [inputs.nix-doom-emacs-unstraightened.homeModule];
 
-  # Minimal: Emacs (mit Doom) aktivieren und auf deine Config zeigen
   config = mkIf cfg.enable {
     programs."doom-emacs" = {
       enable = true;
       doomDir = cfg.doomDir;
-      doomLocalDir = "~/.local/share/doom"; # Upstream verlangt schreibbar
-      emacs = pkgs.emacs-pgtk; # Emacs-Variante
-      provideEmacs = true; # -> starte "emacs" ganz normal
-      # alles andere lassen wir weg
+      doomLocalDir = mkDefault "${config.xdg.dataHome}/doom";
+      provideEmacs = true;
+      emacs = cfg.emacs; # <- direkt das Package aus der Option
     };
 
-    # (optional angenehm)
+    services.emacs = {
+      enable = true;
+    };
+
     fonts.fontconfig.enable = true;
   };
 }
