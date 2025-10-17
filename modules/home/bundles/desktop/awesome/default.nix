@@ -33,7 +33,7 @@ in {
           enable = true;
           suspend = {
             enable = true;
-            secondsToSuspend = 0;
+            secondsToSuspend = 1500;
           };
         };
       };

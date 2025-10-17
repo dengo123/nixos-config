@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/fullscreen.lua
+-- shell/windowing/policie/fullscreen_dim.lua
 local awful = require("awful")
 local wibox = require("wibox")
 local gears = require("gears")
@@ -6,25 +6,23 @@ local beautiful = require("beautiful")
 
 local M = {}
 
--- 95% Schwarz (per Theme überschreibbar): "#000000F2"
+-- 95% Schwarz (per Theme überschreibbar)
 local DIM_BG = beautiful.dim_overlay_bg or "#000000F2"
-
--- Primär-Screen niemals dimmen? (auch wenn Fullscreen woanders ist)
+-- Primär-Screen nie dimmen?
 local NEVER_DIM_PRIMARY = false
 
--- ========= Idle-Inhibit =========
-local inhibit_pid = nil -- PID von systemd-inhibit sleep
-local xset_active = false -- ob wir xset Off/No-DPMS gesetzt haben
+-- State
+local inhibit_pid = nil -- systemd-inhibit sleep PID
+local xset_active = false -- ob xset Off/No-DPMS gesetzt wurde
+local overlays = {} -- screen -> wibox
+local pending_update = nil
 
+-- ===== Idle-Inhibit =========================================================
 local function enable_idle_inhibit()
-	-- Falls bereits aktiv: nix tun
 	if inhibit_pid or xset_active then
 		return
 	end
-
-	-- 1) Try systemd-inhibit (startet einen wachhaltenden Prozess)
 	local ok, pid = pcall(function()
-		-- sleep infinity im Hintergrund halten (wird beim kill beendet)
 		return awful.spawn({
 			"systemd-inhibit",
 			"--what=idle",
@@ -34,39 +32,28 @@ local function enable_idle_inhibit()
 			"infinity",
 		})
 	end)
-
 	if ok and pid then
 		inhibit_pid = pid
 		return
 	end
-
-	-- 2) Fallback: X11 DPMS/Screensaver deaktivieren
-	--  -dpms = DPMS aus, s off = Screensaver aus
 	awful.spawn.easy_async_with_shell("xset -dpms; xset s off", function() end)
 	xset_active = true
 end
 
 local function disable_idle_inhibit()
-	-- systemd-inhibit stoppen
 	if inhibit_pid then
 		pcall(function()
 			awful.spawn({ "kill", "-TERM", tostring(inhibit_pid) })
 		end)
 		inhibit_pid = nil
 	end
-	-- xset zurücksetzen
 	if xset_active then
-		-- DPMS/SS wieder einschalten (Standard)
 		awful.spawn.easy_async_with_shell("xset +dpms; xset s on", function() end)
 		xset_active = false
 	end
 end
 
--- ========= Dim-Overlay =========
--- Wir nutzen bewusst die **volle Screen-Geometrie** (Bars werden mit überdeckt).
--- Kein Resizing – nur einmalig beim Erzeugen.
-local overlays = {} -- screen -> wibox
-
+-- ===== Dim-Overlay ==========================================================
 local function ensure_overlay(s)
 	if overlays[s] and overlays[s].valid then
 		return overlays[s]
@@ -76,14 +63,14 @@ local function ensure_overlay(s)
 		screen = s,
 		visible = false,
 		ontop = true,
-		type = "splash", -- beeinflusst Workarea nicht
+		type = "splash",
 		bg = DIM_BG,
 		x = g.x,
 		y = g.y,
 		width = g.width,
 		height = g.height,
 	})
-	o.input_passthrough = true -- Maus/Keys nicht blocken
+	o.input_passthrough = true
 	overlays[s] = o
 	return o
 end
@@ -96,51 +83,36 @@ local function hide_all()
 	end
 end
 
-local function find_fullscreen_screen()
+-- Liefert: fs_screen, active_dim (true wenn _fullscreen_dim == true)
+local function find_fullscreen_target()
+	-- 1) bevorzugt: fokussierter Client
 	local fc = client.focus
 	if fc and fc.valid and fc.fullscreen then
-		return fc.screen
+		return fc.screen, (fc._fullscreen_dim == true)
 	end
+	-- 2) sonst: irgendein Fullscreen-Client
 	for c in
 		awful.client.iterate(function(x)
 			return x and x.valid and x.fullscreen
 		end)
 	do
-		return c.screen
+		return c.screen, (c._fullscreen_dim == true)
 	end
-	return nil
-end
-
--- Debounce, um nicht bei jedem Mini-Wechsel inhibit an/aus zu feuern
-local pending_update = nil
-local function schedule_update(fn)
-	if pending_update then
-		pending_update:again()
-		return
-	end
-	pending_update = gears.timer({
-		timeout = 0.05,
-		autostart = true,
-		single_shot = true,
-		callback = function()
-			pending_update = nil
-			pcall(fn)
-		end,
-	})
+	return nil, false
 end
 
 local function do_update()
-	local fs_screen = find_fullscreen_screen()
+	local fs_screen, active_dim = find_fullscreen_target()
 
-	-- Idle-Inhibit je nach Fullscreen an/aus
-	if fs_screen then
+	-- Idle-Inhibit abhängig vom active_dim & Fullscreen
+	if fs_screen and active_dim then
 		enable_idle_inhibit()
 	else
 		disable_idle_inhibit()
 	end
 
-	-- Dim-Overlays schalten
-	if not fs_screen then
+	-- Overlays schalten
+	if not fs_screen or not active_dim then
 		hide_all()
 		return
 	end
@@ -153,26 +125,53 @@ local function do_update()
 	end
 end
 
-local function update()
-	schedule_update(do_update)
+local function schedule_update()
+	if pending_update then
+		pending_update:again()
+		return
+	end
+	pending_update = gears.timer({
+		timeout = 0.05,
+		autostart = true,
+		single_shot = true,
+		callback = function()
+			pending_update = nil
+			pcall(do_update)
+		end,
+	})
 end
 
-function M.init()
-	-- Overlays einmalig für alle vorhandenen Screens anlegen
+-- ===== Public API ===========================================================
+function M.init(opts)
+	opts = opts or {}
+	if opts.dim_bg then
+		DIM_BG = opts.dim_bg
+	end
+	if opts.never_dim_primary ~= nil then
+		NEVER_DIM_PRIMARY = opts.never_dim_primary
+	end
+
+	-- Overlays initial erstellen
 	for s in screen do
 		ensure_overlay(s)
 	end
 
-	-- Reagiere nur auf Zustandswechsel, aber **ohne** Resize
-	client.connect_signal("property::fullscreen", update)
-	client.connect_signal("focus", update)
-	client.connect_signal("unmanage", update)
-	tag.connect_signal("property::selected", update)
+	-- Auf State-Änderungen hören
+	client.connect_signal("property::fullscreen", schedule_update)
+	client.connect_signal("focus", schedule_update)
+	client.connect_signal("unmanage", function(c)
+		-- Flag aufräumen, falls gesetzt
+		if c then
+			c._fullscreen_dim = nil
+		end
+		schedule_update()
+	end)
+	tag.connect_signal("property::selected", schedule_update)
 
-	-- Neue/entfernte Screens behandeln (ohne Größenanpassung bestehender)
+	-- Screens
 	screen.connect_signal("added", function(s)
 		ensure_overlay(s)
-		gears.timer.delayed_call(update)
+		gears.timer.delayed_call(schedule_update)
 	end)
 	screen.connect_signal("removed", function(s)
 		local o = overlays[s]
@@ -181,16 +180,16 @@ function M.init()
 			o:remove()
 		end
 		overlays[s] = nil
-		gears.timer.delayed_call(update)
+		gears.timer.delayed_call(schedule_update)
 	end)
 
-	-- Beim Quit sauber aufräumen (Inhibit wieder freigeben)
+	-- Beim Quit sauber aufräumen
 	awesome.connect_signal("exit", function()
 		disable_idle_inhibit()
 	end)
 
-	-- Initial anwenden
-	gears.timer.delayed_call(update)
+	-- Initial
+	gears.timer.delayed_call(schedule_update)
 end
 
 return M

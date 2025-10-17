@@ -1,65 +1,53 @@
--- ~/.config/awesome/input/keys/global/state.lua
 local awful = require("awful")
-local naughty = require("naughty")
-
--- Merker, ob Idle-Dimmen aktuell blockiert ist
-local idle_block = false
-
-local function apply_idle_block(on)
-	if on then
-		awful.spawn.with_shell("xset s off -dpms; xset s noblank")
-	else
-		awful.spawn.with_shell("xset s on +dpms")
-	end
-	idle_block = on
-end
-
-local function suppress_center(sec)
-	awesome.emit_signal("ui::suppress_center", sec or 0.2)
-end
 
 return function(modkey)
 	return awful.util.table.join(
-		-- Mod+F: Fullscreen togglen UND Idle-Dimmen passend setzen
+
+		-- Mod+F: Natives Fullscreen, KEIN Dimmen
 		awful.key({ modkey }, "f", function()
 			local c = client.focus
-			if c then
-				local entering_fullscreen = not c.fullscreen
-				c.fullscreen = entering_fullscreen
-				c:raise()
-
-				-- Beim Eintritt in Fullscreen: Dimmen blockieren; beim Verlassen: wieder erlauben
-				apply_idle_block(entering_fullscreen)
-
-				naughty.notify({
-					title = "Fullscreen & Idle",
-					text = entering_fullscreen and "Fullscreen AN · Idle-Dimmen blockiert"
-						or "Fullscreen AUS · Idle-Dimmen erlaubt",
-					timeout = 2,
-				})
-			else
-				-- Kein fokussiertes Fenster: nur Idle-Block togglen
-				apply_idle_block(not idle_block)
-				naughty.notify({
-					title = "Idle-Dimmen",
-					text = idle_block and "Blockiert" or "Erlaubt",
-					timeout = 2,
-				})
+			if not c then
+				return
 			end
-		end, { description = "toggle fullscreen + idle block", group = "client" }),
+			local entering = not c.fullscreen
+			-- per-Client Flag explizit AUS
+			c._fullscreen_dim = false
+			c.fullscreen = entering
+			c:raise()
+			-- Beim Verlassen Fullscreen Flag weg
+			if not entering then
+				c._fullscreen_dim = nil
+			end
+		end, { description = "toggle fullscreen (native)", group = "client" }),
 
-		-- Mod+m: Minimize / Restore (deins)
+		-- Mod+Shift+F: Fullscreen mit Dim/Inhibit
+		awful.key({ modkey, "Shift" }, "f", function()
+			local c = client.focus
+			if not c then
+				return
+			end
+			local entering = not c.fullscreen
+			-- per-Client Flag explizit AN
+			c._fullscreen_dim = true
+			c.fullscreen = entering
+			c:raise()
+			-- Beim Verlassen Fullscreen Flag weg
+			if not entering then
+				c._fullscreen_dim = nil
+			end
+		end, { description = "toggle fullscreen (dim other screens)", group = "client" }),
+
+		-- ... (deine übrigen Keys: m, t, etc.)
 		awful.key({ modkey }, "m", function()
 			local c = client.focus
 			if c and not c.minimized then
-				suppress_center(0.2)
+				awesome.emit_signal("ui::suppress_center", 0.2)
 				c.minimized = true
 			else
 				awesome.emit_signal("windowing::restore_request", awful.screen.focused())
 			end
 		end, { description = "minimize / restore", group = "client" }),
 
-		-- Mod+t: Floating togglen (deins)
 		awful.key({ modkey }, "t", function()
 			local c = client.focus
 			if c then

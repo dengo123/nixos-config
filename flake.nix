@@ -55,7 +55,7 @@
       snowfall = {
         meta = {
           name = "nixforge";
-          title = "nixforge – In the crucible of code, systems awaken";
+          title = "The NixForge – In the crucible of code, systems awaken";
         };
         namespace = "nixforge";
       };

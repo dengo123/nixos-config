@@ -32,6 +32,10 @@ in {
       unrar
       unzip
       zip
+      appimage-run
+      fuse
+      libayatana-appindicator
+      libappindicator-gtk3
 
       bitwarden
       fastfetch
