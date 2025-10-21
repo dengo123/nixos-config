@@ -1,3 +1,4 @@
+# modules/home/bundles/terminal/default.nix
 {
   lib,
   config,
@@ -27,7 +28,20 @@ in {
     (mkIf (cfg.emulator == "wezterm") {${namespace}.programs.wezterm.enable = true;})
     (mkIf (cfg.emulator == "ghostty") {${namespace}.programs.ghostty.enable = true;})
 
-    # Fallback: nichts gewählt → xterm als Paket
-    (mkIf (cfg.emulator == null) {home.packages = [pkgs.xterm];})
+    (mkIf (cfg.emulator == null) {
+      home.packages = [pkgs.xterm];
+    })
+
+    {
+      ${namespace}.programs.btop = enabled;
+
+      home.packages = with pkgs; [
+        coreutils
+        killall
+        tldr
+        wget
+        ripgrep
+      ];
+    }
   ]);
 }

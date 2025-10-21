@@ -15,14 +15,6 @@ in {
 
   config = mkIf cfg.enable {
     home.packages = with pkgs; [
-      # Terminal
-      btop
-      coreutils
-      killall
-      tldr
-      wget
-      ripgrep
-
       # Video/Audio
       celluloid
       loupe
@@ -42,13 +34,8 @@ in {
 
       # Config formatting
       nixfmt-rfc-style
-
-      firefox
     ];
     nixforge = {
-      config = {
-        apps = enabled;
-      };
       misc = {
         scripts = enabled;
       };
