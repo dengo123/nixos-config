@@ -27,7 +27,6 @@ in {
       # Lua
       lua-language-server
       stylua
-      luacheck
       # Nix
       nixd
       alejandra

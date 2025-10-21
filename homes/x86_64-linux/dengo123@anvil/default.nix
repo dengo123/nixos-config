@@ -15,6 +15,8 @@ with lib.${namespace}; {
       common = enabled;
       shell = enabled;
       office = enabled;
+      development = enabled;
+      terminal.emulator = "kitty";
 
       desktop = {
         awesome = enabled;
@@ -48,7 +50,9 @@ with lib.${namespace}; {
       };
     };
   };
-
+  home.sessionVariables = {
+    EDITOR = "nvim";
+  };
   # This value determines the Home Manager release that your
   # configuration is compatible with. This helps avoid breakage
   # when a new Home Manager release introduces backwards

@@ -52,9 +52,6 @@ in {
       misc = {
         scripts = enabled;
       };
-      programs = {
-        zen = enabled;
-      };
     };
   };
 }

@@ -20,8 +20,7 @@ in {
       backupFileExtension = "backup"; # <- korrekt global gesetzt
     };
 
-    snowfallorg.users.${config.${namespace}.config.user.name}.home.config =
-      cfg.extraOptions;
+    snowfallorg.users.${config.${namespace}.config.user.name}.home.config = cfg.extraOptions;
 
     systemd.services.cleanup-home-manager-backups = {
       description = "Clean up old .backup files before Home Manager runs";
@@ -30,9 +29,13 @@ in {
 
       serviceConfig = {
         Type = "oneshot";
-        ExecStart = lib.mkForce (pkgs.writeShellScript "cleanup-hm-backups" ''
-          find "${config.users.users.${config.${namespace}.config.user.name}.home}" -type f -name '*.backup' -delete
-        '');
+        ExecStart = lib.mkForce (
+          pkgs.writeShellScript "cleanup-hm-backups" ''
+            find "${
+              config.users.users.${config.${namespace}.config.user.name}.home
+            }" -type f -name '*.backup' -delete
+          ''
+        );
       };
     };
   };

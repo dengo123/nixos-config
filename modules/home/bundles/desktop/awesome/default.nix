@@ -42,7 +42,6 @@ in {
           enable = true;
           withBundle = false;
         };
-        kitty = enabled;
       };
     };
 

@@ -1,13 +1,11 @@
 {
   lib,
   config,
-  pkgs,
   namespace,
-  osConfig ? { },
   ...
-}:
-let
-  inherit (lib)
+}: let
+  inherit
+    (lib)
     types
     mkIf
     mkDefault
@@ -17,15 +15,19 @@ let
 
   cfg = config.${namespace}.config.user;
 
-  home-directory = if cfg.name == null then null else "/home/${cfg.name}";
-in
-{
+  home-directory =
+    if cfg.name == null
+    then null
+    else "/home/${cfg.name}";
+in {
   options.${namespace}.config.user = {
     enable = mkOpt types.bool true "Whether to configure the user account.";
-    name = mkOpt (types.nullOr types.str) (config.snowfallorg.user.name or "ryan") "The user account.";
+    name = mkOpt (types.nullOr types.str) (
+      config.snowfallorg.user.name or "dengo123"
+    ) "The user account.";
 
-    fullName = mkOpt types.str "Ryan Wüest" "The full name of the user.";
-    email = mkOpt types.str "ryan.wueest@protonmail.com" "The email of the user.";
+    fullName = mkOpt types.str "Deniz Altiok" "The full name of the user.";
+    email = mkOpt types.str "deniz060198@hotmail.com" "The email of the user.";
 
     home = mkOpt (types.nullOr types.str) home-directory "The user's home directory.";
   };
