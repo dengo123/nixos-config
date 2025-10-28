@@ -31,8 +31,8 @@ in {
       services = {
         security = {
           allowPowerActions = true;
-          allowSuspendLock = true;
-          greeterAfterResume = true;
+          allowSleepActions = true;
+          greeterAfterResume = false;
         };
         printing = enabled;
         tailscale = enabled;

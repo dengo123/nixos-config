@@ -6,9 +6,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.bundles.desktop.awesome;
-in {
+in
+{
   options.${namespace}.bundles.desktop.awesome = with types; {
     enable = mkBoolOpt false "Whether or not to enable desktop awesome bundle configuration.";
   };
@@ -35,6 +37,10 @@ in {
             enable = true;
             secondsToSuspend = 1500;
           };
+        };
+        redshift = {
+          emnable = true;
+          provider = "geoclue2";
         };
       };
       programs = {
