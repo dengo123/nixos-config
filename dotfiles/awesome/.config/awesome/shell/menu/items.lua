@@ -13,15 +13,55 @@ function Items.build_start(ctx)
 		return items
 	end
 
-	local launcher_cmd = (cfg and type(cfg.launcher) == "string" and #cfg.launcher > 0) and cfg.launcher
-		or "rofi -show drun"
+	-- helpers
+	local function spawn_cmd(cmd)
+		if type(cmd) == "table" then
+			awful.spawn(cmd)
+		elseif type(cmd) == "string" then
+			if cmd:find("||") or cmd:find("~") then
+				awful.spawn.with_shell(cmd)
+			else
+				awful.spawn(cmd)
+			end
+		end
+	end
+
+	local function first_token(x)
+		if type(x) == "table" then
+			return x[1]
+		elseif type(x) == "string" then
+			return x:match("^(%S+)")
+		end
+	end
+
+	local function cmd_exists(x)
+		local exe = first_token(x)
+		if not exe or #exe == 0 then
+			return false
+		end
+		local h = io.popen("command -v " .. exe .. ' >/dev/null 2>&1; printf %s "$?"')
+		if not h then
+			return false
+		end
+		local rc = h:read("*a")
+		h:close()
+		return rc == "0"
+	end
+
+	-- cfg defaults
 	local files_cmd = (cfg and cfg.files_cmd and #cfg.files_cmd > 0) and cfg.files_cmd or "nemo"
+	local term = (cfg and cfg.terminal) or "xterm"
+	local emacs_client = (cfg and cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
+
+	-- dynamic label + action: prefer terminal, fall back to emacsclient
+	local term_is_available = cmd_exists(term)
+	local term_label = term_is_available and ("terminal (" .. (first_token(term) or "…") .. ")") or "emacs client"
 
 	return {
 		{
 			"files",
 			function()
-				awful.spawn.with_shell(files_cmd)
+				spawn_cmd(files_cmd)
 			end,
 		},
 		{
@@ -30,12 +70,18 @@ function Items.build_start(ctx)
 				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
+
 		{
-			"launcher",
+			term_label,
 			function()
-				awful.spawn.with_shell(launcher_cmd)
+				if term_is_available then
+					spawn_cmd(term)
+				else
+					spawn_cmd(emacs_client)
+				end
 			end,
 		},
+
 		{
 			"run",
 			function()
@@ -49,7 +95,6 @@ function Items.build_start(ctx)
 				awful.spawn.with_shell("xscreensaver-settings")
 			end,
 		},
-
 		{
 			"reload",
 			function()
@@ -72,21 +117,56 @@ function Items.build_start(ctx)
 	}
 end
 
+-- Kontextmenü für Tabs: Close / Float-Tile / Fullscreen
 function Items.build_clients(clients, _ctx)
-	local items = {}
-	for _, c in ipairs(clients or {}) do
-		local label = c.name or c.class or "App"
-		table.insert(items, {
-			label,
+	local c = nil
+	for _, cc in ipairs(clients or {}) do
+		if cc and cc.valid then
+			c = cc
+			break
+		end
+	end
+
+	if not c then
+		return {}
+	end
+
+	return {
+		{
+			"Schließen",
 			function()
 				if c.valid then
-					c:emit_signal("request::activate", "group_menu", { raise = true })
+					c:kill()
 				end
 			end,
 			c.icon,
-		})
-	end
-	return items
+		},
+		{
+			"Floating / Tiling",
+			function()
+				if not c.valid then
+					return
+				end
+				c.floating = not c.floating
+				if not c.floating then
+					-- zurück in Tile-Hierarchie
+					awful.client.setslave(c)
+				end
+			end,
+			c.icon,
+		},
+		{
+			"Fullscreen",
+			function()
+				if not c.valid then
+					return
+				end
+				c.fullscreen = not c.fullscreen
+				c:raise()
+			end,
+			c.icon,
+		},
+	}
 end
 
 return Items

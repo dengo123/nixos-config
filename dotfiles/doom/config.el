@@ -1,52 +1,96 @@
-;;; config.el -*- lexical-binding: t; -*-
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
-;; Allgemeines
+;; ── User / UI ─────────────────────────────────────────────────────────────────
 (setq user-full-name "Deniz"
       user-mail-address "deniz@example.com")
 
-;; Fonts & Theme
-(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 12)
-      doom-variable-pitch-font (font-spec :family "Inter" :size 13))
-(setq doom-theme 'doom-one) ; später gern dein “Luna Blue”-Theme nachziehen
+(setq doom-theme 'doom-one
+      display-line-numbers-type 'relative)   ; 't oder 'relative
 
-;; UI
-(setq display-line-numbers-type 'relative) ; 't oder 'relative oder nil
-(menu-bar-mode -1) (tool-bar-mode -1) (scroll-bar-mode -1)
+;; Fonts (pass bei Bedarf an)
+(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
+      doom-variable-pitch-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
+      ;; optional, aber hilfreich für spezielle Icons:
+      doom-symbol-font (font-spec :family "Symbols Nerd Font Mono" :size 14))
 
-;; Dateien, Backup, Autosave (halt es schlank)
-(setq make-backup-files nil
-      auto-save-default t
-      create-lockfiles nil)
-
-;; Projekt-Root & Suche
-(after! projectile
-  (setq projectile-project-search-path '("~/code" "~/projects")
-        projectile-indexing-method 'alien
-        projectile-enable-caching t))
-
-;; LSP
-(after! lsp-mode
-  (setq lsp-enable-symbol-highlighting t
-        lsp-headerline-breadcrumb-enable t
-        lsp-idle-delay 0.3
-        lsp-log-io nil))
-
-;; Format-on-save für unterstützte Sprachen
-(add-hook 'before-save-hook #'+format/buffer)
-
-;; Org (leichtgewichtig vorbelegt)
-(setq org-directory (expand-file-name "~/org/")
+;; ── Org ──────────────────────────────────────────────────────────────────────
+(setq org-directory "~/org/"
       org-agenda-files (list (expand-file-name "agenda.org" org-directory))
       org-ellipsis " ▾ ")
 
-;; Keybindings (Beispiele)
+;; ── Projekte / Workspaces ────────────────────────────────────────────────────
+;; Suchpfade für Projectile / project.el (je nachdem, was du nutzt)
+(setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
+(setq +workspaces-on-switch-project-behavior 'workspaces
+      +workspaces-auto-save t)
+
+;; ── Treemacs / Dired Convenience ─────────────────────────────────────────────
+;; Toggle-Key für Treemacs (falls aktiv)
+(map! :leader :desc "Toggle treemacs" "t t" #'+treemacs/toggle)
+;; Dired: hjkl-Navigation (optional, falls du das magst)
+(with-eval-after-load 'dired
+  (map! :map dired-mode-map
+        :n "h" #'dired-up-directory
+        :n "l" #'dired-find-file))
+
+;; ── LSP / Tree-sitter / Format ───────────────────────────────────────────────
+;; Du hast :tools (lsp) + :editor (format +onsave) + :tools tree-sitter
+(after! lsp-mode
+  (setq lsp-headerline-breadcrumb-enable t
+        lsp-lens-enable t
+        lsp-inlay-hints-enable t
+        lsp-idle-delay 0.25
+        lsp-log-io nil))
+
+;; On-save-Formatter (Doom builtin). Wähle, ob per LSP oder externe Tools.
+(setq +format-with-lsp t) ; starte simpel: LSP erledigt das Format
+;; Begrenze, wo auto-format wirklich laufen soll:
+(setq +format-on-save-enabled-modes
+      '(lua-mode nix-mode python-mode json-mode yaml-mode sh-mode))
+
+;; Tree-sitter: bevorzugte Major-Modes (abhängig von Doom-Version)
+(setq treesit-font-lock-level 4)
+
+;; ── Direnv (für Nix- / devShells) ────────────────────────────────────────────
+;; Aktiv: :tools direnv (Modul)
+;; Keine Extra-Config nötig, aber falls du Probleme mit env hast:
+;; (setq direnv-always-show-summary t)
+
+;; ── Terminals ────────────────────────────────────────────────────────────────
+;; vterm Quick-Access
+(map! :leader :desc "vterm" "o t" #'vterm)
+
+;; ── Completion QoL (corfu + orderless, vertico) ──────────────────────────────
+;; Orderless Feinheiten
+(with-eval-after-load 'orderless
+  ;; mache „space = AND“ passender:
+  (setq orderless-component-separator #'orderless-escapable-split-on-space))
+
+;; ── Git / Magit ──────────────────────────────────────────────────────────────
+(map! :leader :desc "Magit status" "g g" #'magit-status)
+
+;; ── Spell (du hast :checkers (spell +flyspell) aktiv) ────────────────────────
+;; Wähle deine Wörterbuchsprache/n:
+;; (setq ispell-dictionary "de_DE") ; oder "en_US"
+;; (add-hook 'text-mode-hook #'flyspell-mode)
+;; (add-hook 'prog-mode-hook #'flyspell-prog-mode)
+
+;; ── Eigene Helfer laden (für projekt-spezifische Minor-Modes etc.) ──────────
+;; Lege deine .el-Dateien in $DOOMDIR/lisp/ und aktiviere sie per .dir-locals.el
+(add-to-list 'load-path (expand-file-name "lisp" doom-user-dir))
+
+;; Beispiel: Awesome-Auto-Reload wird per .dir-locals.el im Awesome-Projekt aktiviert:
+;; ~/.config/awesome/.dir-locals.el:
+;; ((lua-mode . ((eval . (progn (require 'awesome-dev)
+;;                              (awesome-dev-mode 1))))))
+
+;; ── Kleine Leader-Shortcuts, die du sicher nutzt ─────────────────────────────
 (map! :leader
-      :desc "Project find file" "p f" #'projectile-find-file
-      :desc "Toggle treemacs"  "t t" #'+treemacs/toggle)
+      :desc "Project file"  "p f" #'project-find-file
+      :desc "Ripgrep"       "s s" #'consult-ripgrep
+      :desc "Switch buffer" "b b" #'switch-to-buffer)
 
-;; Custom file nicht im Store überschreiben
-(setq custom-file (expand-file-name "custom.el" doom-user-dir))
-(when (file-exists-p custom-file) (load custom-file nil t))
-
-;; eigene elisp laden
-(add-to-list 'load-path (expand-user-file "lisp" doom-user-dir))
+;; ── Optional: Sprache-spezifisches Feintuning ────────────────────────────────
+;; Python: black/ruff on-save lieber via LSP? (+format-with-lsp t oben reicht oft)
+;; Lua: stylua via LSP-Server, oder extern falls du später Apheleia nutzt.
+;; Nix: nixd (oder nil) – du hast (nix +lsp) aktiv.

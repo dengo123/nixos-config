@@ -32,16 +32,5 @@ in {
       home.packages = [pkgs.xterm];
     })
 
-    {
-      ${namespace}.programs.btop = enabled;
-
-      home.packages = with pkgs; [
-        coreutils
-        killall
-        tldr
-        wget
-        ripgrep
-      ];
-    }
   ]);
 }

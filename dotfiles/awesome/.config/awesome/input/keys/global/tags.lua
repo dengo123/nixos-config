@@ -18,6 +18,50 @@ return function(modkey)
 			H.view_tag_idx(-1)
 		end, { description = "prev tag (on screen)", group = "tag" }),
 
+		-- Aktuellen Tag in der Liste verschieben (Reihenfolge auf dem Screen)
+		awful.key({ modkey, "Control" }, "Up", function()
+			kbd_intent()
+			local s = awful.screen.focused()
+			if not s then
+				return
+			end
+			local t = s.selected_tag
+			if not t then
+				return
+			end
+
+			local idx = t.index or 1
+			if idx <= 1 then
+				return
+			end
+
+			-- Tag eine Position nach oben schieben
+			awful.tag.move(idx - 1, t)
+			awful.tag.viewonly(t) -- sicherstellen, dass wir auf dem Tag bleiben
+		end, { description = "move current tag up in list", group = "tag" }),
+
+		awful.key({ modkey, "Control" }, "Down", function()
+			kbd_intent()
+			local s = awful.screen.focused()
+			if not s then
+				return
+			end
+			local t = s.selected_tag
+			if not t then
+				return
+			end
+
+			local idx = t.index or 1
+			local all = s.tags or {}
+			if idx >= #all then
+				return
+			end
+
+			-- Tag eine Position nach unten schieben
+			awful.tag.move(idx + 1, t)
+			awful.tag.viewonly(t)
+		end, { description = "move current tag down in list", group = "tag" }),
+
 		-- Tag verschieben (Screen)
 		awful.key({ modkey, "Control", "Mod1" }, "Left", function()
 			kbd_intent()

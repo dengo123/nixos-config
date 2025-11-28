@@ -26,7 +26,7 @@ in {
       # Core Virtualisation Tools
       qemu_kvm
       libvirt
-      win-virtio
+      virtio-win
 
       # CLI Helpers
       dmidecode

@@ -1,4 +1,5 @@
-# modules/home/programs/nixvim/default.nix
+# mod bules/home/programs/nixvim/default.nix
+#  b 
 {
   inputs,
   pkgs,
@@ -24,7 +25,7 @@ in {
     {
       programs.nixvim = {
         enable = true;
-        defaultEditor = true;
+        # defaultEditor = true;
         viAlias = true;
         vimAlias = true;
         extraPackages = with pkgs; [wl-clipboard];

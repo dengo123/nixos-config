@@ -21,6 +21,6 @@ in {
       alsa.support32Bit = true;
       pulse.enable = true;
     };
-    environment.systemPackages = mkIf cfg.trayApplet [pkgs.pasystray];
+    environment.systemPackages = with pkgs; [ pulseaudio pavucontrol ];
   };
 }

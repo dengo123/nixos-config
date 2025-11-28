@@ -176,8 +176,12 @@ function M.init(opts)
 	screen.connect_signal("removed", function(s)
 		local o = overlays[s]
 		if o and o.valid then
+			-- Just hide it; no :remove() on wibox
 			o.visible = false
-			o:remove()
+			-- Optionally clear its widget tree to free resources sooner:
+			pcall(function()
+				o:setup(nil)
+			end)
 		end
 		overlays[s] = nil
 		gears.timer.delayed_call(schedule_update)

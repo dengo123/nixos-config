@@ -7,16 +7,19 @@
   ...
 }:
 with lib;
-with lib.${namespace}; {
+with lib.${namespace};
+{
   snowfallorg.user.enable = true;
 
   nixforge = {
     bundles = {
       common = enabled;
-      shell = enabled;
       office = enabled;
       development = enabled;
-      terminal.emulator = "kitty";
+      shell.mode = "full";
+      terminal = disabled;
+      # terminal.emulator = "kitty";
+      # browser.app = "zen";
 
       desktop = {
         awesome = enabled;
@@ -51,7 +54,9 @@ with lib.${namespace}; {
     };
   };
   home.sessionVariables = {
-    EDITOR = "nvim";
+    EDITOR = "emacs";
+    VISUAL = "emacsclient -c -a emacs";
+    # BROWSER = "zen";
   };
   # This value determines the Home Manager release that your
   # configuration is compatible with. This helps avoid breakage

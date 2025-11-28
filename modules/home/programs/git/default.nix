@@ -20,9 +20,10 @@ in {
       enable = true;
       delta = enabled;
       lfs = enabled;
-
-      userName = mkDefault (cfg.username or userCfg.fullName);
-      userEmail = mkDefault (cfg.useremail or userCfg.email);
+      settings.user = {
+        name = mkDefault (userCfg.name);
+        email = mkDefault (userCfg.email);
+      };
 
       extraConfig = {
         pull.rebase = true;

@@ -1,4 +1,5 @@
 -- ~/.config/awesome/shell/bar/widgets/tags.lua
+local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
@@ -42,7 +43,7 @@ function M.build(s, opts)
 		text.text = ""
 		indicator.left, indicator.right = collapsed_pad_h, collapsed_pad_h
 		indicator.top, indicator.bottom = pad_v, pad_v
-		indicator.forced_width = 2 * collapsed_pad_h -- << Schlüssel!
+		indicator.forced_width = 2 * collapsed_pad_h
 		indicator.visible = true
 	end
 
@@ -68,12 +69,23 @@ function M.build(s, opts)
 
 	refresh()
 
+	-- Tag-Änderungen -> Anzeige aktualisieren
 	awful.tag.attached_connect_signal(s, "property::selected", refresh)
 	awful.tag.attached_connect_signal(s, "property::name", refresh)
 	awful.tag.attached_connect_signal(s, "tagged", refresh)
 	awful.tag.attached_connect_signal(s, "untagged", refresh)
 	awful.tag.attached_connect_signal(s, "property::activated", refresh)
 	s:connect_signal("tag::history::update", refresh)
+
+	-- Scrollen über dem Indicator: Tags vor/zurück
+	indicator:buttons(gears.table.join(
+		awful.button({}, 4, function()
+			awful.tag.viewnext(s)
+		end),
+		awful.button({}, 5, function()
+			awful.tag.viewprev(s)
+		end)
+	))
 
 	return { indicator = indicator }
 end

@@ -19,6 +19,7 @@ in {
       settings = {
         client_id = "042e17bf925744edb90d80b4b045ceb7";
         login_redirect_uri = "http://127.0.0.1:8989/login";
+        audio_backend = "pulseaudio";
       };
     };
     home.packages = with pkgs; [cava];

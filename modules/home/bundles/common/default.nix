@@ -29,7 +29,7 @@ in {
       libayatana-appindicator
       libappindicator-gtk3
 
-      bitwarden
+      bitwarden-desktop
       fastfetch
 
       # Config formatting

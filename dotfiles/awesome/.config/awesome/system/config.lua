@@ -1,16 +1,17 @@
 -- ~/.config/awesome/system/config.lua
 return {
-	-- Basis
-	terminal = "kitty",
+	terminal = os.getenv("TERMINAL") or "kitty",
 	editor = os.getenv("EDITOR") or "nano",
 	modkey = "Mod4",
-	theme = "default/theme.lua", -- oder absoluter Pfad zu deinem Theme
+	theme = "default/theme.lua",
 
-	-- Ausgelagerte App-Commands
-	launcher = nil, -- z.B. rofi, fuzzel, bemenu ...
-	browser = "firefox", -- oder "librewolf", "chromium", ...
-	files = "nemo || xdg-open ~", -- Dateimanager Fallback
+	launcher = nil,
+	browser = os.getenv("BROWSER") or "firefox",
+	files = "nemo || xdg-open ~",
 
-	workspaces = "core", -- "core || sync"
-	tabs = "single", -- "single || group"
+	emacs = {
+		client = { "emacsclient", "-c", "-a", "" }, -- -a "" startet Emacs, falls kein Server läuft
+	},
+
+	workspaces = "core",
 }

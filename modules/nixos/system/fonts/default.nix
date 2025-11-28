@@ -22,7 +22,7 @@ in {
         ++ [
           pkgs.noto-fonts
           pkgs.noto-fonts-cjk-sans
-          pkgs.noto-fonts-emoji
+          pkgs.noto-fonts-color-emoji
           pkgs.inter
 
           pkgs.nerd-fonts.fira-code

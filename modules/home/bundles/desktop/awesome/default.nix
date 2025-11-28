@@ -39,8 +39,10 @@ in
           };
         };
         redshift = {
-          emnable = true;
-          provider = "geoclue2";
+          enable = true;
+          provider = "manual";
+          latitude = 50.1;
+          longitude = 8.6;
         };
       };
       programs = {

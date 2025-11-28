@@ -4,8 +4,6 @@ local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 
-local MinStack = require("shell.windowing.policies.minimize")
-
 local B = {}
 
 -- Titlebar-Assets (nur hier benötigt)
@@ -139,7 +137,6 @@ function B.build_buttons(c, style)
 		on_click = function()
 			suppress_center(0.2) -- 200ms: Cursor-Zentrierung aus
 			local nextc = pick_next_focus(c)
-			MinStack.push(c)
 			c.minimized = true
 			if nextc and nextc.valid then
 				client.focus = nextc

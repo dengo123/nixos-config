@@ -12,7 +12,6 @@ local Policies = {
 	rules = safe_require("shell.windowing.policies.rules"),
 	focus = safe_require("shell.windowing.policies.focus"),
 	gaps = safe_require("shell.windowing.policies.gaps"),
-	minimize_stack = safe_require("shell.windowing.policies.minimize"),
 	fullscreen_dim = safe_require("shell.windowing.policies.fullscreen_dim"),
 }
 

@@ -7,14 +7,16 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.misc.gtk;
 
   # Icon-Paket + Name
   iconPkg =
-    if cfg.iconTheme == "Papirus-Light" || cfg.iconTheme == "Papirus-Dark"
-    then pkgs.papirus-icon-theme
-    else pkgs.adwaita-icon-theme;
+    if cfg.iconTheme == "Papirus-Light" || cfg.iconTheme == "Papirus-Dark" then
+      pkgs.papirus-icon-theme
+    else
+      pkgs.adwaita-icon-theme;
 
   iconName = cfg.iconTheme; # exakt "Adwaita", "Papirus-Light" oder "Papirus-Dark"
 
@@ -25,7 +27,8 @@ with lib.${namespace}; let
 
   # einfache helle Palette (anpassbar über Optionen)
   palette = cfg.palette;
-in {
+in
+{
   options.${namespace}.misc.gtk = with types; {
     enable = mkBoolOpt false "Enable GTK theming (light) with Bibata cursor and Intel One Mono.";
 
@@ -41,31 +44,31 @@ in {
     # einfache Farbpalette für gtk.css (wird auf GTK3/4 angewendet)
     palette =
       mkOpt
-      (types.submodule {
-        options = {
-          base = mkOpt types.str "#FAFAFC" "Base window background.";
-          text = mkOpt types.str "#1E1E1E" "Primary text color.";
-          accent = mkOpt types.str "#2A7FFF" "Accent color (buttons, links).";
-          accentText = mkOpt types.str "#FFFFFF" "Text color on accent bg.";
-          header = mkOpt types.str "#E9EEF7" "Headerbar background.";
-          headerText = mkOpt types.str "#1A1A1A" "Headerbar text color.";
-          selection = mkOpt types.str "#CCE0FF" "Selection background.";
-          selectionText = mkOpt types.str "#0B0B0B" "Selection text color.";
-          border = mkOpt types.str "#C9CED6" "Thin border color.";
-        };
-      })
-      {
-        base = "#FAFAFC";
-        text = "#1E1E1E";
-        accent = "#2A7FFF";
-        accentText = "#FFFFFF";
-        header = "#E9EEF7";
-        headerText = "#1A1A1A";
-        selection = "#CCE0FF";
-        selectionText = "#0B0B0B";
-        border = "#C9CED6";
-      }
-      "Simple light palette used by gtk.css.";
+        (types.submodule {
+          options = {
+            base = mkOpt types.str "#FAFAFC" "Base window background.";
+            text = mkOpt types.str "#1E1E1E" "Primary text color.";
+            accent = mkOpt types.str "#2A7FFF" "Accent color (buttons, links).";
+            accentText = mkOpt types.str "#FFFFFF" "Text color on accent bg.";
+            header = mkOpt types.str "#E9EEF7" "Headerbar background.";
+            headerText = mkOpt types.str "#1A1A1A" "Headerbar text color.";
+            selection = mkOpt types.str "#CCE0FF" "Selection background.";
+            selectionText = mkOpt types.str "#0B0B0B" "Selection text color.";
+            border = mkOpt types.str "#C9CED6" "Thin border color.";
+          };
+        })
+        {
+          base = "#FAFAFC";
+          text = "#1E1E1E";
+          accent = "#2A7FFF";
+          accentText = "#FFFFFF";
+          header = "#E9EEF7";
+          headerText = "#1A1A1A";
+          selection = "#CCE0FF";
+          selectionText = "#0B0B0B";
+          border = "#C9CED6";
+        }
+        "Simple light palette used by gtk.css.";
   };
 
   config = mkIf cfg.enable {
@@ -145,9 +148,20 @@ in {
         color: @theme_fg_color;
         border-color: @borders;
       }
+
+      /* >>> NEU: Tooltips lesbar machen <<< */
+      tooltip,
+      .tooltip,
+      #gtk-tooltip-window {
+        background-color: @headerbar_bg_color;
+        color: @theme_fg_color;
+        border: 1px solid @borders;
+      }
+      tooltip * {
+        color: @theme_fg_color;
+      }
     '';
 
-    # GTK4 CSS – ähnliche Farben
     xdg.configFile."gtk-4.0/gtk.css".text = ''
       @define-color theme_bg_color        ${palette.base};
       @define-color theme_fg_color        ${palette.text};
@@ -178,6 +192,18 @@ in {
         color: @theme_fg_color;
         border: 1px solid @borders;
       }
+
+      /* >>> NEU: Tooltips für GTK4 <<< */
+      tooltip,
+      .tooltip {
+        background-color: @headerbar_bg_color;
+        color: @theme_fg_color;
+        border: 1px solid @borders;
+      }
+      tooltip * {
+        color: @theme_fg_color;
+      }
+
       :root { color-scheme: only light; }
     '';
   };

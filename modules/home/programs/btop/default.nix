@@ -5,9 +5,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.programs.btop;
-in {
+in
+{
   options.${namespace}.programs.btop = with types; {
     enable = mkBoolOpt false "Enable btop";
   };
@@ -17,6 +19,8 @@ in {
       enable = true;
       settings = {
         vim_keys = true;
+        theme_background = false;
+        graph_symbol = "block";
       };
     };
   };
