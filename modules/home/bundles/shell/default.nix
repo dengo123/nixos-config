@@ -14,14 +14,19 @@ in
 {
   options.${namespace}.bundles.shell = with types; {
     enable = mkBoolOpt true "Enable shell bundle.";
-    mode = mkOpt (types.enum [
-      "full"
-      "lite"
-    ]) "full" "Select shell bundle mode: 'full' (alles) oder 'lite' (nur zsh + Zusatzpakete).";
+    mode =
+      mkOpt
+        (types.enum [
+          "full"
+          "emacs"
+          "lite"
+        ])
+        "full"
+        "Select shell bundle mode: 'full' (alles), 'emacs' (nur für vterm nötig) oder 'lite' (nur zsh + Zusatzpakete).";
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # Gemeinsame Zusatzpakete (in beiden Modi)
+    # Gemeinsame Zusatzpakete (in allen Modi)
     {
       home.packages = with pkgs; [
         coreutils
@@ -43,6 +48,17 @@ in
         tmux = enabled;
         yazi = enabled;
         zoxide = enabled;
+        zsh = enabled;
+      };
+    })
+
+    # EMACS: nur für vterm nötig (rest über emacs)
+    (mkIf (cfg.mode == "emacs") {
+      ${namespace}.programs = {
+        atuin = enabled;
+        btop = enabled;
+        eza = enabled;
+        starship = enabled;
         zsh = enabled;
       };
     })

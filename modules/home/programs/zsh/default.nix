@@ -5,11 +5,13 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.programs.zsh;
   aliases = import ./config/aliases.nix;
   syntaxStyles = import ./config/syntax-style.nix;
-in {
+in
+{
   options.${namespace}.programs.zsh.enable = mkBoolOpt false "Enable Zsh";
 
   config = mkIf cfg.enable {
@@ -20,7 +22,7 @@ in {
         enable = true;
         highlight = "fg=green";
       };
-      defaultKeymap = "emacs";
+      defaultKeymap = "vicmd";
       historySubstringSearch.enable = true;
       syntaxHighlighting = {
         enable = true;

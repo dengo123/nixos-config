@@ -16,7 +16,7 @@ with lib.${namespace};
       common = enabled;
       office = enabled;
       development = enabled;
-      shell.mode = "full";
+      shell.mode = "emacs"; # full/emacs/lite
       terminal = disabled;
       # terminal.emulator = "kitty";
       # browser.app = "zen";

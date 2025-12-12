@@ -6,9 +6,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.bundles.development;
-in {
+in
+{
   options.${namespace}.bundles.development = with types; {
     enable = mkBoolOpt false "Enable development bundle";
   };
@@ -17,7 +19,6 @@ in {
     home.packages = with pkgs; [
       clang-tools
       cmake
-      python3
       devenv
       # Essentials
       git
@@ -31,6 +32,7 @@ in {
       nixd
       alejandra
       # Python
+      python3
       pyright
       black
       ruff

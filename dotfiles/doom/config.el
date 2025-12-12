@@ -2,7 +2,7 @@
 
 ;; ── User / UI ─────────────────────────────────────────────────────────────────
 (setq user-full-name "Deniz"
-      user-mail-address "deniz@example.com")
+      user-mail-address "deniz060198@hotmail.com")
 
 (setq doom-theme 'doom-one
       display-line-numbers-type 'relative)   ; 't oder 'relative
@@ -23,6 +23,14 @@
 (setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
 (setq +workspaces-on-switch-project-behavior 'workspaces
       +workspaces-auto-save t)
+
+;; ── Consult-Dir ──────────────────────────────────────────────────────────────
+(use-package! consult-dir
+  :commands (consult-dir)
+  :init
+  (map! :leader
+        :desc "Jump to dir (consult-dir)"
+        "f d" #'consult-dir))
 
 ;; ── Treemacs / Dired Convenience ─────────────────────────────────────────────
 ;; Toggle-Key für Treemacs (falls aktiv)
@@ -59,6 +67,13 @@
 ;; ── Terminals ────────────────────────────────────────────────────────────────
 ;; vterm Quick-Access
 (map! :leader :desc "vterm" "o t" #'vterm)
+;; vterm soll sich wie ein normales Terminal verhalten, ohne Evil-Normal-Mode
+(with-eval-after-load 'vterm
+  ;; alle neuen vterm-Buffer starten im Emacs-State
+  (evil-set-initial-state 'vterm-mode 'emacs)
+
+  ;; falls du schon in einem vterm bist und es ändern willst:
+  (add-hook 'vterm-mode-hook #'evil-emacs-state))
 
 ;; ── Completion QoL (corfu + orderless, vertico) ──────────────────────────────
 ;; Orderless Feinheiten

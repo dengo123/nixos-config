@@ -9,6 +9,8 @@
 ;;
 ;; Use 'C-h f package\!' to look up documentation for the `package!' macro.
 
+;; Consult-Dir
+(package! consult-dir)
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;; (package! some-package)

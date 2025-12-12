@@ -6,16 +6,23 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.services.ollama;
-in {
+in
+{
   options.${namespace}.services.ollama = {
     enable = mkBoolOpt false "Enable the Ollama service.";
-    acceleration = mkOption {
-      type = types.enum ["cuda" "rocm" "cpu"];
-      default = "cuda";
-      description = "Acceleration backend to use (e.g. CUDA for NVIDIA GPUs).";
-    };
+
+    package = mkOpt types.package pkgs.ollama ''
+      The Ollama package to use, e.g.:
+        pkgs.ollama
+        pkgs.ollama-cuda
+        pkgs.ollama-rocm
+        pkgs.ollama-vulkan
+        pkgs.ollama-cpu
+    '';
+
     port = mkOption {
       type = types.port;
       default = 11434;
@@ -26,10 +33,9 @@ in {
   config = mkIf cfg.enable {
     services.ollama = {
       enable = true;
-      acceleration = cfg.acceleration;
+      package = cfg.package;
       port = cfg.port;
       openFirewall = true;
-      package = pkgs.ollama;
     };
   };
 }

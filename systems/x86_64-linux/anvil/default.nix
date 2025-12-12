@@ -1,12 +1,14 @@
 # systems/x86_64-linux/anvil/default.nix
 {
+  pkgs,
   lib,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace}; {
-  imports = [./hardware.nix];
+with lib.${namespace};
+{
+  imports = [ ./hardware.nix ];
 
   networking.hostName = "anvil";
 
@@ -53,7 +55,10 @@ with lib.${namespace}; {
       screenshot = enabled;
     };
     services = {
-      ollama = enabled;
+      ollama = {
+        enable = true;
+        package = pkgs.ollama-cuda;
+      };
       virtualisation = enabled;
     };
     system = {

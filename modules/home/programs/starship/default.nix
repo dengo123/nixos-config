@@ -6,31 +6,33 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.programs.starship;
 
   # kleine Helper: '#'-Prefix sicher entfernen + '#' wieder davorsetzen
-  hex = c: let
-    s = lib.removePrefix "#" c;
-  in "#${s}";
+  hex =
+    c:
+    let
+      s = lib.removePrefix "#" c;
+    in
+    "#${s}";
 
   # Palette laden (ohne Stylix!)
   # Passe den Default-Pfad an deine Struktur an:
-  defaultPalette = import ../../misc/stylix/base16/catppuccin-mocha.nix;
+  defaultPalette = import ../../misc/stylix/base16/luna-blue.nix;
 
-  pal =
-    if cfg.palette != null
-    then cfg.palette
-    else defaultPalette;
+  pal = if cfg.palette != null then cfg.palette else defaultPalette;
 
   color = name: hex (builtins.getAttr name pal);
-in {
+in
+{
   options.${namespace}.programs.starship = with types; {
     enable = mkBoolOpt false "Enable starship";
     # Optional: du kannst auch eine Palette direkt überschreiben (als Attrset)
     palette =
       mkOpt (types.nullOr types.attrs) null
-      "Optional Base16 palette attrset to use instead of the default.";
+        "Optional Base16 palette attrset to use instead of the default.";
   };
 
   config = mkIf cfg.enable {
