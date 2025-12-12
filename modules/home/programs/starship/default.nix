@@ -42,58 +42,39 @@ in
         command_timeout = 5000;
 
         format = lib.concatStrings [
-          "[](${color "base03"})"
+          "[](${color "base0B"})"
           "$os$username"
-          "[](bg:${color "base09"} fg:${color "base03"})"
+          "[](bg:${color "base0E"} fg:${color "base0B"})"
           "$directory"
-          "[](fg:${color "base09"} bg:${color "base0B"})"
+          "[](fg:${color "base0E"} bg:${color "base0D"})"
           "$git_branch$git_status"
-          "[](fg:${color "base0B"} bg:${color "base0C"})"
+          "[](fg:${color "base0D"} bg:${color "base0D"})"
           "$c$rust$golang$nodejs$php$java$kotlin$haskell$python"
-          "[](fg:${color "base0C"} bg:${color "base0D"})"
+          "[](fg:${color "base0D"} bg:${color "base0C"})"
           "$docker_context"
-          "[](fg:${color "base0D"} bg:${color "base0E"})"
+          "[](fg:${color "base0C"} bg:${color "base0C"})"
           "$time"
-          "[ ](fg:${color "base0E"})"
+          "[ ](fg:${color "base0C"})"
           "$line_break$character"
         ];
 
         os = {
           disabled = false;
-          style = "bg:${color "base03"} fg:${color "base05"}";
+          style = "bg:${color "base0B"} fg:${color "base08"}";
           symbols = {
-            Windows = "󰍲";
-            Ubuntu = "󰕈";
-            SUSE = "";
-            Raspbian = "󰐿";
-            Mint = "󰣭";
-            Macos = "";
-            Manjaro = "";
-            Linux = "󰌽";
-            Gentoo = "󰣨";
-            Fedora = "󰣛";
-            Alpine = "";
-            Amazon = "";
-            Android = "";
-            Arch = "󰣇";
-            Artix = "󰣇";
-            CentOS = "";
-            Debian = "󰣚";
-            Redhat = "󱄛";
-            RedHatEnterprise = "󱄛";
             NixOS = "󱄅";
           };
         };
 
         username = {
           show_always = true;
-          style_user = "bg:${color "base03"} fg:${color "base05"}";
-          style_root = "bg:${color "base03"} fg:${color "base05"}";
+          style_user = "bg:${color "base0B"} fg:${color "base01"}";
+          style_root = "bg:${color "base0B"} fg:${color "base01"}";
           format = "[ $user ]($style)";
         };
 
         directory = {
-          style = "bg:${color "base09"} fg:${color "base01"}";
+          style = "bg:${color "base0E"} fg:${color "base01"}";
           format = "[ $path ]($style)";
           truncation_length = 3;
           truncation_symbol = "…/";
@@ -108,59 +89,59 @@ in
 
         git_branch = {
           symbol = "";
-          style = "bg:${color "base0C"}";
-          format = "[[ $symbol $branch ](fg:${color "base02"} bg:${color "base0B"})]($style)";
+          style = "bg:${color "base0D"}";
+          format = "[[ $symbol $branch ](fg:${color "base02"} bg:${color "base0D"})]($style)";
         };
         git_status = {
-          style = "bg:${color "base0C"}";
-          format = "[[($all_status$ahead_behind )](fg:${color "base02"} bg:${color "base0B"})]($style)";
+          style = "bg:${color "base0D"}";
+          format = "[[($all_status$ahead_behind )](fg:${color "base02"} bg:${color "base0D"})]($style)";
         };
 
         nodejs = {
           symbol = "";
-          style = "bg:${color "base0C"}";
-          format = "[[ $symbol( $version) ](fg:${color "base02"} bg:${color "base0C"})]($style)";
+          style = "bg:${color "base0D"}";
+          format = "[[ $symbol( $version) ](fg:${color "base02"} bg:${color "base0D"})]($style)";
         };
         c = {
           symbol = " ";
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = " $symbol ($version) ]($style)";
         };
         rust = {
           symbol = "";
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         golang = {
           symbol = " ";
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         php = {
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         java = {
           symbol = " ";
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         kotlin = {
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         haskell = {
           symbol = " ";
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol ($version) ]($style)";
         };
         python = {
-          style = "bg:${color "base0C"}";
+          style = "bg:${color "base0D"}";
           format = "[(\\($virtualenv\\) )]($style)";
         };
         docker_context = {
           symbol = " ";
-          style = "bg:${color "base0E"}";
+          style = "bg:${color "base0D"}";
           format = "[ $symbol $context ]($style) $path";
         };
 
@@ -168,7 +149,7 @@ in
           disabled = false;
           time_format = "%R";
           style = "bg:${color "base09"}";
-          format = "[[  $time ](fg:${color "base02"} bg:${color "base0E"})]($style)";
+          format = "[[  $time ](fg:${color "base02"} bg:${color "base0C"})]($style)";
         };
 
         line_break.disabled = false;
