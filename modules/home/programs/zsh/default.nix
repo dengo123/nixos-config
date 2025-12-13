@@ -22,7 +22,7 @@ in
         enable = true;
         highlight = "fg=green";
       };
-      defaultKeymap = "vicmd";
+      defaultKeymap = "emacs";
       historySubstringSearch.enable = true;
       syntaxHighlighting = {
         enable = true;

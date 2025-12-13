@@ -34,6 +34,7 @@ in
         tldr
         wget
         ripgrep
+        fastfetch
       ];
     }
 

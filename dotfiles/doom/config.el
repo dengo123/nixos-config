@@ -7,7 +7,7 @@
 (setq doom-theme 'doom-one
       display-line-numbers-type 'relative)   ; 't oder 'relative
 
-;; Fonts (pass bei Bedarf an)
+;; Fonts
 (setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
       doom-variable-pitch-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
       ;; optional, aber hilfreich für spezielle Icons:
@@ -19,23 +19,64 @@
       org-ellipsis " ▾ ")
 
 ;; ── Projekte / Workspaces ────────────────────────────────────────────────────
-;; Suchpfade für Projectile / project.el (je nachdem, was du nutzt)
+(after! projectile
+  (setq projectile-indexing-method 'hybrid)
+
+  (defun my/projectile-buffers-same-root (buffers)
+    "Keep only buffers whose *own* Projectile root equals the current Projectile root."
+    (let* ((cur-root (when (projectile-project-p)
+                       (file-truename (projectile-project-root)))))
+      (seq-filter
+       (lambda (buf)
+         (with-current-buffer buf
+           (let* ((f (buffer-file-name))
+                  (dir (or (and f (file-name-directory f))
+                           default-directory))
+                  (buf-root (ignore-errors
+                              (let ((default-directory dir))
+                                (projectile-project-root)))))
+             (and cur-root buf-root
+                  (string= (file-truename buf-root) cur-root)))))
+       (projectile-buffers-with-file-or-process buffers))))
+
+  (setq projectile-buffers-filter-function #'my/projectile-buffers-same-root)
+
+  (defun my/projectile-kill-buffer ()
+    "Kill one buffer belonging to the current Projectile project."
+    (interactive)
+    (let* ((bufs (projectile-project-buffers))
+           (names (mapcar #'buffer-name bufs))
+           (choice (completing-read "Kill project buffer: " names nil t)))
+      (when-let ((b (get-buffer choice)))
+        (kill-buffer b)
+        (message "Killed: %s" choice))))
+
+  (map! :leader
+        :desc "Kill project buffer" "p K" #'my/projectile-kill-buffer))
+
+;; Suchpfade für Projectile / project.el
 (setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
 (setq +workspaces-on-switch-project-behavior 'workspaces
       +workspaces-auto-save t)
 
-;; ── Consult-Dir ──────────────────────────────────────────────────────────────
-(use-package! consult-dir
-  :commands (consult-dir)
-  :init
-  (map! :leader
-        :desc "Jump to dir (consult-dir)"
-        "f d" #'consult-dir))
+;; ── Tabs ─────────────────────────────────────────────────────────────────────
+;; (map! :leader
+;;       :prefix ("TAB" . "tabs")
+;;       :desc "New tab"     "n" #'tab-bar-new-tab
+;;       :desc "Close tab"   "c" #'tab-bar-close-tab
+;;       :desc "Next tab"    "]" #'tab-bar-switch-to-next-tab
+;;       :desc "Prev tab"    "[" #'tab-bar-switch-to-prev-tab
+;;       :desc "Rename tab"  "r" #'tab-bar-rename-tab
+;;       :desc "Switch tab"  "s" #'tab-bar-switch-to-tab)
+
+;; ── consult-fd ───────────────────────────────────────────────────────────────
+(after! consult
+  (map! :leader :desc "Find file (consult-fd)" "f z" #'consult-fd))
 
 ;; ── Treemacs / Dired Convenience ─────────────────────────────────────────────
-;; Toggle-Key für Treemacs (falls aktiv)
+;; Toggle-Key für Treemacs
 (map! :leader :desc "Toggle treemacs" "t t" #'+treemacs/toggle)
-;; Dired: hjkl-Navigation (optional, falls du das magst)
+;; Dired: hjkl-Navigation
 (with-eval-after-load 'dired
   (map! :map dired-mode-map
         :n "h" #'dired-up-directory
@@ -51,7 +92,7 @@
         lsp-log-io nil))
 
 ;; On-save-Formatter (Doom builtin). Wähle, ob per LSP oder externe Tools.
-(setq +format-with-lsp t) ; starte simpel: LSP erledigt das Format
+(setq +format-with-lsp t)
 ;; Begrenze, wo auto-format wirklich laufen soll:
 (setq +format-on-save-enabled-modes
       '(lua-mode nix-mode python-mode json-mode yaml-mode sh-mode))
@@ -67,18 +108,13 @@
 ;; ── Terminals ────────────────────────────────────────────────────────────────
 ;; vterm Quick-Access
 (map! :leader :desc "vterm" "o t" #'vterm)
-;; vterm soll sich wie ein normales Terminal verhalten, ohne Evil-Normal-Mode
 (with-eval-after-load 'vterm
-  ;; alle neuen vterm-Buffer starten im Emacs-State
   (evil-set-initial-state 'vterm-mode 'emacs)
-
-  ;; falls du schon in einem vterm bist und es ändern willst:
   (add-hook 'vterm-mode-hook #'evil-emacs-state))
 
 ;; ── Completion QoL (corfu + orderless, vertico) ──────────────────────────────
 ;; Orderless Feinheiten
 (with-eval-after-load 'orderless
-  ;; mache „space = AND“ passender:
   (setq orderless-component-separator #'orderless-escapable-split-on-space))
 
 ;; ── Git / Magit ──────────────────────────────────────────────────────────────
@@ -98,12 +134,6 @@
 ;; ~/.config/awesome/.dir-locals.el:
 ;; ((lua-mode . ((eval . (progn (require 'awesome-dev)
 ;;                              (awesome-dev-mode 1))))))
-
-;; ── Kleine Leader-Shortcuts, die du sicher nutzt ─────────────────────────────
-(map! :leader
-      :desc "Project file"  "p f" #'project-find-file
-      :desc "Ripgrep"       "s s" #'consult-ripgrep
-      :desc "Switch buffer" "b b" #'switch-to-buffer)
 
 ;; ── Optional: Sprache-spezifisches Feintuning ────────────────────────────────
 ;; Python: black/ruff on-save lieber via LSP? (+format-with-lsp t oben reicht oft)
