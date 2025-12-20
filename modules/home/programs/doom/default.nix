@@ -8,23 +8,22 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.programs.doom;
-in {
+in
+{
   options.${namespace}.programs.doom = with types; {
     enable = mkBoolOpt false "Enable Doom Emacs via Unstraightened.";
-    doomDir =
-      mkOpt (oneOf [
-        path
-        str
-      ])
-      ./dot-doom "Pfad zu deiner Doom-Konfiguration (init.el, config.el, packages.el).";
 
-    # <<— nur Package (kein String)
+    doomDir =
+      mkOpt types.path ./dot-doom
+        "Pfad zu deiner Doom-Konfiguration (init.el, config.el, packages.el).";
+
     emacs = mkOpt types.package pkgs.emacs "Emacs-Paket (z. B. pkgs.emacs oder pkgs.emacs-pgtk).";
   };
 
-  imports = [inputs.nix-doom-emacs-unstraightened.homeModule];
+  imports = [ inputs.nix-doom-emacs-unstraightened.homeModule ];
 
   config = mkIf cfg.enable {
     programs."doom-emacs" = {

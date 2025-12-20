@@ -68,18 +68,6 @@
         "type": "github"
       }
     },
-    "doom-config": {
-      "flake": false,
-      "locked": {
-        "path": "./dotfiles/doom",
-        "type": "path"
-      },
-      "original": {
-        "path": "./dotfiles/doom",
-        "type": "path"
-      },
-      "parent": []
-    },
     "doomemacs": {
       "flake": false,
       "locked": {
@@ -575,7 +563,6 @@
     },
     "root": {
       "inputs": {
-        "doom-config": "doom-config",
         "ghostty": "ghostty",
         "home-manager": "home-manager",
         "nix-doom-emacs-unstraightened": "nix-doom-emacs-unstraightened",

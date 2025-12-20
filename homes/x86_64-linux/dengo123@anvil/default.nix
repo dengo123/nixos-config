@@ -38,7 +38,7 @@ with lib.${namespace};
       discord = enabled;
       doom = {
         enable = true;
-        doomDir = inputs."doom-config";
+        doomDir = inputs.self + /dotfiles/doom;
         emacs = pkgs.emacs;
       };
     };

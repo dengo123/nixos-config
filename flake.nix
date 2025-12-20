@@ -20,11 +20,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    doom-config = {
-      url = "path:./dotfiles/doom";
-      flake = false;
-    };
-
     nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 
@@ -47,20 +42,22 @@
     nixos-generators.url = "github:nix-community/nixos-generators";
   };
 
-  outputs = inputs: let
-    lib = inputs.snowfall-lib.mkLib {
-      inherit inputs;
-      src = ./.;
+  outputs =
+    inputs:
+    let
+      lib = inputs.snowfall-lib.mkLib {
+        inherit inputs;
+        src = ./.;
 
-      snowfall = {
-        meta = {
-          name = "nixforge";
-          title = "The NixForge – In the crucible of code, systems awaken";
+        snowfall = {
+          meta = {
+            name = "nixforge";
+            title = "The NixForge – In the crucible of code, systems awaken";
+          };
+          namespace = "nixforge";
         };
-        namespace = "nixforge";
       };
-    };
-  in
+    in
     lib.mkFlake {
       inherit inputs;
       src = ./.;
@@ -74,11 +71,11 @@
         system = "x86_64-linux";
       };
 
-      systems.hosts.anvil = {};
+      systems.hosts.anvil = { };
 
       system.users."dengo123@anvil".modules = with inputs; [
       ];
 
-      templates = import ./templates {};
+      templates = import ./templates { };
     };
 }

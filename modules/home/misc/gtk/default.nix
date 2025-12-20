@@ -86,7 +86,8 @@ in
     ];
 
     # Cursor auch für X11-Zeiger (awesome) setzen
-    xsession.pointerCursor = {
+    home.pointerCursor = {
+      x11.enable = true;
       package = pkgs.bibata-cursors;
       name = "Bibata-Original-Ice";
       size = 24;
