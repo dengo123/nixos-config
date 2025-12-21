@@ -14,9 +14,17 @@
       doom-symbol-font (font-spec :family "Symbols Nerd Font Mono" :size 14))
 
 ;; ── Org ──────────────────────────────────────────────────────────────────────
-(setq org-directory "~/org/"
-      org-agenda-files (list (expand-file-name "agenda.org" org-directory))
-      org-ellipsis " ▾ ")
+(after! org
+  ;; Startzustand
+  (setq org-directory "~/org"
+        org-startup-folded 'content   ; nur Überschriften sichtbar (Text eingeklappt)
+        org-startup-indented t        ; visuelles Einrücken nach Überschrift-Ebene
+        org-ellipsis " ▾ "            ; hübscher Fold-Indikator
+        org-hide-emphasis-markers t   ; *bold* zeigt nur bold, nicht die Sternchen
+        org-pretty-entities t)        ; z.B. \alpha schöner anzeigen
+
+  ;; besserer Lesefluss
+  (add-hook 'org-mode-hook #'visual-line-mode))
 
 ;; ── Projekte / Workspaces ────────────────────────────────────────────────────
 (after! projectile
@@ -120,11 +128,11 @@
 ;; ── Git / Magit ──────────────────────────────────────────────────────────────
 (map! :leader :desc "Magit status" "g g" #'magit-status)
 
-;; ── Spell (du hast :checkers (spell +flyspell) aktiv) ────────────────────────
-;; Wähle deine Wörterbuchsprache/n:
-;; (setq ispell-dictionary "de_DE") ; oder "en_US"
-;; (add-hook 'text-mode-hook #'flyspell-mode)
-;; (add-hook 'prog-mode-hook #'flyspell-prog-mode)
+;; ── Spell ────────────────────────────────────────────────────────────────────
+(use-package! jinx
+  :hook ((text-mode org-mode markdown-mode) . jinx-mode)
+  :bind (("M-$" . jinx-correct)
+         ("C-M-$" . jinx-languages)))
 
 ;; ── Eigene Helfer laden (für projekt-spezifische Minor-Modes etc.) ──────────
 ;; Lege deine .el-Dateien in $DOOMDIR/lisp/ und aktiviere sie per .dir-locals.el

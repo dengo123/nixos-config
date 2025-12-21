@@ -19,8 +19,11 @@ in
     nixforge.programs.freeoffice = enabled;
     home.packages = with pkgs; [
       calibre
-      obsidian
       kdePackages.okular
+
+      hunspell
+      hunspellDicts.de_DE
+      hunspellDicts.en_US
 
       planify
       newsflash

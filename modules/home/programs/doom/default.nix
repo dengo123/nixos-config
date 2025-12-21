@@ -39,5 +39,12 @@ in
     };
 
     fonts.fontconfig.enable = true;
+
+    home.packages = with pkgs; [
+      enchant
+      hunspell
+      hunspellDict.de_DE
+      hunspellDict.en_US
+    ];
   };
 }

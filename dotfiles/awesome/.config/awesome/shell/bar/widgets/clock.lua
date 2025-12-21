@@ -5,7 +5,7 @@ local beautiful = require("beautiful")
 
 local M = {}
 
-function M.build(fmt)
+function M.build(s, fmt)
 	local bar_h = tonumber(beautiful.wibar_height) or 28
 	local pad_h = tonumber(beautiful.clock_pad_h) or 6
 	local pad_v = tonumber(beautiful.clock_pad_v) or 0
@@ -51,6 +51,7 @@ function M.build(fmt)
 		local attach_pos = pos_map[placement] or "br"
 
 		local cal = awful.widget.calendar_popup.month({
+			screen = s,
 			spacing = 4,
 			start_sunday = false,
 			long_weekdays = true,

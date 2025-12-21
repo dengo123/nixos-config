@@ -45,7 +45,9 @@ function M.setup(s, args)
 
 	local tags = Tags.build(s, {})
 	local tray = showtray and Systray.build({ menu_theme = menu_theme }) or nil
-	local clock = Clock.build()
+
+	-- ✅ wichtig: pro Screen bauen, damit der Kalender nicht auf dem anderen Monitor landet
+	local clock = Clock.build(s)
 
 	if not s.mylayoutbox or not s.mylayoutbox.valid then
 		s.mylayoutbox = awful.widget.layoutbox(s)
@@ -99,6 +101,7 @@ function M.setup(s, args)
 			fg = beautiful.wibar_fg or beautiful.fg_normal,
 		}
 
+	-- ✅ robuster als die Klammer-Variante, gleiche Funktion
 	local sections = (
 		wibar_theme.layout
 		and wibar_theme.layout(s, {

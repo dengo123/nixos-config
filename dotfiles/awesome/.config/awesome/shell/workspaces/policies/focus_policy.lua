@@ -66,9 +66,15 @@ local function focus_last_of_tag_on_screen_or_fallback(tag, screen)
 		return
 	end
 
+	-- Nur auf dem aktuell fokussierten Screen arbeiten, sonst Maus/Focus-Warp.
+	if awful.screen.focused() ~= screen then
+		return
+	end
+
 	gears.timer.delayed_call(function()
+		-- Innerhalb delayed_call nochmal absichern (kann sich inzwischen geändert haben)
 		if awful.screen.focused() ~= screen then
-			awful.screen.focus(screen) -- Screen-Fokus hart setzen
+			return
 		end
 
 		local function on_tag_screen(c)
@@ -111,15 +117,17 @@ local function focus_last_of_tag_on_screen_or_fallback(tag, screen)
 			if c.minimized then
 				c.minimized = false
 			end
-			if awful.screen.focused() ~= screen then
-				awful.screen.focus(screen)
-			end
+
+			-- Nur aktivieren, keinen Screen-Fokus erzwingen.
 			c:emit_signal("request::activate", "tag_switch_last_focus_per_screen", { raise = true })
 
-			-- Nachkontrolle: bleib bitte auf unserem Screen
+			-- Nachkontrolle: falls irgendwas den Fokus "wegreißt", versuchen wir es nochmal,
+			-- aber weiterhin ohne Screen-Fokus-Warp.
 			gears.timer.delayed_call(function()
+				if awful.screen.focused() ~= screen then
+					return
+				end
 				if client.focus and client.focus.valid and client.focus.screen ~= screen then
-					awful.screen.focus(screen)
 					c:emit_signal("request::activate", "tag_switch_enforce_screen", { raise = true })
 				end
 			end)
@@ -193,14 +201,26 @@ end
 -- apply_layout_policy_fn wird von init.lua injiziert
 function M.attach_policy_signals(apply_layout_policy_fn)
 	tag.connect_signal("property::selected", function(t)
-		if t.selected and t.screen then
-			with_mouse_lock(function()
-				if type(apply_layout_policy_fn) == "function" then
-					apply_layout_policy_fn(t.screen)
-				end
-				focus_last_of_tag_on_screen_or_fallback(t, t.screen)
-			end)
+		if not (t and t.selected and t.screen) then
+			return
 		end
+
+		-- Bei Sync: nur auf dem aktuell fokussierten Screen reagieren
+		if awesome._ws_sync_busy and t.screen ~= awful.screen.focused() then
+			return
+		end
+
+		-- Auch ohne Sync: Policies nur auf dem fokussierten Screen anwenden (kein Cursor-Warp)
+		if t.screen ~= awful.screen.focused() then
+			return
+		end
+
+		with_mouse_lock(function()
+			if type(apply_layout_policy_fn) == "function" then
+				apply_layout_policy_fn(t.screen)
+			end
+			focus_last_of_tag_on_screen_or_fallback(t, t.screen)
+		end)
 	end)
 end
 
