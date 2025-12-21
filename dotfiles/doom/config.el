@@ -27,6 +27,66 @@
   (add-hook 'org-mode-hook #'visual-line-mode))
 
 ;; ── Projekte / Workspaces ────────────────────────────────────────────────────
+(setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
+
+;; Projektwechsel => eigener Workspace, Workspaces speichern
+(setq +workspaces-on-switch-project-behavior t
+      +workspaces-auto-save t)
+
+;; Workspace-Name dauerhaft in der Modeline (inkl. "main"/Default)
+(after! doom-modeline
+  (setq doom-modeline-persp-name t
+        doom-modeline-display-default-persp-name t))
+
+(after! persp-mode
+  ;; emacsclient -c soll keinen neuen Workspace machen, sondern immer "main"
+  (setq persp-emacsclient-init-frame-behaviour-override "main")
+
+  ;; "main" neutral halten: beim Wechsel in main -> ~ als cwd
+  (defun my/workspace-main-set-home-dir ()
+    (when (and (fboundp '+workspace-current-name)
+               (string= (+workspace-current-name) "main"))
+      (setq default-directory (expand-file-name "~"))))
+  (add-hook 'persp-switch-hook #'my/workspace-main-set-home-dir)
+
+  ;; --- main-default-directory beim switch-project nicht "verschmutzen" ---
+  (defvar my/main-workspace-dir-cache nil)
+
+  (defun my/workspace--buffers ()
+    "Return buffers belonging to current workspace if possible, else all buffers."
+    (cond ((fboundp '+workspace-buffer-list) (+workspace-buffer-list))
+          ((fboundp '+workspace-list-buffers) (+workspace-list-buffers))
+          (t (buffer-list))))
+
+  (defun my/cache-main-workspace-dirs ()
+    (when (and (fboundp '+workspace-current-name)
+               (string= (+workspace-current-name) "main"))
+      (setq my/main-workspace-dir-cache
+            (mapcar (lambda (b)
+                      (cons b (buffer-local-value 'default-directory b)))
+                    (my/workspace--buffers)))))
+
+  (defun my/restore-main-workspace-dirs ()
+    (when my/main-workspace-dir-cache
+      (dolist (pair my/main-workspace-dir-cache)
+        (when (buffer-live-p (car pair))
+          (with-current-buffer (car pair)
+            (setq default-directory (cdr pair)))))
+      (setq my/main-workspace-dir-cache nil)))
+
+  (defun my/preserve-main-dirs-around-switch-project (orig-fn &rest args)
+    (my/cache-main-workspace-dirs)
+    (prog1 (apply orig-fn args)
+      ;; nach dem Projektwechsel main wieder herstellen
+      (my/restore-main-workspace-dirs)))
+
+  ;; Doom/Projectile entrypoints abfangen
+  (when (fboundp '+projectile/switch-project)
+    (advice-add '+projectile/switch-project :around #'my/preserve-main-dirs-around-switch-project))
+  (when (fboundp 'projectile-switch-project)
+    (advice-add 'projectile-switch-project :around #'my/preserve-main-dirs-around-switch-project)))
+
+;; ── Projectile ───────────────────────────────────────────────────────────────
 (after! projectile
   (setq projectile-indexing-method 'hybrid)
 
@@ -62,11 +122,6 @@
   (map! :leader
         :desc "Kill project buffer" "p K" #'my/projectile-kill-buffer))
 
-;; Suchpfade für Projectile / project.el
-(setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
-(setq +workspaces-on-switch-project-behavior 'workspaces
-      +workspaces-auto-save t)
-
 ;; ── Tabs ─────────────────────────────────────────────────────────────────────
 ;; (map! :leader
 ;;       :prefix ("TAB" . "tabs")
@@ -91,7 +146,6 @@
         :n "l" #'dired-find-file))
 
 ;; ── LSP / Tree-sitter / Format ───────────────────────────────────────────────
-;; Du hast :tools (lsp) + :editor (format +onsave) + :tools tree-sitter
 (after! lsp-mode
   (setq lsp-headerline-breadcrumb-enable t
         lsp-lens-enable t

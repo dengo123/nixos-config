@@ -43,8 +43,8 @@ in
     home.packages = with pkgs; [
       enchant
       hunspell
-      hunspellDict.de_DE
-      hunspellDict.en_US
+      hunspellDicts.de_DE
+      hunspellDicts.en_US
     ];
   };
 }
