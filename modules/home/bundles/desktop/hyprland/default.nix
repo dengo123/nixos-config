@@ -6,9 +6,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.bundles.desktop.hyprland;
-in {
+in
+{
   options.${namespace}.bundles.desktop.hyprland = with types; {
     enable = mkBoolOpt false "Whether or not to enable desktop hyprland bundle configuration.";
   };
@@ -21,7 +23,7 @@ in {
       inputs = {
         layout = mkDefault "us";
         variant = mkDefault "altgr-intl";
-        options = mkDefault [];
+        options = mkDefault [ ];
       };
       plugins = {
         hyprsplit = enabled;
@@ -45,6 +47,8 @@ in {
     services.blueman-applet.enable = true;
 
     nixforge = {
+      bundles.terminal.emulator = mkDefault "ghostty";
+      bundles.browser.app = mkDefault "zen";
       programs = {
         rofi = enabled;
         hyprlock = enabled;

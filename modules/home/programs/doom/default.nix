@@ -46,5 +46,7 @@ in
       hunspellDicts.de_DE
       hunspellDicts.en_US
     ];
+    home.sessionVariables.EDITOR = "emacsclient -t";
+    home.sessionVariables.VISUAL = "emacsclient -c -a";
   };
 }

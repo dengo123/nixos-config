@@ -15,11 +15,7 @@ with lib.${namespace};
     bundles = {
       common = enabled;
       office = enabled;
-      development = enabled;
-      shell.mode = "emacs"; # full/emacs/lite
-      terminal = disabled;
-      # terminal.emulator = "kitty";
-      # browser.app = "zen";
+      ide.editor = "doom";
 
       desktop = {
         awesome = enabled;
@@ -32,15 +28,9 @@ with lib.${namespace};
         enable = true;
         username = "dengo123";
       };
-      freetube = enabled;
       spotify = enabled;
       gimp = enabled;
       discord = enabled;
-      doom = {
-        enable = true;
-        doomDir = inputs.self + /dotfiles/doom;
-        emacs = pkgs.emacs;
-      };
     };
     misc = {
       xdg = enabled;
@@ -53,18 +43,5 @@ with lib.${namespace};
       };
     };
   };
-  home.sessionVariables = {
-    EDITOR = "emacs";
-    VISUAL = "emacsclient -c -a emacs";
-    # BROWSER = "zen";
-  };
-  # This value determines the Home Manager release that your
-  # configuration is compatible with. This helps avoid breakage
-  # when a new Home Manager release introduces backwards
-  # incompatible changes.
-  #
-  # You can update Home Manager without changing this value. See
-  # the Home Manager release notes for a list of state version
-  # changes in each release.
   home.stateVersion = "24.05";
 }
