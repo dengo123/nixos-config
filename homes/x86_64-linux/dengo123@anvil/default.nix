@@ -15,7 +15,7 @@ with lib.${namespace};
     bundles = {
       common = enabled;
       office = enabled;
-      ide.editor = "doom";
+      developer.editor = "doom";
 
       desktop = {
         awesome = enabled;

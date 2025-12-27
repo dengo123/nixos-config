@@ -1,5 +1,6 @@
-# modules/home/bundles/ide/default.nix
+# modules/home/bundles/developer/default.nix
 {
+  inputs,
   config,
   lib,
   pkgs,
@@ -9,11 +10,11 @@
 with lib;
 with lib.${namespace};
 let
-  cfg = config.${namespace}.bundles.ide;
+  cfg = config.${namespace}.bundles.developer;
 in
 {
-  options.${namespace}.bundles.ide = with types; {
-    enable = mkBoolOpt true "Enable IDE bundle, favorite editor with shared global developer packages";
+  options.${namespace}.bundles.developer = with types; {
+    enable = mkBoolOpt true "Enable developer bundle, favorite editor with shared global developer packages";
 
     editor = mkOpt (types.nullOr (
       types.enum [
@@ -29,7 +30,6 @@ in
       home.packages = with pkgs; [
         clang-tools
         cmake
-        devenv
 
         # Essentials
         git
@@ -57,6 +57,9 @@ in
         taplo
         jq
         yamlfmt
+
+        typescript-language-server
+        prettier
       ];
 
       programs.direnv = {
@@ -68,13 +71,17 @@ in
 
     # Editor-Auswahl (analog zu terminal.emulator)
     (mkIf (cfg.editor == "doom") {
-      ${namespace}.programs.doom = {
-        enable = true;
-        doomDir = inputs.self + /dotfiles/doom;
-        emacs = pkgs.emacs;
+      ${namespace} = {
+        programs.doom = {
+          enable = true;
+          doomDir = inputs.self + /dotfiles/doom;
+          emacs = pkgs.emacs;
+        };
+
+        bundles.shell.mode = mkOverride 900 "emacs";
+
+        bundles.terminal.enable = mkOverride 900 false;
       };
-      ${namespace}.bundles.shell.mode = mkOverride 900 "emacs";
-      ${namespace}.bundles.terminal = mkOverride 900 disabled;
     })
 
     (mkIf (cfg.editor == "nvim") {
