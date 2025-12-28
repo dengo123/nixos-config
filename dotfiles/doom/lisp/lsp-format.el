@@ -10,6 +10,6 @@
 (setq +format-with-lsp t)
 
 (setq +format-on-save-enabled-modes
-      '(lua-mode nix-mode python-mode json-mode yaml-mode sh-mode))
+      '(lua-mode nix-mode python-mode json-mode yaml-mode sh-mode typescript-mode css-mode mhtml-mode web-mode))
 
 (setq treesit-font-lock-level 4)

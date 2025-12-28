@@ -32,7 +32,6 @@ in
         cmake
 
         # Essentials
-        git
         ripgrep
         fd
         just
@@ -67,6 +66,9 @@ in
         enableZshIntegration = true;
         nix-direnv.enable = true;
       };
+      ${namespace} = {
+        programs.git = enabled;
+      }
     }
 
     # Editor-Auswahl (analog zu terminal.emulator)

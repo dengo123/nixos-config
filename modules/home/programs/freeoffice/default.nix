@@ -33,6 +33,10 @@ in
     # Basis-Paket
     home.packages = [
       pkgs.freeoffice
+
+      hunspell
+      hunspellDicts.de_DE
+      hunspellDicts.en_US
     ]
     ++ (optional cfg.createShortcuts (
       pkgs.writeShellScriptBin "textmaker" ''

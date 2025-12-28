@@ -19,15 +19,15 @@ with lib.${namespace};
 
       desktop = {
         awesome = enabled;
-        hyprland = disabled;
+        # hyprland = enabled;
       };
     };
 
     programs = {
-      git = {
-        enable = true;
-        username = "dengo123";
-      };
+      # git = {
+      #   username = "dengo123";
+      #   email = "deniz060198@hotmail.com";
+      # };
       spotify = enabled;
       gimp = enabled;
       discord = enabled;
