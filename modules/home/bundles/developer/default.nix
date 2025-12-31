@@ -68,7 +68,7 @@ in
       };
       ${namespace} = {
         programs.git = enabled;
-      }
+      };
     }
 
     # Editor-Auswahl (analog zu terminal.emulator)

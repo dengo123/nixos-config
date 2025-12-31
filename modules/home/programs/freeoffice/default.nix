@@ -31,28 +31,30 @@ in
 
   config = mkIf cfg.enable {
     # Basis-Paket
-    home.packages = [
-      pkgs.freeoffice
+    home.packages =
+      with pkgs;
+      [
+        freeoffice
 
-      hunspell
-      hunspellDicts.de_DE
-      hunspellDicts.en_US
-    ]
-    ++ (optional cfg.createShortcuts (
-      pkgs.writeShellScriptBin "textmaker" ''
-        exec freeoffice-textmaker "$@"
-      ''
-    ))
-    ++ (optional cfg.createShortcuts (
-      pkgs.writeShellScriptBin "planmaker" ''
-        exec freeoffice-planmaker "$@"
-      ''
-    ))
-    ++ (optional cfg.createShortcuts (
-      pkgs.writeShellScriptBin "presentations" ''
-        exec freeoffice-presentations "$@"
-      ''
-    ));
+        hunspell
+        hunspellDicts.de_DE
+        hunspellDicts.en_US
+      ]
+      ++ (optional cfg.createShortcuts (
+        pkgs.writeShellScriptBin "textmaker" ''
+          exec freeoffice-textmaker "$@"
+        ''
+      ))
+      ++ (optional cfg.createShortcuts (
+        pkgs.writeShellScriptBin "planmaker" ''
+          exec freeoffice-planmaker "$@"
+        ''
+      ))
+      ++ (optional cfg.createShortcuts (
+        pkgs.writeShellScriptBin "presentations" ''
+          exec freeoffice-presentations "$@"
+        ''
+      ));
 
     # Eigene .desktop Files, die die kurzen Wrapper nutzen
     xdg.desktopEntries = mkIf cfg.createDesktopEntries {

@@ -45,6 +45,7 @@ with lib.${namespace};
         enable = true;
         open = true;
         package = "production";
+        rgb = enabled;
       };
     };
     programs = {
