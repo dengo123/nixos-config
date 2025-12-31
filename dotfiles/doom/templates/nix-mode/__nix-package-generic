@@ -1,0 +1,47 @@
+{ lib
+, stdenv
+, fetchFromGitHub
+, fetchurl
+, ...
+}:
+
+stdenv.mkDerivation rec {
+  pname = "${pname}";
+  version = "${version}";
+
+  # === Source ===
+  # Option A: GitHub
+  src = fetchFromGitHub {
+    owner = "${owner}";
+    repo  = pname;
+    rev   = "v${version}";
+    hash  = "${srcHash}";
+  };
+
+  # Option B: URL
+  # src = fetchurl {
+  #   url  = "${url}";
+  #   hash = "${srcHash}";
+  # };
+
+  # === Dependencies ===
+  nativeBuildInputs = [
+    # e.g. pkgs.pkg-config
+  ];
+
+  buildInputs = [
+    # runtime/build deps
+  ];
+
+  # === Phases (uncomment if needed) ===
+  # configurePhase = '' ... '';
+  # buildPhase     = '' ... '';
+  # installPhase   = '' ... '';
+
+  meta = with lib; {
+    description = "${description}";
+    license = licenses.${license};
+    platforms = platforms.linux;
+    mainProgram = "${mainProgram}";
+  };
+}

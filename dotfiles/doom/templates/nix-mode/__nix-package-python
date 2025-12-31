@@ -1,0 +1,33 @@
+{ lib
+, python3Packages
+, fetchFromGitHub
+, ...
+}:
+
+python3Packages.buildPythonPackage rec {
+  pname = "${pname}";
+  version = "${version}";
+  pyproject = true; # falls poetry/pyproject; sonst ggf. false
+
+  src = fetchFromGitHub {
+    owner = "${owner}";
+    repo  = pname;
+    rev   = "v${version}";
+    hash  = "${srcHash}";
+  };
+
+  propagatedBuildInputs = [
+    # python deps
+  ];
+
+  nativeBuildInputs = [
+    # e.g. python3Packages.setuptools
+  ];
+
+  pythonImportsCheck = [ "${importName}" ];
+
+  meta = with lib; {
+    description = "${description}";
+    license = licenses.${license};
+  };
+}

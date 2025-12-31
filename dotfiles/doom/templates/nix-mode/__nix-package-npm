@@ -1,0 +1,25 @@
+{ lib
+, fetchFromGitHub
+, buildNpmPackage
+, ...
+}:
+
+buildNpmPackage rec {
+  pname = "${pname}";
+  version = "${version}";
+
+  src = fetchFromGitHub {
+    owner = "${owner}";
+    repo  = pname;
+    rev   = "v${version}";
+    hash  = "${srcHash}";
+  };
+
+  npmDepsHash = "${npmDepsHash}";
+  npmBuildScript = "build";
+
+  meta = with lib; {
+    description = "${description}";
+    license = licenses.${license};
+  };
+}

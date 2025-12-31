@@ -1,15 +1,17 @@
-{lib, ...}:
-with lib; rec {
+# lib/module/default.nix
+{ lib, ... }:
+with lib;
+rec {
   ## === UNIVERSAL OPTION HELPERS ===
 
   ## Create a general module option.
   ## Example: mkOpt types.str "default" "description"
-  mkOpt = type: default: description:
-    mkOption {inherit type default description;};
+  mkOpt =
+    type: default: description:
+    mkOption { inherit type default description; };
 
   ## Same as mkOpt, but without description
-  mkOpt' = type: default:
-    mkOpt type default null;
+  mkOpt' = type: default: mkOpt type default null;
 
   ## === BOOL ===
   mkBoolOpt = mkOpt types.bool;
@@ -24,11 +26,11 @@ with lib; rec {
   mkIntOpt' = mkOpt' types.int;
 
   ## === ENUM ===
-  mkEnumOpt = values: default: description:
+  mkEnumOpt =
+    values: default: description:
     mkOpt (types.enum values) default description;
 
-  mkEnumOpt' = values: default:
-    mkEnumOpt values default null;
+  mkEnumOpt' = values: default: mkEnumOpt values default null;
 
   ## === LIST OF STRINGS ===
   mkStrListOpt = mkOpt (types.listOf types.str);

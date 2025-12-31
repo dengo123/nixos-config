@@ -10,6 +10,7 @@
 (load! "lisp/navigation")
 (load! "lisp/lsp-format")
 (load! "lisp/terminal")
+(load! "lisp/templates")
 (load! "lisp/completion")
 (load! "lisp/git")
 (load! "lisp/spell")
