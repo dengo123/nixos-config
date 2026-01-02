@@ -1,11 +1,8 @@
-{
-  options,
-  config,
-  lib,
-  pkgs,
-  namespace,
-  ...
-}:
+# -*- mode: snippet -*-
+# name: nix module (snowfall)
+# key: __nix-module
+# --
+{ options, config, lib, pkgs, namespace, ... }:
 with lib;
 with lib.${namespace};
 let
@@ -16,5 +13,6 @@ in
     enable = mkBoolOpt false "Enable module";
   };
 
-  config = mkIf cfg.enable { };
+  config = mkIf cfg.enable {
+  };
 }

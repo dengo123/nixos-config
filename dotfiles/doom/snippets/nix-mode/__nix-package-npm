@@ -1,3 +1,7 @@
+# -*- mode: snippet -*-
+# name: nix package rpm (snowfall)
+# key: __nix-package-rpm
+# --
 { lib
 , fetchFromGitHub
 , buildNpmPackage
