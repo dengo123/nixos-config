@@ -6,9 +6,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.bundles.common;
-in {
+in
+{
   options.${namespace}.bundles.common = with types; {
     enable = mkBoolOpt false "Whether or not to enable common configuration.";
   };
@@ -17,6 +19,7 @@ in {
     environment.systemPackages = with pkgs; [
       stow
     ];
+
     ${namespace} = {
       config = {
         nix = enabled;
@@ -42,7 +45,7 @@ in {
       system = {
         fonts = {
           fontconfig = disabled;
-          packages = with pkgs; [];
+          packages = with pkgs; [ ];
         };
       };
     };

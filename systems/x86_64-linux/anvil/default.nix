@@ -30,23 +30,23 @@ with lib.${namespace};
     };
     bundles = {
       common = enabled;
+      ai = enabled;
     };
-    desktop.hyprland = {
-      enable = false;
-      mode = "full";
-    };
+    # desktop.hyprland = {
+    #   enable = true;
+    #   mode = "full";
+    # };
     desktop.xsession = {
       enable = true;
       autoLogin = enabled;
     };
     hardware = {
-      cuda = enabled;
       nvidia = {
         enable = true;
         open = true;
         package = "production";
       };
-      rgb = enabled;
+      # rgb = enabled;
     };
     programs = {
       steam = enabled;
@@ -55,10 +55,6 @@ with lib.${namespace};
       screenshot = enabled;
     };
     services = {
-      ollama = {
-        enable = true;
-        package = pkgs.ollama-cuda;
-      };
       virtualisation = enabled;
     };
     system = {

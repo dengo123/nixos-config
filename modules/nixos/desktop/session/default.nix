@@ -7,7 +7,8 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.desktop.xsession;
 
   xsessionPkg = pkgs.stdenvNoCC.mkDerivation {
@@ -24,38 +25,39 @@ with lib.${namespace}; let
       Type=Application
       EOF
     '';
-    passthru.providedSessions = ["xsession"];
+    passthru.providedSessions = [ "xsession" ];
   };
 
   XR = "${pkgs.xorg.xrandr}/bin/xrandr";
-in {
+in
+{
   options.${namespace}.desktop.xsession = with types; {
     enable = mkBoolOpt false "Enable X11 session managed by LightDM.";
 
     autoLogin.enable = mkBoolOpt false "Enable LightDM autologin into xsession.";
-    autoLogin.user = mkOpt str "dengo123" "User for autologin.";
+    autoLogin.user = mkStrOpt "dengo123" "User for autologin.";
 
     # Greeter
-    greeter.activeMonitor = mkOpt str "primary" "Monitor for login box (primary | name | index).";
-    greeter.position = mkOpt str "50%x50%" "Login box position (e.g. 50%x50%).";
-    greeter.iconTheme = mkOpt str "Papirus-Dark" "Greeter icon theme.";
-    greeter.cursorTheme = mkOpt str "Bibata-Original-Ice" "Greeter cursor theme.";
-    greeter.cursorSize = mkOpt int 24 "Greeter cursor size.";
-    greeter.backgroundColor = mkOpt str "#235CDB" "Fallback background color for the greeter.";
+    greeter.activeMonitor = mkStrOpt "primary" "Monitor for login box (primary | name | index).";
+    greeter.position = mkStrOpt "50%x50%" "Login box position (e.g. 50%x50%).";
+    greeter.iconTheme = mkStrOpt "Papirus-Dark" "Greeter icon theme.";
+    greeter.cursorTheme = mkStrOpt "Bibata-Original-Ice" "Greeter cursor theme.";
+    greeter.cursorSize = mkIntOpt 24 "Greeter cursor size.";
+    greeter.backgroundColor = mkStrOpt "#235CDB" "Fallback background color for the greeter.";
     greeter.backgroundImage =
       mkOpt (nullOr str) null
-      "Optional wallpaper path; overrides background color.";
+        "Optional wallpaper path; overrides background color.";
 
     # Monitore
-    monitors.primary.output = mkOpt str "DP-4" "Primary output";
-    monitors.primary.mode = mkOpt str "1920x1080" "Primary mode";
-    monitors.primary.rotate = mkOpt str "normal" "Primary rotation";
-    monitors.primary.pos = mkOpt str "1080x420" "Primary position";
+    monitors.primary.output = mkStrOpt "DP-4" "Primary output";
+    monitors.primary.mode = mkStrOpt "1920x1080" "Primary mode";
+    monitors.primary.rotate = mkStrOpt "normal" "Primary rotation";
+    monitors.primary.pos = mkStrOpt "1080x420" "Primary position";
 
-    monitors.portrait.output = mkOpt str "DP-2" "Portrait output";
-    monitors.portrait.mode = mkOpt str "1920x1080" "Portrait base mode";
-    monitors.portrait.rotate = mkOpt str "left" "Portrait rotation";
-    monitors.portrait.pos = mkOpt str "0x0" "Portrait position";
+    monitors.portrait.output = mkStrOpt "DP-2" "Portrait output";
+    monitors.portrait.mode = mkStrOpt "1920x1080" "Portrait base mode";
+    monitors.portrait.rotate = mkStrOpt "left" "Portrait rotation";
+    monitors.portrait.pos = mkStrOpt "0x0" "Portrait position";
   };
 
   config = mkIf cfg.enable {
@@ -63,7 +65,7 @@ in {
 
     services.xserver.displayManager = {
       lightdm.enable = true;
-      sessionPackages = [xsessionPkg];
+      sessionPackages = [ xsessionPkg ];
       defaultSession = "xsession";
 
       lightdm.greeters.gtk = {
@@ -76,9 +78,10 @@ in {
           cursor-theme-size=${toString cfg.greeter.cursorSize}
           user-background=false
           background=${
-            if cfg.greeter.backgroundImage != null
-            then cfg.greeter.backgroundImage
-            else cfg.greeter.backgroundColor
+            if cfg.greeter.backgroundImage != null then
+              cfg.greeter.backgroundImage
+            else
+              cfg.greeter.backgroundColor
           }
 
           # Panel unten,  Links: Power | Mitte: leer | Rechts: Clock
@@ -89,18 +92,17 @@ in {
       };
 
       # EINMAL definieren, Autologin-Teil optional anhängen
-      lightdm.extraConfig =
-        ''
-          [Seat:*]
-          display-setup-script=/etc/lightdm/display-setup.sh
-          greeter-setup-script=/etc/lightdm/display-setup.sh
-        ''
-        + optionalString cfg.autoLogin.enable ''
-          autologin-user=${cfg.autoLogin.user}
-          autologin-user-timeout=0
-          allow-guest=false
-          greeter-show-manual-login=true
-        '';
+      lightdm.extraConfig = ''
+        [Seat:*]
+        display-setup-script=/etc/lightdm/display-setup.sh
+        greeter-setup-script=/etc/lightdm/display-setup.sh
+      ''
+      + optionalString cfg.autoLogin.enable ''
+        autologin-user=${cfg.autoLogin.user}
+        autologin-user-timeout=0
+        allow-guest=false
+        greeter-show-manual-login=true
+      '';
     };
 
     # Script: läuft beim Greeter-Start UND wenn der Greeter wieder erscheint (z.B. nach Resume)
