@@ -29,7 +29,18 @@ function P.run_search(query)
 	local tmpl = [=[#!/bin/sh
 set -eu
 Q=__Q__
-paths="${XDG_DATA_HOME:-$HOME/.local/share}/applications /usr/share/applications /usr/local/share/applications $HOME/.local/share/flatpak/exports/share/applications /var/lib/flatpak/exports/share/applications /var/lib/snapd/desktop/applications"
+paths="${XDG_DATA_HOME:-$HOME/.local/share}/applications \
+/etc/xdg/applications \
+/run/current-system/sw/share/applications \
+/usr/share/applications /usr/local/share/applications \
+$HOME/.local/share/flatpak/exports/share/applications \
+/var/lib/flatpak/exports/share/applications \
+/var/lib/snapd/desktop/applications"
+
+# XDG_DATA_DIRS mitnehmen (wichtig für NixOS)
+for d in ${XDG_DATA_DIRS:-}; do
+  paths="$paths $d/applications"
+done
 
 list_files() {
   if command -v fd >/dev/null 2>&1; then
@@ -111,64 +122,20 @@ function P.local_search(query, HOME)
 	HOME = HOME or (os.getenv("HOME") or "~")
 	local q = (query or ""):match("^%s*(.-)%s*$")
 
-	local sh = string.format(
-		[=[
-set -eu
-HOME_DIR=%q
-Q=%q
+	local target
+	if q == "" or q == "~" then
+		target = HOME
+	elseif q:sub(1, 1) == "~" then
+		target = q:gsub("^~", HOME)
+	elseif q:sub(1, 1) == "/" then
+		target = q
+	else
+		target = HOME .. "/" .. q
+	end
 
-# 0) zoxide bevorzugen
-if command -v zoxide >/dev/null 2>&1; then
-  Z="$(zoxide query -- "$Q" 2>/dev/null || true)"
-  if [ -n "${Z:-}" ] && [ -d "$Z" ]; then TARGET="$Z"; fi
-fi
+	local files = os.getenv("FILE_MANAGER") or "xdg-open"
 
-if [ -z "${TARGET:-}" ]; then
-  case "$Q" in "~"|"~/"*) Q="${Q/#\~/$HOME_DIR}";; esac
-  if [ "${Q#/}" != "$Q" ]; then CAND="$Q"; else CAND="$HOME_DIR/$Q"; fi
-
-  if [ -d "${CAND:-}" ]; then
-    TARGET="$CAND"
-  elif [ -e "${CAND:-}" ]; then
-    TARGET="$(dirname -- "$CAND")"
-  else
-    BIN="$(command -v fd || command -v fdfind || true)"
-    if [ -n "${BIN:-}" ]; then
-      FIRST="$("$BIN" -H -c never -- "$Q" "$HOME_DIR" 2>/dev/null | head -n1 || true)"
-    else
-      FIRST="$(find "$HOME_DIR" -iname "*$Q*" -print -quit 2>/dev/null || true)"
-    fi
-    if [ -n "${FIRST:-}" ]; then
-      [ -d "$FIRST" ] && TARGET="$FIRST" || TARGET="$(dirname -- "$FIRST")"
-    else
-      TARGET="$HOME_DIR"
-    fi
-  fi
-fi
-
-term="${TERMINAL:-}"
-if [ -z "$term" ]; then
-  for t in kitty alacritty gnome-terminal konsole xfce4-terminal xterm; do
-    if command -v "$t" >/dev/null 2>&1; then term="$t"; break; fi
-  done
-fi
-term="${term:-xterm}"
-
-case "$term" in
-  kitty)            exec kitty --directory "$TARGET" >/dev/null 2>&1 & ;;
-  alacritty)        exec alacritty --working-directory "$TARGET" >/dev/null 2>&1 & ;;
-  gnome-terminal)   exec gnome-terminal --working-directory="$TARGET" >/dev/null 2>&1 & ;;
-  konsole)          exec konsole --workdir "$TARGET" >/dev/null 2>&1 & ;;
-  xfce4-terminal)   exec xfce4-terminal --working-directory "$TARGET" >/dev/null 2>&1 & ;;
-  xterm)            (cd "$TARGET" && exec xterm) >/dev/null 2>&1 & ;;
-  *)                (cd "$TARGET" && exec "$term") >/dev/null 2>&1 & ;;
-esac
-]=],
-		HOME,
-		q
-	)
-
-	awful.spawn.with_shell(sh)
+	awful.spawn.with_shell(string.format("%s %q >/dev/null 2>&1 &", files, target))
 end
 
 -- -------- Web --------

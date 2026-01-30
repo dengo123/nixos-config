@@ -43,18 +43,12 @@ in
       nvidia = {
         open = cfg.open;
         package = resolvePackage cfg.package;
-        nvidiaSettings = true;
         modesetting.enable = true;
         powerManagement.enable = true;
       };
     };
 
-    services.xserver = {
-      videoDrivers = [ "nvidia" ];
-      deviceSection = ''
-        Option "Coolbits" "28"
-      '';
-    };
+    services.xserver.videoDrivers = [ "nvidia" ];
 
     boot = {
       kernelModules = [

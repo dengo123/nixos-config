@@ -7,9 +7,11 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.programs.nemo;
-in {
+in
+{
   options.${namespace}.programs.nemo = with types; {
     enable = mkBoolOpt false "Enable Nemo (per-user via Home Manager).";
 
@@ -36,15 +38,17 @@ in {
       ++ (with pkgs; optional cfg.withBundle nemo-with-extensions)
       ++ (
         with pkgs;
-          optionals (!cfg.withBundle && cfg.extensions.fileroller) [
-            nemo-fileroller
-            file-roller
-          ]
+        optionals (!cfg.withBundle && cfg.extensions.fileroller) [
+          nemo-fileroller
+          file-roller
+        ]
       )
-      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.preview) [nemo-preview])
-      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.emblems) [nemo-emblems])
-      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.seahorse) [nemo-seahorse])
-      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.python) [nemo-python])
-      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.qmlDbus) [nemo-qml-plugin-dbus]);
+      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.preview) [ nemo-preview ])
+      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.emblems) [ nemo-emblems ])
+      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.seahorse) [ nemo-seahorse ])
+      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.python) [ nemo-python ])
+      ++ (with pkgs; optionals (!cfg.withBundle && cfg.extensions.qmlDbus) [ nemo-qml-plugin-dbus ]);
+
+    home.sessionVariables.FILE_MANAGER = "nemo";
   };
 }

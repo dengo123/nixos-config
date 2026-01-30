@@ -14,8 +14,6 @@ in
   options.${namespace}.services.lact = with types; {
     enable = mkBoolOpt false "Enable LACT (GPU control) daemon + tooling.";
 
-    gui = mkBoolOpt true "Install LACT GUI in addition to CLI.";
-
     desktopEntry = mkBoolOpt true "Install a .desktop entry so LACT appears in launchers/menus.";
 
     # optional: for future - pick a default profile name you want to auto-apply
@@ -24,26 +22,18 @@ in
 
   config = mkIf cfg.enable (mkMerge [
     {
-      # daemon
       services.lact.enable = true;
+      environment.systemPackages = [ pkgs.lact ];
 
-      # packages
-      environment.systemPackages = [
-        pkgs.lact
-      ];
-
-      # provide a desktop entry so your Awesome menu/rofi sees it
-      environment.etc = mkIf cfg.desktopEntry {
-        "xdg/applications/lact.desktop".text = ''
-          [Desktop Entry]
-          Name=LACT
-          Comment=Linux GPU Control Tool
-          Exec=${pkgs.lact}/bin/lact gui
-          Terminal=false
-          Type=Application
-          Categories=System;Settings;
-        '';
-      };
+      environment.etc."xdg/applications/lact.desktop".text = ''
+        [Desktop Entry]
+        Name=LACT
+        Comment=Linux GPU Control Tool
+        Exec=${pkgs.lact}/bin/lact
+        Terminal=false
+        Type=Application
+        Categories=System;Settings;
+      '';
     }
   ]);
 }

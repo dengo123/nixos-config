@@ -7,7 +7,7 @@ return {
 
 	launcher = nil,
 	browser = os.getenv("BROWSER") or "firefox",
-	files = "nemo || xdg-open ~",
+	files = (os.getenv("FILE_MANAGER") or "xdg-open") .. " ~",
 
 	emacs = {
 		client = { "emacsclient", "-c", "-a", "" }, -- -a "" startet Emacs, falls kein Server läuft
