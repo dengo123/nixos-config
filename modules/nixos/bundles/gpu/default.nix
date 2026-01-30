@@ -31,16 +31,21 @@ in
         lm_sensors
         nvtopPackages.full
         hwinfo
-        lact
       ];
 
       # optional: sensors nutzbar machen (wenn du das eh willst)
       hardware.sensor.iio.enable = mkDefault true;
+
+      ${namespace}.services.lact = enabled;
     }
 
     # --- Vendor routing (nur toggles; Details im jeweiligen Modul) ---
     (mkIf (cfg.vendor == "nvidia") {
-      ${namespace}.hardware.nvidia.enable = mkDefault true;
+      ${namespace}.hardware.nvidia = {
+        enable = mkDefault true;
+        open = true;
+        package = "production";
+      };
     })
 
     # (mkIf (cfg.vendor == "amd") {
