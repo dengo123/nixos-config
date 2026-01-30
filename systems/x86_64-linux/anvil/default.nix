@@ -25,28 +25,24 @@ with lib.${namespace};
           "video"
           "libvirtd"
           "docker"
+          "i2c"
         ];
       };
     };
     bundles = {
       common = enabled;
+      gpu.vendor = "nvidia";
       ai = enabled;
     };
-    # desktop.hyprland = {
-    #   enable = true;
-    #   mode = "full";
-    # };
     desktop.xsession = {
       enable = true;
       autoLogin = enabled;
     };
     hardware = {
-      nvidia = {
+      rgb = {
         enable = true;
-        open = true;
-        package = "production";
+        profile = mkForce "all_white.orp";
       };
-      # rgb = enabled;
     };
     programs = {
       steam = enabled;
@@ -56,6 +52,7 @@ with lib.${namespace};
     };
     services = {
       virtualisation = enabled;
+      printing = enabled;
     };
     system = {
       boot.grub = enabled;

@@ -1,16 +1,19 @@
 {
   config,
   lib,
+  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.hardware.nvidia;
 
   nvidiaPackages = config.boot.kernelPackages.nvidiaPackages;
 
-  resolvePackage = pkg:
+  resolvePackage =
+    pkg:
     {
       stable = nvidiaPackages.stable;
       production = nvidiaPackages.production;
@@ -19,13 +22,17 @@ with lib.${namespace}; let
       vulkan_beta = nvidiaPackages.vulkan_beta;
     }
     .${pkg};
-in {
+in
+{
   options.${namespace}.hardware.nvidia = with types; {
     enable = mkBoolOpt false "Enable NVIDIA drivers";
-    package =
-      mkOpt (enum ["stable" "production" "latest" "beta" "vulkan_beta"])
+    package = mkOpt (enum [
       "stable"
-      "NVIDIA driver package to use";
+      "production"
+      "latest"
+      "beta"
+      "vulkan_beta"
+    ]) "stable" "NVIDIA driver package to use";
     open = mkBoolOpt false "Use the NVIDIA open kernel module (experimental)";
   };
 
@@ -42,10 +49,20 @@ in {
       };
     };
 
-    services.xserver.videoDrivers = ["nvidia"];
+    services.xserver = {
+      videoDrivers = [ "nvidia" ];
+      deviceSection = ''
+        Option "Coolbits" "28"
+      '';
+    };
 
     boot = {
-      kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"];
+      kernelModules = [
+        "nvidia"
+        "nvidia_modeset"
+        "nvidia_uvm"
+        "nvidia_drm"
+      ];
       kernelParams = [
         "nvidia_drm.modeset=1"
         "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
@@ -54,5 +71,7 @@ in {
         options nvidia_drm modeset=1
       '';
     };
+
+    environment.systemPackages = with pkgs; [ nvtopPackages.nvidia ];
   };
 }

@@ -1,6 +1,6 @@
 # -*- mode: snippet -*-
-# name: nix package rpm (snowfall)
-# key: __nix-package-rpm
+# name: nix package npm (snowfall)
+# key: __nix-package-npm
 # --
 { lib
 , fetchFromGitHub
@@ -9,21 +9,21 @@
 }:
 
 buildNpmPackage rec {
-  pname = "${pname}";
-  version = "${version}";
+  pname = "${1:pname}";
+  version = "${2:0.1.0}";
 
   src = fetchFromGitHub {
-    owner = "${owner}";
+    owner = "${3:owner}";
     repo  = pname;
-    rev   = "v${version}";
-    hash  = "${srcHash}";
+    rev   = "v\${version}";
+    hash  = "${4:sha256-...}";
   };
 
-  npmDepsHash = "${npmDepsHash}";
-  npmBuildScript = "build";
+  npmDepsHash = "${5:sha256-...}";
+  npmBuildScript = "${6:build}";
 
   meta = with lib; {
-    description = "${description}";
-    license = licenses.${license};
+    description = "${7:description}";
+    license = licenses.${8:mit};
   };
 }

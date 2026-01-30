@@ -14,24 +14,29 @@ let
 in
 {
   options.${namespace}.bundles.developer = with types; {
-    enable = mkBoolOpt true "Enable developer bundle, favorite editor with shared global developer packages";
+    enable = mkBoolOpt true "Enable IDE bundle, favorite editor with shared global developer packages";
 
     editor = mkOpt (types.nullOr (
       types.enum [
         "doom"
         "nvim"
       ]
-    )) null "Choose a text editor. If null, vanilla vim is installed as fallback.";
+    )) null "Choose a text editor. If null, only vanilla vim is installed (no dev stack).";
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # Gemeinsame Dev-Pakete
-    {
+    (mkIf (cfg.editor == null) {
+      home.packages = [ pkgs.vim ];
+    })
+
+    (mkIf (cfg.editor != null) {
       home.packages = with pkgs; [
         clang-tools
         cmake
+        devenv
 
         # Essentials
+        git
         ripgrep
         fd
         just
@@ -56,9 +61,6 @@ in
         taplo
         jq
         yamlfmt
-
-        typescript-language-server
-        prettier
       ];
 
       programs.direnv = {
@@ -66,12 +68,9 @@ in
         enableZshIntegration = true;
         nix-direnv.enable = true;
       };
-      ${namespace} = {
-        programs.git = enabled;
-      };
-    }
+    })
 
-    # Editor-Auswahl (analog zu terminal.emulator)
+    # 3) Editor-Auswahl
     (mkIf (cfg.editor == "doom") {
       ${namespace} = {
         programs.doom = {
@@ -91,10 +90,6 @@ in
         enable = true;
         mode = mkDefault "full";
       };
-    })
-
-    (mkIf (cfg.editor == null) {
-      home.packages = [ pkgs.vim ];
     })
   ]);
 }

@@ -1,3 +1,7 @@
+# -*- mode: snippet -*-
+# name: nix package python (buildPythonPackage)
+# key: __nix-package-python
+# --
 { lib
 , python3Packages
 , fetchFromGitHub
@@ -5,29 +9,29 @@
 }:
 
 python3Packages.buildPythonPackage rec {
-  pname = "${pname}";
-  version = "${version}";
-  pyproject = true; # falls poetry/pyproject; sonst ggf. false
+  pname = "${1:pname}";
+  version = "${2:0.1.0}";
+  pyproject = ${3:true};
 
   src = fetchFromGitHub {
-    owner = "${owner}";
+    owner = "${4:owner}";
     repo  = pname;
-    rev   = "v${version}";
-    hash  = "${srcHash}";
+    rev   = "v\${version}";
+    hash  = "${5:sha256-...}";
   };
 
   propagatedBuildInputs = [
-    # python deps
+    $0
   ];
 
   nativeBuildInputs = [
     # e.g. python3Packages.setuptools
   ];
 
-  pythonImportsCheck = [ "${importName}" ];
+  pythonImportsCheck = [ "${6:import_name}" ];
 
   meta = with lib; {
-    description = "${description}";
-    license = licenses.${license};
+    description = "${7:description}";
+    license = licenses.${8:mit};
   };
 }

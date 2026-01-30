@@ -1,6 +1,6 @@
 # -*- mode: snippet -*-
-# name: nix package generic (snowfall)
-# key: __nix-module-generic
+# name: nix package generic (stdenv.mkDerivation)
+# key: __nix-package-generic
 # --
 { lib
 , stdenv
@@ -10,22 +10,22 @@
 }:
 
 stdenv.mkDerivation rec {
-  pname = "${pname}";
-  version = "${version}";
+  pname = "${1:pname}";
+  version = "${2:0.1.0}";
 
   # === Source ===
   # Option A: GitHub
   src = fetchFromGitHub {
-    owner = "${owner}";
+    owner = "${3:owner}";
     repo  = pname;
-    rev   = "v${version}";
-    hash  = "${srcHash}";
+    rev   = "v\${version}";
+    hash  = "${4:sha256-...}";
   };
 
   # Option B: URL
   # src = fetchurl {
-  #   url  = "${url}";
-  #   hash = "${srcHash}";
+  #   url  = "${5:https://...}";
+  #   hash = "${4}";
   # };
 
   # === Dependencies ===
@@ -43,9 +43,11 @@ stdenv.mkDerivation rec {
   # installPhase   = '' ... '';
 
   meta = with lib; {
-    description = "${description}";
-    license = licenses.${license};
+    description = "${6:...}";
+    license = licenses.${7:mit};
     platforms = platforms.linux;
-    mainProgram = "${mainProgram}";
+    mainProgram = "${8:${1}}";
   };
+
+  $0
 }

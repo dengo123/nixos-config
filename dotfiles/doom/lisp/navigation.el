@@ -1,7 +1,6 @@
 ;;; lisp/navigation.el -*- lexical-binding: t; -*-
 
-(after! consult
-  (map! :leader :desc "Find file (consult-fd)" "f z" #'consult-fd))
+(map! :leader :desc "Find file (consult-fd)" "f z" #'consult-fd))
 
 (map! :leader :desc "Toggle treemacs" "t t" #'+treemacs/toggle)
 

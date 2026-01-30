@@ -4,13 +4,13 @@
   ...
 }:
 with lib;
-with lib.${namespace};
+with lib.\${namespace};
 {
   imports = [ ./hardware.nix ];
 
   networking.hostName = "your-hostname"; # TODO: Change me!
 
-  ${namespace} = {
+  \${namespace} = {
     config = {
       user = {
         name = "your-username"; # TODO: Change me!
@@ -32,7 +32,6 @@ with lib.${namespace};
     hardware = {
       bluetooth = enabled;
       audio = enabled;
-      # cuda = enabled;
       # nvidia = enabled;
     };
 

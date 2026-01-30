@@ -6,10 +6,10 @@
   ...
 }:
 with lib;
-with lib.${namespace}; {
+with lib.\${namespace}; {
   snowfallorg.user.enable = true;
 
-  ${namespace} = {
+  \${namespace} = {
     bundles = {
       common = enabled;
       # Add optional bundles below
