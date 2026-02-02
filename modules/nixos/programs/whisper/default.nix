@@ -10,9 +10,13 @@ with lib.${namespace};
 let
   cfg = config.${namespace}.programs.whisper;
 
+  hasCuda = pkgs ? whisper-cpp-cuda;
+
   whisperPkg =
-    if cfg.backend == "cuda" then
+    if cfg.backend == "cuda" && hasCuda then
       pkgs.whisper-cpp-cuda
+    else if cfg.backend == "cuda" && !hasCuda then
+      pkgs.whisper-cpp
     else if cfg.backend == "vulkan" then
       pkgs.whisper-cpp-vulkan
     else

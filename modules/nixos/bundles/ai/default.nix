@@ -10,6 +10,7 @@ with lib;
 with lib.${namespace};
 let
   cfg = config.${namespace}.bundles.ai;
+
   gpuVendor = (config.${namespace}.bundles.gpu.vendor or null);
 
   ollamaPkg =
@@ -33,27 +34,20 @@ in
     enable = mkBoolOpt false "Enable bundles.ai";
   };
 
-  config = mkIf cfg.enable (mkMerge [
-    # enable whisper + configure backend by vendor
-    {
-      ${namespace}.programs.whisper = {
+  config = mkIf cfg.enable {
+    ${namespace} = {
+      # Whisper als Modul aktivieren
+      programs.whisper = {
         enable = true;
         backend = whisperBackend;
-        # modelPath/rootDir defaults kommen schon aus dem whisper-modul,
-        # kannst du hier aber überschreiben, wenn du willst.
+        # modelPath/rootDir bleiben defaults aus dem whisper-modul,
+        # oder hier überschreiben.
       };
 
-      ${namespace}.services.ollama = {
+      services.ollama = {
         enable = true;
         package = ollamaPkg;
       };
-    }
-
-    # only needed for nvidia/cuda backend:
-    (mkIf (gpuVendor == "nvidia") {
-      nixpkgs.overlays = [
-        (import ../../../overlays/whisper-cpp-cuda) # Pfad ggf. anpassen!
-      ];
-    })
-  ]);
+    };
+  };
 }
