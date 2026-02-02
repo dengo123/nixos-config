@@ -10,11 +10,8 @@ with lib;
 with lib.${namespace};
 let
   cfg = config.${namespace}.bundles.ai;
-
-  # single source of truth: bundles.gpu.vendor
   gpuVendor = (config.${namespace}.bundles.gpu.vendor or null);
 
-  # pick ollama package by vendor
   ollamaPkg =
     if gpuVendor == "nvidia" then
       pkgs.ollama-cuda
@@ -22,6 +19,14 @@ let
       pkgs.ollama-rocm
     else
       pkgs.ollama-cpu;
+
+  whisperBackend =
+    if gpuVendor == "nvidia" then
+      "cuda"
+    else if gpuVendor == "amd" then
+      "vulkan"
+    else
+      "cpu";
 in
 {
   options.${namespace}.bundles.ai = with types; {
@@ -29,24 +34,26 @@ in
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # base AI tooling + ollama enable
+    # enable whisper + configure backend by vendor
     {
-      environment.systemPackages = with pkgs; [
-        whisper-cpp
-        whisper-cpp-vulkan
-      ];
+      ${namespace}.programs.whisper = {
+        enable = true;
+        backend = whisperBackend;
+        # modelPath/rootDir defaults kommen schon aus dem whisper-modul,
+        # kannst du hier aber überschreiben, wenn du willst.
+      };
 
-      ${namespace} = {
-        services.ollama = {
-          enable = true;
-          package = ollamaPkg;
-        };
+      ${namespace}.services.ollama = {
+        enable = true;
+        package = ollamaPkg;
       };
     }
 
-    # NVIDIA -> turn on CUDA wiring
+    # only needed for nvidia/cuda backend:
     (mkIf (gpuVendor == "nvidia") {
-      ${namespace}.hardware.cuda = enabled;
+      nixpkgs.overlays = [
+        (import ../../../overlays/whisper-cpp-cuda) # Pfad ggf. anpassen!
+      ];
     })
   ]);
 }
