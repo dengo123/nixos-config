@@ -40,6 +40,7 @@ in
         ripgrep
         fd
         just
+        codex
 
         # Lua
         lua-language-server
