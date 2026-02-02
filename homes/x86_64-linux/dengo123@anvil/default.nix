@@ -24,10 +24,6 @@ with lib.${namespace};
     };
 
     programs = {
-      # git = {
-      #   username = "dengo123";
-      #   email = "deniz060198@hotmail.com";
-      # };
       spotify = enabled;
       gimp = enabled;
       discord = enabled;

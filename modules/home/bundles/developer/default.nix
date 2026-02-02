@@ -26,7 +26,10 @@ in
 
   config = mkIf cfg.enable (mkMerge [
     (mkIf (cfg.editor == null) {
-      home.packages = [ pkgs.vim ];
+      home.packages = with pkgs; [
+        vim
+        git
+      ];
     })
 
     (mkIf (cfg.editor != null) {
@@ -36,7 +39,6 @@ in
         devenv
 
         # Essentials
-        git
         ripgrep
         fd
         just
@@ -63,6 +65,8 @@ in
         jq
         yamlfmt
       ];
+
+      ${namespace}.programs.git = enabled;
 
       programs.direnv = {
         enable = true;
