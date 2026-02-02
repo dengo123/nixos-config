@@ -64,7 +64,6 @@
 
       channels-config = {
         allowUnfree = true;
-        overlays = import ./overlays;
       };
 
       specialArgs = {

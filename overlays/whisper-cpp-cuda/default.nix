@@ -1,3 +1,5 @@
+# overlays/whisper-cpp-cuda/default.nix
+{ channels, ... }:
 final: prev: {
   whisper-cpp-cuda = prev.whisper-cpp.overrideAttrs (old: {
     cmakeFlags = (old.cmakeFlags or [ ]) ++ [ "-DGGML_CUDA=1" ];
