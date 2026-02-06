@@ -1,3 +1,4 @@
+# modules/nixos/hardware/monitors/default.nix
 {
   config,
   lib,
@@ -13,95 +14,112 @@ let
 
   XR = "${pkgs.xorg.xrandr}/bin/xrandr";
 
-  # ---- Helpers: Erkennung über /sys (zuverlässiger als lspci im DM-Kontext) ----
-  detectGpuScript = pkgs.writeShellScript "detect-gpu-mode" ''
-    #!/usr/bin/env bash
+  # dGPU: deine FIXEN Ports
+  dgpuScript = ''
+    #!/bin/sh
     set -u
 
-    # NVIDIA vendor id: 0x10de
-    if [ -e /sys/class/drm/card2/device/vendor ] && grep -qi 0x10de /sys/class/drm/card2/device/vendor; then
-      echo dgpu
-      exit 0
+    # optional: mini delay für EDID/CRTC Stabilität (kannst du auch auf 0 setzen)
+    ${optionalString (cfg.delayMs > 0) "sleep ${toString (cfg.delayMs)}e-3"}
+
+    # Portrait zuerst (Rotation/CRTC), dann Primary
+    ${XR} --output DP-2 --mode 1920x1080 --rotate left --pos 0x0 2>/dev/null || true
+    ${XR} --output DP-4 --mode 1920x1080 --rotate normal --primary --pos 1080x420 2>/dev/null || true
+
+    # TV nur wenn wirklich connected
+    if ${XR} --query | grep -q "^HDMI-0 connected"; then
+      ${XR} --output HDMI-0 --mode 3840x2160 --pos -3840x0 2>/dev/null || true
     fi
 
-    # fallback: irgendeine card mit 0x10de?
-    for v in /sys/class/drm/card*/device/vendor; do
-      if [ -e "$v" ] && grep -qi 0x10de "$v"; then
-        echo dgpu
-        exit 0
-      fi
-    done
-
-    echo igpu
-  '';
-
-  # ---- dGPU Layout (deine bekannten Ports) ----
-  dgpuBin = pkgs.writeShellScriptBin "monitors-dgpu" ''
-    #!/usr/bin/env bash
-    set -u
-
-    # Best effort: niemals den DM hart abschießen
-    ${XR} --output DP-2 --mode 1920x1080 --rotate left --pos 0x0 2>/dev/null || true
-    ${XR} --output DP-4 --mode 1920x1080 --primary --pos 1080x420 2>/dev/null || true
-
-    # TV optional (wenn du ihn dran hast)
-    ${XR} --output HDMI-0 --mode 3840x2160 --pos -3840x0 2>/dev/null || true
-
-    # andere dGPU Outputs aus (nur dGPU-Namensraum!)
+    # Best effort: andere dGPU outputs aus
     ${XR} --output DP-0 --off 2>/dev/null || true
     ${XR} --output DP-1 --off 2>/dev/null || true
     ${XR} --output DP-3 --off 2>/dev/null || true
     ${XR} --output DP-5 --off 2>/dev/null || true
   '';
 
-  # ---- iGPU Layout (aus deinem TTY-Screenshot: HDMI-A-1 + DP-1) ----
-  igpuBin = pkgs.writeShellScriptBin "monitors-igpu" ''
-    #!/usr/bin/env bash
+  # iGPU: Platzhalter — DU passt HDMI/DP Namen nach deinem iGPU-xrandr an
+  igpuScript = ''
+    #!/bin/sh
     set -u
 
-    ${XR} --output HDMI-A-1 --mode 1920x1080 --primary --pos 0x0 2>/dev/null || true
-    ${XR} --output DP-1     --mode 1920x1080 --pos 1920x0 2>/dev/null || true
+    ${optionalString (cfg.delayMs > 0) "sleep ${toString (cfg.delayMs)}e-3"}
 
-    # iGPU-only: NICHT versuchen HDMI-0/DP-2/... abzuschalten,
-    # weil diese Namen auf iGPU-boot evtl. gar nicht existieren und nur Noise erzeugen.
+    # TODO: nach iGPU-boot anpassen:
+    ${XR} --output DP-1     --mode 1920x1080 --rotate left --pos 0x0 2>/dev/null || true
+    ${XR} --output HDMI-A-1 --mode 1920x1080 --rotate normal --primary --pos 1080x420 2>/dev/null || true
   '';
 
-  autoBin = pkgs.writeShellScriptBin "monitors-auto" ''
-    #!/usr/bin/env bash
+  autoScript = ''
+    #!/bin/sh
     set -u
 
-    mode="$(${detectGpuScript})"
+    log() {
+      # DM-Startup darf nie scheitern -> alles "best effort"
+      echo "monitors-auto: $*" | systemd-cat -t monitors-auto 2>/dev/null || true
+    }
 
-    # kleines Log, super hilfreich wenn DM hängt:
-    echo "monitors-auto: mode=$mode" | systemd-cat -t monitors-auto || true
+    # NVIDIA vendor id: 0x10de
+    has_nvidia=0
+    for v in /sys/class/drm/card*/device/vendor; do
+      if [ -e "$v" ] && grep -qi "0x10de" "$v"; then
+        has_nvidia=1
+        break
+      fi
+    done
 
-    if [ "$mode" = "dgpu" ]; then
-      exec ${dgpuBin}/bin/monitors-dgpu
+    if [ "$has_nvidia" -eq 1 ]; then
+      log "mode=dgpu"
+      /etc/X11/monitors-dgpu.sh || true
     else
-      exec ${igpuBin}/bin/monitors-igpu
+      log "mode=igpu"
+      /etc/X11/monitors-igpu.sh || true
     fi
   '';
+
+  # Optional: CLI-Tools zum manuellen Ausführen (NICHT als Datei, sondern bin!)
+  dgpuBin = pkgs.writeShellScriptBin "monitors-dgpu" dgpuScript;
+  igpuBin = pkgs.writeShellScriptBin "monitors-igpu" igpuScript;
+  autoBin = pkgs.writeShellScriptBin "monitors-auto" autoScript;
+
 in
 {
   options.${namespace}.hardware.monitors = with types; {
-    enable = mkBoolOpt false "Enable early X11 monitor init via xrandr (dGPU/iGPU auto-detect).";
+    enable = mkBoolOpt false "Enable early X11 monitor init via /etc Xrandr scripts (dGPU/iGPU auto-detect).";
 
-    # optional: nur wenn du die Skripte auch manuell nutzen willst
-    installTools = mkBoolOpt true "Install monitors-* scripts system-wide.";
+    # wenn du die scripts auch im terminal haben willst:
+    installTools = mkBoolOpt true "Install monitors-* commands system-wide for debugging/manual use.";
+
+    # kleiner delay kann bei manchen Setups helfen (0 = aus)
+    delayMs = mkIntOpt 0 "Delay in milliseconds before applying xrandr (helps with EDID/CRTC races).";
   };
 
   config = mkIf cfg.enable {
-    # Skripte optional ins System (praktisch für Debug)
+    # /etc/X11 scripts (DM-safe, immer verfügbar)
+    environment.etc."X11/monitors-dgpu.sh".text = dgpuScript;
+    environment.etc."X11/monitors-dgpu.sh".mode = "0755";
+
+    environment.etc."X11/monitors-igpu.sh".text = igpuScript;
+    environment.etc."X11/monitors-igpu.sh".mode = "0755";
+
+    environment.etc."X11/monitors-auto.sh".text = autoScript;
+    environment.etc."X11/monitors-auto.sh".mode = "0755";
+
+    # SDDM/DM hook: vor Greeter & Session
+    services.xserver.displayManager.setupCommands = ''
+      /etc/X11/monitors-auto.sh || true
+    '';
+
+    services.xserver.displayManager.sessionCommands = ''
+      /etc/X11/monitors-auto.sh || true
+    '';
+
+    # Optional: Debug/Manual Tools (bins, kein buildEnv-file-crash)
     environment.systemPackages = mkIf cfg.installTools [
       dgpuBin
       igpuBin
       autoBin
+      pkgs.xorg.xrandr
     ];
-
-    # Der wichtigste Hook: vor Greeter/Session
-    services.xserver.displayManager.setupCommands = ''
-      # niemals hart failen im DM-Startup
-      ${autoBin}/bin/monitors-auto || true
-    '';
   };
 }

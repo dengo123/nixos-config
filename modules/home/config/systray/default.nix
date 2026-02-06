@@ -7,30 +7,33 @@
   ...
 }:
 with lib;
-with lib.${namespace}; let
+with lib.${namespace};
+let
   cfg = config.${namespace}.config.systray;
 
-  mkTrayService = {
-    name,
-    exec,
-    after ? ["graphical-session.target"],
-  }: {
-    "systray-${name}" = {
-      Unit = {
-        Description = "Systray: ${name}";
-        After = after;
-        PartOf = ["graphical-session.target"];
-      };
-      Service = {
-        ExecStart = exec;
-        Restart = "on-failure";
-        RestartSec = 2;
-      };
-      Install = {
-        WantedBy = ["graphical-session.target"];
+  mkTrayService =
+    {
+      name,
+      exec,
+      after ? [ "graphical-session.target" ],
+    }:
+    {
+      "systray-${name}" = {
+        Unit = {
+          Description = "Systray: ${name}";
+          After = after;
+          PartOf = [ "graphical-session.target" ];
+        };
+        Service = {
+          ExecStart = exec;
+          Restart = "on-failure";
+          RestartSec = 2;
+        };
+        Install = {
+          WantedBy = [ "graphical-session.target" ];
+        };
       };
     };
-  };
 
   mkHiddenDesktop = n: ''
     [Desktop Entry]
@@ -41,15 +44,16 @@ with lib.${namespace}; let
     NotShowIn=Awesome;
   '';
 
-  hiddenFilesFrom = names:
+  hiddenFilesFrom =
+    names:
     builtins.listToAttrs (
       map (n: {
         name = ".config/autostart/${n}";
         value.text = mkHiddenDesktop n;
-      })
-      names
+      }) names
     );
-in {
+in
+{
   options.${namespace}.config.systray = with types; {
     enable = mkBoolOpt false "Systray applets via systemd --user; XDG autostarts disabled.";
     startBlueman = mkBoolOpt true "Start Blueman applet (bluetooth) with systemd.";
@@ -86,6 +90,10 @@ in {
       (mkIf cfg.startCopyQ (mkTrayService {
         name = "copyq";
         exec = "${pkgs.copyq}/bin/copyq";
+        after = [
+          "graphical-session.target"
+          "tray.target"
+        ];
       }))
     ];
 

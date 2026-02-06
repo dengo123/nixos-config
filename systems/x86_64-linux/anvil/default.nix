@@ -34,7 +34,7 @@ with lib.${namespace};
       gpu.vendor = "nvidia";
       ai = enabled;
     };
-    desktop.xsession = {
+    desktop.awesome = {
       enable = true;
       autoLogin = enabled;
     };
@@ -43,6 +43,7 @@ with lib.${namespace};
         enable = true;
         profile = mkForce "all_white.orp";
       };
+      monitors = enabled;
     };
     programs = {
       steam = enabled;

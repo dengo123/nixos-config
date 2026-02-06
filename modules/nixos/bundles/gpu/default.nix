@@ -18,6 +18,7 @@ in
       types.enum [
         "nvidia"
         "amd"
+        "dual"
       ]
     )) null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
   };
@@ -48,8 +49,17 @@ in
       };
     })
 
-    # (mkIf (cfg.vendor == "amd") {
-    #   ${namespace}.hardware.amd.enable = mkDefault true;
-    # })
+    (mkIf (cfg.vendor == "amd") {
+      ${namespace}.hardware.amd.enable = mkDefault true;
+    })
+
+    (mkIf (cfg.vendor == "dual") {
+      ${namespace}.hardware.nvidia = {
+        enable = mkDefault true;
+        open = true;
+        package = "production";
+      };
+      ${namespace}.hardware.amd.enable = mkDefault true;
+    })
   ]);
 }

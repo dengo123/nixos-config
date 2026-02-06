@@ -36,6 +36,7 @@ in
 
     services.emacs = {
       enable = true;
+      startWithUserSession = "graphical";
     };
 
     fonts.fontconfig.enable = true;
