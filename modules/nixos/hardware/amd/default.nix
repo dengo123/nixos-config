@@ -18,12 +18,6 @@ in
   config = mkIf cfg.enable {
     services.xserver.videoDrivers = [ "amdgpu" ];
 
-    hardware.opengl = {
-      enable = true;
-      driSupport = true;
-      driSupport32Bit = true;
-    };
-
     boot.kernelParams = [
       "amdgpu.si_support=1"
       "amdgpu.cik_support=1"

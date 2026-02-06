@@ -54,12 +54,14 @@ in
     })
 
     (mkIf (cfg.vendor == "dual") {
-      ${namespace}.hardware.nvidia = {
-        enable = mkDefault true;
-        open = true;
-        package = "production";
+      ${namespace} = {
+        hardware.nvidia = {
+          enable = mkDefault true;
+          open = true;
+          package = "production";
+        };
+        hardware.amd.enable = mkDefault true;
       };
-      ${namespace}.hardware.amd.enable = mkDefault true;
     })
   ]);
 }

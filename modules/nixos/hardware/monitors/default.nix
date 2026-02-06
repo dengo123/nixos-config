@@ -14,7 +14,6 @@ let
 
   XR = "${pkgs.xorg.xrandr}/bin/xrandr";
 
-  # dGPU: deine FIXEN Ports
   dgpuScript = ''
     #!/bin/sh
     set -u
@@ -38,16 +37,14 @@ let
     ${XR} --output DP-5 --off 2>/dev/null || true
   '';
 
-  # iGPU: Platzhalter — DU passt HDMI/DP Namen nach deinem iGPU-xrandr an
   igpuScript = ''
     #!/bin/sh
     set -u
 
     ${optionalString (cfg.delayMs > 0) "sleep ${toString (cfg.delayMs)}e-3"}
 
-    # TODO: nach iGPU-boot anpassen:
-    ${XR} --output DP-1     --mode 1920x1080 --rotate left --pos 0x0 2>/dev/null || true
-    ${XR} --output HDMI-A-1 --mode 1920x1080 --rotate normal --primary --pos 1080x420 2>/dev/null || true
+    ${XR} --output HDMI-A-0       --mode 1920x1080 --rate 60 --rotate left   --pos 0x0      2>/dev/null || true
+    ${XR} --output DisplayPort-0  --mode 1920x1080 --rate 60 --rotate normal --primary --pos 1080x420 2>/dev/null || true
   '';
 
   autoScript = ''
@@ -55,24 +52,21 @@ let
     set -u
 
     log() {
-      # DM-Startup darf nie scheitern -> alles "best effort"
       echo "monitors-auto: $*" | systemd-cat -t monitors-auto 2>/dev/null || true
     }
 
-    # NVIDIA vendor id: 0x10de
-    has_nvidia=0
-    for v in /sys/class/drm/card*/device/vendor; do
-      if [ -e "$v" ] && grep -qi "0x10de" "$v"; then
-        has_nvidia=1
-        break
-      fi
-    done
+    XR="/run/current-system/sw/bin/xrandr"
 
-    if [ "$has_nvidia" -eq 1 ]; then
-      log "mode=dgpu"
+    # Wenn xrandr nicht da ist, nichts tun
+    command -v "$XR" >/dev/null 2>&1 || exit 0
+
+    q="$("$XR" --query 2>/dev/null || true)"
+
+    if echo "$q" | grep -Eq '^DP-2 connected|^DP-4 connected'; then
+      log "mode=dgpu (DP-2/DP-4 connected)"
       /etc/X11/monitors-dgpu.sh || true
     else
-      log "mode=igpu"
+      log "mode=igpu (no DP-2/DP-4 connected)"
       /etc/X11/monitors-igpu.sh || true
     fi
   '';
