@@ -8,7 +8,8 @@
 
 (after! doom-modeline
   (setq doom-modeline-persp-name t
-        doom-modeline-display-default-persp-name t))
+        doom-modeline-display-default-persp-name t
+        doom-modeline-persp-icon t))
 
 (after! persp-mode
   ;; emacsclient -c Frames starten immer in "main"

@@ -1,3 +1,4 @@
+# modules/nixos/hardware/nvidia/default.nix
 {
   config,
   lib,
@@ -34,22 +35,26 @@ in
       "vulkan_beta"
     ]) "stable" "NVIDIA driver package to use";
     open = mkBoolOpt false "Use the NVIDIA open kernel module (experimental)";
+    display = mkBoolOpt false "Allow NVIDIA to drive displays (KMS + Xorg)";
   };
 
   config = mkIf cfg.enable {
+    # --- Kernel / CUDA / DRM layer ---
     hardware = {
       graphics.enable = true;
 
       nvidia = {
         open = cfg.open;
         package = resolvePackage cfg.package;
-        modesetting.enable = true;
+        modesetting.enable = cfg.display;
         powerManagement.enable = true;
       };
     };
 
-    services.xserver.videoDrivers = [ "nvidia" ];
+    # --- Xorg layer ---
+    services.xserver.videoDrivers = mkIf cfg.display [ "nvidia" ];
 
+    # --- Boot / DRM ---
     boot = {
       kernelModules = [
         "nvidia"
@@ -57,15 +62,20 @@ in
         "nvidia_uvm"
         "nvidia_drm"
       ];
+
       kernelParams = [
-        "nvidia_drm.modeset=1"
         "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
-      ];
+      ]
+      ++ lib.optional cfg.display "nvidia_drm.modeset=1"
+      ++ lib.optional (!cfg.display) "nvidia_drm.modeset=0";
+
       extraModprobeConfig = ''
-        options nvidia_drm modeset=1
+        options nvidia_drm modeset=${if cfg.display then "1" else "0"}
       '';
     };
 
-    environment.systemPackages = with pkgs; [ nvtopPackages.nvidia ];
+    environment.systemPackages = with pkgs; [
+      nvtopPackages.nvidia
+    ];
   };
 }

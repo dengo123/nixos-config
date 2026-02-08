@@ -31,7 +31,7 @@ with lib.${namespace};
     };
     bundles = {
       common = enabled;
-      gpu.vendor = "nvidia";
+      gpu.vendor = "dual";
       ai = enabled;
     };
     desktop.xsession = {

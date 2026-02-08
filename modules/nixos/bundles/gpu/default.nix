@@ -1,3 +1,4 @@
+# modules/nixos/bundles/gpu/default.nix
 {
   config,
   lib,
@@ -18,6 +19,7 @@ in
       types.enum [
         "nvidia"
         "amd"
+        "dual"
       ]
     )) null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
   };
@@ -45,11 +47,51 @@ in
         enable = mkDefault true;
         open = true;
         package = "production";
+        display = true;
       };
     })
 
-    # (mkIf (cfg.vendor == "amd") {
-    #   ${namespace}.hardware.amd.enable = mkDefault true;
-    # })
+    (mkIf (cfg.vendor == "amd") {
+      ${namespace}.hardware.amd = {
+        enable = mkDefault true;
+        display = true;
+      };
+    })
+
+    (mkIf (cfg.vendor == "dual") {
+
+      # ===== Default Boot: dGPU Display =====
+      ${namespace} = {
+        hardware.nvidia = {
+          enable = true;
+          open = true;
+          package = "production";
+          display = true;
+        };
+
+        hardware.amd = {
+          enable = true;
+          display = false;
+        };
+      };
+
+      # ===== Specialisation: iGPU Display =====
+      specialisation.igpu.configuration = {
+        ${namespace} = {
+          hardware.amd = {
+            enable = true;
+            display = true;
+          };
+
+          hardware.nvidia = {
+            enable = true;
+            open = true;
+            package = "production";
+            display = false; # kein KMS, nur CUDA
+          };
+        };
+      };
+
+    })
   ]);
 }
