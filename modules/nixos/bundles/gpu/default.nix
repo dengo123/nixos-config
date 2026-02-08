@@ -42,6 +42,12 @@ in
     }
 
     # --- Vendor routing (nur toggles; Details im jeweiligen Modul) ---
+
+    (mkIf (cfg.vendor == null) {
+      hardware.graphics = enabled;
+      services.xserver.videoDrivers = mkDefault [ "modesetting" ];
+    })
+
     (mkIf (cfg.vendor == "nvidia") {
       ${namespace}.hardware.nvidia = {
         enable = mkDefault true;
@@ -66,12 +72,12 @@ in
           enable = true;
           open = true;
           package = "production";
-          display = true;
+          display = mkDefault true;
         };
 
         hardware.amd = {
           enable = true;
-          display = false;
+          display = mkDefault false;
         };
       };
 
@@ -80,18 +86,17 @@ in
         ${namespace} = {
           hardware.amd = {
             enable = true;
-            display = true;
+            display = mkForce true;
           };
 
           hardware.nvidia = {
             enable = true;
             open = true;
             package = "production";
-            display = false; # kein KMS, nur CUDA
+            display = mkForce false; # kein KMS, nur CUDA
           };
         };
       };
-
     })
   ]);
 }
