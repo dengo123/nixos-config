@@ -73,7 +73,7 @@ in {
 
         hardware.nvidia = {
           enable = true;
-          open = true;
+          open = false;
           package = "production";
           display = mkForce false;
 

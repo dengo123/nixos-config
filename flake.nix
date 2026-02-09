@@ -40,24 +40,23 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware";
     nixos-generators.url = "github:nix-community/nixos-generators";
+    nvidia-pstated.url = "github:sasha0552/nvidia-pstated";
   };
 
-  outputs =
-    inputs:
-    let
-      lib = inputs.snowfall-lib.mkLib {
-        inherit inputs;
-        src = ./.;
+  outputs = inputs: let
+    lib = inputs.snowfall-lib.mkLib {
+      inherit inputs;
+      src = ./.;
 
-        snowfall = {
-          meta = {
-            name = "nixforge";
-            title = "The NixForge – In the crucible of code, systems awaken";
-          };
-          namespace = "nixforge";
+      snowfall = {
+        meta = {
+          name = "nixforge";
+          title = "The NixForge – In the crucible of code, systems awaken";
         };
+        namespace = "nixforge";
       };
-    in
+    };
+  in
     lib.mkFlake {
       inherit inputs;
       src = ./.;
@@ -71,11 +70,11 @@
         system = "x86_64-linux";
       };
 
-      systems.hosts.anvil = { };
+      systems.hosts.anvil = {};
 
       system.users."dengo123@anvil".modules = with inputs; [
       ];
 
-      templates = import ./templates { };
+      templates = import ./templates {};
     };
 }

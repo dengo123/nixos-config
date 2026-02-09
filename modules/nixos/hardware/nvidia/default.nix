@@ -16,6 +16,13 @@ with lib.${namespace}; let
 
   primeEnable = cfg.prime.enable || primeAuto;
 
+  # "offload mode" = iGPU drives display, NVIDIA is render/compute provider
+  # (your intended setup: cfg.display == false)
+  primeOffload =
+    primeEnable
+    && (cfg.prime.mode == "offload")
+    && (!cfg.display);
+
   nvidiaPackages = config.boot.kernelPackages.nvidiaPackages;
 
   resolvePackage = pkg:
@@ -68,9 +75,7 @@ in {
         {
           assertion =
             (!primeEnable)
-            || (
-              cfg.prime.amdgpuBusId != null && cfg.prime.nvidiaBusId != null
-            );
+            || (cfg.prime.amdgpuBusId != null && cfg.prime.nvidiaBusId != null);
           message = "${namespace}.hardware.nvidia: PRIME is enabled (explicitly or via bundles.gpu.vendor == \"dual\"), but amdgpuBusId/nvidiaBusId are not set.";
         }
       ];
@@ -88,7 +93,17 @@ in {
         # In dual/offload mode you typically want this false.
         modesetting.enable = cfg.display;
 
-        powerManagement.enable = true;
+        # In PRIME offload, keep NVIDIA awake to avoid unstable sleep/wake paths.
+        nvidiaPersistenced = mkDefault primeOffload;
+
+        # Tie PM behavior to PRIME mode:
+        # - offload (display=false): disable runtime PM for stability
+        # - display-master: allow PM
+        powerManagement.enable = mkDefault (
+          if primeOffload
+          then false
+          else true
+        );
       };
 
       # --- Boot / DRM ---
@@ -102,7 +117,9 @@ in {
             "nouveau.modeset=0"
           ]
           ++ lib.optional cfg.display "nvidia_drm.modeset=1"
-          ++ lib.optional (!cfg.display) "nvidia_drm.modeset=0";
+          ++ lib.optional (!cfg.display) "nvidia_drm.modeset=0"
+          # PRIME offload hardening: avoid ASPM link-state transitions
+          ++ lib.optional primeOffload "pcie_aspm=off";
 
         extraModprobeConfig = ''
           options nvidia_drm modeset=${
@@ -140,6 +157,22 @@ in {
           sync.enable = true;
         })
       ];
+    })
+
+    (mkIf primeOffload {
+      ${namespace}.services.nvidia-pstated = {
+        enable = mkDefault true;
+
+        # konservativ: nur P8 vermeiden, nicht "immer volle Pulle"
+        performanceStateLow = mkDefault 5; # statt 8 -> hält GPU eher "wach"
+        performanceStateHigh = mkDefault 16;
+
+        utilizationThreshold = mkDefault 0;
+        sleepIntervalMs = mkDefault 100;
+
+        # du hast nur GPU 0
+        ids = mkDefault ["0"];
+      };
     })
   ]);
 }
