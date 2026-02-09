@@ -17,9 +17,9 @@ in
 
   config = mkIf cfg.enable {
     nixforge = {
-      desktop = {
-        awesome = enabled;
-      };
+      # desktop = {
+      #   awesome = enabled;
+      # };
       config = {
         systray = enabled;
       };

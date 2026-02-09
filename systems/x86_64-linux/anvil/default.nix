@@ -34,7 +34,7 @@ with lib.${namespace};
       gpu.vendor = "dual";
       ai = enabled;
     };
-    desktop.xsession = {
+    desktop.awesome = {
       enable = true;
       autoLogin = enabled;
     };

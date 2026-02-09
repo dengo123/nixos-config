@@ -74,11 +74,6 @@ in
           package = "production";
           display = mkDefault true;
         };
-
-        hardware.amd = {
-          enable = true;
-          display = mkDefault false;
-        };
       };
 
       # ===== Specialisation: iGPU Display =====
@@ -86,7 +81,7 @@ in
         ${namespace} = {
           hardware.amd = {
             enable = true;
-            display = mkForce true;
+            display = mkDefault true;
           };
 
           hardware.nvidia = {
