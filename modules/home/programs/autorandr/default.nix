@@ -6,20 +6,14 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.autorandr;
-in
-{
+in {
   options.${namespace}.programs.autorandr = {
     enable = mkEnableOption "Enable autorandr (X11 only)";
   };
 
   config = mkIf cfg.enable {
-
-    programs.autorandr = {
-      enable = true;
-    };
+    programs.autorandr = enabled;
   };
 }

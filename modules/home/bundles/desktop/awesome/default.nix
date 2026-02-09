@@ -6,11 +6,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.desktop.awesome;
-in
-{
+in {
   options.${namespace}.bundles.desktop.awesome = with types; {
     enable = mkBoolOpt false "Whether or not to enable desktop awesome bundle configuration.";
   };
@@ -24,6 +22,9 @@ in
         gtk = {
           enable = true;
           iconTheme = "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
+        };
+        scripts = {
+          autorandr-toggle = enabled;
         };
       };
       services = {

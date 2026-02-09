@@ -3,6 +3,14 @@ local awful = require("awful")
 return function(modkey)
 	return awful.util.table.join(
 
+		-- Mod+F5: Toggle Monitor Layout (autorandr)
+		awful.key({ modkey }, "F5", function()
+			awful.spawn("autorandr-toggle", false)
+		end, {
+			description = "toggle monitor layout (autorandr)",
+			group = "screen",
+		}),
+
 		-- Mod+F: Natives Fullscreen, KEIN Dimmen
 		awful.key({ modkey }, "f", function()
 			local c = client.focus

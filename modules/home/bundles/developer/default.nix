@@ -64,6 +64,13 @@ in
         taplo
         jq
         yamlfmt
+
+        # JS/TS
+        nodejs_22
+        nodePackages.prettier
+        nodePackages.eslint
+        typescript
+        typescript-language-server
       ];
 
       ${namespace}.programs.git = enabled;
