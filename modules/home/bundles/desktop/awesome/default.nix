@@ -17,9 +17,6 @@ in
 
   config = mkIf cfg.enable {
     nixforge = {
-      # desktop = {
-      #   awesome = enabled;
-      # };
       config = {
         systray = enabled;
       };
@@ -30,7 +27,6 @@ in
         };
       };
       services = {
-        autorandr = enabled;
         xscreensaver = {
           enable = true;
           suspend = {
@@ -50,6 +46,7 @@ in
           enable = true;
           withBundle = false;
         };
+        autorandr = enabled;
       };
     };
 
