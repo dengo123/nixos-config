@@ -62,17 +62,11 @@ in
             };
 
             # HDMI gespiegelt auf Main
-            "HDMI-0" = {
-              enable = true;
-              mode = "1920x1080";
-              rate = "60.00";
-              position = "1080x420";
-            };
-
-            "DP-0".enable = false;
-            "DP-1".enable = false;
-            "DP-3".enable = false;
-            "DP-5".enable = false;
+            "HDMI-0" = disabled;
+            "DP-0" = disabled;
+            "DP-1" = disabled;
+            "DP-3" = disabled;
+            "DP-5" = disabled;
           };
         };
 
@@ -103,11 +97,11 @@ in
               position = "3840x0";
             };
 
-            "DP-4".enable = false;
-            "DP-0".enable = false;
-            "DP-1".enable = false;
-            "DP-3".enable = false;
-            "DP-5".enable = false;
+            "DP-4" = disabled;
+            "DP-0" = disabled;
+            "DP-1" = disabled;
+            "DP-3" = disabled;
+            "DP-5" = disabled;
           };
         };
 

@@ -51,7 +51,12 @@ function Items.build_start(ctx)
 	-- cfg defaults
 	local files_cmd = (cfg and cfg.files_cmd and #cfg.files_cmd > 0) and cfg.files_cmd or "nemo"
 	local term = (cfg and cfg.terminal) or "xterm"
+	local browser_cmd = (cfg and cfg.browser) or "firefox"
 	local emacs_client = (cfg and cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
+
+	-- browser: name + availability
+	local browser_name = first_token(browser_cmd) or "browser"
+	local browser_is_available = cmd_exists(browser_cmd)
 
 	-- dynamic label + action: prefer terminal, fall back to emacsclient
 	local term_is_available = cmd_exists(term)
@@ -62,12 +67,6 @@ function Items.build_start(ctx)
 			"files",
 			function()
 				spawn_cmd(files_cmd)
-			end,
-		},
-		{
-			"hotkeys",
-			function()
-				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
 
@@ -81,7 +80,17 @@ function Items.build_start(ctx)
 				end
 			end,
 		},
-
+		{
+			browser_name,
+			function()
+				if browser_is_available then
+					spawn_cmd(browser_cmd)
+				else
+					-- robuster Fallback
+					spawn_cmd({ "xdg-open", "about:blank" })
+				end
+			end,
+		},
 		{
 			"run",
 			function()
@@ -102,11 +111,17 @@ function Items.build_start(ctx)
 			end,
 		},
 		{
-			"lock",
+			"hotkeys",
 			function()
-				awful.spawn({ "dm-tool", "lock" })
+				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
+		-- {
+		-- 	"lock",
+		-- 	function()
+		-- 		awful.spawn({ "dm-tool", "lock" })
+		-- 	end,
+		-- },
 		{
 			"power",
 			function()

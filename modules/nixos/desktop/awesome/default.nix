@@ -68,7 +68,9 @@ let
 
     # --- dGPU layout ---
     if connected "DP-4" || connected "DP-2" || connected "HDMI-0"; then
-      log "detected dGPU connectors -> applying dGPU layout"
+      log "detected dGPU connectors -> applying dGPU-work baseline (HDMI off)"
+
+      ${XR} --fb 8192x4320 || true
 
       if connected "DP-2"; then
         ${XR} --output DP-2 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
@@ -78,13 +80,9 @@ let
         ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
-      # HDMI: hier kannst du entscheiden:
-      # - wenn du beim Login HDMI AUS willst:
-      # ${XR} --output HDMI-0 --off 2>/dev/null || true
-      #
-      # - wenn du beim Login HDMI an haben willst (z.B. gespiegelt in 1080p):
+      # HDMI default OFF
       if connected "HDMI-0"; then
-        ${XR} --output HDMI-0 --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
+        ${XR} --output HDMI-0 --off 2>/dev/null || true
       fi
 
       exit 0
