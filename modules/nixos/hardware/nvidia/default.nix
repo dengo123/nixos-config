@@ -56,15 +56,12 @@ in
 
     # --- Boot / DRM ---
     boot = {
-      kernelModules = [
-        "nvidia"
-        "nvidia_modeset"
-        "nvidia_uvm"
-        "nvidia_drm"
-      ];
+      blacklistedKernelModules = [ "nouveau" ];
 
       kernelParams = [
         "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
+        "modprobe.blacklist=nouveau"
+        "nouveau.modeset=0"
       ]
       ++ lib.optional cfg.display "nvidia_drm.modeset=1"
       ++ lib.optional (!cfg.display) "nvidia_drm.modeset=0";

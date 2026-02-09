@@ -1,4 +1,4 @@
-# mmodules/nixos/desktop/awesome/default.nix
+# modules/nixos/desktop/awesome/default.nix
 {
   config,
   lib,
@@ -11,6 +11,8 @@ with lib.${namespace};
 
 let
   cfg = config.${namespace}.desktop.awesome;
+  userName = config.${namespace}.config.user.name or "dengo123";
+
   XR = "${pkgs.xorg.xrandr}/bin/xrandr";
 
   xsetup = pkgs.writeShellScript "sddm-xsetup" ''
@@ -34,25 +36,21 @@ let
       ${XR} --query | grep -q "^$1 connected"
     }
 
-    # Wait until X has enumerated outputs (SDDM can be early)
+    # Wait until X enumerated outputs
     for i in $(seq 1 30); do
-      if ${XR} --query >/dev/null 2>&1; then
-        # if ANY connected output exists, we’re good
-        if ${XR} --query | grep -q " connected"; then
-          break
-        fi
+      if ${XR} --query >/dev/null 2>&1 && ${XR} --query | grep -q " connected"; then
+        break
       fi
       sleep 0.2
     done
 
-    # Big enough framebuffer so we never fail with "not large enough"
+    # Big framebuffer to avoid "not large enough" when HDMI is 4K
     ${XR} --fb 8192x4320 || true
 
     # --- iGPU layout ---
     if connected "DisplayPort-0" || connected "HDMI-A-0"; then
       log "detected iGPU connectors -> applying iGPU layout"
 
-      # portrait first
       if connected "HDMI-A-0"; then
         ${XR} --output HDMI-A-0 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
       fi
@@ -61,7 +59,7 @@ let
         ${XR} --output DisplayPort-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
-      # disable dGPU names best-effort (harmless if missing)
+      # best effort disable dGPU names if present
       ${XR} --output DP-2 --off 2>/dev/null || true
       ${XR} --output DP-4 --off 2>/dev/null || true
       ${XR} --output HDMI-0 --off 2>/dev/null || true
@@ -80,8 +78,14 @@ let
         ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
-      # HDMI optional: wenn du es beim Login OFF willst, lass das so:
-      ${XR} --output HDMI-0 --off 2>/dev/null || true
+      # HDMI: hier kannst du entscheiden:
+      # - wenn du beim Login HDMI AUS willst:
+      # ${XR} --output HDMI-0 --off 2>/dev/null || true
+      #
+      # - wenn du beim Login HDMI an haben willst (z.B. gespiegelt in 1080p):
+      if connected "HDMI-0"; then
+        ${XR} --output HDMI-0 --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
+      fi
 
       exit 0
     fi
@@ -102,18 +106,35 @@ in
     theme = mkStrOpt "" "Optional SDDM theme name (empty = default).";
   };
 
-  config = mkIf cfg.enable {
-    services.xserver.enable = true;
-    services.xserver.windowManager.awesome.enable = true;
+  config = mkIf cfg.enable (mkMerge [
+    {
+      services.xserver.enable = true;
+      services.xserver.libinput.enable = true;
 
-    services.xserver.displayManager.sddm.enable = true;
-    services.displayManager.defaultSession = "none+awesome";
+      services.xserver.windowManager.awesome.enable = true;
 
-    # Wichtig: das ist der Hook für SDDM’s X-Session
-    services.xserver.displayManager.sddm.settings = {
-      X11 = {
-        DisplayCommand = "${xsetup}";
+      services.xserver.displayManager.sddm.enable = true;
+
+      # wichtig für X11
+      services.xserver.displayManager.sddm.wayland.enable = false;
+
+      services.displayManager.defaultSession = "none+awesome";
+
+      services.displayManager.autoLogin = {
+        enable = cfg.autoLogin.enable;
+        user = cfg.autoLogin.user;
       };
-    };
-  };
+
+      # Hook: greift für SDDM’s X11 session
+      services.xserver.displayManager.sddm.settings = {
+        X11 = {
+          DisplayCommand = "${xsetup}";
+        };
+      };
+    }
+
+    (mkIf (cfg.theme != "") {
+      services.xserver.displayManager.sddm.theme = cfg.theme;
+    })
+  ]);
 }
