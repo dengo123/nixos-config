@@ -7,29 +7,25 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.ai;
 
-  gpuVendor = (config.${namespace}.bundles.gpu.vendor or null);
+  gpuVendor = config.${namespace}.bundles.gpu.vendor or null;
 
   ollamaPkg =
-    if gpuVendor == "nvidia" then
-      pkgs.ollama-cuda
-    else if gpuVendor == "amd" then
-      pkgs.ollama-rocm
-    else
-      pkgs.ollama-cpu;
+    if gpuVendor == "nvidia"
+    then pkgs.ollama-cuda
+    else if gpuVendor == "amd"
+    then pkgs.ollama-rocm
+    else pkgs.ollama-cpu;
 
   whisperBackend =
-    if gpuVendor == "nvidia" then
-      "cuda"
-    else if gpuVendor == "amd" then
-      "vulkan"
-    else
-      "cpu";
-in
-{
+    if gpuVendor == "nvidia"
+    then "cuda"
+    else if gpuVendor == "amd"
+    then "vulkan"
+    else "cpu";
+in {
   options.${namespace}.bundles.ai = with types; {
     enable = mkBoolOpt false "Enable bundles.ai";
   };

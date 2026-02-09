@@ -6,19 +6,16 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.amd;
-in
-{
+in {
   options.${namespace}.hardware.amd = with types; {
-    enable = mkBoolOpt false "Enable AMD GPU drivers";
-    display = mkBoolOpt false "Allow AMD GPU to drive displays (Xorg)";
+    enable = mkBoolOpt false "Enable AMD GPU drivers (amdgpu + Xorg).";
   };
 
   config = mkIf cfg.enable {
     hardware.graphics.enable = true;
 
-    services.xserver.videoDrivers = mkIf cfg.display [ "amdgpu" ];
+    services.xserver.videoDrivers = mkDefault ["amdgpu"];
   };
 }

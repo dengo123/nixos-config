@@ -7,21 +7,21 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.gpu;
-in
-{
+in {
   options.${namespace}.bundles.gpu = with types; {
     enable = mkBoolOpt true "Enable GPU bundle (vendor routing + shared tooling).";
 
-    vendor = mkOpt (types.nullOr (
-      types.enum [
-        "nvidia"
-        "amd"
-        "dual"
-      ]
-    )) null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
+    vendor =
+      mkOpt (types.nullOr (
+        types.enum [
+          "nvidia"
+          "amd"
+          "dual"
+        ]
+      ))
+      null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
   };
 
   config = mkIf cfg.enable (mkMerge [
@@ -33,6 +33,8 @@ in
         lm_sensors
         nvtopPackages.full
         hwinfo
+        mesa-demos
+        vulkan-tools
       ];
 
       # optional: sensors nutzbar machen (wenn du das eh willst)
@@ -45,7 +47,7 @@ in
 
     (mkIf (cfg.vendor == null) {
       hardware.graphics = enabled;
-      services.xserver.videoDrivers = mkDefault [ "modesetting" ];
+      services.xserver.videoDrivers = mkDefault ["modesetting"];
     })
 
     (mkIf (cfg.vendor == "nvidia") {
@@ -60,38 +62,35 @@ in
     (mkIf (cfg.vendor == "amd") {
       ${namespace}.hardware.amd = {
         enable = mkDefault true;
-        display = true;
       };
     })
 
     (mkIf (cfg.vendor == "dual") {
-
-      # ===== Default Boot: dGPU Display =====
       ${namespace} = {
+        hardware.amd = {
+          enable = true;
+        };
+
         hardware.nvidia = {
           enable = true;
           open = true;
           package = "production";
-          display = mkDefault true;
-        };
-      };
+          display = mkForce false;
 
-      # ===== Specialisation: iGPU Display =====
-      specialisation.igpu.configuration = {
-        ${namespace} = {
-          hardware.amd = {
-            enable = true;
-            display = mkDefault true;
-          };
+          prime = {
+            # optional, weil auto bei vendor=="dual" eh true ist:
+            # enable = true;
 
-          hardware.nvidia = {
-            enable = true;
-            open = true;
-            package = "production";
-            display = mkForce false; # kein KMS, nur CUDA
+            mode = "offload";
+            amdgpuBusId = "PCI:12:0:0";
+            nvidiaBusId = "PCI:1:0:0";
+            offloadCmd = true;
           };
         };
       };
+
+      # optional / recommended:
+      services.xserver.videoDrivers = mkForce ["amdgpu" "nvidia"];
     })
   ]);
 }
