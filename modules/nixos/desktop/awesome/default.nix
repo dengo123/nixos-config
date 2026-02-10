@@ -7,9 +7,7 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.desktop.awesome;
   userName = config.${namespace}.config.user.name or "dengo123";
 
@@ -61,13 +59,13 @@ let
 
       # best effort disable dGPU names if present
       ${XR} --output DP-2 --off 2>/dev/null || true
-      ${XR} --output DP-4 --off 2>/dev/null || true
+      ${XR} --output DP-0 --off 2>/dev/null || true
       ${XR} --output HDMI-0 --off 2>/dev/null || true
       exit 0
     fi
 
     # --- dGPU layout ---
-    if connected "DP-4" || connected "DP-2" || connected "HDMI-0"; then
+    if connected "DP-0" || connected "DP-2" || connected "HDMI-0"; then
       log "detected dGPU connectors -> applying dGPU-work baseline (HDMI off)"
 
       ${XR} --fb 8192x4320 || true
@@ -76,8 +74,8 @@ let
         ${XR} --output DP-2 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
       fi
 
-      if connected "DP-4"; then
-        ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
+      if connected "DP-0"; then
+        ${XR} --output DP-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
       # HDMI default OFF
@@ -91,8 +89,7 @@ let
     log "no known connector set found; leaving defaults"
     exit 0
   '';
-in
-{
+in {
   options.${namespace}.desktop.awesome = with types; {
     enable = mkBoolOpt false "Enable Awesome WM session managed by SDDM (X11).";
 
@@ -111,10 +108,7 @@ in
 
       services.xserver.windowManager.awesome.enable = true;
 
-      services.xserver.displayManager.sddm.enable = true;
-
-      # wichtig für X11
-      services.xserver.displayManager.sddm.wayland.enable = false;
+      services.displayManager.sddm.enable = true;
 
       services.displayManager.defaultSession = "none+awesome";
 
@@ -124,7 +118,7 @@ in
       };
 
       # Hook: greift für SDDM’s X11 session
-      services.xserver.displayManager.sddm.settings = {
+      services.displayManager.sddm.settings = {
         X11 = {
           DisplayCommand = "${xsetup}";
         };
@@ -132,7 +126,7 @@ in
     }
 
     (mkIf (cfg.theme != "") {
-      services.xserver.displayManager.sddm.theme = cfg.theme;
+      services.displayManager.sddm.theme = cfg.theme;
     })
   ]);
 }

@@ -57,8 +57,8 @@ with lib.${namespace}; let
 in {
   options.${namespace}.misc.scripts.autorandr-toggle = with types; {
     enable = mkBoolOpt false "Enable misc.scripts.autorandr-toggle";
-    workProfile = mkStrOpt "dgpu-work" "Autorandr profile name for WORK layout.";
-    gameProfile = mkStrOpt "dgpu-gaming" "Autorandr profile name for GAMING layout.";
+    workProfile = mkStrOpt "dual" "Autorandr profile name for WORK layout.";
+    gameProfile = mkStrOpt "tv" "Autorandr profile name for GAMING layout.";
   };
 
   config = mkIf cfg.enable {

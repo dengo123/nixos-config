@@ -6,9 +6,8 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-{
-  imports = [ ./hardware.nix ];
+with lib.${namespace}; {
+  imports = [./hardware.nix];
 
   networking.hostName = "anvil";
 
@@ -31,7 +30,7 @@ with lib.${namespace};
     };
     bundles = {
       common = enabled;
-      gpu.vendor = "dual";
+      gpu.vendor = "nvidia";
       ai = enabled;
     };
     desktop.awesome = {
