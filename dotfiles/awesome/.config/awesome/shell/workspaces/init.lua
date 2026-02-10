@@ -45,6 +45,11 @@ function M.init(cfg)
 		apply_layout_policy = policies.layout and policies.layout.apply_layout_policy or function(_) end,
 	})
 
+	-- -- 4b) Optional: Session-Restore (nachdem Screens/Tags existieren)
+	-- if policies and policies.session and type(policies.session.restore_on_start) == "function" then
+	-- 	policies.session.restore_on_start()
+	-- end
+
 	-- 4) Pro Screen Grundsetup
 	awful.screen.connect_for_each_screen(function(s)
 		if opts.ensure_one_tag then

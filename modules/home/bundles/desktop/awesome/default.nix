@@ -23,6 +23,9 @@ in {
           enable = true;
           iconTheme = "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
         };
+        scripts = {
+          autorandr-toggle = enabled;
+        };
       };
       services = {
         xscreensaver = {

@@ -62,15 +62,15 @@ in {
     systemd.services.nvidia-pstated = {
       description = "Automatically manage NVIDIA GPU performance states (nvidia-pstated)";
       wantedBy = ["multi-user.target"];
-      after = ["multi-user.target" "systemd-udev-settle.service"];
-      wants = ["systemd-udev-settle.service"];
+      after = ["systemd-udev-settle.service" "nvidia-persistenced.service"];
+      wants = ["systemd-udev-settle.service" "nvidia-persistenced.service"];
 
       serviceConfig = {
         Type = "simple";
         ExecStart = "${exec} ${escapeShellArgs args}";
         Restart = "on-failure";
         RestartSec = "1s";
-        DynamicUser = true;
+        DynamicUser = false;
 
         # Needs to talk to the driver/NVML; keep it host-level.
         # If permissions ever bite, we can add SupplementaryGroups later.

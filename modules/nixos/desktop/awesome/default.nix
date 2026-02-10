@@ -13,6 +13,8 @@ with lib.${namespace}; let
 
   XR = "${pkgs.xorg.xrandr}/bin/xrandr";
 
+  # "dumm" = nur sicherstellen, dass X nicht mit kaputtem Layout startet.
+  # Autorandr soll später alles übernehmen (hotplug HDMI<->TV etc.)
   xsetup = pkgs.writeShellScript "sddm-xsetup" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -28,18 +30,12 @@ with lib.${namespace}; let
       ]
     }
 
-    # persistent log (super helpful for first boot / black screen)
+    # persistent log (helpful for first boot / black screen)
     exec >>/var/log/sddm-xsetup.log 2>&1
     date
     echo "sddm-xsetup: start"
 
-    log() { echo "sddm-xsetup: $*" >&2; }
-
-    connected() {
-      ${XR} --query | grep -q "^$1 connected"
-    }
-
-    # Wait until X enumerated outputs
+    # Wait until X enumerated outputs (avoid race on cold boot)
     for i in $(seq 1 50); do
       if ${XR} --query >/dev/null 2>&1 && ${XR} --query | grep -q " connected"; then
         break
@@ -50,64 +46,34 @@ with lib.${namespace}; let
     # Big framebuffer to avoid "not large enough" when HDMI is 4K
     ${XR} --fb 8192x4320 || true
 
-    # --- iGPU layout (AMD master) ---
-    # Desired: HDMI-A-0 primary, DisplayPort-0 rotated (portrait)
-    if connected "HDMI-A-0" || connected "DisplayPort-0"; then
-      log "detected iGPU connectors -> applying iGPU layout"
+    # === DUMB MODE ===
+    # 1) Enable preferred outputs if present (your current wiring)
+    #    DP-0 = portrait monitor (usually), HDMI-0 = landscape monitor/TV hotplug
+    # 2) Do NOT force positions/rotations here.
+    # 3) Ensure exactly one primary (prefer DP-0 if connected, else HDMI-0, else first connected).
+    connected() { ${XR} --query | grep -q "^$1 connected"; }
 
-      if connected "HDMI-A-0"; then
-        ${XR} --output HDMI-A-0 --primary \
-          --mode 1920x1080 --rate 60 \
-          --pos 1080x420 --rotate normal || true
-      fi
-
-      if connected "DisplayPort-0"; then
-        ${XR} --output DisplayPort-0 \
-          --mode 1920x1080 --rate 60 \
-          --pos 0x0 --rotate left || true
-      fi
-
-      # best effort disable dGPU names if present (in case X sees them)
-      for o in DP-2 DP-4 HDMI-0; do
-        ${XR} --output "$o" --off 2>/dev/null || true
-      done
-
-      exit 0
+    # Turn on the outputs we care about if they exist; ignore errors.
+    if connected "DP-0"; then
+      ${XR} --output DP-0 --auto || true
+    fi
+    if connected "HDMI-0"; then
+      ${XR} --output HDMI-0 --auto || true
     fi
 
-    # --- dGPU layout (legacy fallback; useful if you ever boot with dGPU outputs) ---
-    if connected "DP-4" || connected "DP-2" || connected "HDMI-0"; then
-      log "detected dGPU connectors -> applying dGPU-work baseline (HDMI off)"
-
-      ${XR} --fb 8192x4320 || true
-
-      if connected "DP-2"; then
-        ${XR} --output DP-2 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
-      fi
-
-      if connected "DP-4"; then
-        ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
-      fi
-
-      # HDMI default OFF
-      if connected "HDMI-0"; then
-        ${XR} --output HDMI-0 --off 2>/dev/null || true
-      fi
-
-      exit 0
-    fi
-
-    # --- safe fallback: ensure *something* becomes primary ---
-    log "no known connector set found; applying safe fallback"
-
-    PRIMARY="$(${XR} --query | awk '/ connected/{print $1; exit}')"
-    if [ -n "$PRIMARY" ]; then
-      log "fallback primary: $PRIMARY"
-      ${XR} --output "$PRIMARY" --primary --auto || true
+    # Pick a safe primary
+    if connected "HDMI-A-0"; then
+      ${XR} --output HDMI-A-0 --primary || true
+    elif connected "HDMI-0"; then
+      ${XR} --output HDMI-0 --primary || true
     else
-      log "fallback: no connected outputs detected"
+      PRIMARY="$(${XR} --query | awk '/ connected/{print $1; exit}')"
+      if [ -n "$PRIMARY" ]; then
+        ${XR} --output "$PRIMARY" --primary --auto || true
+      fi
     fi
 
+    echo "sddm-xsetup: end"
     exit 0
   '';
 in {
@@ -129,9 +95,6 @@ in {
 
       services.xserver.windowManager.awesome.enable = true;
 
-      services.xserver.displayManager.sddm.enable = true;
-      services.xserver.displayManager.sddm.wayland.enable = false;
-
       services.displayManager.defaultSession = "none+awesome";
 
       services.displayManager.autoLogin = {
@@ -139,19 +102,21 @@ in {
         user = cfg.autoLogin.user;
       };
 
-      # Hook: runs before SDDM greeter comes up (first boot safety)
-      services.xserver.displayManager.sddm.settings = {
+      services.displayManager.sddm.enable = true;
+      services.displayManager.sddm.wayland.enable = false;
+
+      # "dumb but safe": just ensure one output is on + primary.
+      services.displayManager.sddm.settings = {
         X11 = {
           DisplayCommand = "${xsetup}";
         };
       };
-
-      # Keep this "dumb": autorandr will be the real target later.
-      # But we keep a guaranteed first-boot layout here.
     }
 
     (mkIf (cfg.theme != "") {
-      services.xserver.displayManager.sddm.theme = cfg.theme;
+      services.displayManager.sddm = {
+        theme = cfg.theme;
+      };
     })
   ]);
 }
