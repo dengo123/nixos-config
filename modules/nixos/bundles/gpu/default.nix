@@ -7,21 +7,21 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.gpu;
-in
-{
+in {
   options.${namespace}.bundles.gpu = with types; {
     enable = mkBoolOpt true "Enable GPU bundle (vendor routing + shared tooling).";
 
-    vendor = mkOpt (types.nullOr (
-      types.enum [
-        "nvidia"
-        "amd"
-        "dual"
-      ]
-    )) null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
+    vendor =
+      mkOpt (types.nullOr (
+        types.enum [
+          "nvidia"
+          "amd"
+          "dual"
+        ]
+      ))
+      null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
   };
 
   config = mkIf cfg.enable (mkMerge [
@@ -45,7 +45,7 @@ in
 
     (mkIf (cfg.vendor == null) {
       hardware.graphics = enabled;
-      services.xserver.videoDrivers = mkDefault [ "modesetting" ];
+      services.xserver.videoDrivers = mkDefault ["modesetting"];
     })
 
     (mkIf (cfg.vendor == "nvidia") {
@@ -65,7 +65,6 @@ in
     })
 
     (mkIf (cfg.vendor == "dual") {
-
       # ===== Default Boot: dGPU Display =====
       ${namespace} = {
         hardware.nvidia = {
@@ -81,14 +80,14 @@ in
         ${namespace} = {
           hardware.amd = {
             enable = true;
-            display = mkDefault true;
+            display = mkForce true;
           };
 
           hardware.nvidia = {
             enable = true;
             open = true;
             package = "production";
-            display = mkForce false; # kein KMS, nur CUDA
+            display = mkForce false;
           };
         };
       };

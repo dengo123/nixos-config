@@ -1,3 +1,4 @@
+# modules/nixos/desktop/hyprland/default.nix
 {
   config,
   lib,

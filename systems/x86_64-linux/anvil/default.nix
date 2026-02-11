@@ -1,6 +1,5 @@
 # systems/x86_64-linux/anvil/default.nix
 {
-  pkgs,
   lib,
   namespace,
   ...
@@ -30,14 +29,16 @@ with lib.${namespace}; {
     };
     bundles = {
       common = enabled;
-      gpu.vendor = "nvidia";
+      gpu.vendor = "dual";
       ai = enabled;
     };
     desktop.awesome = {
       enable = true;
+      displayManager = "lightdm";
       autoLogin = enabled;
     };
     hardware = {
+      xmonitors = enabled;
       rgb = {
         enable = true;
         profile = mkForce "all_white.orp";
@@ -51,7 +52,6 @@ with lib.${namespace}; {
     };
     services = {
       virtualisation = enabled;
-      printing = enabled;
     };
     system = {
       boot.grub = enabled;

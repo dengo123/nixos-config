@@ -8,20 +8,20 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.developer;
-in
-{
+in {
   options.${namespace}.bundles.developer = with types; {
     enable = mkBoolOpt true "Enable IDE bundle, favorite editor with shared global developer packages";
 
-    editor = mkOpt (types.nullOr (
-      types.enum [
-        "doom"
-        "nvim"
-      ]
-    )) null "Choose a text editor. If null, only vanilla vim is installed (no dev stack).";
+    editor =
+      mkOpt (types.nullOr (
+        types.enum [
+          "doom"
+          "nvim"
+        ]
+      ))
+      null "Choose a text editor. If null, only vanilla vim is installed (no dev stack).";
   };
 
   config = mkIf cfg.enable (mkMerge [
@@ -88,7 +88,6 @@ in
         programs.doom = {
           enable = true;
           doomDir = inputs.self + /dotfiles/doom;
-          emacs = pkgs.emacs;
         };
 
         bundles.shell.mode = mkOverride 900 "emacs";

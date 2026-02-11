@@ -5,25 +5,32 @@
   lib,
   config,
   namespace,
+  osConfig ? null,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.doom;
-in
-{
+
+  x11Enabled =
+    osConfig
+    != null
+    && ((osConfig.services.xserver.enable or false) == true);
+
+  emacsPkg =
+    if x11Enabled
+    then pkgs.emacs
+    else pkgs.emacs-pgtk;
+in {
   options.${namespace}.programs.doom = with types; {
     enable = mkBoolOpt false "Enable Doom Emacs via Unstraightened.";
 
     doomDir =
       mkOpt types.path ./dot-doom
-        "Pfad zu deiner Doom-Konfiguration (init.el, config.el, packages.el).";
-
-    emacs = mkOpt types.package pkgs.emacs "Emacs-Paket (z. B. pkgs.emacs oder pkgs.emacs-pgtk).";
+      "Path to my doom config (init.el, config.el, packages.el).";
   };
 
-  imports = [ inputs.nix-doom-emacs-unstraightened.homeModule ];
+  imports = [inputs.nix-doom-emacs-unstraightened.homeModule];
 
   config = mkIf cfg.enable {
     programs."doom-emacs" = {
@@ -31,7 +38,7 @@ in
       doomDir = cfg.doomDir;
       doomLocalDir = mkDefault "${config.xdg.dataHome}/doom";
       provideEmacs = true;
-      emacs = cfg.emacs; # <- direkt das Package aus der Option
+      emacs = emacsPkg;
     };
 
     services.emacs = {
@@ -47,6 +54,7 @@ in
       hunspellDicts.de_DE
       hunspellDicts.en_US
     ];
+
     home.sessionVariables.EDITOR = "emacsclient -t";
     home.sessionVariables.VISUAL = "emacsclient -c -a";
   };

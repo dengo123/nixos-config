@@ -1,3 +1,4 @@
+# module/nixos/system/boot/grub/default.nix
 {
   config,
   lib,
@@ -5,11 +6,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.system.boot.grub;
-in
-{
+in {
   options.${namespace}.system.boot.grub = with types; {
     enable = mkBoolOpt false "Whether or not to enable grub booting.";
   };
@@ -26,7 +25,7 @@ in
           useOSProber = false;
         };
 
-        timeout = 15;
+        timeout = 10;
       };
       kernelParams = [
         "resume=UUID=5c987df5-d144-43ae-9db1-899a7d6f5424"
