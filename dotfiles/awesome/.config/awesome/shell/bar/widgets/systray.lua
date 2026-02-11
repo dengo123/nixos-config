@@ -11,7 +11,7 @@ function M.build(opts)
 	local pad_h = opts.pad_h or (beautiful.systray_pad_h or 4)
 	local pad_v = 0
 	local base_size = opts.base_size or beautiful.systray_base_size or math.max(1, bar_h - 6)
-	local bg = opts.bg or beautiful.systray_bg -- dunkler als wibar_bg
+	local bg = opts.bg or beautiful.systray_bg
 
 	local tray = wibox.widget.systray()
 	tray:set_horizontal(true)
@@ -36,10 +36,10 @@ function M.build(opts)
 	local boxed = wibox.widget({
 		with_margin,
 		widget = wibox.container.background,
-		bg = bg, -- färbt den gesamten Block (inkl. Padding)
+		bg = bg,
 	})
 
-	return wibox.container.constraint(boxed, "exact", nil, bar_h) -- volle Wibar-Höhe
+	return wibox.container.constraint(boxed, "exact", nil, bar_h)
 end
 
 return M

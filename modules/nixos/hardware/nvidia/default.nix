@@ -7,14 +7,12 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.nvidia;
 
   nvidiaPackages = config.boot.kernelPackages.nvidiaPackages;
 
-  resolvePackage =
-    pkg:
+  resolvePackage = pkg:
     {
       stable = nvidiaPackages.stable;
       production = nvidiaPackages.production;
@@ -22,9 +20,10 @@ let
       beta = nvidiaPackages.beta;
       vulkan_beta = nvidiaPackages.vulkan_beta;
     }
-    .${pkg};
-in
-{
+    .${
+      pkg
+    };
+in {
   options.${namespace}.hardware.nvidia = with types; {
     enable = mkBoolOpt false "Enable NVIDIA drivers";
     package = mkOpt (enum [
@@ -47,32 +46,35 @@ in
         open = cfg.open;
         package = resolvePackage cfg.package;
         modesetting.enable = cfg.display;
-        powerManagement.enable = true;
+        powerManagement.enable = !cfg.display;
+        nvidiaPersistenced = !cfg.display;
       };
     };
 
     # --- Xorg layer ---
-    services.xserver.videoDrivers = mkIf cfg.display [ "nvidia" ];
+    services.xserver.videoDrivers = mkIf cfg.display ["nvidia"];
 
     # --- Boot / DRM ---
     boot = {
-      blacklistedKernelModules = [ "nouveau" ];
+      blacklistedKernelModules = ["nouveau"];
+
+      kernelModules = ["nvidia" "nvidia_uvm"];
 
       kernelParams = [
         "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
         "modprobe.blacklist=nouveau"
         "nouveau.modeset=0"
-      ]
-      ++ lib.optional cfg.display "nvidia_drm.modeset=1"
-      ++ lib.optional (!cfg.display) "nvidia_drm.modeset=0";
-
-      extraModprobeConfig = ''
-        options nvidia_drm modeset=${if cfg.display then "1" else "0"}
-      '';
+        "nvidia_drm.modeset=${
+          if cfg.display
+          then "1"
+          else "0"
+        }"
+      ];
     };
 
     environment.systemPackages = with pkgs; [
       nvtopPackages.nvidia
+      (resolvePackage cfg.package)
     ];
   };
 }

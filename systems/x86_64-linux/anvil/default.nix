@@ -29,7 +29,7 @@ with lib.${namespace}; {
     };
     bundles = {
       common = enabled;
-      gpu.vendor = "dual";
+      gpu.vendor = "nvidia";
       ai = enabled;
     };
     desktop.awesome = {

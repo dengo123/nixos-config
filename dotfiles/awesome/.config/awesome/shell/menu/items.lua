@@ -116,12 +116,12 @@ function Items.build_start(ctx)
 				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
-		-- {
-		-- 	"lock",
-		-- 	function()
-		-- 		awful.spawn({ "dm-tool", "lock" })
-		-- 	end,
-		-- },
+		{
+			"lock",
+			function()
+				awful.spawn({ "dm-tool", "lock" })
+			end,
+		},
 		{
 			"power",
 			function()

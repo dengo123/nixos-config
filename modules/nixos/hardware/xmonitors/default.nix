@@ -45,26 +45,26 @@ with lib.${namespace}; let
     ${XR} --fb 8192x4320 || true
 
     # --- iGPU layout ---
-    if connected "DisplayPort-0" || connected "DisplayPort-0"; then
+    if connected "HDMI-A-0" || connected "DisplayPort-0"; then
       log "detected iGPU connectors -> applying iGPU layout"
 
-      if connected "DisplayPort-0"; then
-        ${XR} --output DisplayPort-0 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
+      if connected "HDMI-A-0"; then
+        ${XR} --output HDMI-A-0 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
       fi
 
-      if connected "HDMI-A-0"; then
-        ${XR} --output HDMI-A-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
+      if connected "DisplayPort-0"; then
+        ${XR} --output DisplayPort-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
       # best effort disable dGPU names if present
       ${XR} --output DP-2 --off 2>/dev/null || true
-      ${XR} --output DP-0 --off 2>/dev/null || true
+      ${XR} --output DP-4 --off 2>/dev/null || true
       ${XR} --output HDMI-0 --off 2>/dev/null || true
       exit 0
     fi
 
     # --- dGPU layout ---
-    if connected "DP-0" || connected "DP-2" || connected "HDMI-0"; then
+    if connected "DP-4" || connected "DP-2" || connected "HDMI-0"; then
       log "detected dGPU connectors -> applying dGPU-work baseline (HDMI off)"
 
       ${XR} --fb 8192x4320 || true
@@ -73,8 +73,8 @@ with lib.${namespace}; let
         ${XR} --output DP-2 --mode 1920x1080 --rate 60 --pos 0x0 --rotate left || true
       fi
 
-      if connected "DP-0"; then
-        ${XR} --output DP-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
+      if connected "DP-4"; then
+        ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
       # HDMI default OFF

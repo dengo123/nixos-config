@@ -33,6 +33,7 @@ in {
         lm_sensors
         nvtopPackages.full
         hwinfo
+        mesa-demos
       ];
 
       # optional: sensors nutzbar machen (wenn du das eh willst)

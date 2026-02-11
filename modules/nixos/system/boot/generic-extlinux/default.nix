@@ -1,17 +1,14 @@
+# modules/nixos/system/boot/generic-extlinux/default.nix
 {
-  options,
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.system.boot.generic-extlinux;
-in
-{
+in {
   options.${namespace}.system.boot.generic-extlinux = with types; {
     enable = mkBoolOpt false "Enable generic extlinux booting";
   };
