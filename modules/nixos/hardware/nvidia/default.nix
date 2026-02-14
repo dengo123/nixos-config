@@ -46,7 +46,7 @@ in {
         open = cfg.open;
         package = resolvePackage cfg.package;
         modesetting.enable = cfg.display;
-        powerManagement.enable = !cfg.display;
+        powerManagement.enable = cfg.display;
         nvidiaPersistenced = !cfg.display;
       };
     };

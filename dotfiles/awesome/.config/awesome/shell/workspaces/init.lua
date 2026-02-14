@@ -8,6 +8,10 @@ local M = {}
 
 function M.init(cfg)
 	cfg = cfg or {}
+	core.set_config({
+		tags_mode = cfg.tags_mode,
+		tags_fixed_count = cfg.tags_fixed_count,
+	})
 	local opts = {
 		ensure_one_tag = (cfg.ensure_one_tag ~= false),
 		renumber_on_start = (cfg.renumber_on_start ~= false),
@@ -15,16 +19,10 @@ function M.init(cfg)
 		desktop_deco_fn = cfg.desktop_deco_fn,
 	}
 
-	-- 0) Implementierung wählen: "core" oder "sync"
-	local flag = tostring(cfg.workspaces or "core"):lower()
+	-- 0) Implementierung wählen: "single" oder "sync"
+	local flag = tostring(cfg.workspaces or "single"):lower()
 	local useSync = (flag == "sync") or flag:match("sync") ~= nil
 	local impl = useSync and require("shell.workspaces.sync") or core
-
-	-- (optional) Diagnose
-	local okN, naughty = pcall(require, "naughty")
-	if okN then
-		naughty.notify({ title = "Workspaces", text = useSync and "SYNC mode" or "CORE mode" })
-	end
 
 	-- 1) Globale Layoutliste
 	if layouts and layouts.apply then
@@ -44,6 +42,15 @@ function M.init(cfg)
 		kill_clients_in_tag = policies.client and policies.client.kill_clients_in_tag or function(_) end,
 		apply_layout_policy = policies.layout and policies.layout.apply_layout_policy or function(_) end,
 	})
+
+	-- 3b) Optional: Dynamic Tags als Feature (überschreibt core.* Mutationen)
+	if tostring(cfg.tags_mode or "fixed"):lower() == "dynamic" then
+		local dyn = require("shell.workspaces.dynamic")
+		dyn.enable(core, {
+			kill_clients_in_tag = policies.client and policies.client.kill_clients_in_tag or function(_) end,
+			apply_layout_policy = policies.layout and policies.layout.apply_layout_policy or function(_) end,
+		})
+	end
 
 	-- 4) Pro Screen Grundsetup
 	awful.screen.connect_for_each_screen(function(s)

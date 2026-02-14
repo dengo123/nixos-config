@@ -13,5 +13,7 @@ return {
 		client = { "emacsclient", "-c", "-a", "" }, -- -a "" startet Emacs, falls kein Server läuft
 	},
 
-	workspaces = "sync", -- core/sync
+	workspaces = "sync", -- "single" | "sync"
+	tags_mode = "fixed", -- "fixed" | "dynamic"
+	tags_fixed_count = 9,
 }

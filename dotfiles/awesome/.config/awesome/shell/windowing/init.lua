@@ -11,7 +11,6 @@ local Policies = {
 	signals = safe_require("shell.windowing.policies.signals"),
 	rules = safe_require("shell.windowing.policies.rules"),
 	focus = safe_require("shell.windowing.policies.focus"),
-	gaps = safe_require("shell.windowing.policies.gaps"),
 	fullscreen_dim = safe_require("shell.windowing.policies.fullscreen_dim"),
 }
 
@@ -48,12 +47,6 @@ function M.init(args)
 			center_mouse_on_focus = true,
 			raise_on_mouse_focus = false,
 			block_ms = 150,
-		})
-	end
-	if Policies.gaps and Policies.gaps.init then
-		Policies.gaps.init({
-			gap_default_dpi = 8,
-			keep_gap_single_client = true,
 		})
 	end
 

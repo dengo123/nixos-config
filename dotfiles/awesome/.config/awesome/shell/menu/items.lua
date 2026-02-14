@@ -154,7 +154,6 @@ function Items.build_clients(clients, _ctx)
 					c:kill()
 				end
 			end,
-			c.icon,
 		},
 		{
 			"Floating / Tiling",
@@ -168,7 +167,6 @@ function Items.build_clients(clients, _ctx)
 					awful.client.setslave(c)
 				end
 			end,
-			c.icon,
 		},
 		{
 			"Fullscreen",
@@ -179,7 +177,6 @@ function Items.build_clients(clients, _ctx)
 				c.fullscreen = not c.fullscreen
 				c:raise()
 			end,
-			c.icon,
 		},
 	}
 end

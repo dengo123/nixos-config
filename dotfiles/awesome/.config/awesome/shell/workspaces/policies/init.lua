@@ -2,6 +2,7 @@
 local P = {}
 
 P.layout = require("shell.workspaces.policies.layout_policy")
+P.spacing = require("shell.workspaces.policies.spacing_policy")
 
 local okF, focus = pcall(require, "shell.workspaces.policies.focus_policy")
 P.focus = okF and focus or nil
@@ -16,6 +17,11 @@ function P.attach_policy_signals()
 	if P.focus and type(P.focus.attach_policy_signals) == "function" then
 		P.focus.attach_policy_signals(P.layout.apply_layout_policy)
 	end
+
+	if P.spacing and type(P.spacing.init) == "function" then
+		P.spacing.init()
+	end
+
 	if P.autorandr and type(P.autorandr.attach_policy_signals) == "function" then
 		P.autorandr.attach_policy_signals()
 	end

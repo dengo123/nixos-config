@@ -25,7 +25,7 @@ in {
           useOSProber = false;
         };
 
-        timeout = 10;
+        timeout = 7;
       };
       kernelParams = [
         "resume=UUID=5c987df5-d144-43ae-9db1-899a7d6f5424"
