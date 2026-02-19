@@ -22,6 +22,14 @@
 
   (setq projectile-buffers-filter-function #'my/projectile-buffers-same-root)
 
+  ;; Niemals Nix-Store als Projekt behandeln
+  (setq projectile-ignored-project-function
+        (lambda (root)
+          (or (string-prefix-p "/nix/store/" root)
+              (string-prefix-p "/nix/var/" root)
+              (string-prefix-p "/run/" root)
+              (string-prefix-p "/tmp/" root))))
+
   (defun my/projectile-kill-buffer ()
     "Kill one buffer belonging to the current Projectile project."
     (interactive)

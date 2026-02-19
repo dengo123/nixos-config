@@ -1,7 +1,7 @@
 ;;; lisp/workspaces.el -*- lexical-binding: t; -*-
 
 ;; Projekte/Workspaces Basics
-(setq projectile-project-search-path '("~/code" "~/projects" "~/nixos-config"))
+(setq projectile-project-search-path '("~/org" "~/projects" "~/nixos-config"))
 
 (setq +workspaces-on-switch-project-behavior t
       +workspaces-auto-save t)
@@ -15,41 +15,85 @@
   ;; emacsclient -c Frames starten immer in "main"
   (setq persp-emacsclient-init-frame-behaviour-override "main")
 
-  ;; --- main clean policy: was darf in main bleiben? ---
-  (defconst my/main-keep-buffer-names
-    '("*doom*" "*scratch*" "*Messages*")
-    "Buffers that are always allowed in main.")
+  ;; ------------------------------
+  ;; Global Allowlist
+  ;; ------------------------------
 
-  (defun my/main-allowed-buffer-p (buf)
-    "Return non-nil if BUF is allowed to stay in the 'main' workspace."
-    (with-current-buffer buf
-      (or (member (buffer-name buf) my/main-keep-buffer-names)
-          ;; Terminals ausdrücklich erlauben
-          (derived-mode-p 'vterm-mode 'eshell-mode 'term-mode 'shell-mode)
-          ;; nicht-Datei buffers (help/transient/etc.) sind ok
-          (null buffer-file-name))))
+  (defconst my/workspace-global-buffers
+    '("*doom*" "*scratch*" "*Messages*" "*Warnings*")
+    "Buffers allowed in all workspaces.")
 
-  (defun my/main-persp ()
-    "Return the persp object for workspace 'main' if possible."
-    (cond ((fboundp '+workspace-get) (+workspace-get "main"))
-          ((fboundp 'persp-get-by-name) (persp-get-by-name "main"))
-          (t nil)))
+  ;; ------------------------------
+  ;; Helper: project root per workspace speichern
+  ;; ------------------------------
 
-  (defun my/prune-main-buffers ()
-    "Remove non-allowed buffers from 'main' (do not kill)."
-    (when (and (fboundp 'persp-remove-buffer)
-               (fboundp 'persp-buffers))
-      (when-let ((p (my/main-persp)))
-        (dolist (buf (persp-buffers p))
-          (when (and (buffer-live-p buf)
-                     (not (my/main-allowed-buffer-p buf)))
-            (persp-remove-buffer buf p)))))))
+  (defun my/workspace-set-project-root ()
+    "Attach projectile root to current workspace."
+    (when-let ((root (projectile-project-root)))
+      (persp-set-parameter 'project-root root (get-current-persp))))
 
-(after! projectile
-  ;; Wenn du aus main heraus `projectile-switch-project` machst,
-  ;; landen gern Projekt-Buffers in main -> danach main aufräumen.
-  (defun my/after-projectile-switch-project-clean-main (&rest _)
-    (run-at-time 0 nil #'my/prune-main-buffers))
+  (add-hook 'projectile-after-switch-project-hook
+            #'my/workspace-set-project-root)
 
-  (advice-add 'projectile-switch-project
-              :after #'my/after-projectile-switch-project-clean-main))
+;; ───────────────────────────────────────────────────────────────────────────
+;; Allow Policy (HARD ISOLATION) + prune on workspace switch
+;; ───────────────────────────────────────────────────────────────────────────
+
+(after! persp-mode
+  (defconst my/workspace-global-buffers
+    '("*doom*" "*scratch*" "*Messages*" "*Warnings*")
+    "Buffers allowed in all workspaces.")
+
+  (defun my/workspace-set-project-root ()
+    "Attach projectile root to current workspace."
+    (when-let ((root (projectile-project-root)))
+      (persp-set-parameter 'project-root root (get-current-persp))))
+
+  (add-hook 'projectile-after-switch-project-hook
+            #'my/workspace-set-project-root)
+
+  (defun my/workspace-allowed-buffer-p (buf persp)
+    "Return non-nil if BUF is allowed inside PERSP."
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        (let* ((name (buffer-name buf))
+               (ws   (safe-persp-name persp))
+               (root (persp-parameter 'project-root persp)))
+          (cond
+           ;; Always allowed
+           ((member name my/workspace-global-buffers) t)
+
+           ;; vterm popups: only the one for this workspace
+           ((string-prefix-p "*vterm-popup:" name)
+            (string= name (my/vterm-popup-buffer-for ws)))
+
+           ;; vterm "here": only the one for this workspace
+           ((string-prefix-p "*vterm:" name)
+            (string= name (my/vterm-buffer-for ws)))
+
+           ;; block generic vterm buffers (*vterm*, *vterm<2>*, ...)
+           ((derived-mode-p 'vterm-mode)
+            nil)
+
+           ;; main: allow only non-file buffers
+           ((string= ws "main")
+            (null buffer-file-name))
+
+           ;; project workspace: files must live under the workspace root
+           (root
+            (and buffer-file-name
+                 (string-prefix-p (file-truename root)
+                                  (file-truename buffer-file-name))))
+
+           ;; fallback: non-file buffers only
+           (t
+            (null buffer-file-name)))))))
+
+  (defun my/workspace-prune-current ()
+    "Remove non-allowed buffers from current workspace (do not kill)."
+    (let ((persp (get-current-persp)))
+      (dolist (buf (persp-buffers persp))
+        (unless (my/workspace-allowed-buffer-p buf persp)
+          (persp-remove-buffer buf persp)))))
+
+  (add-hook 'persp-activated-hook #'my/workspace-prune-current))

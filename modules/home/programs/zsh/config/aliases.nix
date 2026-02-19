@@ -17,6 +17,8 @@
   ec = "emacsclient -c -a ''";
   et = "emacsclient -c -a '' -e '(vterm)'";
 
+  restart-emacs = "systemctl --user restart emacs";
+
   r = "reboot";
   p = "poweroff";
   u = "systemctl suspend";

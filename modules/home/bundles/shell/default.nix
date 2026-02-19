@@ -7,26 +7,23 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.shell;
-in
-{
+in {
   options.${namespace}.bundles.shell = with types; {
     enable = mkBoolOpt true "Enable shell bundle.";
     mode =
-      mkOpt
+      mkOpt (types.nullOr
         (types.enum [
           "full"
           "emacs"
-          "lite"
-        ])
-        "full"
-        "Select shell bundle mode: 'full' (alles), 'emacs' (nur für vterm nötig) oder 'lite' (nur zsh + Zusatzpakete).";
+        ]))
+      null
+      "Select shell bundle mode: 'full' (alles), 'emacs' (nur für vterm nötig) oder 'lite' (nur zsh + Zusatzpakete).";
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # Gemeinsame Zusatzpakete (in allen Modi)
+    # Shared extra packages in all modes
     {
       home.packages = with pkgs; [
         coreutils
@@ -35,10 +32,11 @@ in
         wget
         ripgrep
         fastfetch
+        peaclock
       ];
     }
 
-    # FULL: alles an
+    # FULL
     (mkIf (cfg.mode == "full") {
       ${namespace}.programs = {
         atuin = enabled;
@@ -50,10 +48,11 @@ in
         yazi = enabled;
         zoxide = enabled;
         zsh = enabled;
+        lazygit = enabled;
       };
     })
 
-    # EMACS: nur für vterm nötig (rest über emacs)
+    # EMACS: only for vterm necessary
     (mkIf (cfg.mode == "emacs") {
       ${namespace}.programs = {
         atuin = enabled;
@@ -61,14 +60,14 @@ in
         eza = enabled;
         starship = enabled;
         zsh = enabled;
+        tmux = enabled;
       };
     })
 
-    # LITE: nur zsh (Rest aus)
-    (mkIf (cfg.mode == "lite") {
+    # NULL: only zsh
+    (mkIf (cfg.mode == null) {
       ${namespace}.programs = {
         zsh = enabled;
-        btop = enabled;
       };
     })
   ]);
