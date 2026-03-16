@@ -49,6 +49,17 @@ in {
     fonts.fontconfig.enable = true;
 
     home.packages = with pkgs; [
+      (pkgs.texlive.combine {
+        inherit
+          (pkgs.texlive)
+          scheme-medium
+          wrapfig
+          capt-of
+          hyperref
+          geometry
+          ulem
+          ;
+      })
       enchant
       hunspell
       hunspellDicts.de_DE

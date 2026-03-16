@@ -1,19 +1,36 @@
 -- ~/.config/awesome/system/config.lua
 return {
-	terminal = os.getenv("TERMINAL") or "kitty",
-	editor = os.getenv("EDITOR") or "nano",
-	modkey = "Mod4",
-	theme = "default/theme.lua",
+	system = {
+		terminal = os.getenv("TERMINAL") or "kitty",
+		editor = os.getenv("EDITOR") or "nano",
+		modkey = "Mod4",
 
-	launcher = nil,
-	browser = os.getenv("BROWSER") or "firefox",
-	files = (os.getenv("FILE_MANAGER") or "xdg-open") .. " ~",
-
-	emacs = {
-		client = { "emacsclient", "-c", "-a", "" }, -- -a "" startet Emacs, falls kein Server läuft
+		launcher = nil,
+		browser = os.getenv("BROWSER") or "firefox",
+		files = (os.getenv("FILE_MANAGER") or "xdg-open") .. " ~",
 	},
 
-	workspaces = "sync", -- "single" | "sync"
-	tags_mode = "fixed", -- "fixed" | "dynamic"
-	tags_fixed_count = 9,
+	tags = {
+		mode = "fixed", -- "fixed" | "dynamic"
+		selection = "sync", -- "single" | "sync"
+		fixed_count = 2,
+	},
+
+	focus = {
+		sloppy = true,
+		center_mouse = true,
+		raise_on_mouse = false,
+		block_ms = 150,
+	},
+
+	windowing = {
+
+		titlebars = {
+			enabled = true,
+		},
+
+		portrait = {
+			fullscreen_tiled = true,
+		},
+	},
 }

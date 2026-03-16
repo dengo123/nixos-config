@@ -2,7 +2,8 @@
 local awful = require("awful")
 
 return function(modkey, cfg)
-	local term, launcher, browser, files = cfg.terminal, cfg.launcher, cfg.browser, cfg.files
+	local term, launcher, browser, files =
+		cfg.system.terminal, cfg.system.launcher, cfg.system.browser, cfg.system.files
 	local emacs_client = (cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
 
 	local function spawn_cmd(cmd)

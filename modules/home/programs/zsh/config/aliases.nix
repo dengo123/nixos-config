@@ -1,3 +1,4 @@
+# modules/home/programs/zsh/config/aliases.nix
 {
   cl = "clear";
 

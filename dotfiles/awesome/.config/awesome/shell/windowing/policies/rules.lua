@@ -5,132 +5,146 @@ local gears = require("gears")
 
 local M = {}
 
--- === File-Manager-Whitelist (WM_CLASS class/instance) =======================
-local FM_CLASSES = {
-	["Nautilus"] = true,
-	["org.gnome.Nautilus"] = true,
-	["Org.gnome.Nautilus"] = true,
-	["nautilus"] = true,
-	["Dolphin"] = true,
-	["dolphin"] = true,
-	["Thunar"] = true,
-	["thunar"] = true,
-	["Nemo"] = true,
-	["nemo"] = true,
-	["Pcmanfm"] = true,
-	["pcmanfm"] = true,
-	["pcmanfm-qt"] = true,
-	["Pcmanfm-qt"] = true,
-	["Caja"] = true,
-	["caja"] = true,
-	["Spacefm"] = true,
-	["spacefm"] = true,
-	["Krusader"] = true,
-	["krusader"] = true,
-	["Double Commander"] = true,
-	["doublecmd"] = true,
-}
-local function is_file_manager(c)
-	if not (c and c.valid) then
-		return false
+-- ============================================================================
+-- Helpers
+-- ============================================================================
+
+local function first_token(x)
+	if type(x) == "table" then
+		return x[1]
+	elseif type(x) == "string" then
+		return x:match("^(%S+)")
 	end
-	local cls, inst = c.class or "", c.instance or ""
-	return FM_CLASSES[cls] or FM_CLASSES[inst]
+	return nil
 end
 
--- === Terminal-Whitelist =====================================================
-local TERM_CLASSES = {
-	["Alacritty"] = true,
-	["alacritty"] = true,
-	["kitty"] = true,
-	["Kitty"] = true,
-	["st"] = true,
-	["st-256color"] = true,
-	["URxvt"] = true,
-	["urxvt"] = true,
-	["XTerm"] = true,
-	["xterm"] = true,
-	["Gnome-terminal"] = true,
-	["gnome-terminal"] = true,
-	["org.gnome.Terminal"] = true,
-	["Org.gnome.Terminal"] = true,
-	["Konsole"] = true,
-	["konsole"] = true,
-	["xfce4-terminal"] = true,
-	["termite"] = true,
-	["Tilix"] = true,
-	["tilix"] = true,
-	["WezTerm"] = true,
-	["wezterm"] = true,
-	["foot"] = true,
-	["footclient"] = true,
-}
-local function is_terminal(c)
-	if not (c and c.valid) then
-		return false
+local function basename(x)
+	local t = first_token(x)
+	if not t then
+		return nil
 	end
-	local cls, inst = c.class or "", c.instance or ""
-	return TERM_CLASSES[cls] or TERM_CLASSES[inst]
+	return t:match("([^/]+)$")
 end
 
--- === Portrait-Autosize Kernlogik ============================================
-local function portrait_autosize_apply(c)
+local function capitalize_ascii(s)
+	if not s or s == "" then
+		return s
+	end
+	return s:gsub("^%l", string.upper)
+end
+
+local function build_app_rule_any(cmd)
+	local app = basename(cmd)
+	if not app or app == "xdg-open" then
+		return nil
+	end
+
+	local lower = tostring(app):lower()
+	local upper = capitalize_ascii(lower)
+
+	return {
+		class = { lower, upper },
+		instance = { lower, upper },
+	}
+end
+
+local function is_portrait_screen(s)
+	if not (s and s.valid and s.workarea) then
+		return false
+	end
+	local wa = s.workarea
+	return wa.height > wa.width
+end
+
+local function portrait_apply(c, enabled)
+	if not enabled then
+		return
+	end
 	if not (c and c.valid) then
 		return
 	end
-	-- Nur wenn die Regel/Property gesetzt wurde:
-	if not c.portrait_autosize then
-		return
-	end
-
-	-- Wie bisher: nur floating, nicht maximized/fullscreen
-	if not c.floating or c.fullscreen or c.maximized then
+	if c.floating then
 		return
 	end
 
 	local s = c.screen
-	if not s then
+	if not is_portrait_screen(s) then
 		return
 	end
-	local wa = s.workarea
-	if wa.height <= wa.width then
-		return
-	end -- nur im Portrait-Screen
 
-	local w = wa.width
-	local h = math.floor(wa.height / 3)
-	local x = wa.x
-	local y = wa.y + math.floor((wa.height - h) / 2)
-	c:geometry({ x = x, y = y, width = w, height = h })
+	if not c.fullscreen then
+		c.fullscreen = true
+	end
 end
 
-local function hook_portrait_autosize()
-	-- Beim Manage: nach dem Setzen der Rules kurz anwenden
+local function portrait_reset(c)
+	if not (c and c.valid) then
+		return
+	end
+	local s = c.screen
+	if is_portrait_screen(s) then
+		return
+	end
+	if c.fullscreen then
+		c.fullscreen = false
+	end
+end
+
+local function hook_portrait_policy(enabled)
 	client.connect_signal("manage", function(c)
-		-- File-Manager standardmäßig floating, siehe Rules unten
-		gears.timer.delayed_call(portrait_autosize_apply, c)
+		gears.timer.delayed_call(function()
+			portrait_apply(c, enabled)
+		end)
 	end)
 
-	-- Wenn der Floating-State wechselt, ggf. neu anwenden
 	client.connect_signal("property::floating", function(c)
-		portrait_autosize_apply(c)
+		if c.floating then
+			return
+		end
+		portrait_apply(c, enabled)
 	end)
 
-	-- Bei Screen-Geometrieänderung alle betroffenen Clients des Screens prüfen
+	client.connect_signal("property::screen", function(c)
+		if is_portrait_screen(c.screen) then
+			portrait_apply(c, enabled)
+		else
+			portrait_reset(c)
+		end
+	end)
+
 	screen.connect_signal("property::geometry", function(s)
 		for _, c in ipairs(s.clients) do
-			portrait_autosize_apply(c)
+			if is_portrait_screen(s) then
+				portrait_apply(c, enabled)
+			else
+				portrait_reset(c)
+			end
 		end
 	end)
 end
 
--- =============================================================================
+-- ============================================================================
+-- Rules
+-- ============================================================================
+
 function M.apply(o)
 	o = o or {}
+
+	local cfg = o.cfg or {}
+	local system_cfg = cfg.system or {}
+	local windowing_cfg = cfg.windowing or {}
+	local titlebars_cfg = windowing_cfg.titlebars or {}
+	local portrait_cfg = windowing_cfg.portrait or {}
+
 	local modkey = o.modkey
 	local mouse = o.mouse
 
-	awful.rules.rules = {
+	local titlebars_enabled = (titlebars_cfg.enabled ~= false)
+	local portrait_fullscreen_tiled = (portrait_cfg.fullscreen_tiled == true)
+
+	local fm_rule_any = build_app_rule_any(system_cfg.files)
+
+	local rules = {
 		-- Default
 		{
 			rule = {},
@@ -142,162 +156,96 @@ function M.apply(o)
 				buttons = mouse and mouse.client_buttons and mouse.client_buttons(modkey) or nil,
 				screen = awful.screen.preferred,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
+				titlebars_enabled = titlebars_enabled,
 			},
-		},
-
-		-- File-Manager: floating + centered + Portrait-Autosize aktiv
-		{
-			rule_any = {
-				class = {
-					"Nautilus",
-					"org.gnome.Nautilus",
-					"Org.gnome.Nautilus",
-					"Dolphin",
-					"Thunar",
-					"Nemo",
-					"Pcmanfm",
-					"Pcmanfm-qt",
-					"Caja",
-					"Spacefm",
-					"Krusader",
-					"Double Commander",
-				},
-				instance = {
-					"nautilus",
-					"dolphin",
-					"thunar",
-					"nemo",
-					"pcmanfm",
-					"pcmanfm-qt",
-					"caja",
-					"spacefm",
-					"krusader",
-					"doublecmd",
-				},
-			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = true, -- <── NEU: nur diese kriegen die Portrait-Auto-Größe
-			},
-		},
-
-		-- Deine Applets/Prefs: floating + centered (ohne Portrait-Autosize)
-		{
-			rule_any = {
-				class = {
-					"Nm-connection-editor",
-					"Blueman-manager",
-					"Pavucontrol",
-					"Gnome-disks",
-					"Org.gnome.DiskUtility",
-					"org.gnome.DiskUtility",
-				},
-				instance = { "nm-connection-editor", "blueman-manager", "pavucontrol", "gnome-disks" },
-				name = { "Network Connections", "Bluetooth", "GNOME Disks", "Volume Control" },
-			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = true,
-			},
-		},
-
-		-- XScreenSaver Demo/Prefs
-		{
-			rule_any = {
-				class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
-				instance = { ".xscreensaver-demo-wrapped", "xscreensaver", "xscreensaver-demo" },
-				name = { "XScreenSaver", "XScreenSaver Preferences" },
-			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = true,
-			},
-		},
-
-		-- Generische Utilities/Dialogs: floating
-		{
-			rule_any = { type = { "dialog", "utility", "toolbar", "splash" }, role = { "pop-up", "Preferences" } },
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = true,
-			},
-		},
-
-		-- Titlebars standardmäßig an
-		{ rule_any = { type = { "normal", "dialog" } }, properties = { titlebars_enabled = true } },
-
-		-- Terminals: tiled, Titlebar an (KEIN portrait_autosize → werden nicht angerührt)
-		{
-			rule_any = {
-				class = {
-					"Alacritty",
-					"alacritty",
-					"kitty",
-					"Kitty",
-					"st",
-					"st-256color",
-					"URxvt",
-					"urxvt",
-					"XTerm",
-					"xterm",
-					"Gnome-terminal",
-					"gnome-terminal",
-					"org.gnome.Terminal",
-					"Org.gnome.Terminal",
-					"Konsole",
-					"konsole",
-					"xfce4-terminal",
-					"termite",
-					"Tilix",
-					"tilix",
-					"WezTerm",
-					"wezterm",
-					"foot",
-					"footclient",
-				},
-				instance = {
-					"alacritty",
-					"kitty",
-					"st",
-					"urxvt",
-					"xterm",
-					"gnome-terminal",
-					"konsole",
-					"xfce4-terminal",
-					"termite",
-					"tilix",
-					"wezterm",
-					"foot",
-					"footclient",
-				},
-			},
-			properties = {
-				floating = false,
-				titlebars_enabled = false,
-				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
-				-- kein portrait_autosize hier ⇒ Terminals bleiben unbeeinflusst
-			},
-		},
-
-		-- Fallback: Alles mit Titelbeginn "XScreenSaver:" zentrieren + floating
-		{
-			rule = {},
-			properties = {},
-			callback = function(c)
-				if c.name and c.name:match("^XScreenSaver:") then
-					c.floating = true
-					awful.placement.centered(c)
-				end
-			end,
 		},
 	}
 
-	-- Hooks aktivieren (arbeitet NUR auf Clients mit properties.portrait_autosize=true)
-	hook_portrait_autosize()
+	-- File manager from system.files: floating + centered
+	if fm_rule_any then
+		table.insert(rules, {
+			rule_any = fm_rule_any,
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				titlebars_enabled = titlebars_enabled,
+			},
+		})
+	end
+
+	-- Dialoge / Utilities / Splash
+	table.insert(rules, {
+		rule_any = {
+			type = { "dialog", "utility", "toolbar", "splash" },
+			role = { "pop-up", "Preferences" },
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			titlebars_enabled = titlebars_enabled,
+		},
+	})
+
+	-- Häufige Tools / Applets
+	table.insert(rules, {
+		rule_any = {
+			class = {
+				"Nm-connection-editor",
+				"Blueman-manager",
+				"Pavucontrol",
+				"Gnome-disks",
+				"Org.gnome.DiskUtility",
+				"org.gnome.DiskUtility",
+			},
+			instance = {
+				"nm-connection-editor",
+				"blueman-manager",
+				"pavucontrol",
+				"gnome-disks",
+			},
+			name = {
+				"Network Connections",
+				"Bluetooth",
+				"GNOME Disks",
+				"Volume Control",
+			},
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			titlebars_enabled = titlebars_enabled,
+		},
+	})
+
+	-- XScreenSaver
+	table.insert(rules, {
+		rule_any = {
+			class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
+			instance = { ".xscreensaver-demo-wrapped", "xscreensaver", "xscreensaver-demo" },
+			name = { "XScreenSaver", "XScreenSaver Preferences" },
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			titlebars_enabled = titlebars_enabled,
+		},
+	})
+
+	-- Fallback: XScreenSaver anhand Fenstertitel
+	table.insert(rules, {
+		rule = {},
+		properties = {},
+		callback = function(c)
+			if c.name and c.name:match("^XScreenSaver:") then
+				c.floating = true
+				awful.placement.centered(c)
+			end
+		end,
+	})
+
+	awful.rules.rules = rules
+
+	hook_portrait_policy(portrait_fullscreen_tiled)
 end
 
 return M

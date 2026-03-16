@@ -8,9 +8,11 @@ local M = {}
 
 function M.init(cfg)
 	cfg = cfg or {}
+
+	local tags_cfg = cfg.tags or {}
 	core.set_config({
-		tags_mode = cfg.tags_mode,
-		tags_fixed_count = cfg.tags_fixed_count,
+		tags_mode = tags_cfg.mode,
+		tags_fixed_count = tags_cfg.fixed_count,
 	})
 	local opts = {
 		ensure_one_tag = (cfg.ensure_one_tag ~= false),
@@ -20,8 +22,8 @@ function M.init(cfg)
 	}
 
 	-- 0) Implementierung wählen: "single" oder "sync"
-	local flag = tostring(cfg.workspaces or "single"):lower()
-	local useSync = (flag == "sync") or flag:match("sync") ~= nil
+	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
+	local useSync = (selection_mode == "sync")
 	local impl = useSync and require("shell.workspaces.sync") or core
 
 	-- 1) Globale Layoutliste
@@ -44,7 +46,7 @@ function M.init(cfg)
 	})
 
 	-- 3b) Optional: Dynamic Tags als Feature (überschreibt core.* Mutationen)
-	if tostring(cfg.tags_mode or "fixed"):lower() == "dynamic" then
+	if tostring((cfg.tags and cfg.tags.mode) or "fixed"):lower() == "dynamic" then
 		local dyn = require("shell.workspaces.dynamic")
 		dyn.enable(core, {
 			kill_clients_in_tag = policies.client and policies.client.kill_clients_in_tag or function(_) end,

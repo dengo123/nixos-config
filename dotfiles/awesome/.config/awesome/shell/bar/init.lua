@@ -17,7 +17,7 @@ function M.setup(s, args)
 	local cfg = args.cfg or {}
 	local ui = args.ui
 	local menu_api = args.menu_api -- aus shell.init injiziert
-	local modkey = cfg.modkey or "Mod4"
+	local modkey = cfg.system.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
 
 	local theme = ui and ui.theme or nil
@@ -79,8 +79,8 @@ function M.setup(s, args)
 	local start_btn = Start.build({
 		screen = s,
 		theme = start_theme,
-		launcher = cfg.launcher,
-		terminal = cfg.terminal,
+		launcher = cfg.system.launcher,
+		terminal = cfg.system.terminal,
 		menu = cfg.mymainmenu,
 		menu_api = menu_api and {
 			show_for_widget = function(widget)

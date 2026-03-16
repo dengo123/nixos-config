@@ -60,7 +60,6 @@ in {
         eza = enabled;
         starship = enabled;
         zsh = enabled;
-        tmux = enabled;
       };
     })
 

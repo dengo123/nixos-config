@@ -1,153 +1,135 @@
 ;;; lisp/terminal.el -*- lexical-binding: t; -*-
 
+;; ---------------------------------------------------------------------------
+;; Workspace helpers
+;; ---------------------------------------------------------------------------
+
+(defun my/ws-safe (s)
+  "Make S safe to use in buffer names."
+  (replace-regexp-in-string
+   "[^[:alnum:]._+-]" "_" (or s "main")))
+
+(defun my/ws-name (&optional frame)
+  "Return Doom workspace name for FRAME."
+  (let ((frame (or frame (selected-frame))))
+    (with-selected-frame frame
+      (if (fboundp '+workspace-current-name)
+          (+workspace-current-name)
+        "main"))))
+
+(defun my/vterm-popup-buffer-for (ws)
+  "Return popup vterm buffer name for workspace WS."
+  (format "*vterm-popup:%s*" (my/ws-safe ws)))
+
+(defun my/vterm-buffer-for (ws)
+  "Return full vterm buffer name for workspace WS."
+  (format "*vterm:%s*" (my/ws-safe ws)))
+
+(defun my/vterm-buffer-for-slot (ws slot)
+  "Return workspace-specific vterm buffer name for SLOT."
+  (format "*vterm:%s:%s*" (my/ws-safe ws) slot))
+
+;; ---------------------------------------------------------------------------
+;; vterm helpers
+;; ---------------------------------------------------------------------------
+
+(defun my/vterm--window-showing (buf &optional frame)
+  "Return window showing BUF in FRAME."
+  (get-buffer-window buf (or frame (selected-frame))))
+
+(defun my/vterm--create-buffer (bufname)
+  "Create a vterm buffer named BUFNAME without disturbing window layout."
+  (let ((b nil)
+        (vterm-buffer-name-string (substring bufname 1 -1)))
+    (save-window-excursion
+      (setq b (vterm)))
+    (with-current-buffer b
+      (rename-buffer bufname t))
+    (get-buffer bufname)))
+
+(defun my/vterm-send-command (cmd)
+  "Send CMD to current vterm buffer."
+  (when (derived-mode-p 'vterm-mode)
+    (vterm-send-string cmd)
+    (vterm-send-return)))
+
+(defun my/vterm-popup-toggle ()
+  "Toggle workspace-specific vterm popup."
+  (interactive)
+  (let* ((frame (selected-frame))
+         (ws (my/ws-name frame))
+         (bufname (my/vterm-popup-buffer-for ws))
+         (buf (get-buffer bufname))
+         (win (and buf (my/vterm--window-showing buf frame))))
+    (cond
+     (win
+      (delete-window win))
+     ((buffer-live-p buf)
+      (pop-to-buffer
+       buf
+       '((display-buffer-reuse-window display-buffer-at-bottom))))
+     (t
+      (setq buf (my/vterm--create-buffer bufname))
+      (pop-to-buffer
+       buf
+       '((display-buffer-reuse-window display-buffer-at-bottom)))))))
+
+(defun my/vterm-here ()
+  "Open or switch to workspace-specific full vterm in current window."
+  (interactive)
+  (let* ((ws (my/ws-name))
+         (bufname (my/vterm-buffer-for ws))
+         (buf (get-buffer bufname)))
+    (unless (buffer-live-p buf)
+      (setq buf (my/vterm--create-buffer bufname)))
+    (switch-to-buffer buf)))
+
+(defun my/vterm-open-in-current-window (bufname)
+  "Open or create vterm BUFNAME in the selected window."
+  (let ((buf (get-buffer bufname)))
+    (unless (buffer-live-p buf)
+      (setq buf (my/vterm--create-buffer bufname)))
+    (switch-to-buffer buf)))
+
+(defun my/main-dashboard ()
+  "Create a 3-window terminal dashboard in workspace `main'."
+  (interactive)
+  (let ((ws (my/ws-name)))
+    (unless (string= ws "main")
+      (user-error "This dashboard is intended for workspace `main'"))
+    (delete-other-windows)
+    (let* ((top (selected-window))
+           (bot (split-window top (floor (* 0.75 (window-total-height))) 'below))
+           (mid (split-window top (floor (* 0.3333 (window-total-height))) 'below)))
+      (select-window top)
+      (my/vterm-open-in-current-window (my/vterm-buffer-for-slot ws "clock"))
+      (my/vterm-send-command "peaclock")
+
+      (select-window mid)
+      (my/vterm-open-in-current-window (my/vterm-buffer-for-slot ws "btop"))
+      (my/vterm-send-command "btop")
+
+      (select-window bot)
+      (my/vterm-open-in-current-window (my/vterm-buffer-for-slot ws "nvtop"))
+      (my/vterm-send-command "nvtop")
+
+      (select-window mid))))
+
+;; ---------------------------------------------------------------------------
+;; vterm setup + keybinds
+;; ---------------------------------------------------------------------------
+
 (after! vterm
-  ;; vterm in emacs-state (Terminal-Apps nicht von evil stören)
   (evil-set-initial-state 'vterm-mode 'emacs)
   (add-hook 'vterm-mode-hook #'evil-emacs-state)
 
-  ;; ───────────────────────────────────────────────────────────────────────────
-  ;; vterm pro Workspace (Namen + "here"/popup helpers)
-  ;; ───────────────────────────────────────────────────────────────────────────
+  ;; Doom leader replacement inside vterm
+  (define-key vterm-mode-map (kbd "C-c SPC") doom-leader-map)
 
-  (after! vterm
-    (defun my/ws-safe (s)
-      "Make S safe to use in buffer names."
-      (replace-regexp-in-string
-       "[^[:alnum:]._+-]" "_" (or s "main")))
-
-    (defun my/ws-name (&optional frame)
-      "Return Doom workspace name for FRAME (defaults to selected frame)."
-      (let ((frame (or frame (selected-frame))))
-        (with-selected-frame frame
-          (if (fboundp '+workspace-current-name)
-              (+workspace-current-name)
-            "main"))))
-
-    (defun my/vterm-popup-buffer-for (ws)
-      (format "*vterm-popup:%s*" (my/ws-safe ws)))
-
-    (defun my/vterm-buffer-for (ws)
-      (format "*vterm:%s*" (my/ws-safe ws)))
-
-    (defun my/vterm-popup-buffer-name (&optional frame)
-      "Popup vterm buffer name for FRAME's workspace."
-      (my/vterm-popup-buffer-for (my/ws-name frame)))
-
-    (defun my/vterm--window-showing (buf &optional frame)
-      "Return a window displaying BUF in FRAME (defaults to selected frame), else nil."
-      (get-buffer-window buf (or frame (selected-frame))))
-
-    (defun my/vterm-popup-toggle ()
-      "Toggle a dedicated vterm popup for the current Doom workspace."
-      (interactive)
-      (let* ((frame (selected-frame))
-             (bufname (my/vterm-popup-buffer-name frame))
-             (buf (get-buffer bufname))
-             (win (and buf (my/vterm--window-showing buf frame))))
-        (cond
-         (win
-          (delete-window win))
-
-         ((buffer-live-p buf)
-          (pop-to-buffer
-           buf
-           '((display-buffer-reuse-window display-buffer-at-bottom))))
-
-         (t
-          (let* ((vterm-buffer-name-string (substring bufname 1 -1))
-                 (b (with-selected-frame frame (vterm))))
-            (with-current-buffer b
-              (rename-buffer bufname t))
-            (pop-to-buffer
-             (get-buffer bufname)
-             '((display-buffer-reuse-window display-buffer-at-bottom))))))))
-
-    (defun my/vterm-here ()
-      "Open (or switch to) a workspace-specific, non-popup vterm."
-      (interactive)
-      (let* ((ws (my/ws-name))
-             (bufname (my/vterm-buffer-for ws))
-             (buf (get-buffer bufname)))
-        (if (buffer-live-p buf)
-            (pop-to-buffer buf)
-          (let* ((vterm-buffer-name-string (substring bufname 1 -1))
-                 (b (vterm)))
-            (with-current-buffer b
-              (rename-buffer bufname t))
-            (pop-to-buffer (get-buffer bufname))))))
-
-    ;; Optional: bind Doom-style keys to your workspace-specific vterms
-    (map! :leader
-          :desc "vterm popup (per-workspace)" "o t" #'my/vterm-popup-toggle
-          :desc "vterm here (per-workspace)"  "o T" #'my/vterm-here))
-
-  ;; ───────────────────────────────────────────────────────────────────────────
-  ;; "SPC TAB …" Ersatz in vterm: C-c TAB …
-  ;; (inkl. Nummern 1..9, exakt wie Doom gebunden hat)
-  ;; ───────────────────────────────────────────────────────────────────────────
-
-  (defvar my/vterm-workspace-map (make-sparse-keymap)
-    "Workspace prefix map for vterm (C-c TAB …).")
-
-  (define-key vterm-mode-map (kbd "C-c TAB") my/vterm-workspace-map)
-
-  (defun my/doom-spc-tab-cmd (keyseq)
-    "Return the command bound to Doom leader `TAB KEYSEQ'."
-    (let ((cmd (lookup-key doom-leader-map (kbd (concat "TAB " keyseq)))))
-      (when (commandp cmd) cmd)))
-
-  ;; Standard workspace keys
-  (dolist (k '("TAB" "l" "n" "r" "d" "[" "]" "s"))
-    (when-let ((cmd (my/doom-spc-tab-cmd k)))
-      (define-key my/vterm-workspace-map (kbd k) cmd)))
-
-  ;; Nummern 1..9
-  (dotimes (i 9)
-    (let* ((n (number-to-string (1+ i)))
-           (cmd (my/doom-spc-tab-cmd n)))
-      (when cmd
-        (define-key my/vterm-workspace-map (kbd n) cmd))))
-
-
-  ;; ───────────────────────────────────────────────────────────────────────────
-  ;; TMUX Session VTERM
-  ;; ───────────────────────────────────────────────────────────────────────────
-
-  (defvar my/tmux-default-session "main"
-    "Fallback tmux session name when workspace name can't be determined.")
-
-  (defun my/tmux-session-name (&optional frame)
-    "Return a tmux-safe session name derived from Doom workspace."
-    (let* ((ws (if (fboundp '+workspace-current-name)
-                   (with-selected-frame (or frame (selected-frame))
-                     (+workspace-current-name))
-                 my/tmux-default-session))
-           (ws (or ws my/tmux-default-session)))
-      ;; tmux session names: keep it simple/safe
-      (replace-regexp-in-string "[^[:alnum:]_-]" "_" ws)))
-
-  (defun my/vterm--ensure ()
-    "Ensure we have a vterm buffer to send commands to (uses +vterm/here)."
-    (unless (derived-mode-p 'vterm-mode)
-      (call-interactively #'+vterm/here))
-    (unless (derived-mode-p 'vterm-mode)
-      (user-error "No vterm buffer available")))
-
-  (defun my/tmux-attach-or-create (&optional session)
-    "Attach to SESSION or create it in the current vterm."
-    (interactive)
-    (my/vterm--ensure)
-    (let* ((sess (or session (my/tmux-session-name)))
-           ;; -A: attach or create, -s: session name
-           (cmd (format "tmux new-session -A -s %s" (shell-quote-argument sess))))
-      ;; If we're already inside tmux, just switch client
-      (if (getenv "TMUX")
-          (setq cmd (format "tmux switch-client -t %s" (shell-quote-argument sess))))
-      (vterm-send-string cmd)
-      (vterm-send-return)
-      (message "tmux: %s" sess)))
-
+  ;; Custom terminal actions reachable via SPC … and therefore also via C-c SPC …
   (map! :leader
-        :desc "tmux for workspace (attach/create)" "o m" #'my/tmux-attach-or-create)
+        :desc "vterm popup (per-workspace)" "o t" #'my/vterm-popup-toggle
+        :desc "vterm here (per-workspace)"  "o T" #'my/vterm-here
+        :desc "Main dashboard"              "o M" #'my/main-dashboard))
 
-  (define-key vterm-mode-map (kbd "C-c m") #'my/tmux-attach-or-create))
+;;; terminal.el ends here

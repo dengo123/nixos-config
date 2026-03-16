@@ -49,9 +49,9 @@ function Items.build_start(ctx)
 	end
 
 	-- cfg defaults
-	local files_cmd = (cfg and cfg.files_cmd and #cfg.files_cmd > 0) and cfg.files_cmd or "nemo"
-	local term = (cfg and cfg.terminal) or "xterm"
-	local browser_cmd = (cfg and cfg.browser) or "firefox"
+	local files_cmd = (cfg and cfg.system.files_cmd and #cfg.system.files_cmd > 0) and cfg.system.files_cmd or "nemo"
+	local term = (cfg and cfg.system.terminal) or "xterm"
+	local browser_cmd = (cfg and cfg.system.browser) or "firefox"
 	local emacs_client = (cfg and cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
 
 	-- browser: name + availability

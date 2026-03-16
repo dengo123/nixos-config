@@ -1,7 +1,7 @@
+# modules/home/programs/discor/default.nix
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -14,8 +14,9 @@ in {
   };
 
   config = mkIf cfg.enable {
-    home.packages = with pkgs; [
-      discord
-    ];
+    programs.discord = {
+      enable = true;
+      settings.SKIP_HOST_UPDATE = true;
+    };
   };
 }

@@ -4,7 +4,7 @@ local H = require("input.keys.helpers")
 local M = {}
 
 function M.apply(cfg)
-	local modkey = cfg.modkey
+	local modkey = cfg.system.modkey
 	local join = gears.table.join
 
 	local globalkeys = join(

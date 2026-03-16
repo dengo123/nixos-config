@@ -44,7 +44,7 @@ function M.init(args)
 
 	-- 2) Windowing
 	M.windowing.init({
-		modkey = cfg.modkey,
+		modkey = cfg.system.modkey,
 		mouse = input.mouse,
 		ui = ui,
 	})
@@ -68,8 +68,12 @@ function M.init(args)
 	cfg.mylauncher = nil
 
 	-- 5) Optionaler „legacy“ Launcher-Fn (Shell-Command)
-	if type(cfg.launcher) == "string" and cfg.launcher:lower() ~= "launcher" and #cfg.launcher > 0 then
-		local cmd = cfg.launcher
+	if
+		type(cfg.system.launcher) == "string"
+		and cfg.system.launcher:lower() ~= "launcher"
+		and #cfg.system.launcher > 0
+	then
+		local cmd = cfg.system.launcher
 		cfg.launcher_fn = function()
 			awful.spawn.with_shell(cmd)
 		end

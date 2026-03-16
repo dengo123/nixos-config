@@ -1,4 +1,4 @@
--- shell/windowing/init.lua
+-- ~/.config/awesome/shell/windowing/init.lua
 local function safe_require(path)
 	local ok, mod = pcall(require, path)
 	if ok then
@@ -21,39 +21,41 @@ local M = {}
 
 function M.init(args)
 	args = args or {}
+
 	local cfg = args.cfg or {}
 	local ui = args.ui or {}
 	local theme = ui.theme and ui.theme.windows
+	local system_cfg = cfg.system or {}
+	local focus_cfg = cfg.focus or {}
 
 	-- 1) Theme laden (setzt beautiful.*)
 	if theme and theme.init then
-		pcall(theme.init, cfg.theme or cfg)
+		pcall(theme.init, cfg)
 	end
+
 	local shape_fn = theme and theme.shape_fn and theme.shape_fn() or nil
 	local button_style = theme and theme.button_style and theme.button_style(cfg) or {}
 
 	-- 2) Regeln
 	if Policies.rules and Policies.rules.apply then
 		Policies.rules.apply({
-			modkey = args.modkey or cfg.modkey,
-			mouse = args.mouse or cfg.mouse,
+			modkey = args.modkey or system_cfg.modkey or cfg.modkey,
+			mouse = args.mouse,
+			cfg = cfg,
 		})
 	end
 
-	-- 3) Policies konfigurieren
+	-- 3) Fokus-Policy
 	if Policies.focus and Policies.focus.init then
-		Policies.focus.init({
-			sloppy_focus = true,
-			center_mouse_on_focus = true,
-			raise_on_mouse_focus = false,
-			block_ms = 150,
-		})
+		Policies.focus.init(focus_cfg)
 	end
 
 	-- 4) Container (Styling)
-	Container.init({ shape_fn = shape_fn })
+	Container.init({
+		shape_fn = shape_fn,
+	})
 
-	-- 5) Signals
+	-- 5) Client-Signale
 	if Policies.signals and Policies.signals.apply then
 		Policies.signals.apply({
 			attach_titlebar = function(c)
@@ -61,16 +63,12 @@ function M.init(args)
 			end,
 			focus = Policies.focus,
 			container = Container,
-			minimize_stack = Policies.minimize_stack,
 		})
 	end
 
-	-- 6) Fullscreen-Dim optional anschalten (per-Client-Flag Policy)
+	-- 6) Fullscreen-Dim optional
 	if Policies.fullscreen_dim and Policies.fullscreen_dim.init then
-		Policies.fullscreen_dim.init({
-			-- dim_bg = beautiful.dim_overlay_bg, -- optional override
-			-- never_dim_primary = false,
-		})
+		Policies.fullscreen_dim.init({})
 	end
 end
 
