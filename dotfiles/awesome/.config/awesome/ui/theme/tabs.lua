@@ -5,16 +5,21 @@ local dpi = xr.apply_dpi
 
 local T = {}
 
--- Setzt die Quelle-der-Wahrheit in beautiful.* anhand der injizierten Palette
+-- ============================================================================
+-- Init
+-- ============================================================================
+
 function T.init(cfg)
 	cfg = cfg or {}
-	local C = cfg.colors or {}
 
-	-- Größen/Geometrie aus Umgebung ableiten
+	local C = cfg.colors or {}
 	local wibar_h = tonumber(beautiful.wibar_height) or 28
 	local icon_sz = math.floor(wibar_h * 0.8)
 
-	-- Maße/Style (fix)
+	-- =========================================================================
+	-- Tabs
+	-- =========================================================================
+
 	beautiful.tabs = {
 		spacing = dpi(2),
 		radius = dpi(5),
@@ -25,20 +30,22 @@ function T.init(cfg)
 		title_len = 18,
 		width_factor = 6,
 
-		-- Dünner Rand für inaktive Tabs; die RandFARBE kommt aus colors.focus_bg
 		inactive_border_width = dpi(1),
 	}
 
-	-- Farben aus injizierter Palette (keine Hexcodes hier)
+	-- =========================================================================
+	-- Colors
+	-- =========================================================================
+
 	beautiful.tabs_colors = {
 		accent = C.blue_dark,
 		focus_bg = C.blue_dark,
 		focus_fg = C.white,
-		focus_border = C.blue_dark, -- Vollständigkeit; Widget nutzt es ggf. nicht
+		focus_border = C.blue_dark,
 
 		normal_bg = C.transparent,
 		normal_fg = C.gray,
-		normal_border = C.blue_dark, -- Referenz; Widget nutzt meist focus_bg als Border
+		normal_border = C.blue_dark,
 
 		minimize_bg = C.transparent,
 		minimize_fg = C.gray,
@@ -46,27 +53,26 @@ function T.init(cfg)
 	}
 end
 
--- Liefert ein konsumierbares Theme-Objekt für widgets/tabs.lua (ohne Overrides)
-function T.get(_)
+-- ============================================================================
+-- Public Theme Object
+-- ============================================================================
+
+function T.get()
 	local S = beautiful.tabs or {}
 	local C = beautiful.tabs_colors or {}
 
 	return {
-		-- Layout / Maße
 		spacing = S.spacing,
 		radius = S.radius,
 		pad_h = S.pad_h,
 		pad_v = S.pad_v,
 
-		-- Größen
 		icon_size = S.icon_size,
 		title_len = S.title_len,
 		width_factor = S.width_factor,
 
-		-- Border
 		inactive_border_width = S.inactive_border_width,
 
-		-- Farben
 		colors = {
 			accent = C.accent,
 			focus_bg = C.focus_bg,

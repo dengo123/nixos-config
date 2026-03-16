@@ -12,10 +12,12 @@ return function(modkey, launchers)
 			launchers.open.run({ screen = mouse and mouse.screen or nil, mode = mode or "run" })
 		end
 	end
+
 	local function ensure_and_switch(target_mode)
 		if target_mode == "files" then
 			target_mode = "local"
 		end
+
 		local api = get_run_api()
 		if api and api.is_active and api.is_active() then
 			if target_mode == "local" and api.focus_local then
@@ -32,24 +34,21 @@ return function(modkey, launchers)
 			end
 			return
 		end
+
 		open_in_mode(target_mode)
-	end
-	local function close_if_open()
-		local api = get_run_api()
-		if api and api.is_active and api.is_active() and api.cancel then
-			api.cancel()
-		end
 	end
 
 	return gears.table.join(
 		awful.key({ modkey }, "space", function()
 			ensure_and_switch("run")
 		end, { description = "Run-Launcher: Apps (öffnen/umschalten)", group = "apps" }),
+
 		awful.key({ modkey }, "/", function()
-			ensure_and_switch("local")
+			ensure_and_switch("files")
 		end, { description = "Run-Launcher: Files (öffnen/umschalten)", group = "apps" }),
+
 		awful.key({ modkey, "Shift" }, "/", function()
 			ensure_and_switch("web")
-		end, { description = "Run-Launcher: Web (öffnen/umschalten)", group = "apps" })
+		end, { description = "Run-Launcher: Search (öffnen/umschalten)", group = "apps" })
 	)
 end

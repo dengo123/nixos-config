@@ -8,7 +8,6 @@ local function req(p)
 end
 
 M.actions = req("shell.launchers.lib.actions")
-M.cancel = req("shell.launchers.lib.cancel")
 M.button = req("shell.launchers.lib.button")
 M.popup = req("shell.launchers.lib.popup")
 assert(type(M.popup.show) == "function", "popup.show required")

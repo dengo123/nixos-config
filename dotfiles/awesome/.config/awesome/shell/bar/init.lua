@@ -14,11 +14,69 @@ local M = {}
 
 function M.setup(s, args)
 	args = args or {}
+
+	-- =========================================================================
+	-- Config
+	-- =========================================================================
+
 	local cfg = args.cfg or {}
 	local ui = args.ui
-	local menu_api = args.menu_api -- aus shell.init injiziert
-	local modkey = cfg.system.modkey or "Mod4"
+	local menu_api = args.menu_api
+
+	local system_cfg = cfg.system or {}
+	local tags_cfg = cfg.tags or {}
+	local bar_cfg = cfg.bar or {}
+
+	local modkey = system_cfg.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
+
+	local start_on_primary_only = (bar_cfg.start_on_primary_only == true)
+	local bar_position = bar_cfg.position
+
+	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
+	local tags_on_primary_only = (selection_mode == "sync")
+
+	local primary = screen.primary or awful.screen.focused()
+	local is_primary = (s == primary)
+
+	local show_start = (not start_on_primary_only) or is_primary
+	local show_tags = (not tags_on_primary_only) or is_primary
+
+	-- =========================================================================
+	-- Helpers
+	-- =========================================================================
+
+	local empty = wibox.widget({
+		widget = wibox.widget.separator,
+		forced_width = 0,
+		opacity = 0,
+	})
+
+	local function hspace(px)
+		return wibox.widget({
+			widget = wibox.widget.separator,
+			forced_width = px or 0,
+			opacity = 0,
+		})
+	end
+
+	local function compute_tabs_leading_gap()
+		local gap = 0
+
+		if not show_start then
+			gap = gap + 8
+		end
+
+		if not show_tags then
+			gap = gap + 6
+		end
+
+		return gap
+	end
+
+	-- =========================================================================
+	-- Theme
+	-- =========================================================================
 
 	local theme = ui and ui.theme or nil
 	local wibar_theme = theme and theme.wibar or require("theme.wibar")
@@ -26,27 +84,28 @@ function M.setup(s, args)
 	local start_theme = (theme and theme.start and theme.start.get) and theme.start.get(cfg.start or {}) or nil
 	local menu_theme = cfg.menus
 
+	-- =========================================================================
 	-- Widgets
+	-- =========================================================================
+
 	local tabs = Tabs.build(s, {
 		modkey = modkey,
 		group_by_class = true,
 		theme = tabs_theme,
 		menu_theme = menu_theme,
-		-- neue API: Widget + Clients + explizite linke X-Kante
-		menu_api = menu_api
-				and {
-					show_for_widget_with_clients_at = function(widget, clients, anchor)
-						-- anchor = { x_left = <screen-abs-x> }
-						menu_api.show_for_tabs_widget_with_clients_at(s, widget, clients, anchor)
-					end,
-				}
-			or nil,
+		menu_api = menu_api and {
+			show_for_widget_with_clients_at = function(widget, clients, anchor)
+				menu_api.show_for_tabs_widget_with_clients_at(s, widget, clients, anchor)
+			end,
+		} or nil,
 	})
 
-	local tags = Tags.build(s, {})
-	local tray = showtray and Systray.build({ menu_theme = menu_theme }) or nil
+	local tags = show_tags and Tags.build(s, {}) or { indicator = empty }
 
-	-- ✅ wichtig: pro Screen bauen, damit der Kalender nicht auf dem anderen Monitor landet
+	local tray = showtray and Systray.build({
+		menu_theme = menu_theme,
+	}) or nil
+
 	local clock = Clock.build(s)
 
 	if not s.mylayoutbox or not s.mylayoutbox.valid then
@@ -76,23 +135,28 @@ function M.setup(s, args)
 		widget = wibox.container.margin,
 	})
 
-	local start_btn = Start.build({
-		screen = s,
-		theme = start_theme,
-		launcher = cfg.system.launcher,
-		terminal = cfg.system.terminal,
-		menu = cfg.mymainmenu,
-		menu_api = menu_api and {
-			show_for_widget = function(widget)
-				menu_api.show_for_start_widget(s, widget)
-			end,
-			get_start_items = function()
-				return menu_api.get_start_items()
-			end,
-		} or nil,
-	})
+	local start_btn = show_start
+			and Start.build({
+				screen = s,
+				theme = start_theme,
+				launcher = system_cfg.launcher,
+				terminal = system_cfg.terminal,
+				menu = cfg.mymainmenu,
+				menu_api = menu_api and {
+					show_for_widget = function(widget)
+						menu_api.show_for_start_widget(s, widget)
+					end,
+					get_start_items = function()
+						return menu_api.get_start_items()
+					end,
+				} or nil,
+			})
+		or empty
 
-	-- Props + Layout aus Theme
+	-- =========================================================================
+	-- Props
+	-- =========================================================================
+
 	local props = (wibar_theme.props and wibar_theme.props())
 		or {
 			position = "bottom",
@@ -101,30 +165,49 @@ function M.setup(s, args)
 			fg = beautiful.wibar_fg or beautiful.fg_normal,
 		}
 
-	-- ✅ robuster als die Klammer-Variante, gleiche Funktion
-	local sections = (
-		wibar_theme.layout
-		and wibar_theme.layout(s, {
-			start_btn = start_btn,
-			tags = tags,
-			tabs = tabs,
-			tray = tray,
-			clock = clock,
-			layoutbox = layoutbox,
-			spacing_l = 8,
-			spacing_r = 0,
-		})
-	)
+	if bar_position then
+		props.position = bar_position
+	end
+
+	-- =========================================================================
+	-- Sections
+	-- =========================================================================
+
+	local tabs_leading_spacer = hspace(compute_tabs_leading_gap())
+
+	local parts = {
+		start_btn = start_btn or empty,
+		tags = tags or { indicator = empty },
+		tabs = tabs or { tasklist = empty },
+		tray = tray or empty,
+		clock = clock or empty,
+		layoutbox = layoutbox or empty,
+		tabs_leading_spacer = tabs_leading_spacer,
+		spacing_l = 8,
+		spacing_r = 0,
+	}
+
+	local sections = (wibar_theme.layout and wibar_theme.layout(s, parts))
 		or {
 			left = {
 				layout = wibox.layout.fixed.horizontal,
-				start_btn,
-				(tags and tags.indicator) or nil,
-				(tabs and tabs.tasklist) or nil,
+				parts.start_btn,
+				parts.tags.indicator,
+				parts.tabs_leading_spacer,
+				parts.tabs.tasklist,
 			},
 			center = nil,
-			right = { layout = wibox.layout.fixed.horizontal, layoutbox, tray, clock },
+			right = {
+				layout = wibox.layout.fixed.horizontal,
+				parts.layoutbox,
+				parts.tray,
+				parts.clock,
+			},
 		}
+
+	-- =========================================================================
+	-- Wibar
+	-- =========================================================================
 
 	s.mywibar = awful.wibar({
 		position = props.position or "bottom",

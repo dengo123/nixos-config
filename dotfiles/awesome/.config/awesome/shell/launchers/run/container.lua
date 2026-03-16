@@ -4,6 +4,10 @@ local gears = require("gears")
 
 local M = {}
 
+-- ============================================================================
+-- Helpers
+-- ============================================================================
+
 local function pick(...)
 	for i = 1, select("#", ...) do
 		local v = select(i, ...)
@@ -13,17 +17,32 @@ local function pick(...)
 	end
 end
 
--- build(th, dims, { title, body, ok_btn, cancel_btn, footer })
--- footer optional, ok/cancel bevorzugt
+-- ============================================================================
+-- Build
+-- ============================================================================
+
+-- build(th, dims, {
+--   title,
+--   body,
+--   footer_buttons = { ... },
+--   footer,
+-- })
 function M.build(th, dims, w)
-	-- 🔹 Runde Ecken & Rand am OUTER-Container (nicht im Popup)
+	-- =========================================================================
+	-- Geometry
+	-- =========================================================================
+
 	local radius = tonumber(pick(th.panel_radius, 12))
-	local border_w = tonumber(pick(th.panel_border_width, 2)) -- 2px
-	local border_color = pick(th.panel_border, th.header_bg) -- Rand = Header-Farbe
-	local header_h = tonumber(pick(th.header_h, 28)) -- Theme: header_h
+	local border_w = tonumber(pick(th.panel_border_width, 2))
+	local border_color = pick(th.panel_border, th.header_bg)
+
+	local header_h = tonumber(pick(th.header_h, 28))
 	local footer_h = tonumber(pick(th.footer_h, dims.footer_h))
 
-	-- ===== Header =====
+	-- =========================================================================
+	-- Header
+	-- =========================================================================
+
 	local title = wibox.widget({
 		text = w.title or (th.title or "Launcher"),
 		align = "left",
@@ -31,38 +50,31 @@ function M.build(th, dims, w)
 		widget = wibox.widget.textbox,
 	})
 
-	local closeX = wibox.widget({
-		{ text = "✖", align = "center", valign = "center", widget = wibox.widget.textbox },
-		forced_width = 28,
-		forced_height = 22,
-		shape = gears.shape.rounded_bar,
-		bg = "#00000000",
-		widget = wibox.container.background,
-	})
-	if w.cancel_btn and w.cancel_btn.activate then
-		closeX:buttons(gears.table.join(require("awful").button({}, 1, function()
-			w.cancel_btn:activate()
-		end)))
-	end
-
 	local header = wibox.widget({
 		{
-			{ title, halign = "left", widget = wibox.container.place },
-			{ closeX, halign = "right", widget = wibox.container.place },
-			layout = wibox.layout.align.horizontal,
+			title,
+			halign = "left",
+			valign = "center",
+			widget = wibox.container.place,
 		},
-		left = pick(th.header_pad_h, th.pad_h, 12),
-		right = pick(th.header_pad_h, th.pad_h, 8),
+		left = pick(th.header_pad_l, th.pad_h, 12),
+		right = pick(th.header_pad_r, th.pad_h, 12),
+		top = pick(th.header_pad_v, th.pad_v, 6),
+		bottom = pick(th.header_pad_v, th.pad_v, 6),
 		widget = wibox.container.margin,
 	})
+
 	header = wibox.widget({
 		header,
-		bg = pick(th.panel_header_bg, pick(th.header_bg, "#235CDB")),
-		fg = pick(th.panel_header_fg, pick(th.header_fg, "#FFFFFF")),
+		bg = pick(th.panel_header_bg, th.header_bg, "#235CDB"),
+		fg = pick(th.panel_header_fg, th.header_fg, "#FFFFFF"),
 		widget = wibox.container.background,
 	})
 
-	-- ===== Body =====
+	-- =========================================================================
+	-- Body
+	-- =========================================================================
+
 	local body = wibox.widget({
 		{
 			w.body,
@@ -72,32 +84,43 @@ function M.build(th, dims, w)
 			bottom = pick(th.panel_pad_v, th.pad_v, 12),
 			widget = wibox.container.margin,
 		},
-		bg = pick(th.panel_body_bg, pick(th.body_bg, "#1d2f6f")),
-		fg = pick(th.panel_body_fg, pick(th.body_fg, "#FFFFFF")),
+		bg = pick(th.panel_body_bg, th.body_bg, "#1d2f6f"),
+		fg = pick(th.panel_body_fg, th.body_fg, "#FFFFFF"),
 		widget = wibox.container.background,
 	})
 
-	-- ===== Footer: OK + Cancel rechtsbündig, vertikal mittig =====
+	-- =========================================================================
+	-- Footer
+	-- =========================================================================
+
 	local footer = nil
 	do
-		local ok_btn = w.ok_btn
-		local cancel_btn = w.cancel_btn
+		local footer_buttons = w.footer_buttons or {}
 
-		if not w.footer and (ok_btn or cancel_btn) then
+		if not w.footer and #footer_buttons > 0 then
+			local buttons_row = wibox.layout.fixed.horizontal()
+			buttons_row.spacing = pick(th.footer_spacing, 8)
+
+			for _, btn in ipairs(footer_buttons) do
+				if btn then
+					buttons_row:add(btn)
+				end
+			end
+
 			local row = wibox.widget({
 				nil,
-				{
-					ok_btn or wibox.widget({}),
-					cancel_btn or wibox.widget({}),
-					spacing = pick(th.footer_spacing, 8),
-					layout = wibox.layout.fixed.horizontal, -- Buttons behalten Eigenbreite
-				},
+				buttons_row,
 				expand = "outside",
 				layout = wibox.layout.align.horizontal,
 			})
 
 			footer = wibox.widget({
-				{ row, halign = "right", valign = "center", widget = wibox.container.place },
+				{
+					row,
+					halign = "right",
+					valign = "center",
+					widget = wibox.container.place,
+				},
 				left = pick(th.footer_pad_h, th.pad_h, 12),
 				right = pick(th.footer_pad_h, th.pad_h, 12),
 				top = pick(th.footer_pad_v, th.pad_v, 8),
@@ -107,38 +130,60 @@ function M.build(th, dims, w)
 
 			footer = wibox.widget({
 				footer,
-				bg = pick(th.panel_footer_bg, pick(th.footer_bg, pick(th.panel_body_bg, "#1d2f6f"))),
-				fg = pick(th.panel_footer_fg, pick(th.footer_fg, "#FFFFFF")),
+				bg = pick(th.panel_footer_bg, th.footer_bg, pick(th.panel_body_bg, "#1d2f6f")),
+				fg = pick(th.panel_footer_fg, th.footer_fg, "#FFFFFF"),
 				widget = wibox.container.background,
 			})
 		else
-			footer = w.footer -- komplett extern geliefert
+			footer = w.footer
 		end
 	end
 
-	-- ===== Dims =====
+	-- =========================================================================
+	-- Dimensions
+	-- =========================================================================
+
 	dims.header_h = header_h
 	dims.footer_h = footer and (footer_h or 40) or 0
 	dims.body_h = math.max(0, dims.h - dims.header_h - dims.footer_h)
 
-	-- ===== Stack (Header/Body[/Footer]) =====
+	-- =========================================================================
+	-- Stack
+	-- =========================================================================
+
 	local stack = wibox.widget({
-		{ header, strategy = "exact", height = dims.header_h, widget = wibox.container.constraint },
-		{ body, strategy = "exact", height = dims.body_h, widget = wibox.container.constraint },
+		{
+			header,
+			strategy = "exact",
+			height = dims.header_h,
+			widget = wibox.container.constraint,
+		},
+		{
+			body,
+			strategy = "exact",
+			height = dims.body_h,
+			widget = wibox.container.constraint,
+		},
 		layout = wibox.layout.fixed.vertical,
 	})
 
 	if footer then
 		stack = wibox.widget({
 			stack,
-			{ footer, strategy = "exact", height = dims.footer_h, widget = wibox.container.constraint },
+			{
+				footer,
+				strategy = "exact",
+				height = dims.footer_h,
+				widget = wibox.container.constraint,
+			},
 			layout = wibox.layout.fixed.vertical,
 		})
 	end
 
-	-- ===== OUTER (gefüllter Ring als Rand) + INNEN rund geklippt =====
-	-- Wir zeichnen den Rand nicht als Stroke, sondern als gefüllten Ring (bg=border_color),
-	-- und legen die innere, rund geklippte Fläche mit border_w Abstand hinein.
+	-- =========================================================================
+	-- Outer Frame
+	-- =========================================================================
+
 	local inner_radius = math.max(0, radius - border_w)
 
 	local inner_bg = wibox.widget({
@@ -150,7 +195,7 @@ function M.build(th, dims, w)
 			gears.shape.rounded_rect(cr, w, h, inner_radius)
 		end,
 		shape_clip = true,
-		bg = "#00000000", -- transparent: Ecken zeigen den äußeren Ring (nicht Root!)
+		bg = "#00000000",
 		widget = wibox.container.background,
 	})
 
@@ -169,7 +214,7 @@ function M.build(th, dims, w)
 			gears.shape.rounded_rect(cr, w, h, radius)
 		end,
 		shape_clip = true,
-		bg = border_color, -- gefüllter Außenring in Header-Farbe
+		bg = border_color,
 		widget = wibox.container.background,
 	})
 end

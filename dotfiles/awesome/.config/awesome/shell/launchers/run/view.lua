@@ -9,25 +9,30 @@ function V.build(ui, textbox)
 	assert(ui and ui.body_width, "run.view: ui.body_width required")
 	assert(ui.height, "run.view: ui.height required")
 
+	-- =========================================================================
+	-- Geometry
+	-- =========================================================================
+
 	local pad_l = (ui.padding and ui.padding.left) or 12
 	local pad_r = (ui.padding and ui.padding.right) or 12
 	local pad_t = (ui.padding and ui.padding.top) or 6
 	local pad_b = (ui.padding and ui.padding.bottom) or 6
 
-	-- Hint (optional)
+	-- =========================================================================
+	-- Hint
+	-- =========================================================================
+
 	local hint_row = nil
+
 	if ui.hint and ui.hint.show ~= false and ui.hint.text and #ui.hint.text > 0 then
 		local gfs = require("gears.filesystem")
-		local naughty_ok, naughty = pcall(require, "naughty") -- optional debug
 		local icon_w = nil
 		local icon_size = tonumber(ui.hint.icon_size) or tonumber(ui.hint.size) or 20
 
-		-- 1) Bild-Icon (Pfad)
 		if ui.hint.icon_path and #tostring(ui.hint.icon_path) > 0 then
 			local path = tostring(ui.hint.icon_path)
 			local readable = gfs.file_readable(path)
 
-			-- (A) Direkt mit Pfad (oft reicht das)
 			if readable then
 				icon_w = wibox.widget({
 					image = path,
@@ -40,7 +45,6 @@ function V.build(ui, textbox)
 				})
 			end
 
-			-- (B) Fallback: Surface laden, falls (A) nicht sichtbar war
 			if not icon_w and readable then
 				local surf
 				if gears.surface and gears.surface.load_uncached then
@@ -48,6 +52,7 @@ function V.build(ui, textbox)
 				elseif gears.surface and gears.surface.load then
 					surf = gears.surface.load(path)
 				end
+
 				if surf then
 					icon_w = wibox.widget({
 						image = surf,
@@ -62,7 +67,6 @@ function V.build(ui, textbox)
 			end
 		end
 
-		-- 2) Fallback: Unicode/Text-Icon
 		if not icon_w and ui.hint.icon and #tostring(ui.hint.icon) > 0 then
 			icon_w = wibox.widget({
 				markup = string.format(
@@ -77,7 +81,6 @@ function V.build(ui, textbox)
 			})
 		end
 
-		-- 3) Text
 		local txt_w = wibox.widget({
 			markup = string.format(
 				"<span font='%s %d'>%s</span>",
@@ -98,26 +101,24 @@ function V.build(ui, textbox)
 		})
 
 		hint_row = wibox.widget({
-			{ inner, left = pad_l, right = pad_r, top = pad_t, bottom = 0, widget = wibox.container.margin },
+			{
+				inner,
+				left = pad_l,
+				right = pad_r,
+				top = pad_t,
+				bottom = 0,
+				widget = wibox.container.margin,
+			},
 			bg = ui.hint.bg or "#00000000",
 			fg = ui.hint.fg or "#000000",
 			widget = wibox.container.background,
 		})
 	end
 
-	-- Linkes „Open:“ Label
-	local open_lbl = wibox.widget({
-		id = "open_lbl",
-		markup = string.format("<span>%s</span>", ui.label_open_text or "Open:"),
-		align = "left",
-		valign = "center",
-		widget = wibox.widget.textbox,
-	})
-	local label_w = tonumber(ui.label_open_width) or 64
-	local open_lbl_w =
-		wibox.widget({ open_lbl, strategy = "exact", width = label_w, widget = wibox.container.constraint })
+	-- =========================================================================
+	-- Prefix
+	-- =========================================================================
 
-	-- Prefix im Feld
 	local prefix_lbl = wibox.widget({
 		id = "prefix_lbl",
 		text = "",
@@ -126,16 +127,25 @@ function V.build(ui, textbox)
 		widget = wibox.widget.textbox,
 	})
 
-	-- Innenabstand in der weißen Box
-	local row_in_field = wibox.widget({
+	local prefix_width = tonumber(ui.prefix_width) or 64
+	local prefix_lbl_w = wibox.widget({
 		prefix_lbl,
+		strategy = "exact",
+		width = prefix_width,
+		widget = wibox.container.constraint,
+	})
+
+	-- =========================================================================
+	-- Input Field
+	-- =========================================================================
+
+	local field_row = wibox.widget({
 		textbox,
-		spacing = (ui.spacing or 8),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
 	local inner_margin = wibox.widget({
-		row_in_field,
+		field_row,
 		left = pad_l,
 		right = pad_r,
 		top = pad_t,
@@ -150,7 +160,6 @@ function V.build(ui, textbox)
 		widget = wibox.container.background,
 	})
 
-	-- Rahmen um die weiße Box (rechteckig, sauber clippen)
 	local framed = wibox.widget({
 		field_bg,
 		shape = gears.shape.rectangle,
@@ -161,35 +170,56 @@ function V.build(ui, textbox)
 		widget = wibox.container.background,
 	})
 
-	-- Höhe der Leiste fixieren
-	local bar_h = wibox.widget({ framed, strategy = "exact", height = ui.height, widget = wibox.container.constraint })
-
-	-- Breitensteuerung (vom Controller manipulierbar)
-	local width_ctl = wibox.widget({
-		bar_h,
+	local bar_h = wibox.widget({
+		framed,
 		strategy = "exact",
-		width = math.max(1, tonumber(ui.body_width) or 1),
+		height = ui.height,
 		widget = wibox.container.constraint,
 	})
 
-	-- Fester Abstand zwischen Label und Feld
-	local GAP = 10
-	local spacer = wibox.widget({ strategy = "exact", width = GAP, widget = wibox.container.constraint })
+	local field_width = math.max(1, (tonumber(ui.body_width) or 1) - prefix_width - 10)
 
-	-- Hauptzeile exakt auf body_width, dann mittig
+	local width_ctl = wibox.widget({
+		bar_h,
+		strategy = "exact",
+		width = field_width,
+		widget = wibox.container.constraint,
+	})
+
+	-- =========================================================================
+	-- Main Row
+	-- =========================================================================
+
+	local gap = 10
+	local spacer = wibox.widget({
+		widget = wibox.widget.separator,
+		forced_width = gap,
+		opacity = 0,
+	})
+
 	local main_row = wibox.widget({
-		open_lbl_w,
+		prefix_lbl_w,
 		spacer,
 		width_ctl,
 		layout = wibox.layout.fixed.horizontal,
 	})
+
 	local main_row_fixed = wibox.widget({
 		main_row,
 		strategy = "exact",
 		width = math.max(1, tonumber(ui.body_width) or 1),
 		widget = wibox.container.constraint,
 	})
-	local main_row_centered = wibox.widget({ main_row_fixed, halign = "center", widget = wibox.container.place })
+
+	local main_row_centered = wibox.widget({
+		main_row_fixed,
+		halign = "center",
+		widget = wibox.container.place,
+	})
+
+	-- =========================================================================
+	-- Vertical Layout
+	-- =========================================================================
 
 	local vertical = wibox.widget({
 		hint_row or nil,
@@ -204,10 +234,9 @@ function V.build(ui, textbox)
 		parts = {
 			textbox = textbox,
 			prefix_lbl = prefix_lbl,
-			open_lbl = open_lbl,
-			field_bg = field_bg, -- für bg/fg/cursor-Farben
-			inner_margin = inner_margin, -- für Padding
-			width_ctl = width_ctl, -- für expandierte Breite
+			field_bg = field_bg,
+			inner_margin = inner_margin,
+			width_ctl = width_ctl,
 		},
 	}
 end

@@ -6,10 +6,14 @@ local gfs = require("gears.filesystem")
 
 local S = {}
 
--- interne Shape: großer rechter Cap, optional kleiner linker
+-- ============================================================================
+-- Shape
+-- ============================================================================
+
 local function right_big_cap_factory(args)
 	local right_radius = args.right_radius
 	local left_radius = args.left_radius or 0
+
 	return function(cr, w, h)
 		local R = right_radius or math.max(h, (beautiful.border_radius or 16) * 2)
 		local rL = left_radius
@@ -23,6 +27,7 @@ local function right_big_cap_factory(args)
 		end
 
 		cr:line_to(w - R, top)
+
 		local cx, cy = w - R, h / 2
 		cr:arc(cx, cy, R, -math.pi / 2, math.pi / 2)
 
@@ -32,38 +37,46 @@ local function right_big_cap_factory(args)
 		else
 			cr:line_to(0, bottom)
 		end
+
 		cr:close_path()
 	end
 end
 
+-- ============================================================================
+-- Init
+-- ============================================================================
+
 function S.init(cfg)
 	cfg = cfg or {}
+
 	local C = cfg.colors or {}
-
 	local H = tonumber(beautiful.wibar_height) or dpi(28)
-	local DEFAULT_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
+	local default_icon = gfs.get_configuration_dir() .. "ui/assets/flake.png"
 
-	-- Maße & Stil
+	-- =========================================================================
+	-- Start
+	-- =========================================================================
+
 	beautiful.start = {
-		-- Inhalt
-		label = ("start"):lower(),
-		icon = DEFAULT_ICON,
+		label = "start",
+		icon = default_icon,
 
-		-- Größen & Abstände
 		icon_size = math.floor(H * 1),
 		spacing = dpi(4),
-		margin = { left = dpi(12), right = dpi(12), top = dpi(0), bottom = dpi(0) },
+		margin = {
+			left = dpi(12),
+			right = dpi(12),
+			top = dpi(0),
+			bottom = dpi(0),
+		},
 
-		-- Text
 		font_size_scale = 1.75,
 		font_weight = "bold",
 		font_style = "italic",
 
-		-- Breite & Höhe
 		width_factor = 4,
 		fixed_height = true,
 
-		-- Radien
 		right_radius = math.max(H, (beautiful.border_radius or dpi(16)) * 2),
 		left_radius = 0,
 	}
@@ -73,18 +86,25 @@ function S.init(cfg)
 		left_radius = beautiful.start.left_radius,
 	})
 
-	-- Farben rein aus Palette
+	-- =========================================================================
+	-- Colors
+	-- =========================================================================
+
 	beautiful.start_colors = {
-		bg = C.green, -- Haupt-Grün
-		bg_hover = C.green_dark, -- abgedunkeltes Grün (Hover)
+		bg = C.green,
+		bg_hover = C.green_dark,
 		fg = C.white,
 	}
 end
 
--- Konsumierbares Theme-Objekt für widgets/start.lua
+-- ============================================================================
+-- Public Theme Object
+-- ============================================================================
+
 function S.get()
 	local ST = beautiful.start or {}
 	local C = beautiful.start_colors or {}
+
 	return {
 		label = ST.label,
 		icon = ST.icon,
@@ -104,7 +124,6 @@ function S.get()
 		left_radius = ST.left_radius,
 		shape = ST.shape,
 
-		-- Farben
 		bg = C.bg,
 		bg_hover = C.bg_hover,
 		fg = C.fg,

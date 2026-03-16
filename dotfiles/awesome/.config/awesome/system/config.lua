@@ -10,9 +10,14 @@ return {
 		files = (os.getenv("FILE_MANAGER") or "xdg-open") .. " ~",
 	},
 
+	bar = {
+		position = "bottom",
+		start_on_primary_only = false,
+	},
+
 	tags = {
-		mode = "fixed", -- "fixed" | "dynamic"
 		selection = "sync", -- "single" | "sync"
+		mode = "fixed", -- "fixed" | "dynamic"
 		fixed_count = 2,
 	},
 
