@@ -259,6 +259,10 @@ function M.setup(s, args)
 		sections.right,
 	})
 
+	if tray and s == (screen.primary or awful.screen.focused()) then
+		awesome.emit_signal("ui::tray_ready", s)
+	end
+
 	if reveal_on_fullscreen_edge then
 		if not reveal_signals_ready then
 			Reveal.init_signals()

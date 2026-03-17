@@ -1,3 +1,4 @@
+# modules/home/bundles/desktop/awesome/default.nix
 {
   config,
   lib,
@@ -15,18 +16,17 @@ in {
 
   config = mkIf cfg.enable {
     nixforge = {
-      config = {
-        systray = enabled;
-      };
       misc = {
         gtk = {
           enable = true;
           iconTheme = "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
         };
+
         scripts = {
           autorandr-toggle = enabled;
         };
       };
+
       services = {
         xscreensaver = {
           enable = true;
@@ -35,24 +35,35 @@ in {
             secondsToSuspend = 1500;
           };
         };
+
         redshift = {
           enable = true;
           provider = "manual";
           latitude = 50.1;
           longitude = 8.6;
         };
+
+        udiskie = enabled;
       };
+
       programs = {
         nemo = {
           enable = true;
           withBundle = false;
         };
+
         autorandr = enabled;
       };
     };
 
     home.packages = with pkgs; [
       pavucontrol
+      pasystray
+      networkmanagerapplet
+      blueman
+      udiskie
+      copyq
+      gnome-calendar
     ];
   };
 }

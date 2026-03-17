@@ -13,17 +13,19 @@ with lib.${namespace}; let
   mkTrayService = {
     name,
     exec,
-    after ? ["graphical-session.target"],
+    after ? [],
+    restart ? "on-failure",
   }: {
     "systray-${name}" = {
       Unit = {
         Description = "Systray: ${name}";
-        After = after;
+        After = ["graphical-session.target" "tray.target"] ++ after;
+        Wants = ["tray.target"];
         PartOf = ["graphical-session.target"];
       };
       Service = {
         ExecStart = exec;
-        Restart = "on-failure";
+        Restart = restart;
         RestartSec = 2;
       };
       Install = {
@@ -61,49 +63,49 @@ in {
   };
 
   config = mkIf cfg.enable {
-    # 1) systemd --user services
+    systemd.user.targets.tray = {
+      Unit = {
+        Description = "Awesome tray host is ready";
+      };
+    };
+
     systemd.user.services = mkMerge [
       (mkIf cfg.startBlueman (mkTrayService {
         name = "blueman";
         exec = "${pkgs.blueman}/bin/blueman-applet";
       }))
+
       (mkIf cfg.startPasystray (mkTrayService {
         name = "pasystray";
         exec = "${pkgs.pasystray}/bin/pasystray";
       }))
+
       (mkIf cfg.startNmApplet (mkTrayService {
         name = "nm-applet";
-        exec = "${pkgs.networkmanagerapplet}/bin/nm-applet --indicator";
+        exec = "${pkgs.networkmanagerapplet}/bin/nm-applet";
       }))
+
       (mkIf cfg.startUdiskie (mkTrayService {
         name = "udiskie";
         exec = "${pkgs.udiskie}/bin/udiskie ${cfg.udiskieArgs}";
-        after = [
-          "graphical-session.target"
-          "tray.target"
-        ];
       }))
+
       (mkIf cfg.startCopyQ (mkTrayService {
         name = "copyq";
         exec = "${pkgs.copyq}/bin/copyq";
+        restart = "always";
       }))
     ];
 
-    # 2) XDG-Autostarts unterdrücken (damit nichts doppelt läuft)
     home.file = mkMerge [
       (hiddenFilesFrom [
-        # Audio
         "pasystray.desktop"
-        # Bluetooth
         "blueman.desktop"
         "blueman-applet.desktop"
         "blueberry.desktop"
         "blueberry-tray.desktop"
-        # Netzwerk
         "nm-applet.desktop"
-        # Laufwerke
         "udiskie.desktop"
-        # Clipboard
         "copyq.desktop"
       ])
     ];

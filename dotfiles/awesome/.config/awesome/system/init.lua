@@ -7,32 +7,58 @@ local M = {
 	errors = errors,
 }
 
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
 function M.init(overrides)
-	-- 1) Konfiguration + Fehler
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
+
 	if overrides then
-		for k, v in pairs(overrides) do
-			M.config[k] = v
+		for key, value in pairs(overrides) do
+			M.config[key] = value
 		end
 	end
+
 	if M.errors and M.errors.hook then
 		M.errors.hook()
 	end
+
 	local cfg = M.config
 
-	-- 2) UI (Theme + Wallpaper)
+	-- ---------------------------------------------------------------------
+	-- UI
+	-- ---------------------------------------------------------------------
+
 	local ui = require("ui")
 	ui.init(cfg)
 
-	-- 3) Shell (kümmert sich um Workspaces, Windowing, Menu/Bar, Notify)
+	-- ---------------------------------------------------------------------
+	-- Autostart
+	-- ---------------------------------------------------------------------
+
+	local autostart = require("system.autostart")
+	autostart.init(cfg)
+
+	-- ---------------------------------------------------------------------
+	-- Shell
+	-- ---------------------------------------------------------------------
+
 	local input = require("input")
 	local shell = require("shell")
+
 	shell.init({
 		cfg = cfg,
 		ui = ui,
-		input = input, -- für mouse + später keybindings
+		input = input,
 	})
 
-	-- 4) Input (nutzt mymainmenu/mylauncher aus shell.init)
+	-- ---------------------------------------------------------------------
+	-- Input
+	-- ---------------------------------------------------------------------
+
 	input.apply(cfg)
 
 	return cfg

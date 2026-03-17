@@ -4,95 +4,107 @@ local gears = require("gears")
 
 local M = {}
 
--- Für jeden Tag merken wir:
---   last_any      -> zuletzt fokussierter Client (screen-agnostisch)
---   by_screen[s]  -> zuletzt fokussierter Client auf Screen s
---
--- Keys (Tags/Clients/Screens) werden weak gehalten, damit nichts festgeklemmt wird.
-local LAST_FOCUS = setmetatable({}, { __mode = "k" }) -- tag -> record
+local LAST_FOCUS = setmetatable({}, { __mode = "k" })
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
 
 local function ensure_record_for_tag(t)
-	local r = LAST_FOCUS[t]
-	if not r then
-		r = {
+	local record = LAST_FOCUS[t]
+
+	if not record then
+		record = {
 			last_any = nil,
-			by_screen = setmetatable({}, { __mode = "k" }), -- screen -> client
+			by_screen = setmetatable({}, { __mode = "k" }),
 		}
-		LAST_FOCUS[t] = r
+
+		LAST_FOCUS[t] = record
 	end
-	return r
+
+	return record
 end
 
-local function set_last_focus(tag, screen, client)
-	if not (tag and screen and client and client.valid) then
+local function set_last_focus(tag, screen, c)
+	if not (tag and screen and c and c.valid) then
 		return
 	end
-	local r = ensure_record_for_tag(tag)
-	r.last_any = client
-	r.by_screen[screen] = client
+
+	local record = ensure_record_for_tag(tag)
+	record.last_any = c
+	record.by_screen[screen] = c
 end
 
 local function get_last_focus_for(tag, screen)
-	local r = LAST_FOCUS[tag]
-	if not r then
+	local record = LAST_FOCUS[tag]
+	if not record then
 		return nil
 	end
-	local c = r.by_screen[screen]
+
+	local c = record.by_screen[screen]
 	if c and c.valid then
 		return c
 	end
-	c = r.last_any
+
+	c = record.last_any
 	if c and c.valid then
 		return c
 	end
+
 	return nil
 end
 
--- Maus beim Tagwechsel nicht „mitziehen“ + Zentrier-Unterdrückung
 local function with_mouse_lock(fn)
 	local pos = mouse.coords()
+
 	awesome.emit_signal("ui::suppress_center", 0.25)
+
 	fn()
+
 	gears.timer.delayed_call(function()
 		if pos and pos.x and pos.y then
-			mouse.coords(pos, true) -- true: keine Extra-Events
+			mouse.coords(pos, true)
 		end
 	end)
 end
 
--- Kandidatenauswahl: priorisiere "per Screen gemerkt" -> first tiled -> irgendein Client
+local function client_on_tag_and_screen(c, tag, screen)
+	return c and c.valid and c.screen == screen and c.first_tag == tag
+end
+
 local function focus_last_of_tag_on_screen_or_fallback(tag, screen)
 	if not (tag and screen) then
 		return
 	end
 
-	-- Nur auf dem aktuell fokussierten Screen arbeiten, sonst Maus/Focus-Warp.
 	if awful.screen.focused() ~= screen then
 		return
 	end
 
 	gears.timer.delayed_call(function()
-		-- Innerhalb delayed_call nochmal absichern (kann sich inzwischen geändert haben)
 		if awful.screen.focused() ~= screen then
 			return
 		end
 
-		local function on_tag_screen(c)
-			return c and c.valid and c.screen == screen and c.first_tag == tag
-		end
+		-- -----------------------------------------------------------------
+		-- Remembered
+		-- -----------------------------------------------------------------
 
-		-- 0) der per Screen gemerkte bzw. last_any
 		local c = get_last_focus_for(tag, screen)
-		if not on_tag_screen(c) then
+		if not client_on_tag_and_screen(c, tag, screen) then
 			c = nil
 		end
 
-		-- 1) erster tiled-Client auf DIESEM Screen/Tag
+		-- -----------------------------------------------------------------
+		-- Tiled Fallback
+		-- -----------------------------------------------------------------
+
 		if not c then
-			local tiled = awful.client.tiled(tag)
+			local tiled = awful.client.tiled(screen)
+
 			if tiled then
 				for _, x in ipairs(tiled) do
-					if on_tag_screen(x) then
+					if client_on_tag_and_screen(x, tag, screen) then
 						c = x
 						break
 					end
@@ -100,33 +112,39 @@ local function focus_last_of_tag_on_screen_or_fallback(tag, screen)
 			end
 		end
 
-		-- 2) irgendein Client dieses Tags auf DIESEM Screen
+		-- -----------------------------------------------------------------
+		-- Any Client Fallback
+		-- -----------------------------------------------------------------
+
 		if not c then
 			local list = tag:clients()
+
 			if list then
 				for _, x in ipairs(list) do
-					if on_tag_screen(x) then
+					if client_on_tag_and_screen(x, tag, screen) then
 						c = x
 						break
 					end
 				end
 			end
 		end
+
+		-- -----------------------------------------------------------------
+		-- Activate
+		-- -----------------------------------------------------------------
 
 		if c and c.valid then
 			if c.minimized then
 				c.minimized = false
 			end
 
-			-- Nur aktivieren, keinen Screen-Fokus erzwingen.
 			c:emit_signal("request::activate", "tag_switch_last_focus_per_screen", { raise = true })
 
-			-- Nachkontrolle: falls irgendwas den Fokus "wegreißt", versuchen wir es nochmal,
-			-- aber weiterhin ohne Screen-Fokus-Warp.
 			gears.timer.delayed_call(function()
 				if awful.screen.focused() ~= screen then
 					return
 				end
+
 				if client.focus and client.focus.valid and client.focus.screen ~= screen then
 					c:emit_signal("request::activate", "tag_switch_enforce_screen", { raise = true })
 				end
@@ -135,38 +153,48 @@ local function focus_last_of_tag_on_screen_or_fallback(tag, screen)
 	end)
 end
 
--- ==== Lernen/Aufräumen der "letzten Fokus"-Infos ======================
+-- =========================================================================
+-- Learning
+-- =========================================================================
 
 client.connect_signal("focus", function(c)
 	if not (c and c.valid) then
 		return
 	end
-	local t, s = c.first_tag, c.screen
-	if t and s then
-		set_last_focus(t, s, c)
+
+	local tag = c.first_tag
+	local screen = c.screen
+
+	if tag and screen then
+		set_last_focus(tag, screen, c)
 	end
 end)
 
-client.connect_signal("tagged", function(c, t)
-	if c and c.valid and t then
-		local s = c.screen
-		if client.focus == c and s then
-			set_last_focus(t, s, c)
-		end
-	end
-end)
-
-client.connect_signal("untagged", function(c, t)
-	local rec = LAST_FOCUS[t]
-	if not (rec and c) then
+client.connect_signal("tagged", function(c, tag)
+	if not (c and c.valid and tag) then
 		return
 	end
-	if rec.last_any == c then
-		rec.last_any = nil
+
+	local screen = c.screen
+
+	if client.focus == c and screen then
+		set_last_focus(tag, screen, c)
 	end
-	for s, cl in pairs(rec.by_screen) do
-		if cl == c then
-			rec.by_screen[s] = nil
+end)
+
+client.connect_signal("untagged", function(c, tag)
+	local record = LAST_FOCUS[tag]
+	if not (record and c) then
+		return
+	end
+
+	if record.last_any == c then
+		record.last_any = nil
+	end
+
+	for screen, client_on_screen in pairs(record.by_screen) do
+		if client_on_screen == c then
+			record.by_screen[screen] = nil
 		end
 	end
 end)
@@ -175,51 +203,55 @@ client.connect_signal("unmanage", function(c)
 	if not c then
 		return
 	end
-	for t, rec in pairs(LAST_FOCUS) do
-		if rec.last_any == c then
-			rec.last_any = nil
+
+	for _, record in pairs(LAST_FOCUS) do
+		if record.last_any == c then
+			record.last_any = nil
 		end
-		for s, cl in pairs(rec.by_screen) do
-			if cl == c then
-				rec.by_screen[s] = nil
+
+		for screen, client_on_screen in pairs(record.by_screen) do
+			if client_on_screen == c then
+				record.by_screen[screen] = nil
 			end
 		end
 	end
 end)
 
--- ===== Öffentliche API =================================================
+-- =========================================================================
+-- Public API
+-- =========================================================================
 
-function M.focus_master_current(s)
-	s = s or awful.screen.focused()
-	local t = s and s.selected_tag
-	if not t then
+function M.focus_master_current(screen)
+	screen = screen or awful.screen.focused()
+
+	local tag = screen and screen.selected_tag
+	if not tag then
 		return
 	end
-	focus_last_of_tag_on_screen_or_fallback(t, s)
+
+	focus_last_of_tag_on_screen_or_fallback(tag, screen)
 end
 
--- apply_layout_policy_fn wird von init.lua injiziert
 function M.attach_policy_signals(apply_layout_policy_fn)
-	tag.connect_signal("property::selected", function(t)
-		if not (t and t.selected and t.screen) then
+	tag.connect_signal("property::selected", function(tag)
+		if not (tag and tag.selected and tag.screen) then
 			return
 		end
 
-		-- Bei Sync: nur auf dem aktuell fokussierten Screen reagieren
-		if awesome._ws_sync_busy and t.screen ~= awful.screen.focused() then
+		if awesome._ws_sync_busy and tag.screen ~= awful.screen.focused() then
 			return
 		end
 
-		-- Auch ohne Sync: Policies nur auf dem fokussierten Screen anwenden (kein Cursor-Warp)
-		if t.screen ~= awful.screen.focused() then
+		if tag.screen ~= awful.screen.focused() then
 			return
 		end
 
 		with_mouse_lock(function()
 			if type(apply_layout_policy_fn) == "function" then
-				apply_layout_policy_fn(t.screen)
+				apply_layout_policy_fn(tag.screen)
 			end
-			focus_last_of_tag_on_screen_or_fallback(t, t.screen)
+
+			focus_last_of_tag_on_screen_or_fallback(tag, tag.screen)
 		end)
 	end)
 end
