@@ -3,9 +3,9 @@ local awful = require("awful")
 
 local P = {}
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function urlencode(s)
 	if not s then
@@ -24,12 +24,51 @@ local function sh_quote(s)
 	return "'" .. s:gsub("'", "'\"'\"'") .. "'"
 end
 
--- ============================================================================
+local function trim(s)
+	return (s or ""):match("^%s*(.-)%s*$")
+end
+
+local function resolve_home(home)
+	home = home or os.getenv("HOME")
+	if type(home) == "string" and #home > 0 then
+		return home
+	end
+	return nil
+end
+
+local function resolve_local_target(query, home)
+	local q = trim(query)
+	local resolved_home = resolve_home(home)
+
+	if q == "" or q == "~" then
+		return resolved_home
+	end
+
+	if q:sub(1, 1) == "~" and resolved_home then
+		return q:gsub("^~", resolved_home)
+	end
+
+	if q:sub(1, 1) == "/" then
+		return q
+	end
+
+	if resolved_home then
+		return resolved_home .. "/" .. q
+	end
+
+	return q
+end
+
+local function spawn_shell_bg(cmd)
+	awful.spawn.with_shell(cmd)
+end
+
+-- =========================================================================
 -- Run
--- ============================================================================
+-- =========================================================================
 
 function P.run_execute(query)
-	local q = (query or ""):match("^%s*(.-)%s*$")
+	local q = trim(query)
 	if q == "" then
 		return
 	end
@@ -114,39 +153,33 @@ if [ -z "${launched:-}" ]; then
 fi
 ]=]
 
-	awful.spawn.with_shell(tmpl:gsub("__Q__", sh_quote(q)))
+	spawn_shell_bg(tmpl:gsub("__Q__", sh_quote(q)))
 end
 
--- ============================================================================
+-- =========================================================================
 -- Local
--- ============================================================================
+-- =========================================================================
 
-function P.local_open(query, HOME)
-	HOME = HOME or (os.getenv("HOME") or "~")
-
-	local q = (query or ""):match("^%s*(.-)%s*$")
-	local target
-
-	if q == "" or q == "~" then
-		target = HOME
-	elseif q:sub(1, 1) == "~" then
-		target = q:gsub("^~", HOME)
-	elseif q:sub(1, 1) == "/" then
-		target = q
-	else
-		target = HOME .. "/" .. q
+function P.local_open(query, home)
+	local target = resolve_local_target(query, home)
+	if not target or target == "" then
+		return
 	end
 
-	local files = os.getenv("FILE_MANAGER") or "xdg-open"
-	awful.spawn.with_shell(string.format("%s %q >/dev/null 2>&1 &", files, target))
+	local files = os.getenv("FILE_MANAGER")
+	if not files or files == "" then
+		files = "xdg-open"
+	end
+
+	spawn_shell_bg(string.format("%s %q >/dev/null 2>&1 &", files, target))
 end
 
--- ============================================================================
+-- =========================================================================
 -- Web
--- ============================================================================
+-- =========================================================================
 
 function P.web_open(query, engine_fmt, browser)
-	local q = (query or ""):gsub("^%?+", ""):match("^%s*(.-)%s*$")
+	local q = trim((query or ""):gsub("^%?+", ""))
 	if q == "" then
 		return
 	end
@@ -155,9 +188,9 @@ function P.web_open(query, engine_fmt, browser)
 	awful.spawn({ browser or "firefox", url }, false)
 end
 
--- ============================================================================
+-- =========================================================================
 -- Compatibility
--- ============================================================================
+-- =========================================================================
 
 P.run_search = P.run_execute
 P.local_search = P.local_open

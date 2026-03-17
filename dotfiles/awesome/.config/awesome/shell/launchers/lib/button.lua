@@ -5,10 +5,6 @@ local wibox = require("wibox")
 
 local B = {}
 
--- ============================================================================
--- Style
--- ============================================================================
-
 local STYLE = {
 	height = 24,
 	width = 96,
@@ -27,9 +23,9 @@ local STYLE = {
 	hover_inset = 2,
 }
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function hex_rgb(hex)
 	hex = (hex or "#000000"):gsub("#", "")
@@ -39,12 +35,16 @@ local function hex_rgb(hex)
 	return r, g, b
 end
 
--- ============================================================================
--- Factory
--- ============================================================================
+-- =========================================================================
+-- Public API
+-- =========================================================================
 
 function B.mk_button(label, on_click, style_override)
 	local S = setmetatable(style_override or {}, { __index = STYLE })
+
+	-- ---------------------------------------------------------------------
+	-- Content
+	-- ---------------------------------------------------------------------
 
 	local txt = wibox.widget({
 		text = label or "Button",
@@ -60,6 +60,8 @@ function B.mk_button(label, on_click, style_override)
 		{
 			{
 				txt,
+				halign = "center",
+				valign = "center",
 				widget = wibox.container.place,
 			},
 			left = S.pad_h,
@@ -75,20 +77,26 @@ function B.mk_button(label, on_click, style_override)
 		widget = wibox.container.background,
 	})
 
+	-- ---------------------------------------------------------------------
+	-- Hover Overlay
+	-- ---------------------------------------------------------------------
+
 	local overlay = wibox.widget.base.make_widget()
 	overlay._hover_on = false
 
-	overlay.fit = function(_, _, w, h)
+	function overlay:fit(_, w, h)
 		return w, h
 	end
 
-	overlay.draw = function(self, _, cr, w, h)
+	function overlay:draw(_, cr, w, h)
 		if not self._hover_on then
 			return
 		end
 
 		local inset = (S.outer_bw or 0) + (S.hover_inset or 0)
-		local ww, hh = w - inset * 2, h - inset * 2
+		local ww = w - inset * 2
+		local hh = h - inset * 2
+
 		if ww <= 0 or hh <= 0 then
 			return
 		end
@@ -106,13 +114,17 @@ function B.mk_button(label, on_click, style_override)
 		cr:restore()
 	end
 
+	-- ---------------------------------------------------------------------
+	-- Stack
+	-- ---------------------------------------------------------------------
+
 	local inner_stack = wibox.widget({
 		base,
 		overlay,
 		layout = wibox.layout.stack,
 	})
 
-	local outer = wibox.widget({
+	local bordered = wibox.widget({
 		{
 			inner_stack,
 			left = S.outer_bw or 0,
@@ -132,18 +144,28 @@ function B.mk_button(label, on_click, style_override)
 	})
 
 	local fixed_h = wibox.widget({
-		outer,
+		bordered,
 		strategy = "exact",
 		height = S.height,
 		widget = wibox.container.constraint,
 	})
 
-	local root = wibox.widget({
+	local fixed_size = wibox.widget({
 		fixed_h,
 		strategy = "exact",
 		width = S.width,
 		widget = wibox.container.constraint,
 	})
+
+	local root = wibox.widget({
+		fixed_size,
+		bg = "#00000000",
+		widget = wibox.container.background,
+	})
+
+	-- ---------------------------------------------------------------------
+	-- Interaction
+	-- ---------------------------------------------------------------------
 
 	local function set_hover(on)
 		overlay._hover_on = not not on

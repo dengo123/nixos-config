@@ -9,35 +9,49 @@ local M = {}
 -- Helpers
 -- ============================================================================
 
-local function pick(...)
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if v ~= nil then
-			return v
+local function escape(text)
+	return gears.string.xml_escape(tostring(text or ""))
+end
+
+local function build_square_shape(th)
+	if th.icon_shape == "rounded" then
+		local rounding = assert(tonumber(th.icon_rounding), "power.icons: icon_rounding fehlt/ungültig")
+		return function(cr, w, h)
+			gears.shape.rounded_rect(cr, w, h, rounding)
 		end
 	end
+
+	return gears.shape.rectangle
 end
 
 -- ============================================================================
--- Factory
+-- Public API
 -- ============================================================================
 
 function M.mk_icon_button(args)
 	args = args or {}
 
+	-- ------------------------------------------------------------------------
+	-- Config
+	-- ------------------------------------------------------------------------
+
 	local th = args.th or {}
-	local size = args.size or 64
+	local size = assert(tonumber(args.size), "power.icons: size fehlt/ungültig")
 
-	local pad_icon = pick(th.icon_pad, 6)
-	local pad_cell = pick(th.icon_cell_pad, 6)
-	local spacing = pick(th.icon_spacing, 6)
+	local pad_icon = assert(tonumber(th.icon_pad), "power.icons: icon_pad fehlt/ungültig")
+	local pad_cell = assert(tonumber(th.icon_cell_pad), "power.icons: icon_cell_pad fehlt/ungültig")
+	local spacing = assert(tonumber(th.icon_spacing), "power.icons: icon_spacing fehlt/ungültig")
 
-	-- =========================================================================
+	local box_side = size + pad_icon * 2
+	local square_shape = build_square_shape(th)
+
+	-- ------------------------------------------------------------------------
 	-- Icon
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 
 	local icon_inner
-	if args.icon and type(args.icon) == "string" then
+
+	if type(args.icon) == "string" and #args.icon > 0 then
 		icon_inner = wibox.widget({
 			image = args.icon,
 			resize = true,
@@ -50,7 +64,7 @@ function M.mk_icon_button(args)
 		local emoji_font = args.emoji_font or ("sans " .. math.floor(size * 0.66))
 
 		icon_inner = wibox.widget({
-			markup = string.format("<span font='%s'>%s</span>", emoji_font, emoji_char),
+			markup = string.format("<span font='%s'>%s</span>", emoji_font, escape(emoji_char)),
 			align = "center",
 			valign = "center",
 			forced_width = size,
@@ -58,13 +72,6 @@ function M.mk_icon_button(args)
 			widget = wibox.widget.textbox,
 		})
 	end
-
-	local box_side = size + pad_icon * 2
-	local square_shape = (th.icon_shape == "rounded")
-			and function(cr, w, h)
-				gears.shape.rounded_rect(cr, w, h, pick(th.icon_rounding, 6))
-			end
-		or gears.shape.rectangle
 
 	local hover_square = wibox.widget({
 		{
@@ -85,24 +92,27 @@ function M.mk_icon_button(args)
 		widget = wibox.container.background,
 	})
 
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 	-- Label
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 
 	local label_block = nil
 	local label_h = 0
 
-	if args.label and #args.label > 0 then
-		local fsz = pick(th.icon_label_size, 18)
-		local leading = pick(th.icon_label_leading, 1.25)
-		label_h = math.ceil(fsz * leading)
+	if type(args.label) == "string" and #args.label > 0 then
+		local label_size = assert(tonumber(th.icon_label_size), "power.icons: icon_label_size fehlt/ungültig")
+		local label_leading = assert(tonumber(th.icon_label_leading), "power.icons: icon_label_leading fehlt/ungültig")
+		local extra_w = assert(tonumber(th.icon_cell_extra_w), "power.icons: icon_cell_extra_w fehlt/ungültig")
+		local label_w = box_side + extra_w
 
-		local lbl = wibox.widget({
+		label_h = math.ceil(label_size * label_leading)
+
+		local label_widget = wibox.widget({
 			markup = string.format(
 				"<span font='sans %d' color='%s'>%s</span>",
-				fsz,
-				th.icon_label_color or "#FFFFFF",
-				args.label
+				label_size,
+				th.icon_label_color,
+				escape(args.label)
 			),
 			align = "center",
 			valign = "center",
@@ -112,20 +122,17 @@ function M.mk_icon_button(args)
 			widget = wibox.widget.textbox,
 		})
 
-		local extra_w = tonumber(th.icon_cell_extra_w) or 0
-		local label_w = box_side + extra_w
-
 		label_block = wibox.widget({
-			lbl,
+			label_widget,
 			strategy = "exact",
 			width = label_w,
 			widget = wibox.container.constraint,
 		})
 	end
 
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 	-- Layout
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 
 	local v_spacing = (label_block and label_h > 0) and spacing or 0
 	local offset = math.floor(((label_block and label_h or 0) + v_spacing) / 2)
@@ -157,14 +164,15 @@ function M.mk_icon_button(args)
 		widget = wibox.container.margin,
 	})
 
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 	-- Mouse
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 
 	hover_square:connect_signal("mouse::enter", function()
-		hover_square.bg = th.icon_hover_bg or "#FFFFFF22"
-		hover_square.shape_border_width = pick(th.icon_hover_bw, 2)
-		hover_square.shape_border_color = th.icon_hover_border or "#2B77FF"
+		hover_square.bg = th.icon_hover_bg
+		hover_square.shape_border_width =
+			assert(tonumber(th.icon_hover_bw), "power.icons: icon_hover_bw fehlt/ungültig")
+		hover_square.shape_border_color = th.icon_hover_border
 	end)
 
 	hover_square:connect_signal("mouse::leave", function()
@@ -179,9 +187,9 @@ function M.mk_icon_button(args)
 		end)))
 	end
 
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 	-- Focus API
-	-- =========================================================================
+	-- ------------------------------------------------------------------------
 
 	clickable._hover_square = hover_square
 	clickable._th = th
@@ -191,14 +199,10 @@ function M.mk_icon_button(args)
 		local t = th2 or self._th or {}
 		local sq = self._hover_square
 
-		local bg_on = pick(t.icon_focus_bg, t.icon_hover_bg, "#FFFFFF22")
-		local bw_on = pick(t.icon_focus_bw, t.icon_hover_bw, 2)
-		local bor_on = pick(t.icon_focus_border, t.icon_hover_border, "#2B77FF")
-
 		if on then
-			sq.bg = bg_on
-			sq.shape_border_width = bw_on
-			sq.shape_border_color = bor_on
+			sq.bg = t.icon_focus_bg
+			sq.shape_border_width = assert(tonumber(t.icon_focus_bw), "power.icons: icon_focus_bw fehlt/ungültig")
+			sq.shape_border_color = t.icon_focus_border
 		else
 			sq.bg = "#00000000"
 			sq.shape_border_width = 0

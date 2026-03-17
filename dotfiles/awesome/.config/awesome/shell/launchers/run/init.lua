@@ -11,107 +11,117 @@ local Controller = require("shell.launchers.run.controller")
 
 local M = {}
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function must(cond, msg)
 	assert(cond, "run/init.lua: " .. msg)
 end
 
 local function dims(panel)
-	local H = assert(tonumber(panel.height), "panel.height missing/invalid")
-	local header = assert(tonumber(panel.header_h), "panel.header_h missing/invalid")
-	local footer = assert(tonumber(panel.footer_h), "panel.footer_h missing/invalid")
+	local h = assert(tonumber(panel.height), "panel.height missing/invalid")
+	local header_h = assert(tonumber(panel.header_h), "panel.header_h missing/invalid")
+	local footer_h = assert(tonumber(panel.footer_h), "panel.footer_h missing/invalid")
 	local pad_h = assert(tonumber(panel.pad_h), "panel.pad_h missing/invalid")
 	local pad_v = assert(tonumber(panel.pad_v), "panel.pad_v missing/invalid")
 
 	return {
 		w = assert(tonumber(panel.width), "panel.width missing/invalid"),
-		h = H,
-		header_h = header,
-		footer_h = footer,
-		body_h = math.max(0, H - header - footer),
+		h = h,
+		header_h = header_h,
+		footer_h = footer_h,
+		body_h = math.max(0, h - header_h - footer_h),
 		pad_h = pad_h,
 		pad_v = pad_v,
 	}
 end
 
--- ============================================================================
--- Launcher
--- ============================================================================
+local function resolve_theme(Lib, overrides)
+	must(Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function", "Lib.ui_api.resolve_theme not available")
+	return Lib.ui_api.resolve_theme("run", overrides or {})
+end
 
-function M.open(opts, Lib)
-	opts = opts or {}
-	Lib = Lib or require("shell.launchers.lib")
-
-	local cfg = opts.cfg or {}
+local function resolve_web_cfg(cfg)
 	local system_cfg = cfg.system or {}
 	local search_cfg = cfg.search or {}
 
-	local web_cfg = search_cfg.web
+	return search_cfg.web
 		or {
 			browser = system_cfg.browser or "firefox",
 			engine = "https://duckduckgo.com/?q=%s",
 		}
+end
 
-	-- =========================================================================
-	-- Theme
-	-- =========================================================================
+-- =========================================================================
+-- Public API
+-- =========================================================================
 
-	must(Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function", "Lib.ui_api.resolve_theme not available")
+function M.open(opts, Lib)
+	opts = opts or {}
+	Lib = Lib or require("shell.launchers")
 
-	local th = Lib.ui_api.resolve_theme("run", opts.theme or {})
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
+
+	local cfg = opts.cfg or {}
+	local web_cfg = resolve_web_cfg(cfg)
+
+	local th = resolve_theme(Lib, opts.theme)
 	must(th and th.panel and th.search, "theme for 'run' must provide {panel, search}")
 
-	local d = dims(th.panel)
+	local panel = th.panel
+	local search = th.search
+	local buttons = assert(th.buttons, "theme for 'run' must provide buttons")
+	local d = dims(panel)
 
-	-- =========================================================================
-	-- Prompt / View
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
+	-- Prompt
+	-- ---------------------------------------------------------------------
 
 	local prompt = awful.widget.prompt()
 	local textbox = prompt.widget
 
 	local ui = {
-		body_width = (th.panel.width - 2 * d.pad_h),
-		height = th.search.sizes.height,
+		body_width = panel.width - 2 * d.pad_h,
+		height = assert(tonumber(search.sizes.height), "theme.run.search.sizes.height missing/invalid"),
 
-		bg_active = th.search.colors.bg_active,
-		fg_active = th.search.colors.fg_active,
+		bg_active = search.colors.bg_active,
+		fg_active = search.colors.fg_active,
 
 		padding = {
-			left = th.search.layout.left,
-			right = th.search.layout.right,
-			top = th.search.layout.top,
-			bottom = th.search.layout.bottom,
+			left = search.layout.left,
+			right = search.layout.right,
+			top = search.layout.top,
+			bottom = search.layout.bottom,
 		},
 
-		spacing = th.search.layout.spacing,
-		border_w = th.search.border_w,
-		border_color = th.search.border_color,
+		spacing = search.layout.spacing,
+		border_w = search.border_w,
+		border_color = search.border_color,
 
-		prefix_width = th.search.prefix_width,
-		hint = th.search.hint,
+		prefix_width = search.prefix_width,
+		prefix_font = search.prefix_font,
+		prefix_size = search.prefix_size,
+		hint = search.hint,
 	}
 
 	local view = View.build(ui, textbox)
 
-	-- =========================================================================
-	-- Body Placement (center searchbar)
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
+	-- Body
+	-- ---------------------------------------------------------------------
 
-	local bar_h = th.search.sizes.height
-
-	local hint = th.search.hint or {}
+	local bar_h = assert(tonumber(search.sizes.height), "theme.run.search.sizes.height missing/invalid")
+	local hint = search.hint or {}
 	local hint_enabled = (hint.show ~= false) and (hint.text and #tostring(hint.text) > 0)
 
-	local pad_t = tonumber(th.search.layout.top) or 6
-	local spacing = tonumber(hint.spacing) or 6
-	local hint_sz = tonumber(hint.size) or 12
+	local pad_t = assert(tonumber(search.layout.top), "theme.run.search.layout.top missing/invalid")
+	local hint_spacing = assert(tonumber(hint.spacing), "theme.run.search.hint.spacing missing/invalid")
+	local hint_size = assert(tonumber(hint.size), "theme.run.search.hint.size missing/invalid")
 
-	local hint_h = hint_enabled and (pad_t + hint_sz + spacing) or 0
-
+	local hint_h = hint_enabled and (pad_t + hint_size + hint_spacing) or 0
 	local offset_in_body = math.max(0, math.floor(d.body_h / 2 - (hint_h + bar_h / 2)))
 
 	local body_widget = wibox.widget({
@@ -120,34 +130,34 @@ function M.open(opts, Lib)
 		widget = wibox.container.margin,
 	})
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Footer Buttons
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
-	local Button = (Lib and Lib.button) or require("shell.launchers.lib.button")
+	local Button = assert(Lib and Lib.button, "run: Lib.button fehlt")
 
 	local act_mode = function() end
 	local act_ok = function() end
 	local act_cancel = function() end
 
-	local mode_btn = Button.mk_button("Mode", function()
+	local mode_btn = Button.mk_button(buttons.mode, function()
 		act_mode()
 	end)
 
-	local ok_btn = Button.mk_button("OK", function()
+	local ok_btn = Button.mk_button(buttons.ok, function()
 		act_ok()
 	end)
 
-	local cancel_btn = Button.mk_button("Cancel", function()
+	local cancel_btn = Button.mk_button(buttons.cancel, function()
 		act_cancel()
 	end)
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Container
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
-	local stack = Container.build(th.panel, d, {
-		title = th.panel.title or opts.title or "Run",
+	local stack = Container.build(panel, d, {
+		title = opts.title or panel.title,
 		body = body_widget,
 		footer_buttons = {
 			mode_btn,
@@ -158,51 +168,48 @@ function M.open(opts, Lib)
 
 	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
 
-	local handle = Lib.ui_api.open_panel(stack, th.panel, {
+	local handle = Lib.ui_api.open_panel(stack, panel, {
 		use_backdrop = false,
 		show_root = false,
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
 		shape = function(cr, w, h)
-			local r = tonumber(th.panel.panel_radius) or 12
+			local r = assert(tonumber(panel.panel_radius), "theme.run.panel.panel_radius missing/invalid")
 			gears.shape.rounded_rect(cr, w, h, r)
 		end,
 	})
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Controller
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local ctrl = Controller.new({
 		awful = awful,
 		gears = gears,
+		view = view,
 
 		parts = {
 			textbox = textbox,
-			prefix_lbl = view.parts.prefix_lbl,
-			inner_margin = view.parts.inner_margin,
-			bg_box = view.parts.field_bg,
-			width_ctl = view.parts.width_ctl,
 		},
 
 		sizes = {
-			width_expanded = th.search.sizes.width_expanded,
+			width_expanded = search.sizes.width_expanded,
 		},
 
 		colors = {
-			bg_active = th.search.colors.bg_active,
-			fg_active = th.search.colors.fg_active,
-			cursor_bg = th.search.colors.cursor_bg,
-			cursor_fg = th.search.colors.cursor_fg,
+			bg_active = search.colors.bg_active,
+			fg_active = search.colors.fg_active,
+			cursor_bg = search.colors.cursor_bg,
+			cursor_fg = search.colors.cursor_fg,
 		},
 
 		layout = {
-			left = th.search.layout.left,
-			right = th.search.layout.right,
-			top = th.search.layout.top,
-			bottom = th.search.layout.bottom,
+			left = search.layout.left,
+			right = search.layout.right,
+			top = search.layout.top,
+			bottom = search.layout.bottom,
 		},
 
-		prefixes = th.search.prefix,
+		prefixes = search.prefix,
 		providers = Providers,
 		complete = Complete,
 		web = web_cfg,
@@ -217,9 +224,9 @@ function M.open(opts, Lib)
 
 	ctrl.init()
 
-	-- =========================================================================
-	-- Global API (for hotkeys)
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
+	-- Global API
+	-- ---------------------------------------------------------------------
 
 	rawset(_G, "__run_api", ctrl)
 
@@ -235,24 +242,24 @@ function M.open(opts, Lib)
 		ctrl.focus_run()
 	end
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Bind Actions
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
-	local Actions = (Lib and Lib.actions) or require("shell.launchers.lib.actions")
+	local Actions = assert(Lib and Lib.actions, "run: Lib.actions fehlt")
 	local bound = Actions.bind({
 		ctrl = ctrl,
 		handle = handle,
 		gears = gears,
 	})
 
-	act_mode = bound["Mode"] or act_mode
-	act_ok = bound["OK"] or act_ok
-	act_cancel = bound["Cancel"] or act_cancel
+	act_mode = bound[buttons.mode] or act_mode
+	act_ok = bound[buttons.ok] or act_ok
+	act_cancel = bound[buttons.cancel] or act_cancel
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Cleanup
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local function cleanup_api()
 		if rawget(_G, "__run_api") == ctrl then

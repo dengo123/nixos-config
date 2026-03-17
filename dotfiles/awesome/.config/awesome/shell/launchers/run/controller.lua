@@ -5,39 +5,43 @@ function M.new(ctx)
 	assert(ctx and ctx.parts and ctx.parts.textbox, "run.controller: ctx.parts.textbox required")
 
 	-- =========================================================================
-	-- Context
+	-- Config
 	-- =========================================================================
 
-	local awful = ctx.awful
-	local gears = ctx.gears
+	local awful = assert(ctx.awful, "run.controller: ctx.awful required")
+	local gears = assert(ctx.gears, "run.controller: ctx.gears required")
 	local Providers = ctx.providers or {}
 	local Complete = ctx.complete
 
-	local textbox = ctx.parts.textbox
-	local prefix_lbl = ctx.parts.prefix_lbl
-	local inner_margin = ctx.parts.inner_margin
-	local bg_box = ctx.parts.bg_box
-	local width_ctl = ctx.parts.width_ctl
+	local parts = assert(ctx.parts, "run.controller: ctx.parts required")
+	local view = assert(ctx.view, "run.controller: ctx.view required")
 
-	local WIDTH_EXP = (ctx.sizes and ctx.sizes.width_expanded) or 400
+	local textbox = parts.textbox
 
-	local BG_ACTIVE = (ctx.colors and ctx.colors.bg_active) or "#FFFFFF"
-	local FG_ACTIVE = (ctx.colors and ctx.colors.fg_active) or "#000000"
-	local CURSOR_BG = (ctx.colors and ctx.colors.cursor_bg) or "#00000000"
-	local CURSOR_FG = (ctx.colors and ctx.colors.cursor_fg) or FG_ACTIVE
+	local sizes = assert(ctx.sizes, "run.controller: ctx.sizes required")
+	local colors = assert(ctx.colors, "run.controller: ctx.colors required")
+	local layout = assert(ctx.layout, "run.controller: ctx.layout required")
+	local prefixes = assert(ctx.prefixes, "run.controller: ctx.prefixes required")
 
-	local PAD_L = (ctx.layout and ctx.layout.left) or 12
-	local PAD_R = (ctx.layout and ctx.layout.right) or 12
-	local PAD_T = (ctx.layout and ctx.layout.top) or 8
-	local PAD_B = (ctx.layout and ctx.layout.bottom) or 8
+	local width_expanded = assert(tonumber(sizes.width_expanded), "run.controller: sizes.width_expanded required")
 
-	local PREFIX_RUN = (ctx.prefixes and ctx.prefixes.run_mode) or "run:"
-	local PREFIX_LOCAL = (ctx.prefixes and ctx.prefixes.local_mode) or "files:"
-	local PREFIX_WEB = (ctx.prefixes and (ctx.prefixes.search_mode or ctx.prefixes.web_mode)) or "search:"
+	local bg_active = assert(colors.bg_active, "run.controller: colors.bg_active required")
+	local fg_active = assert(colors.fg_active, "run.controller: colors.fg_active required")
+	local cursor_bg = assert(colors.cursor_bg, "run.controller: colors.cursor_bg required")
+	local cursor_fg = assert(colors.cursor_fg, "run.controller: colors.cursor_fg required")
 
-	local HOME = ctx.home
-	local BROWSER = ctx.web and ctx.web.browser
-	local ENGINE = ctx.web and ctx.web.engine
+	local pad_l = assert(tonumber(layout.left), "run.controller: layout.left required")
+	local pad_r = assert(tonumber(layout.right), "run.controller: layout.right required")
+	local pad_t = assert(tonumber(layout.top), "run.controller: layout.top required")
+	local pad_b = assert(tonumber(layout.bottom), "run.controller: layout.bottom required")
+
+	local prefix_run = assert(prefixes.run_mode, "run.controller: prefixes.run_mode required")
+	local prefix_local = assert(prefixes.local_mode, "run.controller: prefixes.local_mode required")
+	local prefix_web = assert(prefixes.web_mode, "run.controller: prefixes.web_mode required")
+
+	local home = ctx.home
+	local browser = ctx.web and ctx.web.browser
+	local engine = ctx.web and ctx.web.engine
 
 	local state = {
 		prompt_running = false,
@@ -53,6 +57,7 @@ function M.new(ctx)
 		if type(fn) ~= "function" then
 			return false
 		end
+
 		local ok = pcall(fn, ...)
 		return ok
 	end
@@ -63,54 +68,51 @@ function M.new(ctx)
 
 	local function set_text(s)
 		s = s or ""
+
 		try(function()
 			textbox:set_text(s)
 		end)
+
 		if textbox and textbox.cursor then
 			textbox.cursor = #s + 1
 		end
 	end
 
 	local function apply_active_style()
-		if bg_box then
-			bg_box.bg = BG_ACTIVE
-		end
-
-		if inner_margin then
-			inner_margin.left, inner_margin.right = PAD_L, PAD_R
-			inner_margin.top, inner_margin.bottom = PAD_T, PAD_B
-		end
-
-		if width_ctl then
-			width_ctl.width = WIDTH_EXP
-			width_ctl:emit_signal("widget::layout_changed")
-		end
+		view.apply_active_style({
+			bg_active = bg_active,
+			fg_active = fg_active,
+			left = pad_l,
+			right = pad_r,
+			top = pad_t,
+			bottom = pad_b,
+			width_expanded = width_expanded,
+		})
 
 		try(function()
-			textbox.bg = BG_ACTIVE
+			textbox.bg = bg_active
 		end)
+
 		try(function()
-			textbox.fg = FG_ACTIVE
+			textbox.fg = fg_active
 		end)
+
 		try(function()
-			textbox.bg_cursor = CURSOR_BG
+			textbox.bg_cursor = cursor_bg
 		end)
+
 		try(function()
-			textbox.fg_cursor = CURSOR_FG
+			textbox.fg_cursor = cursor_fg
 		end)
 	end
 
 	local function set_prefix()
-		if not prefix_lbl then
-			return
-		end
-
 		if state.mode == "local" then
-			prefix_lbl.text = PREFIX_LOCAL
+			view.set_prefix(prefix_local)
 		elseif state.mode == "web" then
-			prefix_lbl.text = PREFIX_WEB
+			view.set_prefix(prefix_web)
 		else
-			prefix_lbl.text = PREFIX_RUN
+			view.set_prefix(prefix_run)
 		end
 	end
 
@@ -141,10 +143,10 @@ function M.new(ctx)
 
 		Complete.ensure()
 		local list = Complete.candidates(state.mode)
-		local pick = Complete.best(list, cur)
+		local best = Complete.best(list, cur)
 
-		if pick and pick ~= cur then
-			set_text(pick)
+		if best and best ~= cur then
+			set_text(best)
 		end
 	end
 
@@ -172,15 +174,15 @@ function M.new(ctx)
 
 		if state.mode == "local" then
 			if Providers.local_open then
-				Providers.local_open(q, HOME)
+				Providers.local_open(q, home)
 			elseif Providers.local_search then
-				Providers.local_search(q, HOME)
+				Providers.local_search(q, home)
 			end
 		elseif state.mode == "web" then
 			if Providers.web_open then
-				Providers.web_open(q, ENGINE, BROWSER)
+				Providers.web_open(q, engine, browser)
 			elseif Providers.web_search then
-				Providers.web_search(q, ENGINE, BROWSER)
+				Providers.web_search(q, engine, browser)
 			end
 		else
 			if Providers.run_execute then
@@ -193,7 +195,6 @@ function M.new(ctx)
 
 	local function switch_mode_keep_prompt(new_mode)
 		set_mode(new_mode)
-		set_prefix()
 		gears.timer.delayed_call(update_autofill)
 	end
 
@@ -204,9 +205,10 @@ function M.new(ctx)
 		if cur ~= "" and Complete then
 			Complete.ensure()
 			local list = Complete.candidates(state.mode)
-			local pick = Complete.best(list, cur)
-			if pick and pick ~= "" then
-				final = pick
+			local best = Complete.best(list, cur)
+
+			if best and best ~= "" then
+				final = best
 			end
 		end
 
@@ -280,6 +282,7 @@ function M.new(ctx)
 				switch_mode_keep_prompt("run")
 				return
 			end
+
 			set_mode("run")
 			run_prompt()
 		end,
@@ -289,6 +292,7 @@ function M.new(ctx)
 				switch_mode_keep_prompt("local")
 				return
 			end
+
 			set_mode("local")
 			run_prompt()
 		end,
@@ -298,6 +302,7 @@ function M.new(ctx)
 				switch_mode_keep_prompt("web")
 				return
 			end
+
 			set_mode("web")
 			run_prompt()
 		end,
@@ -308,6 +313,7 @@ function M.new(ctx)
 				gears.timer.delayed_call(update_autofill)
 				return
 			end
+
 			cycle_mode()
 			run_prompt()
 		end,
@@ -316,6 +322,7 @@ function M.new(ctx)
 			if not state.prompt_running then
 				return
 			end
+
 			submit_current()
 		end,
 
@@ -328,11 +335,11 @@ function M.new(ctx)
 		end,
 
 		set_engine = function(s)
-			ENGINE = s or ENGINE
+			engine = s or engine
 		end,
 
 		set_browser = function(b)
-			BROWSER = b or BROWSER
+			browser = b or browser
 		end,
 	}
 

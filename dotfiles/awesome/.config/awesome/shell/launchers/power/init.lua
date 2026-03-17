@@ -1,41 +1,32 @@
 -- ~/.config/awesome/shell/launchers/power/init.lua
 local awful = require("awful")
+local gears = require("gears")
+
 local Container = require("shell.launchers.power.container")
 local Layout = require("shell.launchers.power.layout")
-local IconsMod = require("shell.launchers.power.icons")
+local Icons = require("shell.launchers.power.icons")
 
 local M = {}
 
--- ============================================================================
--- Theme
--- ============================================================================
+-- =========================================================================
+-- Helpers
+-- =========================================================================
 
-local function resolve_theme(overrides)
-	local base = {}
-	local ok, mod = pcall(require, "ui.theme.power")
-	if ok and mod and type(mod.get) == "function" then
-		base = mod.get({})
-	end
-
-	local out = {}
-	for k, v in pairs(base or {}) do
-		out[k] = v
-	end
-	for k, v in pairs(overrides or {}) do
-		out[k] = v
-	end
-
-	return out
+local function resolve_theme(Lib, overrides)
+	local ui_api = Lib and Lib.ui_api
+	assert(ui_api and ui_api.resolve_theme, "power: Lib.ui_api.resolve_theme fehlt")
+	return ui_api.resolve_theme("power", overrides or {})
 end
 
-local function dims(th)
-	local H = assert(tonumber(th.dialog_h), "power: dialog_h fehlt/ungültig")
+local function resolve_dims(th)
+	local h = assert(tonumber(th.dialog_h), "power: dialog_h fehlt/ungültig")
+
 	local header_h = tonumber(th.header_h)
 	local footer_h = tonumber(th.footer_h)
 
 	if (not header_h or not footer_h) and th.header_ratio and th.footer_ratio then
-		header_h = header_h or math.floor(H * tonumber(th.header_ratio))
-		footer_h = footer_h or math.floor(H * tonumber(th.footer_ratio))
+		header_h = header_h or math.floor(h * tonumber(th.header_ratio))
+		footer_h = footer_h or math.floor(h * tonumber(th.footer_ratio))
 	end
 
 	header_h = assert(tonumber(header_h), "power: header_h fehlt/ungültig")
@@ -43,12 +34,13 @@ local function dims(th)
 
 	local pad_h = assert(tonumber(th.pad_h), "power: pad_h fehlt/ungültig")
 	local pad_v = assert(tonumber(th.pad_v), "power: pad_v fehlt/ungültig")
-	local body_h = H - header_h - footer_h
+	local body_h = h - header_h - footer_h
+
 	assert(body_h >= 0, "power: body_h negativ – prüfe dialog_h/header_h/footer_h")
 
 	return {
 		w = tonumber(th.dialog_w) or 0,
-		h = H,
+		h = h,
 		header_h = header_h,
 		footer_h = footer_h,
 		body_h = body_h,
@@ -57,105 +49,130 @@ local function dims(th)
 	}
 end
 
--- ============================================================================
--- Helpers
--- ============================================================================
-
 local function icon_from_theme(th, key)
-	local tbl = th.icons or {}
-	local p = tbl[key]
+	local icons = th.icons or {}
+	local path = icons[key]
 
-	if type(p) ~= "string" or #p == 0 then
+	if type(path) ~= "string" or #path == 0 then
 		return nil
 	end
-	if p:match("^/") then
-		return p
+
+	if path:match("^/") then
+		return path
 	end
 
-	return require("gears").filesystem.get_configuration_dir() .. p
+	return gears.filesystem.get_configuration_dir() .. path
 end
 
-local function make_actions(Lib, th)
-	local A = Lib and Lib.actions
-
-	local function run(cmd)
-		if A and A.cmd then
-			return A.cmd(cmd, { close = "before" })
-		end
-		return function()
-			awful.spawn.with_shell(cmd)
-		end
+local function make_power_action(cmd)
+	return function()
+		awful.spawn.with_shell(cmd)
 	end
+end
 
-	local labels = th.labels or {}
+local function build_actions(th)
+	local labels = assert(th.labels, "power: labels fehlen")
 
 	return {
 		{
 			icon = icon_from_theme(th, "hibernate"),
 			emoji = "🚪",
-			label = labels.hibernate or "Hibernate",
-			on_press = run("systemctl hibernate"),
+			label = labels.hibernate,
+			on_press = make_power_action("systemctl hibernate"),
 		},
 		{
 			icon = icon_from_theme(th, "poweroff"),
 			emoji = "⏻",
-			label = labels.poweroff or "Turn Off",
-			on_press = run("systemctl poweroff"),
+			label = labels.poweroff,
+			on_press = make_power_action("systemctl poweroff"),
 		},
 		{
 			icon = icon_from_theme(th, "reboot"),
 			emoji = "🔄",
-			label = labels.reboot or "Restart",
-			on_press = run("systemctl reboot"),
+			label = labels.reboot,
+			on_press = make_power_action("systemctl reboot"),
 		},
 	}
 end
 
--- ============================================================================
+local function resolve_popup_width(th, required_w)
+	if required_w and required_w > 0 then
+		return required_w
+	end
+
+	if th.dialog_w ~= 0 then
+		return th.dialog_w
+	end
+
+	return nil
+end
+
+-- =========================================================================
 -- Public API
--- ============================================================================
+-- =========================================================================
 
-function M.open(opts, injected_lib)
+function M.open(opts, Lib)
 	opts = opts or {}
-	local Lib = injected_lib or require("shell.launchers.lib")
+	Lib = Lib or require("shell.launchers")
 
-	local th = resolve_theme(opts.theme)
-	local d = dims(th)
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
 
-	local handle
+	assert(Lib and Lib.popup, "power: Lib.popup fehlt")
+	assert(Lib and Lib.button, "power: Lib.button fehlt")
+	assert(Lib and Lib.actions, "power: Lib.actions fehlt")
 
-	local row, _items, required_w = Layout.build_row(
-		make_actions(Lib, th),
-		th,
-		d,
-		{ mk_icon_button = assert(IconsMod and IconsMod.mk_icon_button, "power.icons.mk_icon_button fehlt") },
-		function()
-			return handle and handle.close
-		end
-	)
+	local th = resolve_theme(Lib, opts.theme)
+	local d = resolve_dims(th)
 
-	local Button = (Lib and Lib.button) or require("shell.launchers.lib.button")
-	local cancel_btn = Button.mk_button(th.cancel_label or "Cancel", function()
-		if handle and handle.close then
-			handle.close()
-		end
+	-- ---------------------------------------------------------------------
+	-- Layout
+	-- ---------------------------------------------------------------------
+
+	local handle = nil
+
+	local row, _, required_w = Layout.build_row(build_actions(th), th, d, {
+		mk_icon_button = assert(Icons and Icons.mk_icon_button, "power.icons.mk_icon_button fehlt"),
+	}, function()
+		return handle and handle.close
+	end)
+
+	local act_cancel = function() end
+
+	local cancel_btn = Lib.button.mk_button(th.cancel_label, function()
+		act_cancel()
 	end)
 
 	local stack = Container.build(th, d, {
-		title = th.header_title or opts.title or "Turn off Computer",
+		title = opts.title or th.header_title,
 		body = row,
 		cancel_btn = cancel_btn,
 	})
 
-	local Popup = (Lib and Lib.popup) or require("shell.launchers.lib.popup")
-	handle = Popup.show(stack, th, {
-		width = (required_w and required_w > 0) and required_w or (th.dialog_w ~= 0 and th.dialog_w or nil),
+	-- ---------------------------------------------------------------------
+	-- Open
+	-- ---------------------------------------------------------------------
+
+	handle = Lib.popup.show(stack, th, {
+		width = resolve_popup_width(th, required_w),
 		height = d.h,
 		placement = awful.placement.centered,
 		use_backdrop = true,
 		group = "launchers",
 		show_root = "with_bars",
 	})
+
+	-- ---------------------------------------------------------------------
+	-- Bind Actions
+	-- ---------------------------------------------------------------------
+
+	local bound = Lib.actions.bind({
+		handle = handle,
+		gears = gears,
+	})
+
+	act_cancel = bound[th.cancel_label] or act_cancel
 
 	return handle
 end

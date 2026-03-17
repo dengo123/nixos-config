@@ -5,16 +5,30 @@ local dpi = xr.apply_dpi
 
 local M = {}
 
+-- =========================================================================
+-- Theme
+-- =========================================================================
+
 function M.init(cfg)
+	-- ---------------------------------------------------------------------
+	-- Colors
+	-- ---------------------------------------------------------------------
+
 	local C = (cfg and cfg.colors) or require("ui.colors").get()
 
-	-- Rahmen/Farben
+	-- ---------------------------------------------------------------------
+	-- Borders
+	-- ---------------------------------------------------------------------
+
 	beautiful.border_width = 3
 	beautiful.border_radius = 10
 	beautiful.border_normal = C.blue_light
 	beautiful.border_focus = C.blue_luna
 
-	-- Titlebar-Basis
+	-- ---------------------------------------------------------------------
+	-- Titlebars
+	-- ---------------------------------------------------------------------
+
 	beautiful.titlebar_position = "top"
 	beautiful.titlebar_height = 28
 	beautiful.titlebar_bg_normal = C.blue_light
@@ -22,27 +36,33 @@ function M.init(cfg)
 	beautiful.titlebar_fg_normal = C.gray
 	beautiful.titlebar_fg_focus = C.white
 
-	------------------------------------------------------------------
-	-- Gaps/Padding Defaults (werden von windowing.policies.gaps gelesen)
-	------------------------------------------------------------------
-	-- Innenabstand zwischen Clients (fair etc.)
-	beautiful.useless_gap = dpi(4) -- dein Standard-Gap
-	beautiful.gap_single_client = true -- Gap auch bei 1 Client behalten?
+	-- ---------------------------------------------------------------------
+	-- Gaps
+	-- ---------------------------------------------------------------------
 
-	-- Padding im MAX-Layout (Rand zum Bildschirm)
-	beautiful.max_pad_on = true -- Padding im max-Layout aktivieren?
-	beautiful.max_pad_same_as_gap = true -- Padding = useless_gap?
-	-- Optional: eigenes Padding statt same_as_gap
-	-- beautiful.max_padding = {
-	--   top = dpi(8), right = dpi(8), bottom = dpi(8), left = dpi(8)
-	-- }
+	beautiful.useless_gap = dpi(4)
+	beautiful.gap_single_client = true
+	beautiful.max_pad_on = true
+	beautiful.max_pad_same_as_gap = true
 end
 
--- Nur Stil, keine Logik:
+-- =========================================================================
+-- Button Style
+-- =========================================================================
+
 function M.button_style(cfg)
+	-- ---------------------------------------------------------------------
+	-- Colors
+	-- ---------------------------------------------------------------------
+
 	local C = (cfg and cfg.colors) or require("ui.colors").get()
+
+	-- ---------------------------------------------------------------------
+	-- Style
+	-- ---------------------------------------------------------------------
+
 	return {
-		size = beautiful.titlebar_height or 28,
+		size = beautiful.titlebar_height,
 		spacing = 4,
 		fg = C.white,
 		fg_hover = C.gray,

@@ -1,12 +1,15 @@
+-- ~/.config/awesome/shell/windowing/policies/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
 
 local M = {}
 
--- ============================================================================
+local portrait_autosize_ready = false
+
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function has_entries(t)
 	return t and next(t) ~= nil
@@ -16,6 +19,7 @@ local function ucfirst(s)
 	if not s or s == "" then
 		return s
 	end
+
 	return s:sub(1, 1):upper() .. s:sub(2)
 end
 
@@ -23,26 +27,37 @@ local function add_unique(t, v)
 	if not v or v == "" then
 		return
 	end
+
 	for _, existing in ipairs(t) do
 		if existing == v then
 			return
 		end
 	end
+
 	table.insert(t, v)
 end
 
-local function build_file_manager_match(file_manager)
-	if not file_manager or file_manager == "" then
+local function extract_base_binary(cmd)
+	if not cmd or cmd == "" then
 		return nil
 	end
 
-	local bin = file_manager:match("^%s*([^%s]+)")
+	local bin = cmd:match("^%s*([^%s]+)")
 	if not bin or bin == "" then
 		return nil
 	end
 
 	local base = bin:match("([^/]+)$") or bin
 	if not base or base == "" then
+		return nil
+	end
+
+	return base
+end
+
+local function build_file_manager_match(file_manager)
+	local base = extract_base_binary(file_manager)
+	if not base then
 		return nil
 	end
 
@@ -68,17 +83,54 @@ local function build_file_manager_match(file_manager)
 	}
 end
 
--- ============================================================================
+local function build_terminal_match(terminal)
+	local base = extract_base_binary(terminal)
+	if not base then
+		return nil
+	end
+
+	local classes = {}
+	local instances = {}
+
+	add_unique(instances, base)
+	add_unique(classes, base)
+	add_unique(classes, ucfirst(base))
+
+	if base == "gnome-terminal" then
+		add_unique(classes, "Gnome-terminal")
+		add_unique(classes, "org.gnome.Terminal")
+		add_unique(classes, "Org.gnome.Terminal")
+	elseif base == "wezterm" then
+		add_unique(classes, "WezTerm")
+	elseif base == "alacritty" then
+		add_unique(classes, "Alacritty")
+	elseif base == "kitty" then
+		add_unique(classes, "Kitty")
+	elseif base == "tilix" then
+		add_unique(classes, "Tilix")
+	elseif base == "konsole" then
+		add_unique(classes, "Konsole")
+	end
+
+	return {
+		class = classes,
+		instance = instances,
+	}
+end
+
+-- =========================================================================
 -- Portrait Autosize
--- ============================================================================
+-- =========================================================================
 
 local function portrait_autosize_apply(c)
 	if not (c and c.valid) then
 		return
 	end
+
 	if not c.portrait_autosize then
 		return
 	end
+
 	if not c.floating or c.fullscreen or c.maximized then
 		return
 	end
@@ -107,6 +159,10 @@ local function portrait_autosize_apply(c)
 end
 
 local function hook_portrait_autosize()
+	if portrait_autosize_ready then
+		return
+	end
+
 	client.connect_signal("manage", function(c)
 		gears.timer.delayed_call(function()
 			portrait_autosize_apply(c)
@@ -122,21 +178,42 @@ local function hook_portrait_autosize()
 			portrait_autosize_apply(c)
 		end
 	end)
+
+	portrait_autosize_ready = true
 end
 
--- ============================================================================
--- Rules
--- ============================================================================
+-- =========================================================================
+-- Public API
+-- =========================================================================
 
 function M.apply(o)
 	o = o or {}
+
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
 
 	local modkey = o.modkey
 	local mouse = o.mouse
 	local cfg = o.cfg or {}
 
-	local file_manager = cfg.system and cfg.system.files or nil
+	local system_cfg = cfg.system or {}
+	local windowing_cfg = cfg.windowing or {}
+	local floating_cfg = windowing_cfg.floating or {}
+
+	local file_manager = system_cfg.files
+	local terminal = system_cfg.terminal
+
+	local files_floating = (floating_cfg.files ~= false)
+	local terminals_floating = (floating_cfg.terminals == true)
+	local titlebars_enabled = (windowing_cfg.titlebars ~= false)
+
 	local fm_match = build_file_manager_match(file_manager)
+	local term_match = build_terminal_match(terminal)
+
+	-- ---------------------------------------------------------------------
+	-- Rules
+	-- ---------------------------------------------------------------------
 
 	local rules = {
 		{
@@ -153,11 +230,11 @@ function M.apply(o)
 		},
 	}
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 	-- File Manager
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
-	if fm_match and (has_entries(fm_match.class) or has_entries(fm_match.instance)) then
+	if files_floating and fm_match and (has_entries(fm_match.class) or has_entries(fm_match.instance)) then
 		table.insert(rules, {
 			rule_any = {
 				class = has_entries(fm_match.class) and fm_match.class or nil,
@@ -171,9 +248,27 @@ function M.apply(o)
 		})
 	end
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
+	-- Terminal
+	-- ---------------------------------------------------------------------
+
+	if terminals_floating and term_match and (has_entries(term_match.class) or has_entries(term_match.instance)) then
+		table.insert(rules, {
+			rule_any = {
+				class = has_entries(term_match.class) and term_match.class or nil,
+				instance = has_entries(term_match.instance) and term_match.instance or nil,
+			},
+			properties = {
+				floating = true,
+				placement = awful.placement.centered,
+				portrait_autosize = true,
+			},
+		})
+	end
+
+	-- ---------------------------------------------------------------------
 	-- System Utilities
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = {
@@ -205,9 +300,9 @@ function M.apply(o)
 		},
 	})
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 	-- XScreenSaver
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = {
@@ -222,9 +317,9 @@ function M.apply(o)
 		},
 	})
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 	-- Generic Floaters
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = {
@@ -238,18 +333,20 @@ function M.apply(o)
 		},
 	})
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 	-- Titlebars
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = { type = { "normal", "dialog" } },
-		properties = { titlebars_enabled = true },
+		properties = {
+			titlebars_enabled = titlebars_enabled,
+		},
 	})
 
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 	-- Callbacks
-	-- ------------------------------------------------------------------------
+	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule = {},

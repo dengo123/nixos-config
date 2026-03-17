@@ -7,20 +7,24 @@ local ASSETS = gfs.get_configuration_dir() .. "ui/assets/"
 
 local M = {}
 
+-- =========================================================================
+-- Theme
+-- =========================================================================
+
 function M.get(overrides)
 	overrides = overrides or {}
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Context
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local C = Colors.get()
 	local H = Helpers
 	local d = Helpers.dpi
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Panel
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local panel_defaults = {
 		title = "Run",
@@ -36,14 +40,21 @@ function M.get(overrides)
 
 		body_bg = C.creme,
 		body_fg = C.black,
+
 		footer_h = d(80),
 		footer_bg = C.creme,
 		footer_fg = C.black,
+		footer_spacing = d(8),
+		footer_pad_h = d(14),
+		footer_pad_v = d(12),
 
 		width = d(420),
 		height = d(240),
+
 		pad_h = d(14),
 		pad_v = d(12),
+		panel_pad_h = d(14),
+		panel_pad_v = d(12),
 
 		panel_radius = d(12),
 		panel_bg = C.blue_luna,
@@ -51,13 +62,14 @@ function M.get(overrides)
 		panel_border_width = d(2),
 	}
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Search
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local search_defaults = {
 		sizes = {
 			height = d(24),
+			width_expanded = d(320),
 		},
 
 		colors = {
@@ -78,7 +90,15 @@ function M.get(overrides)
 		border_w = d(1),
 		border_color = C.black,
 
-		prefix_width = d(42),
+		prefix_width = d(58),
+		prefix_font = "Sans",
+		prefix_size = d(11),
+
+		prefix = {
+			run_mode = "Run:",
+			local_mode = "Files:",
+			web_mode = "Browse:",
+		},
 
 		hint = {
 			show = true,
@@ -94,16 +114,28 @@ function M.get(overrides)
 		},
 	}
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
+	-- Buttons
+	-- ---------------------------------------------------------------------
+
+	local button_defaults = {
+		mode = "Mode",
+		ok = "OK",
+		cancel = "Cancel",
+	}
+
+	-- ---------------------------------------------------------------------
 	-- Merge
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local panel = H.merge(panel_defaults, overrides.panel or {})
 	local search = H.merge(search_defaults, overrides.search or {})
+	local buttons = H.merge(button_defaults, overrides.buttons or {})
 
 	return {
 		panel = panel,
 		search = search,
+		buttons = buttons,
 	}
 end
 

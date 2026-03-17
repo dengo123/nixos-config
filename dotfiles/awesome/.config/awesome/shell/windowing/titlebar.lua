@@ -6,22 +6,22 @@ local beautiful = require("beautiful")
 
 local B = {}
 
--- ============================================================================
--- Theme / Assets
--- ============================================================================
+-- =========================================================================
+-- Theme Assets
+-- =========================================================================
 
 local function ensure_titlebar_assets()
 	if beautiful.titlebar_close_button_normal then
 		return
 	end
 
-	local p = gears.filesystem.get_themes_dir() .. "default/theme.lua"
-	local ok, def = pcall(dofile, p)
+	local path = gears.filesystem.get_themes_dir() .. "default/theme.lua"
+	local ok, def = pcall(dofile, path)
 	if not ok or type(def) ~= "table" then
 		return
 	end
 
-	local keys = {
+	for _, key in ipairs({
 		"titlebar_close_button_normal",
 		"titlebar_close_button_focus",
 		"titlebar_minimize_button_normal",
@@ -30,18 +30,16 @@ local function ensure_titlebar_assets()
 		"titlebar_floating_button_focus_active",
 		"titlebar_floating_button_normal_inactive",
 		"titlebar_floating_button_focus_inactive",
-	}
-
-	for _, k in ipairs(keys) do
-		if beautiful[k] == nil and def[k] ~= nil then
-			beautiful[k] = def[k]
+	}) do
+		if beautiful[key] == nil and def[key] ~= nil then
+			beautiful[key] = def[key]
 		end
 	end
 end
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function suppress_center(sec)
 	awesome.emit_signal("ui::suppress_center", sec or 0.2)
@@ -51,25 +49,24 @@ local function has_tag(c, t)
 	if not (c and c.valid and t) then
 		return false
 	end
+
 	for _, ct in ipairs(c:tags() or {}) do
 		if ct == t then
 			return true
 		end
 	end
+
 	return false
 end
 
--- Nächstes sinnvolles Fokus-Fenster:
--- 1) gleicher Screen + gleiches Tag
--- 2) sonst irgendein sichtbarer Client auf dem Screen
 local function pick_next_focus(c)
 	local s = c and c.screen
 	local t = c and c.first_tag
+
 	if not (c and c.valid and s) then
 		return nil
 	end
 
-	-- 1) anderer Client auf demselben Screen und Tag
 	for cl in
 		awful.client.iterate(function(x)
 			return x ~= c and x.valid and not x.minimized and x:isvisible() and x.screen == s and t and has_tag(x, t)
@@ -78,7 +75,6 @@ local function pick_next_focus(c)
 		return cl
 	end
 
-	-- 2) sonst irgendein sichtbarer, nicht minimierter Client auf dem Screen
 	for cl in
 		awful.client.iterate(function(x)
 			return x ~= c and x.valid and not x.minimized and x:isvisible() and x.screen == s
@@ -94,22 +90,24 @@ local function activate_client(c, context, raise)
 	if not (c and c.valid) then
 		return
 	end
+
 	c:emit_signal("request::activate", context or "titlebar", {
 		raise = (raise ~= false),
 	})
 end
 
--- ============================================================================
+local function recolor_imagebox(ib, img, color)
+	if img then
+		ib.image = gears.color.recolor_image(img, color)
+	end
+end
+
+-- =========================================================================
 -- Image Button
--- ============================================================================
+-- =========================================================================
 
 local function make_img_button(opts)
-	-- opts = {
-	--   img_active, img_inactive, img,
-	--   color, color_hover, size,
-	--   on_click, on_update
-	-- }
-	local bar_h = opts.size or (beautiful.titlebar_height or 28)
+	local bar_h = assert(tonumber(opts.size), "titlebar: button size fehlt/ungültig")
 	local inner = math.floor(bar_h * 0.90)
 	local pad = math.floor((bar_h - inner) / 2)
 	local active = opts.img_active or opts.img
@@ -134,48 +132,46 @@ local function make_img_button(opts)
 		widget = wibox.container.background,
 	})
 
-	local function recolor(img, col)
-		if img then
-			ib.image = gears.color.recolor_image(img, col)
-		end
-	end
-
 	bg:connect_signal("mouse::enter", function()
-		recolor(ib._current_img or active, opts.color_hover or opts.color)
+		recolor_imagebox(ib, ib._current_img or active, opts.color_hover or opts.color)
 	end)
 
 	bg:connect_signal("mouse::leave", function()
-		recolor(ib._current_img or active, opts.color)
+		recolor_imagebox(ib, ib._current_img or active, opts.color)
 	end)
 
 	bg:buttons(gears.table.join(awful.button({}, 1, function()
 		if type(opts.on_click) == "function" then
-			opts.on_click(ib, recolor)
+			opts.on_click(ib, recolor_imagebox)
 		end
 	end)))
 
 	if type(opts.on_update) == "function" then
-		opts.on_update(ib, recolor)
+		opts.on_update(ib, recolor_imagebox)
 	end
 
 	return bg, ib
 end
 
--- ============================================================================
+-- =========================================================================
 -- Buttons
--- ============================================================================
+-- =========================================================================
 
 function B.build_buttons(c, style)
 	ensure_titlebar_assets()
 
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
+
 	style = style or {}
 
-	local size = style.size or (beautiful.titlebar_height or 28)
-	local spacing = style.spacing or 4
-	local fg = style.fg or "#FFFFFF"
-	local fg_hov = style.fg_hover or fg
-	local c_close = style.close or fg
-	local c_close_hov = style.close_hover or c_close
+	local size = assert(tonumber(style.size), "titlebar: style.size fehlt/ungültig")
+	local spacing = assert(tonumber(style.spacing), "titlebar: style.spacing fehlt/ungültig")
+	local fg = assert(style.fg, "titlebar: style.fg fehlt")
+	local fg_hover = assert(style.fg_hover, "titlebar: style.fg_hover fehlt")
+	local close_fg = assert(style.close, "titlebar: style.close fehlt")
+	local close_hover = assert(style.close_hover, "titlebar: style.close_hover fehlt")
 
 	local img_close = beautiful.titlebar_close_button_normal
 	local img_minimize = beautiful.titlebar_minimize_button_normal
@@ -185,11 +181,14 @@ function B.build_buttons(c, style)
 		or beautiful.titlebar_floating_button_focus_inactive
 		or beautiful.titlebar_floating_button_normal
 
-	-- MINIMIZE
+	-- ---------------------------------------------------------------------
+	-- Minimize
+	-- ---------------------------------------------------------------------
+
 	local btn_min = make_img_button({
 		img_active = img_minimize,
 		color = fg,
-		color_hover = fg_hov,
+		color_hover = fg_hover,
 		size = size,
 		on_click = function()
 			suppress_center(0.2)
@@ -216,18 +215,21 @@ function B.build_buttons(c, style)
 		end,
 	})
 
-	-- FLOATING
+	-- ---------------------------------------------------------------------
+	-- Floating
+	-- ---------------------------------------------------------------------
+
 	local function update_float_icon(ib, recolor)
 		local img = c.floating and (img_float_on or img_float_off) or img_float_off
 		ib._current_img = img
-		recolor(img, fg)
+		recolor(ib, img, fg)
 	end
 
 	local btn_float, ib_float = make_img_button({
 		img_active = img_float_on or img_float_off,
 		img_inactive = img_float_off,
 		color = fg,
-		color_hover = fg_hov,
+		color_hover = fg_hover,
 		size = size,
 		on_click = function(ib, recolor)
 			activate_client(c, "titlebar_float_toggle", true)
@@ -238,24 +240,27 @@ function B.build_buttons(c, style)
 	})
 
 	c:connect_signal("property::floating", function()
-		update_float_icon(ib_float, function(img, col)
-			if img then
-				ib_float.image = gears.color.recolor_image(img, col)
-			end
-		end)
+		update_float_icon(ib_float, recolor_imagebox)
 	end)
 
-	-- CLOSE
+	-- ---------------------------------------------------------------------
+	-- Close
+	-- ---------------------------------------------------------------------
+
 	local btn_close = make_img_button({
 		img_active = img_close,
-		color = c_close,
-		color_hover = c_close_hov,
+		color = close_fg,
+		color_hover = close_hover,
 		size = size,
 		on_click = function()
 			activate_client(c, "titlebar_close", true)
 			c:kill()
 		end,
 	})
+
+	-- ---------------------------------------------------------------------
+	-- Layout
+	-- ---------------------------------------------------------------------
 
 	return {
 		layout = wibox.layout.fixed.horizontal,
@@ -266,17 +271,25 @@ function B.build_buttons(c, style)
 	}
 end
 
--- ============================================================================
--- Attach Titlebar
--- ============================================================================
+-- =========================================================================
+-- Public API
+-- =========================================================================
 
 function B.attach_titlebar(c, style)
 	if not (c and c.valid) then
 		return
 	end
 
-	local pos = beautiful.titlebar_position or "top"
-	local size = beautiful.titlebar_height or 28
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
+
+	local pos = assert(beautiful.titlebar_position, "titlebar: beautiful.titlebar_position fehlt")
+	local size = assert(tonumber(beautiful.titlebar_height), "titlebar: beautiful.titlebar_height fehlt/ungültig")
+
+	-- ---------------------------------------------------------------------
+	-- Controls
+	-- ---------------------------------------------------------------------
 
 	local buttons = gears.table.join(
 		awful.button({}, 1, function()
@@ -293,6 +306,10 @@ function B.attach_titlebar(c, style)
 	if title.set_align then
 		title:set_align("left")
 	end
+
+	-- ---------------------------------------------------------------------
+	-- Build
+	-- ---------------------------------------------------------------------
 
 	awful
 		.titlebar(c, {

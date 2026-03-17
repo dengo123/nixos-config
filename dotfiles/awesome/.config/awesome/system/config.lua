@@ -1,7 +1,7 @@
 -- ~/.config/awesome/system/config.lua
 return {
 	system = {
-		terminal = os.getenv("TERMINAL") or "kitty",
+		terminal = os.getenv("TERMINAL"),
 		editor = os.getenv("EDITOR") or "nano",
 		modkey = "Mod4",
 
@@ -33,14 +33,16 @@ return {
 	},
 
 	windowing = {
-		titlebars = {
-			enabled = true,
+		titlebars = true,
+		floating = {
+			files = true,
+			terminals = true,
 		},
-		files = {
-			floating = true,
-		},
-		portrait = {
-			fullscreen_tiled = true,
+		fullscreen = {
+			dim = {
+				enabled = true,
+				never_dim_primary = false,
+			},
 		},
 	},
 }

@@ -22,20 +22,19 @@ local function fixed_cell(widget, width)
 end
 
 local function compute_cell_geom(th, body_h)
-	local pad_h = tonumber(th.pad_h) or 16
-	local pad_v = tonumber(th.pad_v) or 14
-	local icon_ratio = tonumber(th.icon_ratio) or 0.20
-	local base_side = math.max(1, body_h + pad_v * 2)
+	local pad_h = assert(tonumber(th.pad_h), "power.layout: pad_h fehlt/ungültig")
+	local pad_v = assert(tonumber(th.pad_v), "power.layout: pad_v fehlt/ungültig")
+	local icon_ratio = assert(tonumber(th.icon_ratio), "power.layout: icon_ratio fehlt/ungültig")
 
+	local icon_pad = assert(tonumber(th.icon_pad), "power.layout: icon_pad fehlt/ungültig")
+	local cell_pad = assert(tonumber(th.icon_cell_pad), "power.layout: icon_cell_pad fehlt/ungültig")
+	local extra_w = assert(tonumber(th.icon_cell_extra_w), "power.layout: icon_cell_extra_w fehlt/ungültig")
+	local spacing = assert(tonumber(th.icon_spacing), "power.layout: icon_spacing fehlt/ungültig")
+
+	local base_side = math.max(1, body_h + pad_v * 2)
 	local icon_size0 = math.floor(base_side * icon_ratio)
 	local icon_size = math.max(8, math.min(icon_size0, math.max(8, body_h - 2 * pad_v)))
-
-	local icon_pad = tonumber(th.icon_pad) or 6
-	local cell_pad = tonumber(th.icon_cell_pad) or 6
-	local extra_w = tonumber(th.icon_cell_extra_w) or 12
 	local cell_w = icon_size + icon_pad * 2 + cell_pad * 2 + extra_w
-
-	local spacing = tonumber(th.icon_spacing) or 0
 
 	return {
 		pad_h = pad_h,
@@ -45,67 +44,87 @@ local function compute_cell_geom(th, body_h)
 	}
 end
 
+local function resolve_close_fn(get_close_ref)
+	if type(get_close_ref) ~= "function" then
+		return function() end
+	end
+
+	local ok, close_fn = pcall(get_close_ref)
+	if ok and type(close_fn) == "function" then
+		return close_fn
+	end
+
+	return function() end
+end
+
 -- ============================================================================
--- Build
+-- Public API
 -- ============================================================================
 
--- actions: { { icon|emoji, label, on_press(close_fn), autoclose? }, ... }
--- deps: { mk_icon_button = function(args) -> widget end }
--- returns: row_widget, focus_items, required_width
 function L.build_row(actions, th, dims, deps, get_close_ref)
 	actions = actions or {}
 	deps = deps or {}
 
-	assert(type(deps.mk_icon_button) == "function", "layout: deps.mk_icon_button fehlt")
+	assert(type(deps.mk_icon_button) == "function", "power.layout: deps.mk_icon_button fehlt")
+	assert(dims and tonumber(dims.body_h), "power.layout: dims.body_h fehlt/ungültig")
 
-	local n = #actions
-	local g = compute_cell_geom(th, dims.body_h)
+	-- ------------------------------------------------------------------------
+	-- Config
+	-- ------------------------------------------------------------------------
+
+	local count = #actions
+	local geom = compute_cell_geom(th, dims.body_h)
+
+	-- ------------------------------------------------------------------------
+	-- Cells
+	-- ------------------------------------------------------------------------
 
 	local cells = {}
 	local items = {}
 
-	for i, a in ipairs(actions) do
+	for i, action in ipairs(actions) do
 		local btn = deps.mk_icon_button({
-			icon = a.icon,
-			emoji = a.emoji,
-			emoji_font = a.emoji_font,
-			size = g.icon_size,
-			label = a.label,
+			icon = action.icon,
+			emoji = action.emoji,
+			emoji_font = action.emoji_font,
+			size = geom.icon_size,
+			label = action.label,
 			th = th,
-			on_press = function(close_fn)
-				local cf = close_fn
+			on_press = function()
+				local close_fn = resolve_close_fn(get_close_ref)
 
-				if type(get_close_ref) == "function" then
-					local ok, c = pcall(get_close_ref)
-					if ok and c then
-						cf = c
-					end
-				end
-
-				if a.on_press then
-					a.on_press(cf or function() end)
-				elseif a.autoclose and cf then
-					cf()
+				if action.on_press then
+					action.on_press(close_fn)
+				elseif action.autoclose then
+					close_fn()
 				end
 			end,
 		})
 
 		items[i] = btn
-		cells[i] = fixed_cell(btn, g.cell_w)
+		cells[i] = fixed_cell(btn, geom.cell_w)
 	end
+
+	-- ------------------------------------------------------------------------
+	-- Row
+	-- ------------------------------------------------------------------------
 
 	local row = wibox.widget({
 		layout = wibox.layout.fixed.horizontal,
-		spacing = g.spacing,
+		spacing = geom.spacing,
 	})
 
 	for i = 1, #cells do
 		row:add(cells[i])
 	end
 
-	local outer_pad_h = tonumber(dims.pad_h) or 0
-	local spacing_total = (n > 1) and ((n - 1) * g.spacing) or 0
-	local required_w = (n > 0) and (n * g.cell_w + spacing_total + 2 * outer_pad_h) or (2 * outer_pad_h)
+	-- ------------------------------------------------------------------------
+	-- Width
+	-- ------------------------------------------------------------------------
+
+	local outer_pad_h = assert(tonumber(dims.pad_h), "power.layout: dims.pad_h fehlt/ungültig")
+	local spacing_total = (count > 1) and ((count - 1) * geom.spacing) or 0
+	local required_w = (count > 0) and (count * geom.cell_w + spacing_total + 2 * outer_pad_h) or (2 * outer_pad_h)
 
 	return row, items, required_w
 end

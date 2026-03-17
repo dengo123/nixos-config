@@ -1,9 +1,9 @@
 -- ~/.config/awesome/shell/launchers/lib/actions.lua
 local A = {}
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function safe_close(ctrl, handle, gears)
 	if ctrl and ctrl.cancel then
@@ -17,38 +17,44 @@ local function safe_close(ctrl, handle, gears)
 	end
 end
 
--- ============================================================================
+-- =========================================================================
 -- Public API
--- ============================================================================
+-- =========================================================================
 
 function A.bind(ctx)
 	ctx = ctx or {}
+
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
 
 	local ctrl = ctx.ctrl
 	local handle = ctx.handle
 	local gears = ctx.gears
 
-	local actions = {}
+	-- ---------------------------------------------------------------------
+	-- Actions
+	-- ---------------------------------------------------------------------
 
-	actions["Cancel"] = function()
-		safe_close(ctrl, handle, gears)
-	end
-
-	actions["OK"] = function()
-		if ctrl and ctrl.submit then
-			ctrl.submit()
-		else
+	return {
+		["Cancel"] = function()
 			safe_close(ctrl, handle, gears)
-		end
-	end
+		end,
 
-	actions["Mode"] = function()
-		if ctrl and ctrl.rotate_mode then
-			ctrl.rotate_mode()
-		end
-	end
+		["OK"] = function()
+			if ctrl and ctrl.submit then
+				ctrl.submit()
+			else
+				safe_close(ctrl, handle, gears)
+			end
+		end,
 
-	return actions
+		["Mode"] = function()
+			if ctrl and ctrl.rotate_mode then
+				ctrl.rotate_mode()
+			end
+		end,
+	}
 end
 
 return A
