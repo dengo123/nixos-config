@@ -17,6 +17,13 @@ return {
 		reveal_on_fullscreen_edge = true,
 		reveal_trigger_px = 2,
 		reveal_hide_delay = 0.20,
+
+		clock = {
+			show_seconds = false,
+			app = "gnome-calendar",
+			calendar_enable = true,
+			calendar_use_menu_theme = false,
+		},
 	},
 
 	tags = {

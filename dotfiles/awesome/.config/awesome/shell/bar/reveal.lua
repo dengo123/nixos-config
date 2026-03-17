@@ -1,19 +1,20 @@
 -- ~/.config/awesome/shell/bar/reveal.lua
 local awful = require("awful")
-local wibox = require("wibox")
 local gears = require("gears")
+local wibox = require("wibox")
 
 local M = {}
 
-local triggers = {} -- screen -> trigger wibox
-local bars = {} -- screen -> bar
-local opts_by_screen = {} -- screen -> opts
-local hide_timers = {} -- screen -> timer
+local triggers = {}
+local bars = {}
+local opts_by_screen = {}
+local hide_timers = {}
 local pending_update = nil
+local signals_ready = false
 
--- ============================================================================
+-- =========================================================================
 -- Helpers
--- ============================================================================
+-- =========================================================================
 
 local function edge_geom(s, edge, trigger_px)
 	local g = s.geometry
@@ -25,14 +26,18 @@ local function edge_geom(s, edge, trigger_px)
 			width = g.width,
 			height = trigger_px,
 		}
-	elseif edge == "left" then
+	end
+
+	if edge == "left" then
 		return {
 			x = g.x,
 			y = g.y,
 			width = trigger_px,
 			height = g.height,
 		}
-	elseif edge == "right" then
+	end
+
+	if edge == "right" then
 		return {
 			x = g.x + g.width - trigger_px,
 			y = g.y,
@@ -77,6 +82,7 @@ local function show_bar(s)
 	if not (bar and bar.valid) then
 		return
 	end
+
 	cancel_hide_timer(s)
 	bar.ontop = true
 	bar.visible = true
@@ -87,6 +93,7 @@ local function hide_bar_now(s)
 	if not (bar and bar.valid) then
 		return
 	end
+
 	cancel_hide_timer(s)
 
 	if screen_has_visible_fullscreen(s) then
@@ -99,9 +106,11 @@ end
 local function hide_bar_later(s)
 	local bar = bars[s]
 	local opts = opts_by_screen[s] or {}
+
 	if not (bar and bar.valid) then
 		return
 	end
+
 	if not screen_has_visible_fullscreen(s) then
 		return
 	end
@@ -122,6 +131,7 @@ end
 local function ensure_trigger(s)
 	local bar = bars[s]
 	local opts = opts_by_screen[s] or {}
+
 	if not (bar and bar.valid) then
 		return nil
 	end
@@ -163,6 +173,7 @@ end
 local function update_trigger_geom(s)
 	local trigger = triggers[s]
 	local opts = opts_by_screen[s] or {}
+
 	if not (trigger and trigger.valid) then
 		return
 	end
@@ -180,17 +191,18 @@ end
 local function sync_screen(s)
 	local bar = bars[s]
 	local trigger = ensure_trigger(s)
+
 	if not (bar and bar.valid and trigger and trigger.valid) then
 		return
 	end
 
 	update_trigger_geom(s)
 
-	local fs = screen_has_visible_fullscreen(s)
+	local fullscreen_visible = screen_has_visible_fullscreen(s)
 
-	trigger.visible = fs
+	trigger.visible = fullscreen_visible
 
-	if fs then
+	if fullscreen_visible then
 		bar.ontop = true
 		bar.visible = false
 		pcall(function()
@@ -203,7 +215,7 @@ local function sync_screen(s)
 end
 
 local function do_update()
-	for s, _ in pairs(bars) do
+	for s in pairs(bars) do
 		if s and s.valid then
 			sync_screen(s)
 		end
@@ -227,12 +239,16 @@ local function schedule_update()
 	})
 end
 
--- ============================================================================
+-- =========================================================================
 -- Public API
--- ============================================================================
+-- =========================================================================
 
 function M.attach(s, bar, opts)
 	opts = opts or {}
+
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
 
 	bars[s] = bar
 	opts_by_screen[s] = {
@@ -241,18 +257,39 @@ function M.attach(s, bar, opts)
 		hide_delay = tonumber(opts.hide_delay) or 0.20,
 	}
 
+	-- ---------------------------------------------------------------------
+	-- Setup
+	-- ---------------------------------------------------------------------
+
 	ensure_trigger(s)
 	update_trigger_geom(s)
 	schedule_update()
 end
 
 function M.init_signals()
+	if signals_ready then
+		return
+	end
+
+	-- ---------------------------------------------------------------------
+	-- Client Signals
+	-- ---------------------------------------------------------------------
+
 	client.connect_signal("property::fullscreen", schedule_update)
 	client.connect_signal("property::minimized", schedule_update)
 	client.connect_signal("property::hidden", schedule_update)
 	client.connect_signal("manage", schedule_update)
 	client.connect_signal("unmanage", schedule_update)
+
+	-- ---------------------------------------------------------------------
+	-- Tag Signals
+	-- ---------------------------------------------------------------------
+
 	tag.connect_signal("property::selected", schedule_update)
+
+	-- ---------------------------------------------------------------------
+	-- Screen Signals
+	-- ---------------------------------------------------------------------
 
 	screen.connect_signal("property::geometry", function(s)
 		if bars[s] then
@@ -263,6 +300,7 @@ function M.init_signals()
 
 	screen.connect_signal("removed", function(s)
 		local trigger = triggers[s]
+
 		if trigger and trigger.valid then
 			trigger.visible = false
 			pcall(function()
@@ -276,6 +314,11 @@ function M.init_signals()
 		opts_by_screen[s] = nil
 	end)
 
+	-- ---------------------------------------------------------------------
+	-- Initial
+	-- ---------------------------------------------------------------------
+
+	signals_ready = true
 	gears.timer.delayed_call(schedule_update)
 end
 

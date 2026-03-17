@@ -1,26 +1,93 @@
 -- ~/.config/awesome/shell/bar/init.lua
 local awful = require("awful")
+local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
-local beautiful = require("beautiful")
 
+local Clock = require("shell.bar.widgets.clock")
+local Reveal = require("shell.bar.reveal")
+local Start = require("shell.bar.widgets.start")
+local Systray = require("shell.bar.widgets.systray")
 local Tabs = require("shell.bar.widgets.tabs")
 local Tags = require("shell.bar.widgets.tags")
-local Clock = require("shell.bar.widgets.clock")
-local Systray = require("shell.bar.widgets.systray")
-local Start = require("shell.bar.widgets.start")
-local Reveal = require("shell.bar.reveal")
 
 local M = {}
 
 local reveal_signals_ready = false
 
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function empty_widget()
+	return wibox.widget({
+		widget = wibox.widget.separator,
+		forced_width = 0,
+		opacity = 0,
+	})
+end
+
+local function hspace(px)
+	return wibox.widget({
+		widget = wibox.widget.separator,
+		forced_width = px or 0,
+		opacity = 0,
+	})
+end
+
+local function compute_tabs_leading_gap(show_start, show_tags)
+	local gap = 0
+
+	if not show_start then
+		gap = gap + 8
+	end
+
+	if not show_tags then
+		gap = gap + 6
+	end
+
+	return gap
+end
+
+local function ensure_layoutbox(s)
+	if not s.mylayoutbox or not s.mylayoutbox.valid then
+		s.mylayoutbox = awful.widget.layoutbox(s)
+		s.mylayoutbox:buttons(gears.table.join(
+			awful.button({}, 1, function()
+				awful.layout.inc(1)
+			end),
+			awful.button({}, 3, function()
+				awful.layout.inc(-1)
+			end),
+			awful.button({}, 4, function()
+				awful.layout.inc(1)
+			end),
+			awful.button({}, 5, function()
+				awful.layout.inc(-1)
+			end)
+		))
+	end
+
+	return wibox.widget({
+		s.mylayoutbox,
+		left = beautiful.layoutbox_pad_h or 0,
+		right = beautiful.layoutbox_pad_h or 0,
+		top = beautiful.layoutbox_pad_v or 0,
+		bottom = beautiful.layoutbox_pad_v or 0,
+		widget = wibox.container.margin,
+	})
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
 function M.setup(s, args)
 	args = args or {}
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Config
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local cfg = args.cfg or {}
 	local ui = args.ui
@@ -29,6 +96,7 @@ function M.setup(s, args)
 	local system_cfg = cfg.system or {}
 	local tags_cfg = cfg.tags or {}
 	local bar_cfg = cfg.bar or {}
+	local clock_cfg = bar_cfg.clock or {}
 
 	local modkey = system_cfg.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
@@ -49,41 +117,11 @@ function M.setup(s, args)
 	local show_start = (not start_on_primary_only) or is_primary
 	local show_tags = (not tags_on_primary_only) or is_primary
 
-	-- =========================================================================
-	-- Helpers
-	-- =========================================================================
+	local empty = empty_widget()
 
-	local empty = wibox.widget({
-		widget = wibox.widget.separator,
-		forced_width = 0,
-		opacity = 0,
-	})
-
-	local function hspace(px)
-		return wibox.widget({
-			widget = wibox.widget.separator,
-			forced_width = px or 0,
-			opacity = 0,
-		})
-	end
-
-	local function compute_tabs_leading_gap()
-		local gap = 0
-
-		if not show_start then
-			gap = gap + 8
-		end
-
-		if not show_tags then
-			gap = gap + 6
-		end
-
-		return gap
-	end
-
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Theme
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local theme = ui and ui.theme or nil
 	local wibar_theme = theme and theme.wibar or require("theme.wibar")
@@ -91,9 +129,30 @@ function M.setup(s, args)
 	local start_theme = (theme and theme.start and theme.start.get) and theme.start.get(cfg.start or {}) or nil
 	local menu_theme = cfg.menus
 
-	-- =========================================================================
+	if wibar_theme and wibar_theme.init then
+		pcall(wibar_theme.init, cfg)
+	end
+
+	-- ---------------------------------------------------------------------
+	-- Props
+	-- ---------------------------------------------------------------------
+
+	local props = (wibar_theme.props and wibar_theme.props())
+		or {
+			height = beautiful.wibar_height,
+			bg = beautiful.wibar_bg,
+			fg = beautiful.wibar_fg,
+			on_top = beautiful.wibar_on_top,
+			opacity = beautiful.wibar_opacity,
+			shape = beautiful.wibar_shape,
+			margins = beautiful.wibar_margins,
+		}
+
+	props.position = bar_position or "bottom"
+
+	-- ---------------------------------------------------------------------
 	-- Widgets
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	local tabs = Tabs.build(s, {
 		modkey = modkey,
@@ -113,34 +172,15 @@ function M.setup(s, args)
 		menu_theme = menu_theme,
 	}) or nil
 
-	local clock = Clock.build(s)
-
-	if not s.mylayoutbox or not s.mylayoutbox.valid then
-		s.mylayoutbox = awful.widget.layoutbox(s)
-		s.mylayoutbox:buttons(gears.table.join(
-			awful.button({}, 1, function()
-				awful.layout.inc(1)
-			end),
-			awful.button({}, 3, function()
-				awful.layout.inc(-1)
-			end),
-			awful.button({}, 4, function()
-				awful.layout.inc(1)
-			end),
-			awful.button({}, 5, function()
-				awful.layout.inc(-1)
-			end)
-		))
-	end
-
-	local layoutbox = wibox.widget({
-		s.mylayoutbox,
-		left = beautiful.layoutbox_pad_h or 0,
-		right = beautiful.layoutbox_pad_h or 0,
-		top = beautiful.layoutbox_pad_v or 0,
-		bottom = beautiful.layoutbox_pad_v or 0,
-		widget = wibox.container.margin,
+	local clock = Clock.build(s, {
+		show_seconds = (clock_cfg.show_seconds == true),
+		app = clock_cfg.app,
+		calendar_enable = (clock_cfg.calendar_enable ~= false),
+		calendar_use_menu_theme = (clock_cfg.calendar_use_menu_theme == true),
+		bar_position = props.position,
 	})
+
+	local layoutbox = ensure_layoutbox(s)
 
 	local start_btn = show_start
 			and Start.build({
@@ -160,27 +200,11 @@ function M.setup(s, args)
 			})
 		or empty
 
-	-- =========================================================================
-	-- Props
-	-- =========================================================================
-
-	local props = (wibar_theme.props and wibar_theme.props())
-		or {
-			position = "bottom",
-			height = 28,
-			bg = beautiful.wibar_bg or beautiful.bg_normal,
-			fg = beautiful.wibar_fg or beautiful.fg_normal,
-		}
-
-	if bar_position then
-		props.position = bar_position
-	end
-
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Sections
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
-	local tabs_leading_spacer = hspace(compute_tabs_leading_gap())
+	local tabs_leading_spacer = hspace(compute_tabs_leading_gap(show_start, show_tags))
 
 	local parts = {
 		start_btn = start_btn or empty,
@@ -212,12 +236,12 @@ function M.setup(s, args)
 			},
 		}
 
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 	-- Wibar
-	-- =========================================================================
+	-- ---------------------------------------------------------------------
 
 	s.mywibar = awful.wibar({
-		position = props.position or "bottom",
+		position = props.position,
 		screen = s,
 		height = props.height,
 		bg = props.bg,
@@ -242,7 +266,7 @@ function M.setup(s, args)
 		end
 
 		Reveal.attach(s, s.mywibar, {
-			edge = props.position or "bottom",
+			edge = props.position,
 			trigger_px = reveal_trigger_px,
 			hide_delay = reveal_hide_delay,
 		})
