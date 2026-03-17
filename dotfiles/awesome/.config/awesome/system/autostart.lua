@@ -66,8 +66,15 @@ local function start_tray_apps(cfg)
 		spawn_once("nm-applet", "[n]m-applet")
 	end
 
+	-- CopyQ braucht späten/frischen Start für das Tray
 	if tray_cfg.startCopyQ ~= false then
-		restart_later("copyq", "[c]opyq", tray_cfg.copyqDelay or 1.5)
+		awful.spawn.with_shell(
+			"copyq config showTray true >/dev/null 2>&1; "
+				.. "pkill -x copyq >/dev/null 2>&1; "
+				.. "(sleep "
+				.. tostring(tray_cfg.copyqDelay or 1.5)
+				.. "; copyq >/tmp/awesome-copyq.log 2>&1) &"
+		)
 	end
 end
 
