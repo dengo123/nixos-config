@@ -158,6 +158,7 @@ function M.setup(s, args)
 		modkey = modkey,
 		group_by_class = true,
 		theme = tabs_theme,
+		bar_height = props.height,
 		menu_theme = menu_theme,
 		menu_api = menu_api and {
 			show_for_widget_with_clients_at = function(widget, clients, anchor)

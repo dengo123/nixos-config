@@ -261,7 +261,7 @@ function M.apply(o)
 			properties = {
 				floating = true,
 				placement = awful.placement.centered,
-				portrait_autosize = true,
+				portrait_autosize = false,
 			},
 		})
 	end
@@ -279,36 +279,37 @@ function M.apply(o)
 				"Gnome-disks",
 				"Org.gnome.DiskUtility",
 				"org.gnome.DiskUtility",
+				"copyq",
+				"CopyQ",
+				"org.gnome.Calendar",
+				"Org.gnome.Calendar",
+				"Gnome-calendar",
+				"Gnome-Calendar",
+				".xscreensaver-demo-wrapped",
+				"XScreenSaver",
 			},
 			instance = {
 				"nm-connection-editor",
 				"blueman-manager",
 				"pavucontrol",
 				"gnome-disks",
+				"copyq",
+				"gnome-calendar",
+				".xscreensaver-demo-wrapped",
+				"xscreensaver",
+				"xscreensaver-demo",
 			},
 			name = {
 				"Network Connections",
 				"Bluetooth",
 				"GNOME Disks",
 				"Volume Control",
+				"CopyQ",
+				"Calendar",
+				"GNOME Calendar",
+				"XScreenSaver",
+				"XScreenSaver Preferences",
 			},
-		},
-		properties = {
-			floating = true,
-			placement = awful.placement.centered,
-			portrait_autosize = true,
-		},
-	})
-
-	-- ---------------------------------------------------------------------
-	-- XScreenSaver
-	-- ---------------------------------------------------------------------
-
-	table.insert(rules, {
-		rule_any = {
-			class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
-			instance = { ".xscreensaver-demo-wrapped", "xscreensaver", "xscreensaver-demo" },
-			name = { "XScreenSaver", "XScreenSaver Preferences" },
 		},
 		properties = {
 			floating = true,

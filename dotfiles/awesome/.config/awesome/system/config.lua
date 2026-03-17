@@ -24,16 +24,6 @@ return {
 			calendar_enable = true,
 			calendar_use_menu_theme = false,
 		},
-
-		systray = {
-			enable = true,
-			startBlueman = true,
-			startPasystray = true,
-			startNmApplet = true,
-			startUdiskie = true,
-			udiskieArgs = "--tray --automount --notify",
-			startCopyQ = true,
-		},
 	},
 
 	tags = {

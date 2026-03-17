@@ -125,7 +125,10 @@ local function build_calendar(s, clock, opts)
 		},
 	})
 
-	cal:attach(clock, resolve_calendar_attach_pos(opts.bar_position))
+	cal:attach(clock, resolve_calendar_attach_pos(opts.bar_position), {
+		on_hover = true,
+	})
+
 	return cal
 end
 
@@ -164,12 +167,6 @@ function M.build(s, opts)
 
 	local clock = wibox.widget.textclock(format, refresh)
 
-	if app then
-		clock:buttons(gears.table.join(awful.button({}, 1, function()
-			awful.spawn(app, false)
-		end)))
-	end
-
 	-- ---------------------------------------------------------------------
 	-- Calendar
 	-- ---------------------------------------------------------------------
@@ -179,6 +176,16 @@ function M.build(s, opts)
 			calendar_use_menu_theme = calendar_use_menu_theme,
 			bar_position = bar_position,
 		})
+	end
+
+	-- ---------------------------------------------------------------------
+	-- Click Action
+	-- ---------------------------------------------------------------------
+
+	if app then
+		clock:buttons(gears.table.join(awful.button({}, 1, function()
+			awful.spawn(app, false)
+		end)))
 	end
 
 	-- ---------------------------------------------------------------------

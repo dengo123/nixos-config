@@ -84,9 +84,8 @@ function M.init(cfg)
 		pad_h = dpi(8),
 		pad_v = dpi(0),
 		collapsed_pad_h = dpi(6),
-		collapsed_min_width = nil,
 		fmt = "%d",
-		font = beautiful.font,
+		font = "Sans 10",
 	}
 end
 
