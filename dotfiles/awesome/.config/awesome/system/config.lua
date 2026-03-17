@@ -7,12 +7,16 @@ return {
 
 		launcher = nil,
 		browser = os.getenv("BROWSER") or "firefox",
-		files = (os.getenv("FILE_MANAGER") or "xdg-open") .. " ~",
+		files = "nemo",
 	},
 
 	bar = {
 		position = "bottom",
 		start_on_primary_only = false,
+
+		reveal_on_fullscreen_edge = true,
+		reveal_trigger_px = 2,
+		reveal_hide_delay = 0.20,
 	},
 
 	tags = {
@@ -29,11 +33,12 @@ return {
 	},
 
 	windowing = {
-
 		titlebars = {
 			enabled = true,
 		},
-
+		files = {
+			floating = true,
+		},
 		portrait = {
 			fullscreen_tiled = true,
 		},

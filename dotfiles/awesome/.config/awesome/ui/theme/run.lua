@@ -78,7 +78,7 @@ function M.get(overrides)
 		border_w = d(1),
 		border_color = C.black,
 
-		prefix_width = d(52),
+		prefix_width = d(42),
 
 		hint = {
 			show = true,

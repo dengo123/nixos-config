@@ -148,7 +148,7 @@ function Items.build_clients(clients, _ctx)
 
 	return {
 		{
-			"Schließen",
+			"Close",
 			function()
 				if c.valid then
 					c:kill()

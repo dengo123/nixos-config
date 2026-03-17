@@ -22,13 +22,24 @@ local M = {}
 function M.init(args)
 	args = args or {}
 
+	-- =========================================================================
+	-- Config
+	-- =========================================================================
+
 	local cfg = args.cfg or {}
 	local ui = args.ui or {}
+
 	local theme = ui.theme and ui.theme.windows
 	local system_cfg = cfg.system or {}
 	local focus_cfg = cfg.focus or {}
 
-	-- 1) Theme laden (setzt beautiful.*)
+	local modkey = args.modkey or system_cfg.modkey or cfg.modkey
+	local mouse = args.mouse
+
+	-- =========================================================================
+	-- Theme
+	-- =========================================================================
+
 	if theme and theme.init then
 		pcall(theme.init, cfg)
 	end
@@ -36,26 +47,38 @@ function M.init(args)
 	local shape_fn = theme and theme.shape_fn and theme.shape_fn() or nil
 	local button_style = theme and theme.button_style and theme.button_style(cfg) or {}
 
-	-- 2) Regeln
+	-- =========================================================================
+	-- Rules
+	-- =========================================================================
+
 	if Policies.rules and Policies.rules.apply then
 		Policies.rules.apply({
-			modkey = args.modkey or system_cfg.modkey or cfg.modkey,
-			mouse = args.mouse,
+			modkey = modkey,
+			mouse = mouse,
 			cfg = cfg,
 		})
 	end
 
-	-- 3) Fokus-Policy
+	-- =========================================================================
+	-- Focus
+	-- =========================================================================
+
 	if Policies.focus and Policies.focus.init then
 		Policies.focus.init(focus_cfg)
 	end
 
-	-- 4) Container (Styling)
+	-- =========================================================================
+	-- Container
+	-- =========================================================================
+
 	Container.init({
 		shape_fn = shape_fn,
 	})
 
-	-- 5) Client-Signale
+	-- =========================================================================
+	-- Signals
+	-- =========================================================================
+
 	if Policies.signals and Policies.signals.apply then
 		Policies.signals.apply({
 			attach_titlebar = function(c)
@@ -66,7 +89,10 @@ function M.init(args)
 		})
 	end
 
-	-- 6) Fullscreen-Dim optional
+	-- =========================================================================
+	-- Fullscreen Dim
+	-- =========================================================================
+
 	if Policies.fullscreen_dim and Policies.fullscreen_dim.init then
 		Policies.fullscreen_dim.init({})
 	end

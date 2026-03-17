@@ -1,9 +1,12 @@
 -- ~/.config/awesome/shell/launchers/power/container.lua
 local wibox = require("wibox")
 local gears = require("gears")
-local awful = require("awful")
 
 local M = {}
+
+-- ============================================================================
+-- Helpers
+-- ============================================================================
 
 local function pick(...)
 	for i = 1, select("#", ...) do
@@ -14,7 +17,6 @@ local function pick(...)
 	end
 end
 
--- Icon-Widget aus Theme (Bild > Text > nil)
 local function resolve_icon_widget(th)
 	local size = tonumber(th.header_icon_size) or 48
 	local path = th.header_icon_path
@@ -23,6 +25,7 @@ local function resolve_icon_widget(th)
 		if not path:match("^/") then
 			path = gears.filesystem.get_configuration_dir() .. path
 		end
+
 		return wibox.widget({
 			image = path,
 			resize = true,
@@ -45,11 +48,11 @@ local function resolve_icon_widget(th)
 	return nil
 end
 
--- Titel-Widget aus Theme/Text
 local function resolve_title_widget(th, title_text)
 	if not title_text or #tostring(title_text) == 0 then
 		return nil
 	end
+
 	return wibox.widget({
 		markup = string.format(
 			"<span font='%s %d'><b>%s</b></span>",
@@ -63,13 +66,20 @@ local function resolve_title_widget(th, title_text)
 	})
 end
 
+-- ============================================================================
+-- Build
+-- ============================================================================
+
 -- build(th, dims, { title, body, cancel_btn })
 function M.build(th, dims, slots)
 	local title_text = (slots.title ~= nil) and slots.title or pick(th.header_title, "Turn off Computer")
 	local body_core = slots.body
 	local cancel_btn = slots.cancel_btn
 
-	-- ===== Header: links Titel, rechts Icon (an Außenrändern) =====
+	-- =========================================================================
+	-- Header
+	-- =========================================================================
+
 	local title_w = resolve_title_widget(th, title_text)
 	local icon_w = resolve_icon_widget(th)
 
@@ -87,7 +97,6 @@ function M.build(th, dims, slots)
 		widget = wibox.container.place,
 	})
 
-	-- einziges Header-Padding (voll aus Theme steuerbar)
 	local pad_l = tonumber(th.header_pad_l) or tonumber(th.header_pad_h) or 0
 	local pad_r = tonumber(th.header_pad_r) or tonumber(th.header_pad_h) or 0
 	local pad_v = tonumber(th.header_pad_v) or 0
@@ -95,9 +104,9 @@ function M.build(th, dims, slots)
 	local header = wibox.widget({
 		{
 			{
-				left_place, -- links am Außenrand
-				nil, -- keine Mitte nötig
-				right_place, -- rechts am Außenrand
+				left_place,
+				nil,
+				right_place,
 				layout = wibox.layout.align.horizontal,
 			},
 			left = pad_l,
@@ -111,10 +120,18 @@ function M.build(th, dims, slots)
 		widget = wibox.container.background,
 	})
 
-	-- ===== Body =====
+	-- =========================================================================
+	-- Body
+	-- =========================================================================
+
 	local body = wibox.widget({
 		{
-			{ body_core, halign = "center", valign = "center", widget = wibox.container.place },
+			{
+				body_core,
+				halign = "center",
+				valign = "center",
+				widget = wibox.container.place,
+			},
 			left = dims.pad_h,
 			right = dims.pad_h,
 			top = dims.pad_v,
@@ -126,10 +143,18 @@ function M.build(th, dims, slots)
 		widget = wibox.container.background,
 	})
 
-	-- ===== Footer (Farben wie Header) =====
+	-- =========================================================================
+	-- Footer
+	-- =========================================================================
+
 	local footer = wibox.widget({
 		{
-			{ cancel_btn, halign = "right", valign = "center", widget = wibox.container.place },
+			{
+				cancel_btn or wibox.widget({}),
+				halign = "right",
+				valign = "center",
+				widget = wibox.container.place,
+			},
 			left = dims.pad_h,
 			right = dims.pad_h,
 			top = dims.pad_v,
@@ -141,22 +166,42 @@ function M.build(th, dims, slots)
 		widget = wibox.container.background,
 	})
 
-	-- ===== Stack mit fixen Höhen =====
+	-- =========================================================================
+	-- Stack
+	-- =========================================================================
+
 	local stack = wibox.widget({
-		{ header, strategy = "exact", height = dims.header_h, widget = wibox.container.constraint },
-		{ body, strategy = "exact", height = dims.body_h, widget = wibox.container.constraint },
-		{ footer, strategy = "exact", height = dims.footer_h, widget = wibox.container.constraint },
+		{
+			header,
+			strategy = "exact",
+			height = dims.header_h,
+			widget = wibox.container.constraint,
+		},
+		{
+			body,
+			strategy = "exact",
+			height = dims.body_h,
+			widget = wibox.container.constraint,
+		},
+		{
+			footer,
+			strategy = "exact",
+			height = dims.footer_h,
+			widget = wibox.container.constraint,
+		},
 		layout = wibox.layout.fixed.vertical,
 	})
 
-	-- ===== Rechteckiger Rahmen (keine Rundungen) =====
+	-- =========================================================================
+	-- Outer Frame
+	-- =========================================================================
+
 	return wibox.widget({
 		stack,
-		shape = function(cr, w, h)
-			gears.shape.rectangle(cr, w, h)
-		end,
-		border_width = tonumber(th.dialog_border_width) or 2,
-		border_color = pick(th.dialog_border, "#1A50B8"),
+		shape = gears.shape.rectangle,
+		shape_clip = true,
+		shape_border_width = tonumber(th.dialog_border_width) or 2,
+		shape_border_color = pick(th.dialog_border, "#1A50B8"),
 		bg = pick(th.dialog_bg, "#053193"),
 		widget = wibox.container.background,
 	})

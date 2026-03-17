@@ -1,9 +1,13 @@
--- shell/menu/dialogs/parts/widgets/icons.lua
+-- ~/.config/awesome/shell/launchers/power/icons.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
 local M = {}
+
+-- ============================================================================
+-- Helpers
+-- ============================================================================
 
 local function pick(...)
 	for i = 1, select("#", ...) do
@@ -14,10 +18,13 @@ local function pick(...)
 	end
 end
 
--- Icon-Button (quadratisches Icon + optionales Label, Hover nur am Icon)
--- Fokus-API: :set_focus(on, th2) und :activate()
+-- ============================================================================
+-- Factory
+-- ============================================================================
+
 function M.mk_icon_button(args)
 	args = args or {}
+
 	local th = args.th or {}
 	local size = args.size or 64
 
@@ -25,7 +32,10 @@ function M.mk_icon_button(args)
 	local pad_cell = pick(th.icon_cell_pad, 6)
 	local spacing = pick(th.icon_spacing, 6)
 
-	-- Inneres Icon
+	-- =========================================================================
+	-- Icon
+	-- =========================================================================
+
 	local icon_inner
 	if args.icon and type(args.icon) == "string" then
 		icon_inner = wibox.widget({
@@ -38,6 +48,7 @@ function M.mk_icon_button(args)
 	else
 		local emoji_char = args.emoji or "…"
 		local emoji_font = args.emoji_font or ("sans " .. math.floor(size * 0.66))
+
 		icon_inner = wibox.widget({
 			markup = string.format("<span font='%s'>%s</span>", emoji_font, emoji_char),
 			align = "center",
@@ -57,7 +68,12 @@ function M.mk_icon_button(args)
 
 	local hover_square = wibox.widget({
 		{
-			{ icon_inner, halign = "center", valign = "center", widget = wibox.container.place },
+			{
+				icon_inner,
+				halign = "center",
+				valign = "center",
+				widget = wibox.container.place,
+			},
 			margins = pad_icon,
 			widget = wibox.container.margin,
 		},
@@ -69,12 +85,18 @@ function M.mk_icon_button(args)
 		widget = wibox.container.background,
 	})
 
-	-- Label (optional)
-	local label_block, label_h = nil, 0
+	-- =========================================================================
+	-- Label
+	-- =========================================================================
+
+	local label_block = nil
+	local label_h = 0
+
 	if args.label and #args.label > 0 then
 		local fsz = pick(th.icon_label_size, 18)
 		local leading = pick(th.icon_label_leading, 1.25)
 		label_h = math.ceil(fsz * leading)
+
 		local lbl = wibox.widget({
 			markup = string.format(
 				"<span font='sans %d' color='%s'>%s</span>",
@@ -89,15 +111,32 @@ function M.mk_icon_button(args)
 			forced_height = label_h,
 			widget = wibox.widget.textbox,
 		})
-		local label_w = box_side + (th.icon_cell_extra_w or 0)
-		label_block = wibox.widget({ lbl, strategy = "exact", width = label_w, widget = wibox.container.constraint })
+
+		local extra_w = tonumber(th.icon_cell_extra_w) or 0
+		local label_w = box_side + extra_w
+
+		label_block = wibox.widget({
+			lbl,
+			strategy = "exact",
+			width = label_w,
+			widget = wibox.container.constraint,
+		})
 	end
+
+	-- =========================================================================
+	-- Layout
+	-- =========================================================================
 
 	local v_spacing = (label_block and label_h > 0) and spacing or 0
 	local offset = math.floor(((label_block and label_h or 0) + v_spacing) / 2)
 
 	local square_centered = wibox.widget({
-		{ hover_square, halign = "center", valign = "center", widget = wibox.container.place },
+		{
+			hover_square,
+			halign = "center",
+			valign = "center",
+			widget = wibox.container.place,
+		},
 		top = offset,
 		widget = wibox.container.margin,
 	})
@@ -118,25 +157,32 @@ function M.mk_icon_button(args)
 		widget = wibox.container.margin,
 	})
 
-	-- Hover nur im Quadrat
+	-- =========================================================================
+	-- Mouse
+	-- =========================================================================
+
 	hover_square:connect_signal("mouse::enter", function()
 		hover_square.bg = th.icon_hover_bg or "#FFFFFF22"
 		hover_square.shape_border_width = pick(th.icon_hover_bw, 2)
 		hover_square.shape_border_color = th.icon_hover_border or "#2B77FF"
 	end)
+
 	hover_square:connect_signal("mouse::leave", function()
 		hover_square.bg = "#00000000"
 		hover_square.shape_border_width = 0
+		hover_square.shape_border_color = nil
 	end)
 
-	-- Click mit Maus
 	if args.on_press then
 		clickable:buttons(gears.table.join(awful.button({}, 1, function()
 			args.on_press()
 		end)))
 	end
 
-	-- ► Fokus-API (selbstenthaltend, keine Upvalue-Fallen)
+	-- =========================================================================
+	-- Focus API
+	-- =========================================================================
+
 	clickable._hover_square = hover_square
 	clickable._th = th
 	clickable._on_press = args.on_press
@@ -144,9 +190,11 @@ function M.mk_icon_button(args)
 	function clickable:set_focus(on, th2)
 		local t = th2 or self._th or {}
 		local sq = self._hover_square
+
 		local bg_on = pick(t.icon_focus_bg, t.icon_hover_bg, "#FFFFFF22")
 		local bw_on = pick(t.icon_focus_bw, t.icon_hover_bw, 2)
 		local bor_on = pick(t.icon_focus_border, t.icon_hover_border, "#2B77FF")
+
 		if on then
 			sq.bg = bg_on
 			sq.shape_border_width = bw_on
@@ -154,6 +202,7 @@ function M.mk_icon_button(args)
 		else
 			sq.bg = "#00000000"
 			sq.shape_border_width = 0
+			sq.shape_border_color = nil
 		end
 	end
 
@@ -163,7 +212,6 @@ function M.mk_icon_button(args)
 		end
 	end
 
-	-- Für Fokus-Logik praktisch:
 	clickable.mouse_enter_target = hover_square
 
 	return clickable

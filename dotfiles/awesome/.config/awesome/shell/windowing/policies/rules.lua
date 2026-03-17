@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/windowing/policies/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
@@ -9,116 +8,118 @@ local M = {}
 -- Helpers
 -- ============================================================================
 
-local function first_token(x)
-	if type(x) == "table" then
-		return x[1]
-	elseif type(x) == "string" then
-		return x:match("^(%S+)")
-	end
-	return nil
+local function has_entries(t)
+	return t and next(t) ~= nil
 end
 
-local function basename(x)
-	local t = first_token(x)
-	if not t then
-		return nil
-	end
-	return t:match("([^/]+)$")
-end
-
-local function capitalize_ascii(s)
+local function ucfirst(s)
 	if not s or s == "" then
 		return s
 	end
-	return s:gsub("^%l", string.upper)
+	return s:sub(1, 1):upper() .. s:sub(2)
 end
 
-local function build_app_rule_any(cmd)
-	local app = basename(cmd)
-	if not app or app == "xdg-open" then
+local function add_unique(t, v)
+	if not v or v == "" then
+		return
+	end
+	for _, existing in ipairs(t) do
+		if existing == v then
+			return
+		end
+	end
+	table.insert(t, v)
+end
+
+local function build_file_manager_match(file_manager)
+	if not file_manager or file_manager == "" then
 		return nil
 	end
 
-	local lower = tostring(app):lower()
-	local upper = capitalize_ascii(lower)
+	local bin = file_manager:match("^%s*([^%s]+)")
+	if not bin or bin == "" then
+		return nil
+	end
+
+	local base = bin:match("([^/]+)$") or bin
+	if not base or base == "" then
+		return nil
+	end
+
+	local classes = {}
+	local instances = {}
+
+	add_unique(instances, base)
+	add_unique(classes, base)
+	add_unique(classes, ucfirst(base))
+
+	if base == "nautilus" then
+		add_unique(classes, "org.gnome.Nautilus")
+		add_unique(classes, "Org.gnome.Nautilus")
+	elseif base == "pcmanfm-qt" then
+		add_unique(classes, "Pcmanfm-qt")
+	elseif base == "doublecmd" then
+		add_unique(classes, "Double Commander")
+	end
 
 	return {
-		class = { lower, upper },
-		instance = { lower, upper },
+		class = classes,
+		instance = instances,
 	}
 end
 
-local function is_portrait_screen(s)
-	if not (s and s.valid and s.workarea) then
-		return false
+-- ============================================================================
+-- Portrait Autosize
+-- ============================================================================
+
+local function portrait_autosize_apply(c)
+	if not (c and c.valid) then
+		return
 	end
+	if not c.portrait_autosize then
+		return
+	end
+	if not c.floating or c.fullscreen or c.maximized then
+		return
+	end
+
+	local s = c.screen
+	if not s then
+		return
+	end
+
 	local wa = s.workarea
-	return wa.height > wa.width
+	if wa.height <= wa.width then
+		return
+	end
+
+	local w = math.floor(wa.width * 0.92)
+	local h = math.floor(wa.height / 3)
+	local x = wa.x + math.floor((wa.width - w) / 2)
+	local y = wa.y + math.floor((wa.height - h) / 2)
+
+	c:geometry({
+		x = x,
+		y = y,
+		width = w,
+		height = h,
+	})
 end
 
-local function portrait_apply(c, enabled)
-	if not enabled then
-		return
-	end
-	if not (c and c.valid) then
-		return
-	end
-	if c.floating then
-		return
-	end
-
-	local s = c.screen
-	if not is_portrait_screen(s) then
-		return
-	end
-
-	if not c.fullscreen then
-		c.fullscreen = true
-	end
-end
-
-local function portrait_reset(c)
-	if not (c and c.valid) then
-		return
-	end
-	local s = c.screen
-	if is_portrait_screen(s) then
-		return
-	end
-	if c.fullscreen then
-		c.fullscreen = false
-	end
-end
-
-local function hook_portrait_policy(enabled)
+local function hook_portrait_autosize()
 	client.connect_signal("manage", function(c)
 		gears.timer.delayed_call(function()
-			portrait_apply(c, enabled)
+			portrait_autosize_apply(c)
 		end)
 	end)
 
 	client.connect_signal("property::floating", function(c)
-		if c.floating then
-			return
-		end
-		portrait_apply(c, enabled)
-	end)
-
-	client.connect_signal("property::screen", function(c)
-		if is_portrait_screen(c.screen) then
-			portrait_apply(c, enabled)
-		else
-			portrait_reset(c)
-		end
+		portrait_autosize_apply(c)
 	end)
 
 	screen.connect_signal("property::geometry", function(s)
 		for _, c in ipairs(s.clients) do
-			if is_portrait_screen(s) then
-				portrait_apply(c, enabled)
-			else
-				portrait_reset(c)
-			end
+			portrait_autosize_apply(c)
 		end
 	end)
 end
@@ -130,22 +131,14 @@ end
 function M.apply(o)
 	o = o or {}
 
-	local cfg = o.cfg or {}
-	local system_cfg = cfg.system or {}
-	local windowing_cfg = cfg.windowing or {}
-	local titlebars_cfg = windowing_cfg.titlebars or {}
-	local portrait_cfg = windowing_cfg.portrait or {}
-
 	local modkey = o.modkey
 	local mouse = o.mouse
+	local cfg = o.cfg or {}
 
-	local titlebars_enabled = (titlebars_cfg.enabled ~= false)
-	local portrait_fullscreen_tiled = (portrait_cfg.fullscreen_tiled == true)
-
-	local fm_rule_any = build_app_rule_any(system_cfg.files)
+	local file_manager = cfg.system and cfg.system.files or nil
+	local fm_match = build_file_manager_match(file_manager)
 
 	local rules = {
-		-- Default
 		{
 			rule = {},
 			properties = {
@@ -156,37 +149,32 @@ function M.apply(o)
 				buttons = mouse and mouse.client_buttons and mouse.client_buttons(modkey) or nil,
 				screen = awful.screen.preferred,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
-				titlebars_enabled = titlebars_enabled,
 			},
 		},
 	}
 
-	-- File manager from system.files: floating + centered
-	if fm_rule_any then
+	-- ------------------------------------------------------------------------
+	-- File Manager
+	-- ------------------------------------------------------------------------
+
+	if fm_match and (has_entries(fm_match.class) or has_entries(fm_match.instance)) then
 		table.insert(rules, {
-			rule_any = fm_rule_any,
+			rule_any = {
+				class = has_entries(fm_match.class) and fm_match.class or nil,
+				instance = has_entries(fm_match.instance) and fm_match.instance or nil,
+			},
 			properties = {
 				floating = true,
 				placement = awful.placement.centered,
-				titlebars_enabled = titlebars_enabled,
+				portrait_autosize = true,
 			},
 		})
 	end
 
-	-- Dialoge / Utilities / Splash
-	table.insert(rules, {
-		rule_any = {
-			type = { "dialog", "utility", "toolbar", "splash" },
-			role = { "pop-up", "Preferences" },
-		},
-		properties = {
-			floating = true,
-			placement = awful.placement.centered,
-			titlebars_enabled = titlebars_enabled,
-		},
-	})
+	-- ------------------------------------------------------------------------
+	-- System Utilities
+	-- ------------------------------------------------------------------------
 
-	-- Häufige Tools / Applets
 	table.insert(rules, {
 		rule_any = {
 			class = {
@@ -213,11 +201,14 @@ function M.apply(o)
 		properties = {
 			floating = true,
 			placement = awful.placement.centered,
-			titlebars_enabled = titlebars_enabled,
+			portrait_autosize = true,
 		},
 	})
 
+	-- ------------------------------------------------------------------------
 	-- XScreenSaver
+	-- ------------------------------------------------------------------------
+
 	table.insert(rules, {
 		rule_any = {
 			class = { ".xscreensaver-demo-wrapped", "XScreenSaver" },
@@ -227,11 +218,39 @@ function M.apply(o)
 		properties = {
 			floating = true,
 			placement = awful.placement.centered,
-			titlebars_enabled = titlebars_enabled,
+			portrait_autosize = true,
 		},
 	})
 
-	-- Fallback: XScreenSaver anhand Fenstertitel
+	-- ------------------------------------------------------------------------
+	-- Generic Floaters
+	-- ------------------------------------------------------------------------
+
+	table.insert(rules, {
+		rule_any = {
+			type = { "dialog", "utility", "toolbar", "splash" },
+			role = { "pop-up", "Preferences" },
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			portrait_autosize = true,
+		},
+	})
+
+	-- ------------------------------------------------------------------------
+	-- Titlebars
+	-- ------------------------------------------------------------------------
+
+	table.insert(rules, {
+		rule_any = { type = { "normal", "dialog" } },
+		properties = { titlebars_enabled = true },
+	})
+
+	-- ------------------------------------------------------------------------
+	-- Callbacks
+	-- ------------------------------------------------------------------------
+
 	table.insert(rules, {
 		rule = {},
 		properties = {},
@@ -244,8 +263,7 @@ function M.apply(o)
 	})
 
 	awful.rules.rules = rules
-
-	hook_portrait_policy(portrait_fullscreen_tiled)
+	hook_portrait_autosize()
 end
 
 return M

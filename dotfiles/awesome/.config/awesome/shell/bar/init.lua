@@ -9,8 +9,11 @@ local Tags = require("shell.bar.widgets.tags")
 local Clock = require("shell.bar.widgets.clock")
 local Systray = require("shell.bar.widgets.systray")
 local Start = require("shell.bar.widgets.start")
+local Reveal = require("shell.bar.reveal")
 
 local M = {}
+
+local reveal_signals_ready = false
 
 function M.setup(s, args)
 	args = args or {}
@@ -32,6 +35,10 @@ function M.setup(s, args)
 
 	local start_on_primary_only = (bar_cfg.start_on_primary_only == true)
 	local bar_position = bar_cfg.position
+
+	local reveal_on_fullscreen_edge = (bar_cfg.reveal_on_fullscreen_edge == true)
+	local reveal_trigger_px = tonumber(bar_cfg.reveal_trigger_px) or 2
+	local reveal_hide_delay = tonumber(bar_cfg.reveal_hide_delay) or 0.20
 
 	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
 	local tags_on_primary_only = (selection_mode == "sync")
@@ -227,6 +234,19 @@ function M.setup(s, args)
 		sections.center,
 		sections.right,
 	})
+
+	if reveal_on_fullscreen_edge then
+		if not reveal_signals_ready then
+			Reveal.init_signals()
+			reveal_signals_ready = true
+		end
+
+		Reveal.attach(s, s.mywibar, {
+			edge = props.position or "bottom",
+			trigger_px = reveal_trigger_px,
+			hide_delay = reveal_hide_delay,
+		})
+	end
 
 	return s.mywibar
 end
