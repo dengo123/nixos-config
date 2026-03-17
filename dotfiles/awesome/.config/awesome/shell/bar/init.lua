@@ -187,6 +187,7 @@ function M.setup(s, args)
 			and Start.build({
 				screen = s,
 				theme = start_theme,
+				bar_height = props.height,
 				launcher = system_cfg.launcher,
 				terminal = system_cfg.terminal,
 				menu = cfg.mymainmenu,
