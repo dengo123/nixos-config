@@ -25,6 +25,7 @@ return {
 			calendar_enable = true,
 			calendar_use_menu_theme = false,
 		},
+		show_notify = "primary",
 	},
 
 	tags = {
@@ -56,7 +57,8 @@ return {
 
 	notify = {
 		timeout = 3,
-		position = nil, -- nil = follow_systray, sonst z. B. "top_right" | "bottom_right"
 		speech = true,
+		screen = "focused",
+		visible_entries = 5,
 	},
 }

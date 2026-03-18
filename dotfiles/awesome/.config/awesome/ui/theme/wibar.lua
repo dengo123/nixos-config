@@ -107,12 +107,13 @@ function M.init(cfg)
 	beautiful.notify_button_font = "Sans Bold 11"
 	beautiful.notify_button_badge_font = "Sans Bold 10"
 
-	beautiful.notify_button_glyph_closed = "▾"
-	beautiful.notify_button_glyph_open = "▴"
+	beautiful.notify_button_glyph_closed = "⮜"
+	beautiful.notify_button_glyph_open = "⮝"
+	beautiful.notify_button_glyph_offset_y = 4
 
 	beautiful.notify_button_gap_left = dpi(16)
 	beautiful.notify_button_zone_width = dpi(12)
-	beautiful.notify_button_seam_offset = dpi(12)
+	beautiful.notify_button_seam_offset = dpi(11)
 end
 
 function M.props()

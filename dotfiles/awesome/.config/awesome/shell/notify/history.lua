@@ -4,7 +4,6 @@ local M = {}
 local entries = {}
 local unread_count = 0
 local max_entries = 100
-local next_id = 1
 
 -- =========================================================================
 -- Helpers
@@ -20,14 +19,9 @@ local function shallow_copy(t)
 	return out
 end
 
-local function find_index_by_id(id)
-	for i, entry in ipairs(entries) do
-		if entry.id == id then
-			return i
-		end
-	end
-
-	return nil
+local function emit_changed()
+	awesome.emit_signal("notify::history_changed")
+	awesome.emit_signal("notify::unread_count", unread_count)
 end
 
 local function clamp_history()
@@ -40,20 +34,22 @@ local function clamp_history()
 	end
 end
 
-local function emit_changed()
-	awesome.emit_signal("notify::history_changed")
-	awesome.emit_signal("notify::unread_count", unread_count)
+local function normalize_text(value)
+	if value == nil then
+		return ""
+	end
+
+	return tostring(value)
 end
 
 local function normalize_entry(notification)
 	local app_name = notification.app_name or notification.appname or notification.app or nil
-	local title = notification.title or ""
-	local message = notification.message or notification.text or ""
+	local title = normalize_text(notification.title)
+	local message = normalize_text(notification.message or notification.text)
 	local icon = notification.icon or notification.image or nil
 	local urgency = notification.urgency or "normal"
 
-	local entry = {
-		id = next_id,
+	return {
 		app_name = app_name,
 		title = title,
 		message = message,
@@ -63,10 +59,6 @@ local function normalize_entry(notification)
 		read = false,
 		raw = notification,
 	}
-
-	next_id = next_id + 1
-
-	return entry
 end
 
 -- =========================================================================
@@ -78,9 +70,10 @@ function M.init(opts)
 
 	if tonumber(opts.max_entries) then
 		max_entries = math.max(1, math.floor(tonumber(opts.max_entries)))
-		clamp_history()
-		emit_changed()
 	end
+
+	clamp_history()
+	emit_changed()
 end
 
 function M.add(notification)
@@ -92,7 +85,7 @@ function M.add(notification)
 	clamp_history()
 	emit_changed()
 
-	return shallow_copy(entry)
+	return entry
 end
 
 function M.list()
@@ -109,26 +102,12 @@ function M.raw_list()
 	return entries
 end
 
-function M.count()
-	return #entries
-end
-
-function M.has_unread()
-	return unread_count > 0
-end
-
 function M.get_unread_count()
 	return unread_count
 end
 
-function M.get_by_id(id)
-	local index = find_index_by_id(id)
-
-	if not index then
-		return nil
-	end
-
-	return shallow_copy(entries[index])
+function M.get_count()
+	return #entries
 end
 
 function M.mark_all_read()
@@ -147,8 +126,11 @@ function M.mark_all_read()
 	end
 end
 
-function M.mark_read(index)
-	local entry = entries[index]
+function M.mark_read_reverse(index)
+	local count = #entries
+	local raw_index = count - index + 1
+	local entry = entries[raw_index]
+
 	if not entry or entry.read == true then
 		return
 	end
@@ -156,44 +138,6 @@ function M.mark_read(index)
 	entry.read = true
 	unread_count = math.max(0, unread_count - 1)
 	emit_changed()
-end
-
-function M.mark_read_by_id(id)
-	local index = find_index_by_id(id)
-
-	if not index then
-		return false
-	end
-
-	local entry = entries[index]
-
-	if entry.read == true then
-		return true
-	end
-
-	entry.read = true
-	unread_count = math.max(0, unread_count - 1)
-	emit_changed()
-
-	return true
-end
-
-function M.remove_by_id(id)
-	local index = find_index_by_id(id)
-
-	if not index then
-		return false
-	end
-
-	local removed = table.remove(entries, index)
-
-	if removed and removed.read ~= true then
-		unread_count = math.max(0, unread_count - 1)
-	end
-
-	emit_changed()
-
-	return true
 end
 
 function M.clear()

@@ -3,6 +3,7 @@ local beautiful = require("beautiful")
 local naughty = require("naughty")
 local wibox = require("wibox")
 
+local Center = require("shell.notify.center")
 local History = require("shell.notify.history")
 local Rules = require("shell.notify.rules")
 local Shape = require("shell.notify.shape")
@@ -11,6 +12,7 @@ local M = {}
 
 local initialized = false
 local center_open = false
+local display_signal_ready = false
 
 -- =========================================================================
 -- Helpers
@@ -31,12 +33,16 @@ local function require_notify_theme()
 	return notify
 end
 
+local function notify_cfg(cfg)
+	return cfg.notify or {}
+end
+
 local function resolve_position(cfg)
-	local notify_cfg = cfg.notify or {}
+	local ncfg = notify_cfg(cfg)
 	local bar_cfg = cfg.bar or {}
 
-	if type(notify_cfg.position) == "string" and notify_cfg.position ~= "" then
-		return notify_cfg.position
+	if type(ncfg.position) == "string" and ncfg.position ~= "" then
+		return ncfg.position
 	end
 
 	local bar_position = bar_cfg.position or "bottom"
@@ -49,14 +55,11 @@ local function resolve_position(cfg)
 end
 
 local function resolve_timeout(cfg)
-	local notify_cfg = cfg.notify or {}
-	return tonumber(notify_cfg.timeout) or 3
+	return tonumber(notify_cfg(cfg).timeout) or 3
 end
 
 local function resolve_shape(cfg, notify_theme)
-	local notify_cfg = cfg.notify or {}
-
-	if notify_cfg.speech == false then
+	if notify_cfg(cfg).speech == false then
 		return Shape.rounded(notify_theme.radius)
 	end
 
@@ -125,18 +128,52 @@ local function emit_center_state()
 	awesome.emit_signal("notify::center_state", center_open)
 end
 
-local function register_signals()
-	awesome.connect_signal("notify::toggle_center", function()
-		center_open = not center_open
-		emit_center_state()
-	end)
+local function open_center()
+	if center_open then
+		return
+	end
 
-	awesome.connect_signal("notify::close_center", function()
-		if center_open then
-			center_open = false
-			emit_center_state()
+	center_open = true
+	emit_center_state()
+end
+
+local function close_center()
+	if not center_open then
+		return
+	end
+
+	center_open = false
+	emit_center_state()
+end
+
+local function toggle_center()
+	center_open = not center_open
+	emit_center_state()
+end
+
+local function register_center_signals()
+	awesome.connect_signal("notify::toggle_center", toggle_center)
+	awesome.connect_signal("notify::open_center", open_center)
+	awesome.connect_signal("notify::close_center", close_center)
+end
+
+local function register_display_signal()
+	if display_signal_ready then
+		return
+	end
+
+	display_signal_ready = true
+
+	local prev_callback = naughty.config.notify_callback
+
+	naughty.config.notify_callback = function(args)
+		if type(prev_callback) == "function" then
+			args = prev_callback(args) or args
 		end
-	end)
+
+		History.add(args or {})
+		return args
+	end
 end
 
 -- =========================================================================
@@ -178,10 +215,17 @@ function M.init(cfg)
 	Rules.apply()
 
 	-- ---------------------------------------------------------------------
+	-- Center
+	-- ---------------------------------------------------------------------
+
+	Center.init(cfg)
+
+	-- ---------------------------------------------------------------------
 	-- Signals
 	-- ---------------------------------------------------------------------
 
-	register_signals()
+	register_center_signals()
+	register_display_signal()
 	emit_center_state()
 
 	initialized = true

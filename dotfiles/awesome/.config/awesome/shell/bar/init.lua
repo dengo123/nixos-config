@@ -104,6 +104,7 @@ function M.setup(s, args)
 
 	local start_on_primary_only = (bar_cfg.start_on_primary_only == true)
 	local bar_position = bar_cfg.position
+	local bar_notify_mode = tostring(bar_cfg.show_notify or "primary"):lower()
 
 	local reveal_on_fullscreen_edge = (bar_cfg.reveal_on_fullscreen_edge == true)
 	local reveal_trigger_px = tonumber(bar_cfg.reveal_trigger_px) or 2
@@ -117,6 +118,7 @@ function M.setup(s, args)
 
 	local show_start = (not start_on_primary_only) or is_primary
 	local show_tags = (not tags_on_primary_only) or is_primary
+	local show_notify = (bar_notify_mode ~= "primary") or is_primary
 
 	local empty = empty_widget()
 
@@ -203,7 +205,7 @@ function M.setup(s, args)
 			})
 		or empty
 
-	local notify = Notify.build(s, {})
+	local notify = show_notify and Notify.build(s, {}) or empty
 
 	-- ---------------------------------------------------------------------
 	-- Sections
@@ -232,8 +234,9 @@ function M.setup(s, args)
 
 	local notify_zone = wibox.widget({
 		{
-			forced_width = notify_zone_width,
+			forced_width = show_notify and notify_zone_width or 0,
 			forced_height = bar_height,
+			bg = show_notify and systray_bg or "#00000000",
 			widget = wibox.container.background,
 		},
 		{
@@ -243,7 +246,7 @@ function M.setup(s, args)
 				valign = "center",
 				widget = wibox.container.place,
 			},
-			left = -notify_seam_offset,
+			left = show_notify and -notify_seam_offset or 0,
 			widget = wibox.container.margin,
 		},
 		layout = wibox.layout.stack,
@@ -261,7 +264,7 @@ function M.setup(s, args)
 
 	local notify_with_gap = wibox.widget({
 		tray_cluster,
-		left = notify_gap_left,
+		left = show_notify and notify_gap_left or 0,
 		widget = wibox.container.margin,
 	})
 

@@ -4,8 +4,6 @@ local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local History = require("shell.notify.history")
-
 local M = {}
 
 local function require_number(value, name)
@@ -29,6 +27,7 @@ function M.build(_s, _opts)
 	local font = require_string(beautiful.notify_button_font, "beautiful.notify_button_font")
 	local glyph_closed = require_string(beautiful.notify_button_glyph_closed, "beautiful.notify_button_glyph_closed")
 	local glyph_open = require_string(beautiful.notify_button_glyph_open, "beautiful.notify_button_glyph_open")
+	local glyph_offset_y = tonumber(beautiful.notify_button_glyph_offset_y) or 0
 	local badge_font = beautiful.notify_button_badge_font or font
 
 	local is_open = false
@@ -41,6 +40,13 @@ function M.build(_s, _opts)
 		widget = wibox.widget.textbox,
 	})
 
+	local glyph_box = wibox.widget({
+		glyph,
+		top = math.max(0, glyph_offset_y),
+		bottom = math.max(0, -glyph_offset_y),
+		widget = wibox.container.margin,
+	})
+
 	local unread = wibox.widget({
 		text = "",
 		align = "center",
@@ -51,7 +57,7 @@ function M.build(_s, _opts)
 	})
 
 	local content = wibox.widget({
-		glyph,
+		glyph_box,
 		unread,
 		layout = wibox.layout.stack,
 	})
@@ -76,29 +82,13 @@ function M.build(_s, _opts)
 		widget = wibox.container.constraint,
 	})
 
-	local function refresh_unread()
-		local count = History.get_unread_count()
-
-		if count > 0 then
-			unread.visible = true
-			unread.text = tostring(count)
-			glyph.visible = false
-		else
-			unread.visible = false
-			glyph.visible = true
-		end
-	end
-
 	local function refresh_glyph()
 		glyph.text = is_open and glyph_open or glyph_closed
 	end
 
 	local function refresh()
 		refresh_glyph()
-		refresh_unread()
 	end
-
-	awesome.connect_signal("notify::history_changed", refresh_unread)
 
 	awesome.connect_signal("notify::center_state", function(open)
 		is_open = (open == true)
