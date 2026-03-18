@@ -36,6 +36,13 @@ in {
           };
         };
 
+        picom = {
+          enable = true;
+          # fade = true;
+          # shadow = true;
+          # inactiveOpacity = 0.9;
+        };
+
         redshift = {
           enable = true;
           provider = "manual";

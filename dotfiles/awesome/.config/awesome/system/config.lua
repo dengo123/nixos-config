@@ -36,7 +36,7 @@ return {
 
 	focus = {
 		sloppy = true,
-		center_mouse = true,
+		center_mouse = false,
 		raise_on_mouse = false,
 		block_ms = 150,
 	},
@@ -56,9 +56,8 @@ return {
 	},
 
 	notify = {
-		timeout = 3,
-		speech = true,
+		timeout = 5,
+		speech = false,
 		screen = "focused",
-		visible_entries = 5,
 	},
 }

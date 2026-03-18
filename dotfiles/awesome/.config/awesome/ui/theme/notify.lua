@@ -41,38 +41,38 @@ function M.init(cfg)
 	-- ---------------------------------------------------------------------
 
 	beautiful.notify.center = {
-		panel_radius = dpi(12),
-		panel_border_width = dpi(1),
-		panel_border = border,
-		panel_bg = C.creme,
-
-		header_bg = C.creme,
-		header_fg = C.black,
-
-		body_bg = C.creme,
-		body_fg = C.black,
-
-		width_factor = 0.28,
-		height_factor = 0.45,
+		width_factor = 0.30,
 		min_width = dpi(320),
-		min_height = dpi(220),
 		max_width = dpi(520),
+
+		min_height = dpi(80),
 		max_height = dpi(720),
 
 		offset_x = dpi(0),
 		offset_y = dpi(0),
 
-		margin_top = dpi(0),
-		margin_right = dpi(0),
+		margin_top = dpi(8),
+		margin_right = dpi(8),
 		margin_bottom = dpi(0),
-		margin_left = dpi(0),
 
-		padding = dpi(12),
-		spacing = dpi(10),
+		panel_bg = "#00000000",
 
-		header_height = dpi(44),
-		entry_height = dpi(88),
-		empty_height = dpi(56),
+		entry_bg = C.creme,
+		entry_fg = C.black,
+		entry_border = C.black,
+
+		entry_radius = dpi(12),
+		entry_border_w = dpi(1),
+		entry_padding = dpi(6),
+		entry_spacing = dpi(6),
+
+		text_inset_top = dpi(4),
+		text_inset_bottom = dpi(4),
+
+		list_pad_top = dpi(0),
+		list_pad_right = dpi(0),
+		list_pad_bottom = dpi(0),
+		list_pad_left = dpi(0),
 	}
 end
 

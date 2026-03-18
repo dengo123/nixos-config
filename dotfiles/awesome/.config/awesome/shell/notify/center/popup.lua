@@ -1,6 +1,4 @@
--- ~/.config/awesome/shell/notify/center/popup.lua
 local wibox = require("wibox")
-local gears = require("gears")
 
 local M = {}
 
@@ -12,11 +10,11 @@ function M.ensure(popups, key_for_screen, s)
 	local key = key_for_screen(s)
 	local popup = popups[key]
 
-	if popup and popup.box and popup.box.valid then
+	if popup and popup.valid then
 		return popup
 	end
 
-	local box = wibox({
+	popup = wibox({
 		visible = false,
 		ontop = true,
 		screen = s,
@@ -24,41 +22,55 @@ function M.ensure(popups, key_for_screen, s)
 		type = "utility",
 	})
 
-	popup = {
-		screen = s,
-		box = box,
-	}
-
 	popups[key] = popup
 
 	return popup
 end
 
-function M.apply_geometry(popup, geo)
-	popup.box.x = geo.x
-	popup.box.y = geo.y
-	popup.box.width = geo.width
-	popup.box.height = geo.height
-	popup.box.shape = function(cr, w, h)
-		gears.shape.rounded_rect(cr, w, h, geo.radius or 0)
+function M.rebuild(popup, build_panel)
+	if not popup or not popup.valid then
+		return false
 	end
-end
 
-function M.rebuild(popup, build_panel, geo)
-	popup.box:setup({
-		{
-			build_panel(),
-			forced_width = geo.width,
-			forced_height = geo.height,
-			widget = wibox.container.constraint,
-		},
+	local panel = build_panel()
+
+	if not panel then
+		popup.widget = nil
+		popup.visible = false
+		return false
+	end
+
+	popup:setup({
+		panel,
 		layout = wibox.layout.fixed.vertical,
 	})
+
+	return true
+end
+
+local function safe_extra_height()
+	return 8
+end
+
+function M.apply_geometry(popup, geo)
+	if not popup or not popup.valid or not geo then
+		return
+	end
+
+	if not popup.widget or geo.height <= 0 then
+		popup.visible = false
+		return
+	end
+
+	popup.width = geo.width
+	popup.height = geo.height
+	popup.x = geo.x
+	popup.y = geo.y
 end
 
 function M.sync(args)
-	local popups = args.popups
-	local target_screens = args.target_screens
+	local popups = args.popups or {}
+	local screens = args.screens or {}
 	local key_for_screen = args.key_for_screen
 	local ensure_popup = args.ensure_popup
 	local rebuild_popup = args.rebuild_popup
@@ -66,25 +78,30 @@ function M.sync(args)
 
 	local wanted = {}
 
-	for _, s in ipairs(target_screens()) do
+	for _, s in ipairs(screens) do
 		local key = key_for_screen(s)
 		wanted[key] = true
 
 		local popup = ensure_popup(s)
-		apply_geometry(popup)
-		rebuild_popup(popup)
+		local has_content = rebuild_popup(popup)
+
+		if has_content then
+			apply_geometry(popup)
+		else
+			popup.visible = false
+		end
 	end
 
 	for key, popup in pairs(popups) do
-		if not wanted[key] and popup.box and popup.box.valid then
-			popup.box.visible = false
+		if not wanted[key] and popup and popup.valid then
+			popup.visible = false
 		end
 	end
 end
 
 function M.set_visible(args, open)
-	local popups = args.popups
-	local target_screens = args.target_screens
+	local popups = args.popups or {}
+	local screens = args.screens or {}
 	local key_for_screen = args.key_for_screen
 	local sync_popups = args.sync_popups
 	local on_open = args.on_open
@@ -93,13 +110,14 @@ function M.set_visible(args, open)
 	sync_popups()
 
 	local wanted = {}
-	for _, s in ipairs(target_screens()) do
+	for _, s in ipairs(screens) do
 		wanted[key_for_screen(s)] = true
 	end
 
 	for key, popup in pairs(popups) do
-		if popup.box and popup.box.valid then
-			popup.box.visible = (open == true) and wanted[key] == true
+		if popup and popup.valid then
+			local has_widget = popup.widget ~= nil
+			popup.visible = (open == true) and wanted[key] == true and has_widget
 		end
 	end
 

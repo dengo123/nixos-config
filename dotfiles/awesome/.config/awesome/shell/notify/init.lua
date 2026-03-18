@@ -12,7 +12,7 @@ local M = {}
 
 local initialized = false
 local center_open = false
-local display_signal_ready = false
+local notify_callback_ready = false
 
 -- =========================================================================
 -- Helpers
@@ -158,11 +158,11 @@ local function register_center_signals()
 end
 
 local function register_display_signal()
-	if display_signal_ready then
+	if notify_callback_ready then
 		return
 	end
 
-	display_signal_ready = true
+	notify_callback_ready = true
 
 	local prev_callback = naughty.config.notify_callback
 
