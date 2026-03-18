@@ -1,13 +1,14 @@
 -- ~/.config/awesome/system/config.lua
 return {
 	system = {
-		terminal = "xterm",
-		editor = "emacsclient -c -a ''",
 		modkey = "Mod4",
 
-		launcher = nil,
+		terminal = "xterm",
+		editor = "emacsclient -c -a ''",
 		browser = "firefox",
 		files = "nemo",
+
+		launcher = nil,
 	},
 
 	bar = {
@@ -51,5 +52,11 @@ return {
 				never_dim_primary = false,
 			},
 		},
+	},
+
+	notify = {
+		timeout = 3,
+		position = nil, -- nil = follow_systray, sonst z. B. "top_right" | "bottom_right"
+		speech = true,
 	},
 }

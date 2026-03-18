@@ -6,6 +6,7 @@ local M = {
 	windowing = require("shell.windowing"),
 	launchers = require("shell.launchers"),
 	menu = require("shell.menu"),
+	notify = require("shell.notify"),
 }
 
 -- ============================================================================
@@ -76,6 +77,12 @@ function M.init(args)
 
 	cfg.launchers = M.launchers
 	cfg.dialogs = M.launchers
+
+	-- ------------------------------------------------------------------------
+	-- Notifications
+	-- ------------------------------------------------------------------------
+
+	M.notify.init(cfg)
 
 	-- ------------------------------------------------------------------------
 	-- Launcher State

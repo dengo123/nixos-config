@@ -1,0 +1,190 @@
+-- ~/.config/awesome/shell/notify/init.lua
+local beautiful = require("beautiful")
+local naughty = require("naughty")
+local wibox = require("wibox")
+
+local History = require("shell.notify.history")
+local Rules = require("shell.notify.rules")
+local Shape = require("shell.notify.shape")
+
+local M = {}
+
+local initialized = false
+local center_open = false
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function require_notify_theme()
+	local notify = beautiful.notify
+
+	assert(type(notify) == "table", "shell.notify: beautiful.notify fehlt/ungueltig")
+	assert(notify.bg, "shell.notify: beautiful.notify.bg fehlt")
+	assert(notify.fg, "shell.notify: beautiful.notify.fg fehlt")
+	assert(notify.border, "shell.notify: beautiful.notify.border fehlt")
+	assert(notify.radius, "shell.notify: beautiful.notify.radius fehlt")
+	assert(notify.icon_size, "shell.notify: beautiful.notify.icon_size fehlt")
+	assert(notify.margin, "shell.notify: beautiful.notify.margin fehlt")
+	assert(notify.border_w, "shell.notify: beautiful.notify.border_w fehlt")
+
+	return notify
+end
+
+local function resolve_position(cfg)
+	local notify_cfg = cfg.notify or {}
+	local bar_cfg = cfg.bar or {}
+
+	if type(notify_cfg.position) == "string" and notify_cfg.position ~= "" then
+		return notify_cfg.position
+	end
+
+	local bar_position = bar_cfg.position or "bottom"
+
+	if bar_position == "top" then
+		return "top_right"
+	end
+
+	return "bottom_right"
+end
+
+local function resolve_timeout(cfg)
+	local notify_cfg = cfg.notify or {}
+	return tonumber(notify_cfg.timeout) or 3
+end
+
+local function resolve_shape(cfg, notify_theme)
+	local notify_cfg = cfg.notify or {}
+
+	if notify_cfg.speech == false then
+		return Shape.rounded(notify_theme.radius)
+	end
+
+	return Shape.speech(notify_theme.radius)
+end
+
+local function apply_defaults(cfg, notify_theme, shape_fn)
+	naughty.config.defaults.position = resolve_position(cfg)
+	naughty.config.defaults.timeout = resolve_timeout(cfg)
+	naughty.config.defaults.margin = notify_theme.margin
+	naughty.config.defaults.border_width = notify_theme.border_w
+	naughty.config.defaults.border_color = notify_theme.border
+	naughty.config.defaults.bg = notify_theme.bg
+	naughty.config.defaults.fg = notify_theme.fg
+	naughty.config.defaults.shape = shape_fn
+	naughty.config.defaults.icon_size = notify_theme.icon_size
+end
+
+local function apply_widget_template(notify_theme, shape_fn)
+	naughty.config.defaults.widget_template = {
+		{
+			{
+				{
+					id = "title_role",
+					align = "center",
+					valign = "center",
+					wrap = "word_char",
+					widget = wibox.widget.textbox,
+				},
+				{
+					id = "text_role",
+					align = "center",
+					valign = "center",
+					wrap = "word_char",
+					widget = wibox.widget.textbox,
+				},
+				spacing = 4,
+				layout = wibox.layout.fixed.vertical,
+			},
+			margins = notify_theme.margin,
+			widget = wibox.container.margin,
+		},
+		bg = notify_theme.bg,
+		shape = shape_fn,
+		widget = wibox.container.background,
+	}
+end
+
+local function apply_presets(cfg, notify_theme, shape_fn)
+	local timeout = resolve_timeout(cfg)
+
+	for _, name in pairs({ "low", "normal", "critical" }) do
+		local preset = naughty.config.presets[name]
+
+		preset.bg = notify_theme.bg
+		preset.fg = notify_theme.fg
+		preset.border_width = notify_theme.border_w
+		preset.border_color = notify_theme.border
+		preset.shape = shape_fn
+		preset.timeout = timeout
+		preset.icon_size = notify_theme.icon_size
+	end
+end
+
+local function emit_center_state()
+	awesome.emit_signal("notify::center_state", center_open)
+end
+
+local function register_signals()
+	awesome.connect_signal("notify::toggle_center", function()
+		center_open = not center_open
+		emit_center_state()
+	end)
+
+	awesome.connect_signal("notify::close_center", function()
+		if center_open then
+			center_open = false
+			emit_center_state()
+		end
+	end)
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.init(cfg)
+	cfg = cfg or {}
+
+	if initialized then
+		return
+	end
+
+	-- ---------------------------------------------------------------------
+	-- Theme
+	-- ---------------------------------------------------------------------
+
+	local notify_theme = require_notify_theme()
+	local shape_fn = resolve_shape(cfg, notify_theme)
+
+	-- ---------------------------------------------------------------------
+	-- Defaults
+	-- ---------------------------------------------------------------------
+
+	apply_defaults(cfg, notify_theme, shape_fn)
+	apply_widget_template(notify_theme, shape_fn)
+	apply_presets(cfg, notify_theme, shape_fn)
+
+	-- ---------------------------------------------------------------------
+	-- History
+	-- ---------------------------------------------------------------------
+
+	History.init(cfg.notify or {})
+
+	-- ---------------------------------------------------------------------
+	-- Rules
+	-- ---------------------------------------------------------------------
+
+	Rules.apply()
+
+	-- ---------------------------------------------------------------------
+	-- Signals
+	-- ---------------------------------------------------------------------
+
+	register_signals()
+	emit_center_state()
+
+	initialized = true
+end
+
+return M

@@ -10,6 +10,7 @@ local Start = require("shell.bar.widgets.start")
 local Systray = require("shell.bar.widgets.systray")
 local Tabs = require("shell.bar.widgets.tabs")
 local Tags = require("shell.bar.widgets.tags")
+local Notify = require("shell.bar.widgets.notify")
 
 local M = {}
 
@@ -202,6 +203,8 @@ function M.setup(s, args)
 			})
 		or empty
 
+	local notify = Notify.build(s, {})
+
 	-- ---------------------------------------------------------------------
 	-- Sections
 	-- ---------------------------------------------------------------------
@@ -213,12 +216,54 @@ function M.setup(s, args)
 		tags = tags or { indicator = empty },
 		tabs = tabs or { tasklist = empty },
 		tray = tray or empty,
+		notify = notify or empty,
 		clock = clock or empty,
 		layoutbox = layoutbox or empty,
 		tabs_leading_spacer = tabs_leading_spacer,
 		spacing_l = 8,
 		spacing_r = 0,
 	}
+
+	local notify_gap_left = beautiful.notify_button_gap_left
+	local notify_zone_width = beautiful.notify_button_zone_width
+	local notify_seam_offset = beautiful.notify_button_seam_offset
+	local systray_bg = beautiful.systray_bg or beautiful.bg_systray or beautiful.wibar_bg
+	local bar_height = beautiful.wibar_height
+
+	local notify_zone = wibox.widget({
+		{
+			forced_width = notify_zone_width,
+			forced_height = bar_height,
+			widget = wibox.container.background,
+		},
+		{
+			{
+				parts.notify,
+				halign = "left",
+				valign = "center",
+				widget = wibox.container.place,
+			},
+			left = -notify_seam_offset,
+			widget = wibox.container.margin,
+		},
+		layout = wibox.layout.stack,
+	})
+
+	local tray_cluster = wibox.widget({
+		{
+			notify_zone,
+			parts.tray,
+			layout = wibox.layout.fixed.horizontal,
+		},
+		bg = systray_bg,
+		widget = wibox.container.background,
+	})
+
+	local notify_with_gap = wibox.widget({
+		tray_cluster,
+		left = notify_gap_left,
+		widget = wibox.container.margin,
+	})
 
 	local sections = (wibar_theme.layout and wibar_theme.layout(s, parts))
 		or {
@@ -233,7 +278,7 @@ function M.setup(s, args)
 			right = {
 				layout = wibox.layout.fixed.horizontal,
 				parts.layoutbox,
-				parts.tray,
+				notify_with_gap,
 				parts.clock,
 			},
 		}
