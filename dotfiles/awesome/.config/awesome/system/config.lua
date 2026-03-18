@@ -12,6 +12,7 @@ return {
 
 	input = {
 		modkey = "Mod4",
+		return_app = "editor",
 	},
 
 	bar = {
@@ -31,9 +32,15 @@ return {
 	},
 
 	tags = {
-		selection = "sync", -- "single" | "sync"
-		mode = "fixed", -- "fixed" | "dynamic"
+		selection = "sync",
+		mode = "fixed",
 		fixed_count = 2,
+		default_layout = "max",
+
+		delete = {
+			kill_clients = true,
+			soft_mode = "exclusive",
+		},
 	},
 
 	focus = {
@@ -52,7 +59,7 @@ return {
 		fullscreen = {
 			dim = {
 				enabled = true,
-				never_dim_primary = false,
+				never_dim_primary = true,
 			},
 		},
 	},

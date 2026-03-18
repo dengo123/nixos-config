@@ -1,4 +1,4 @@
--- shell/init.lua
+-- ~/.config/awesome/shell/init.lua
 local awful = require("awful")
 
 local M = {
@@ -63,30 +63,31 @@ local function build_overlays()
 end
 
 local function build_actions()
-	local win = M.windowing.actions or {}
-	local ws = M.workspaces
+	local windowing_actions = (M.windowing and M.windowing.actions) or {}
+	local workspace_api = M.workspaces or {}
+	local workspace_actions = workspace_api.actions or {}
 
 	return {
 		windowing = {
 			screens = {
-				scr_in_dir = win.scr_in_dir,
-				move_client_to_screen = win.move_client_to_screen,
+				scr_in_dir = windowing_actions.scr_in_dir,
+				move_client_to_screen = windowing_actions.move_client_to_screen,
 			},
 			clients = {
-				move_client_dir = win.move_client_dir,
-				move_client_to_screen = win.move_client_to_screen,
-				move_client_to_neighbor_tag = win.move_client_to_neighbor_tag,
-				toggle_pseudo_maximize = win.toggle_pseudo_maximize,
+				move_client_dir = windowing_actions.move_client_dir,
+				move_client_to_screen = windowing_actions.move_client_to_screen,
+				toggle_pseudo_maximize = windowing_actions.toggle_pseudo_maximize,
 			},
 		},
 		workspaces = {
 			tags = {
-				view_tag_idx = win.view_tag_idx,
-				move_tag_to_screen = win.move_tag_to_screen,
-				add = ws.add,
-				add_silent = ws.add_silent,
-				delete_current = ws.delete_current,
-				delete_current_force = ws.delete_current_force,
+				view_tag_idx = workspace_actions.view_tag_idx,
+				move_tag_to_screen = workspace_actions.move_tag_to_screen,
+				move_client_to_neighbor_tag = workspace_actions.move_client_to_neighbor_tag,
+				add = workspace_api.add,
+				add_silent = workspace_api.add_silent,
+				delete_current = workspace_api.delete_current,
+				delete_current_force = workspace_api.delete_current_force,
 			},
 		},
 	}
@@ -114,13 +115,17 @@ function M.init(args)
 			wcfg[k] = v
 		end
 
-		local wpfn = resolve_wallpaper_fn(ui)
+		local wallpaper_fn = resolve_wallpaper_fn(ui)
 
-		if wpfn then
-			wcfg.wallpaper_fn = wpfn
+		if wallpaper_fn then
+			wcfg.wallpaper_fn = wallpaper_fn
 		end
 
-		M.workspaces.init(wcfg)
+		local workspace_api = M.workspaces.init(wcfg)
+
+		if workspace_api then
+			M.workspaces = workspace_api
+		end
 	end
 
 	-- ---------------------------------------------------------------------
