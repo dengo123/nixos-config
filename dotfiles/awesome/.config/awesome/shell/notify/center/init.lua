@@ -24,6 +24,17 @@ local function require_table(value, name)
 	return value
 end
 
+local function require_number(value, name)
+	local n = tonumber(value)
+	assert(n ~= nil, "notify.center: " .. name .. " fehlt/ungültig")
+	return n
+end
+
+local function require_string(value, name)
+	assert(type(value) == "string" and value ~= "", "notify.center: " .. name .. " fehlt/ungültig")
+	return value
+end
+
 local function notify_theme()
 	return require_table(beautiful.notify, "beautiful.notify")
 end
@@ -34,53 +45,80 @@ local function center_theme()
 end
 
 local function bar_cfg()
-	return runtime_cfg.bar or {}
+	return require_table(runtime_cfg.bar, "cfg.bar")
 end
 
 local function screen_mode()
-	return tostring(bar_cfg().show_notify or "primary"):lower()
+	return string.lower(require_string(bar_cfg().show_notify, "cfg.bar.show_notify"))
 end
 
 local function target_screens()
 	if screen_mode() == "all" then
 		local out = {}
+
 		for s in screen do
 			table.insert(out, s)
 		end
+
 		return out
 	end
 
-	return { screen.primary or awful.screen.focused() }
+	local primary = screen.primary or awful.screen.focused()
+	assert(primary ~= nil, "notify.center: kein Zielscreen verfügbar")
+
+	return { primary }
 end
 
 local function key_for_screen(s)
-	return tostring(s.index or 1)
-end
-
-local function entry_height()
-	return tonumber(center_theme().entry_height) or 74
-end
-
-local function entry_spacing()
-	return tonumber(center_theme().entry_spacing) or 10
+	local index = tonumber(s.index)
+	assert(index ~= nil, "notify.center: screen.index fehlt/ungültig")
+	return tostring(index)
 end
 
 local function list_pad_top()
-	return tonumber(center_theme().list_pad_top) or 0
+	return require_number(center_theme().list_pad_top, "beautiful.notify.center.list_pad_top")
 end
 
 local function list_pad_bottom()
-	return tonumber(center_theme().list_pad_bottom) or 0
+	return require_number(center_theme().list_pad_bottom, "beautiful.notify.center.list_pad_bottom")
+end
+
+local function entry_height(entry)
+	local theme = center_theme()
+	local base = require_number(theme.entry_height, "beautiful.notify.center.entry_height")
+	local with_actions =
+		require_number(theme.entry_height_with_actions, "beautiful.notify.center.entry_height_with_actions")
+
+	if type(entry.actions) == "table" and #entry.actions > 0 then
+		return with_actions
+	end
+
+	return base
+end
+
+local function entry_spacing()
+	return require_number(center_theme().entry_spacing, "beautiful.notify.center.entry_spacing")
 end
 
 local function resolve_content_height()
-	local count = #History.list()
+	local entries = History.list()
+	local count = #entries
 
 	if count <= 0 then
 		return 0
 	end
 
-	return list_pad_top() + list_pad_bottom() + (count * entry_height()) + ((count - 1) * entry_spacing())
+	local height = list_pad_top() + list_pad_bottom()
+
+	for i, entry in ipairs(entries) do
+		height = height + entry_height(entry)
+
+		if i < count then
+			height = height + entry_spacing()
+		end
+	end
+
+	return height
 end
 
 local function build_panel(max_height)
@@ -97,6 +135,7 @@ local function resolve_popup_geometry(popup)
 	local max_height = Geometry.resolve_max_height(theme, popup.screen)
 	local content_height = resolve_content_height()
 	local final_height = math.min(max_height, content_height)
+	local bar_position = require_string(bar_cfg().position, "cfg.bar.position")
 
 	if final_height <= 0 then
 		return {
@@ -107,7 +146,7 @@ local function resolve_popup_geometry(popup)
 		}
 	end
 
-	return Geometry.resolve_position(theme, popup.screen, bar_cfg().position or "bottom", width, final_height)
+	return Geometry.resolve_position(theme, popup.screen, bar_position, width, final_height)
 end
 
 -- =========================================================================
@@ -120,6 +159,7 @@ end
 
 local function apply_geometry(popup)
 	local geo = resolve_popup_geometry(popup)
+
 	if not geo then
 		return
 	end
@@ -204,7 +244,7 @@ end
 -- =========================================================================
 
 function M.init(cfg)
-	runtime_cfg = cfg or {}
+	runtime_cfg = require_table(cfg, "cfg")
 	sync_popups()
 	register_signals()
 end

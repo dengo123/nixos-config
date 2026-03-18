@@ -81,6 +81,7 @@ local function apply_defaults(cfg, notify_theme, shape_fn)
 	naughty.config.defaults.fg = notify_theme.fg
 	naughty.config.defaults.shape = shape_fn
 	naughty.config.defaults.icon_size = notify_theme.icon_size
+	naughty.config.defaults.width = tonumber(notify_theme.width)
 end
 
 local function apply_widget_template(notify_theme, shape_fn)
@@ -126,6 +127,7 @@ local function apply_presets(cfg, notify_theme, shape_fn)
 		preset.shape = shape_fn
 		preset.timeout = timeout
 		preset.icon_size = notify_theme.icon_size
+		preset.width = tonumber(notify_theme.width)
 	end
 end
 

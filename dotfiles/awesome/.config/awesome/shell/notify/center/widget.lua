@@ -125,24 +125,13 @@ local function make_textbox(theme, text, valign)
 end
 
 local function invoke_action(entry, item)
-	local object = item.object
-
-	if not object then
+	if type(item.callback) == "function" then
+		item.callback(entry.raw)
 		return
 	end
 
-	if type(object.invoke) == "function" then
-		object:invoke()
-		return
-	end
-
-	if type(object.emit_signal) == "function" then
-		object:emit_signal("invoked")
-		return
-	end
-
-	if type(entry.raw) == "table" and type(entry.raw.destroy) == "function" then
-		entry.raw:destroy()
+	if type(entry.raw) == "table" and type(entry.raw.run) == "function" then
+		entry.raw.run(entry.raw)
 	end
 end
 
@@ -228,8 +217,8 @@ local function build_list(theme, entries)
 	local list = wibox.layout.fixed.vertical()
 	list.spacing = theme.entry_spacing
 
-	for _, entry in ipairs(entries) do
-		list:add(build_card(theme, entry))
+	for i = #entries, 1, -1 do
+		list:add(build_card(theme, entries[i]))
 	end
 
 	return list

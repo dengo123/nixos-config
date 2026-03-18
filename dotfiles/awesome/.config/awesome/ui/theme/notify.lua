@@ -34,6 +34,7 @@ function M.init(cfg)
 		icon_size = dpi(28),
 		margin = dpi(8),
 		border_w = dpi(1),
+		width = dpi(420),
 	}
 
 	-- ---------------------------------------------------------------------
@@ -43,7 +44,7 @@ function M.init(cfg)
 	beautiful.notify.center = {
 		width_factor = 0.30,
 		min_width = dpi(320),
-		max_width = dpi(520),
+		max_width = dpi(420),
 
 		min_height = dpi(80),
 		max_height = dpi(720),
@@ -66,6 +67,9 @@ function M.init(cfg)
 		entry_padding = dpi(6),
 		entry_spacing = dpi(6),
 
+		entry_height = dpi(74),
+		entry_height_with_actions = dpi(92),
+
 		text_inset_top = dpi(4),
 		text_inset_bottom = dpi(4),
 
@@ -74,11 +78,9 @@ function M.init(cfg)
 		list_pad_bottom = dpi(0),
 		list_pad_left = dpi(0),
 
-		-- Actions
 		action_bg = C.creme,
 		action_fg = C.black,
 		action_border = border,
-
 		action_radius = dpi(8),
 		action_border_w = dpi(1),
 		action_spacing = dpi(6),

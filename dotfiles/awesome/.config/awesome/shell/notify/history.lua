@@ -55,13 +55,18 @@ end
 
 local function copy_actions(notification)
 	local out = {}
+	local actions = notification.actions or {}
 
-	for _, action in ipairs(notification.actions or {}) do
+	for label, callback in pairs(actions) do
 		table.insert(out, {
-			label = normalize_text(action.name or action.label or "Action"),
-			object = action,
+			label = normalize_text(label),
+			callback = callback,
 		})
 	end
+
+	table.sort(out, function(a, b)
+		return (a.label or "") < (b.label or "")
+	end)
 
 	return out
 end
