@@ -178,7 +178,7 @@ function M.setup(s, args)
 
 	local clock = Clock.build(s, {
 		show_seconds = (clock_cfg.show_seconds == true),
-		app = clock_cfg.app,
+		app = cfg.apps.calendar,
 		calendar_enable = (clock_cfg.calendar_enable ~= false),
 		calendar_use_menu_theme = (clock_cfg.calendar_use_menu_theme == true),
 		bar_position = props.position,

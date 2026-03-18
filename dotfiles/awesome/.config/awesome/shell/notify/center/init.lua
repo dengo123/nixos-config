@@ -35,6 +35,14 @@ local function require_string(value, name)
 	return value
 end
 
+local function notify_cfg()
+	return require_table(runtime_cfg.notify, "cfg.notify")
+end
+
+local function center_cfg()
+	return require_table(notify_cfg().center, "cfg.notify.center")
+end
+
 local function notify_theme()
 	return require_table(beautiful.notify, "beautiful.notify")
 end
@@ -122,7 +130,7 @@ local function resolve_content_height()
 end
 
 local function build_panel(max_height)
-	return Widget.build(History.list(), max_height)
+	return Widget.build(History.list(), max_height, runtime_cfg)
 end
 
 local function resolve_popup_geometry(popup)
@@ -199,14 +207,22 @@ local function set_visible(open)
 		key_for_screen = key_for_screen,
 		sync_popups = sync_popups,
 		on_open = function()
-			CloseGuard.arm(function()
-				awesome.emit_signal("notify::close_center")
-			end)
+			if center_cfg().close_on_click_outside == true then
+				CloseGuard.arm(function()
+					awesome.emit_signal("notify::close_center")
+				end)
+			end
 		end,
 		on_close = function()
 			CloseGuard.disarm()
 		end,
 	}, open)
+end
+
+local function register_escape_signal()
+	if center_cfg().close_on_escape ~= true then
+		return
+	end
 end
 
 -- =========================================================================
@@ -229,6 +245,7 @@ end
 
 local function register_signals()
 	Signals.register({
+		cfg = runtime_cfg,
 		is_ready = is_signals_ready,
 		set_ready = set_signals_ready,
 		set_visible = set_visible,
@@ -246,6 +263,7 @@ end
 function M.init(cfg)
 	runtime_cfg = require_table(cfg, "cfg")
 	sync_popups()
+	register_escape_signal()
 	register_signals()
 end
 

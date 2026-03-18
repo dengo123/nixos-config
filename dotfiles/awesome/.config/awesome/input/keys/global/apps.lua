@@ -2,14 +2,20 @@
 local awful = require("awful")
 
 return function(modkey, cfg)
-	local term, launcher, browser, files =
-		cfg.system.terminal, cfg.system.launcher, cfg.system.browser, cfg.system.files
-	local emacs_client = (cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
+	local apps = cfg.apps or {}
+	local input = cfg.input or {}
+
+	local terminal = apps.terminal
+	local editor = apps.editor
+	local launcher = apps.launcher
+	local browser = apps.browser
+	local files = apps.files
+	local return_app = input.return_app or "terminal"
 
 	local function spawn_cmd(cmd)
 		if type(cmd) == "table" then
 			awful.spawn(cmd)
-		elseif type(cmd) == "string" then
+		elseif type(cmd) == "string" and cmd ~= "" then
 			if cmd:find("||") or cmd:find("~") then
 				awful.spawn.with_shell(cmd)
 			else
@@ -18,44 +24,30 @@ return function(modkey, cfg)
 		end
 	end
 
-	local function first_token(x)
-		if type(x) == "table" then
-			return x[1]
-		elseif type(x) == "string" then
-			return x:match("^(%S+)")
+	local function primary_cmd()
+		if return_app == "editor" then
+			return editor
 		end
+
+		return terminal
 	end
 
-	local function cmd_exists(x)
-		local exe = first_token(x)
-		if not exe or #exe == 0 then
-			return false
+	local function secondary_cmd()
+		if return_app == "editor" then
+			return terminal
 		end
-		local h = io.popen("command -v " .. exe .. ' >/dev/null 2>&1; printf %s "$?"')
-		if not h then
-			return false
-		end
-		local rc = h:read("*a")
-		h:close()
-		return rc == "0"
-	end
 
-	local function open_primary()
-		if cmd_exists(term) then
-			spawn_cmd(term)
-		else
-			-- kein Terminal installiert → Emacs-Client
-			spawn_cmd(emacs_client)
-		end
+		return editor
 	end
 
 	return awful.util.table.join(
-		awful.key(
-			{ modkey },
-			"Return",
-			open_primary,
-			{ description = "open terminal or emacs (auto)", group = "launcher" }
-		),
+		awful.key({ modkey }, "Return", function()
+			spawn_cmd(primary_cmd())
+		end, { description = "open primary app", group = "launcher" }),
+
+		awful.key({ modkey, "Shift" }, "Return", function()
+			spawn_cmd(secondary_cmd())
+		end, { description = "open secondary app", group = "launcher" }),
 
 		awful.key({ modkey }, "space", function()
 			spawn_cmd(launcher)

@@ -6,6 +6,7 @@ local M = {}
 -- =========================================================================
 
 function M.register(args)
+	local cfg = args.cfg
 	local is_ready = args.is_ready
 	local set_ready = args.set_ready
 	local set_visible = args.set_visible
@@ -36,6 +37,18 @@ function M.register(args)
 	screen.connect_signal("property::geometry", function()
 		sync_popups()
 	end)
+
+	if cfg.notify.center.close_on_tag_switch == true then
+		tag.connect_signal("property::selected", function()
+			awesome.emit_signal("notify::close_center")
+		end)
+	end
+
+	if cfg.notify.center.close_on_client_focus == true then
+		client.connect_signal("focus", function()
+			awesome.emit_signal("notify::close_center")
+		end)
+	end
 end
 
 return M

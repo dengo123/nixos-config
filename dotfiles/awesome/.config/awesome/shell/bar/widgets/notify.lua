@@ -37,7 +37,9 @@ function M.build(s, _opts)
 	local font = require_string(beautiful.notify_button_font, "beautiful.notify_button_font")
 	local glyph_closed = require_string(beautiful.notify_button_glyph_closed, "beautiful.notify_button_glyph_closed")
 	local glyph_open = require_string(beautiful.notify_button_glyph_open, "beautiful.notify_button_glyph_open")
-	local glyph_offset_y = tonumber(beautiful.notify_button_glyph_offset_y) or 0
+	local glyph_offset_y =
+		require_number(beautiful.notify_button_glyph_offset_y, "beautiful.notify_button_glyph_offset_y")
+	local button_offset_y = require_number(beautiful.notify_button_offset_y, "beautiful.notify_button_offset_y")
 
 	local is_open = false
 
@@ -74,6 +76,13 @@ function M.build(s, _opts)
 		width = size,
 		height = size,
 		widget = wibox.container.constraint,
+	})
+
+	local button_box = wibox.widget({
+		button,
+		top = math.max(0, button_offset_y),
+		bottom = math.max(0, -button_offset_y),
+		widget = wibox.container.margin,
 	})
 
 	-- ---------------------------------------------------------------------
@@ -113,7 +122,7 @@ function M.build(s, _opts)
 
 	refresh_glyph()
 
-	return button
+	return button_box
 end
 
 return M

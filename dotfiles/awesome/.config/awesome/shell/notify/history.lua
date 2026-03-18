@@ -98,8 +98,10 @@ end
 function M.init(opts)
 	opts = opts or {}
 
-	if tonumber(opts.max_entries) then
-		max_entries = math.max(1, math.floor(tonumber(opts.max_entries)))
+	local n = tonumber(opts.max_entries)
+
+	if n then
+		max_entries = math.max(1, math.floor(n))
 	end
 
 	clamp_history()

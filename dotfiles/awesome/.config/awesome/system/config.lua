@@ -1,14 +1,17 @@
 -- ~/.config/awesome/system/config.lua
 return {
-	system = {
-		modkey = "Mod4",
-
+	apps = {
 		terminal = "xterm",
 		editor = "emacsclient -c -a ''",
 		browser = "firefox",
 		files = "nemo",
+		calendar = "gnome-calendar",
 
 		launcher = nil,
+	},
+
+	input = {
+		modkey = "Mod4",
 	},
 
 	bar = {
@@ -21,7 +24,6 @@ return {
 
 		clock = {
 			show_seconds = false,
-			app = "gnome-calendar",
 			calendar_enable = true,
 			calendar_use_menu_theme = false,
 		},
@@ -59,5 +61,27 @@ return {
 		timeout = 5,
 		speech = false,
 		screen = "focused",
+
+		history = {
+			max_entries = 100,
+		},
+
+		center = {
+			close_on_escape = true,
+			close_on_click_outside = true,
+			close_on_tag_switch = true,
+			close_on_client_focus = false,
+		},
+
+		actions = {
+			show = true,
+			invoke_closes_center = true,
+		},
+
+		filter = {
+			ignore_resident = false,
+			ignore_silent = false,
+			apps = {},
+		},
 	},
 }

@@ -90,7 +90,7 @@ function M.get(overrides)
 		border_w = d(1),
 		border_color = C.black,
 
-		prefix_width = d(58),
+		prefix_width = d(62),
 		prefix_font = "Sans",
 		prefix_size = d(11),
 

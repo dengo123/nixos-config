@@ -11,10 +11,6 @@ local Shape = require("shell.notify.shape")
 
 local M = {}
 
--- =========================================================================
--- State
--- =========================================================================
-
 local initialized = false
 local center_open = false
 local notify_callback_ready = false
@@ -22,6 +18,11 @@ local notify_callback_ready = false
 -- =========================================================================
 -- Internal
 -- =========================================================================
+
+local function require_table(value, name)
+	assert(type(value) == "table", "shell.notify: " .. name .. " fehlt/ungueltig")
+	return value
+end
 
 local function require_notify_theme()
 	local notify = beautiful.notify
@@ -39,7 +40,23 @@ local function require_notify_theme()
 end
 
 local function notify_cfg(cfg)
-	return cfg.notify or {}
+	return require_table(cfg.notify, "cfg.notify")
+end
+
+local function history_cfg(cfg)
+	return require_table(notify_cfg(cfg).history, "cfg.notify.history")
+end
+
+local function center_cfg(cfg)
+	return require_table(notify_cfg(cfg).center, "cfg.notify.center")
+end
+
+local function actions_cfg(cfg)
+	return require_table(notify_cfg(cfg).actions, "cfg.notify.actions")
+end
+
+local function filter_cfg(cfg)
+	return require_table(notify_cfg(cfg).filter, "cfg.notify.filter")
 end
 
 local function resolve_position(cfg)
@@ -152,6 +169,37 @@ local function sanitize_notify_args(args)
 	return args
 end
 
+local function is_ignored_app(cfg, args)
+	local apps = filter_cfg(cfg).apps or {}
+	local app_name = tostring(args.app_name or args.appname or args.app or "")
+
+	for _, name in ipairs(apps) do
+		if app_name == tostring(name) then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function should_store_notification(cfg, args)
+	local fcfg = filter_cfg(cfg)
+
+	if fcfg.ignore_resident == true and args.resident == true then
+		return false
+	end
+
+	if fcfg.ignore_silent == true and args.ignore == true then
+		return false
+	end
+
+	if is_ignored_app(cfg, args) then
+		return false
+	end
+
+	return true
+end
+
 local function emit_center_state()
 	awesome.emit_signal("notify::center_state", center_open)
 end
@@ -185,7 +233,7 @@ local function register_center_signals()
 	awesome.connect_signal("notify::close_center", close_center)
 end
 
-local function register_notify_callback()
+local function register_notify_callback(cfg)
 	if notify_callback_ready then
 		return
 	end
@@ -200,7 +248,10 @@ local function register_notify_callback()
 		end
 
 		args = sanitize_notify_args(args or {})
-		History.add(args)
+
+		if should_store_notification(cfg, args) then
+			History.add(args)
+		end
 
 		return args
 	end
@@ -224,12 +275,12 @@ function M.init(cfg)
 	apply_widget_template(notify_theme, shape_fn)
 	apply_presets(cfg, notify_theme, shape_fn)
 
-	History.init(cfg.notify or {})
+	History.init(history_cfg(cfg))
 	Rules.apply()
 	Center.init(cfg)
 
 	register_center_signals()
-	register_notify_callback()
+	register_notify_callback(cfg)
 	emit_center_state()
 
 	initialized = true

@@ -52,39 +52,24 @@ local function resolve_theme()
 			"beautiful.notify.center.entry_border_w"
 		),
 		entry_padding = require_number(center.entry_padding or notify.margin, "beautiful.notify.center.entry_padding"),
-		entry_spacing = require_number(center.entry_spacing or 10, "beautiful.notify.center.entry_spacing"),
+		entry_spacing = require_number(center.entry_spacing, "beautiful.notify.center.entry_spacing"),
 
 		text_inset_top = require_number(center.text_inset_top or 2, "beautiful.notify.center.text_inset_top"),
 		text_inset_bottom = require_number(center.text_inset_bottom or 2, "beautiful.notify.center.text_inset_bottom"),
 
-		list_pad_top = require_number(center.list_pad_top or 0, "beautiful.notify.center.list_pad_top"),
-		list_pad_right = require_number(center.list_pad_right or 0, "beautiful.notify.center.list_pad_right"),
-		list_pad_bottom = require_number(center.list_pad_bottom or 0, "beautiful.notify.center.list_pad_bottom"),
-		list_pad_left = require_number(center.list_pad_left or 0, "beautiful.notify.center.list_pad_left"),
+		list_pad_top = require_number(center.list_pad_top, "beautiful.notify.center.list_pad_top"),
+		list_pad_right = require_number(center.list_pad_right, "beautiful.notify.center.list_pad_right"),
+		list_pad_bottom = require_number(center.list_pad_bottom, "beautiful.notify.center.list_pad_bottom"),
+		list_pad_left = require_number(center.list_pad_left, "beautiful.notify.center.list_pad_left"),
 
-		action_bg = require_string(
-			center.action_bg or center.entry_bg or notify.bg,
-			"beautiful.notify.center.action_bg"
-		),
-		action_fg = require_string(
-			center.action_fg or center.entry_fg or notify.fg,
-			"beautiful.notify.center.action_fg"
-		),
-		action_border = require_string(
-			center.action_border or center.entry_border or notify.border,
-			"beautiful.notify.center.action_border"
-		),
-		action_border_w = require_number(
-			center.action_border_w or center.entry_border_w or notify.border_w,
-			"beautiful.notify.center.action_border_w"
-		),
-		action_radius = require_number(
-			center.action_radius or center.entry_radius or notify.radius,
-			"beautiful.notify.center.action_radius"
-		),
-		action_spacing = require_number(center.action_spacing or 6, "beautiful.notify.center.action_spacing"),
-		action_padding_h = require_number(center.action_padding_h or 8, "beautiful.notify.center.action_padding_h"),
-		action_padding_v = require_number(center.action_padding_v or 4, "beautiful.notify.center.action_padding_v"),
+		action_bg = require_string(center.action_bg, "beautiful.notify.center.action_bg"),
+		action_fg = require_string(center.action_fg, "beautiful.notify.center.action_fg"),
+		action_border = require_string(center.action_border, "beautiful.notify.center.action_border"),
+		action_border_w = require_number(center.action_border_w, "beautiful.notify.center.action_border_w"),
+		action_radius = require_number(center.action_radius, "beautiful.notify.center.action_radius"),
+		action_spacing = require_number(center.action_spacing, "beautiful.notify.center.action_spacing"),
+		action_padding_h = require_number(center.action_padding_h, "beautiful.notify.center.action_padding_h"),
+		action_padding_v = require_number(center.action_padding_v, "beautiful.notify.center.action_padding_v"),
 	}
 end
 
@@ -124,18 +109,17 @@ local function make_textbox(theme, text, valign)
 	return inset
 end
 
-local function invoke_action(entry, item)
+local function invoke_action(entry, item, cfg)
 	if type(item.callback) == "function" then
 		item.callback(entry.raw)
-		return
 	end
 
-	if type(entry.raw) == "table" and type(entry.raw.run) == "function" then
-		entry.raw.run(entry.raw)
+	if cfg.notify.actions.invoke_closes_center == true then
+		awesome.emit_signal("notify::close_center")
 	end
 end
 
-local function build_action(theme, entry, item)
+local function build_action(theme, entry, item, cfg)
 	local label = wibox.widget({
 		text = item.label or "Action",
 		align = "center",
@@ -157,13 +141,17 @@ local function build_action(theme, entry, item)
 	background.shape_border_color = theme.action_border
 
 	background:buttons(gears.table.join(awful.button({}, 1, function()
-		invoke_action(entry, item)
+		invoke_action(entry, item, cfg)
 	end)))
 
 	return background
 end
 
-local function build_actions(theme, entry)
+local function build_actions(theme, entry, cfg)
+	if cfg.notify.actions.show ~= true then
+		return nil
+	end
+
 	if type(entry.actions) ~= "table" or #entry.actions == 0 then
 		return nil
 	end
@@ -172,13 +160,13 @@ local function build_actions(theme, entry)
 	row.spacing = theme.action_spacing
 
 	for _, item in ipairs(entry.actions) do
-		row:add(build_action(theme, entry, item))
+		row:add(build_action(theme, entry, item, cfg))
 	end
 
 	return row
 end
 
-local function build_card(theme, entry)
+local function build_card(theme, entry, cfg)
 	local text_column = wibox.layout.fixed.vertical()
 	text_column.spacing = 4
 	text_column:add(make_textbox(theme, entry_title(entry), "center"))
@@ -188,7 +176,7 @@ local function build_card(theme, entry)
 		text_column:add(make_textbox(theme, message, "top"))
 	end
 
-	local actions = build_actions(theme, entry)
+	local actions = build_actions(theme, entry, cfg)
 	if actions then
 		text_column:add(actions)
 	end
@@ -209,7 +197,7 @@ local function build_card(theme, entry)
 	return background
 end
 
-local function build_list(theme, entries)
+local function build_list(theme, entries, cfg)
 	if not entries or #entries == 0 then
 		return nil
 	end
@@ -218,7 +206,7 @@ local function build_list(theme, entries)
 	list.spacing = theme.entry_spacing
 
 	for i = #entries, 1, -1 do
-		list:add(build_card(theme, entries[i]))
+		list:add(build_card(theme, entries[i], cfg))
 	end
 
 	return list
@@ -228,9 +216,9 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(entries, _max_height)
+function M.build(entries, _max_height, cfg)
 	local theme = resolve_theme()
-	local list = build_list(theme, entries)
+	local list = build_list(theme, entries, cfg)
 
 	if not list then
 		return nil

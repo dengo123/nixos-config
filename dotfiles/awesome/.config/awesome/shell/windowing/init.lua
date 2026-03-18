@@ -17,7 +17,9 @@ local Policies = {
 local Container = require("shell.windowing.container")
 local Titlebar = require("shell.windowing.titlebar")
 
-local M = {}
+local M = {
+	actions = require("shell.windowing.actions"),
+}
 
 -- =========================================================================
 -- Public API
@@ -33,13 +35,12 @@ function M.init(args)
 	local cfg = args.cfg or {}
 	local ui = args.ui or {}
 
-	local system_cfg = cfg.system or {}
 	local focus_cfg = cfg.focus or {}
 	local windowing_cfg = cfg.windowing or {}
 	local fullscreen_cfg = windowing_cfg.fullscreen or {}
 
 	local theme = ui.theme and ui.theme.windows
-	local modkey = args.modkey or system_cfg.modkey or cfg.modkey
+	local modkey = args.modkey
 	local mouse = args.mouse
 
 	-- ---------------------------------------------------------------------
