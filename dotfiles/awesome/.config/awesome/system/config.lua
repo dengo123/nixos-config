@@ -1,12 +1,12 @@
 -- ~/.config/awesome/system/config.lua
 return {
 	system = {
-		terminal = os.getenv("TERMINAL"),
-		editor = os.getenv("EDITOR") or "nano",
+		terminal = "xterm",
+		editor = "emacsclient -c -a ''",
 		modkey = "Mod4",
 
 		launcher = nil,
-		browser = os.getenv("BROWSER") or "firefox",
+		browser = "firefox",
 		files = "nemo",
 	},
 

@@ -20,8 +20,8 @@ local function attach_cleanup(menu, on_closed)
 		end
 	end)
 
-	menu.wibox:connect_signal("property::visible", function(wibox)
-		if wibox and not wibox.visible then
+	menu.wibox:connect_signal("property::visible", function(wb)
+		if wb and not wb.visible then
 			if type(on_closed) == "function" then
 				on_closed()
 			end
@@ -40,8 +40,15 @@ function M.show(args)
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local items = assert(type(args.items) == "table" and #args.items > 0, "menu.popup: items fehlen/leer")
-	local coords = assert(type(args.coords) == "table", "menu.popup: coords fehlen/ungueltig")
+	assert(type(args.items) == "table" and #args.items > 0, "menu.popup: items fehlen/leer")
+	local items = args.items
+
+	assert(type(args.theme) == "table", "menu.popup: theme fehlt/ungueltig")
+	local theme = args.theme
+
+	assert(type(args.coords) == "table", "menu.popup: coords fehlen/ungueltig")
+	local coords = args.coords
+
 	local on_closed = args.on_closed
 
 	-- ---------------------------------------------------------------------
@@ -50,6 +57,7 @@ function M.show(args)
 
 	local menu = awful.menu({
 		items = items,
+		theme = theme,
 	})
 
 	State.set_menu(menu)

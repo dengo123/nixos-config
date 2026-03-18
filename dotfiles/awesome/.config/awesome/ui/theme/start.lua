@@ -70,10 +70,10 @@ function S.init(cfg)
 	-- ---------------------------------------------------------------------
 
 	beautiful.start = {
-		label = "start",
+		label = "Start",
 		icon = default_icon,
 
-		icon_size = math.floor(wibar_height * 1),
+		icon_size = math.floor(wibar_height * 1.2),
 		spacing = dpi(4),
 
 		margin = {

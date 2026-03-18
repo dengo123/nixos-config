@@ -4,89 +4,126 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 
 local Items = {}
 
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function spawn_cmd(cmd)
+	if type(cmd) == "table" then
+		awful.spawn(cmd)
+		return
+	end
+
+	if type(cmd) == "string" then
+		if cmd:find("||") or cmd:find("~") then
+			awful.spawn.with_shell(cmd)
+		else
+			awful.spawn(cmd)
+		end
+	end
+end
+
+local function first_token(cmd)
+	if type(cmd) == "table" then
+		return cmd[1]
+	end
+
+	if type(cmd) == "string" then
+		return cmd:match("^(%S+)")
+	end
+
+	return nil
+end
+
+local function cmd_exists(cmd)
+	local exe = first_token(cmd)
+	if not exe or exe == "" then
+		return false
+	end
+
+	local handle = io.popen("command -v " .. exe .. ' >/dev/null 2>&1; printf %s "$?"')
+	if not handle then
+		return false
+	end
+
+	local rc = handle:read("*a")
+	handle:close()
+
+	return rc == "0"
+end
+
+local function label_for(cmd, fallback)
+	local token = first_token(cmd)
+	if token and token ~= "" then
+		return token
+	end
+
+	return fallback
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
 function Items.build_start(ctx)
-	local ui, cfg = ctx.ui, ctx.cfg
-	local theme_menu = ui and ui.theme and ui.theme.menu
+	-- ---------------------------------------------------------------------
+	-- Config
+	-- ---------------------------------------------------------------------
+
+	local ui = ctx.ui or {}
+	local cfg = ctx.cfg or {}
+
+	local theme_menu = ui.theme and ui.theme.menu
 	local items = (theme_menu and type(theme_menu.items) == "table" and theme_menu.items)
-		or (cfg and cfg.menus and type(cfg.menus.items) == "table" and cfg.menus.items)
+		or (cfg.menus and type(cfg.menus.items) == "table" and cfg.menus.items)
+
 	if items then
 		return items
 	end
 
-	-- helpers
-	local function spawn_cmd(cmd)
-		if type(cmd) == "table" then
-			awful.spawn(cmd)
-		elseif type(cmd) == "string" then
-			if cmd:find("||") or cmd:find("~") then
-				awful.spawn.with_shell(cmd)
-			else
-				awful.spawn(cmd)
-			end
-		end
-	end
+	local system_cfg = cfg.system or {}
 
-	local function first_token(x)
-		if type(x) == "table" then
-			return x[1]
-		elseif type(x) == "string" then
-			return x:match("^(%S+)")
-		end
-	end
+	local files_cmd = system_cfg.files or "nemo"
+	local terminal_cmd = system_cfg.terminal or "xterm"
+	local editor_cmd = system_cfg.editor or "nano"
+	local browser_cmd = system_cfg.browser or "firefox"
 
-	local function cmd_exists(x)
-		local exe = first_token(x)
-		if not exe or #exe == 0 then
-			return false
-		end
-		local h = io.popen("command -v " .. exe .. ' >/dev/null 2>&1; printf %s "$?"')
-		if not h then
-			return false
-		end
-		local rc = h:read("*a")
-		h:close()
-		return rc == "0"
-	end
+	local files_name = label_for(files_cmd, "files")
+	local terminal_name = label_for(terminal_cmd, "terminal")
+	local editor_name = label_for(editor_cmd, "editor")
+	local browser_name = label_for(browser_cmd, "browser")
 
-	-- cfg defaults
-	local files_cmd = (cfg and cfg.system.files_cmd and #cfg.system.files_cmd > 0) and cfg.system.files_cmd or "nemo"
-	local term = (cfg and cfg.system.terminal) or "xterm"
-	local browser_cmd = (cfg and cfg.system.browser) or "firefox"
-	local emacs_client = (cfg and cfg.emacs and cfg.emacs.client) or { "emacsclient", "-c", "-a", "" }
+	local browser_available = cmd_exists(browser_cmd)
 
-	-- browser: name + availability
-	local browser_name = first_token(browser_cmd) or "browser"
-	local browser_is_available = cmd_exists(browser_cmd)
-
-	-- dynamic label + action: prefer terminal, fall back to emacsclient
-	local term_is_available = cmd_exists(term)
-	local term_label = term_is_available and ("terminal (" .. (first_token(term) or "…") .. ")") or "emacs client"
+	-- ---------------------------------------------------------------------
+	-- Items
+	-- ---------------------------------------------------------------------
 
 	return {
 		{
-			"files",
+			files_name,
 			function()
 				spawn_cmd(files_cmd)
 			end,
 		},
-
 		{
-			term_label,
+			terminal_name,
 			function()
-				if term_is_available then
-					spawn_cmd(term)
-				else
-					spawn_cmd(emacs_client)
-				end
+				spawn_cmd(terminal_cmd)
+			end,
+		},
+		{
+			editor_name,
+			function()
+				spawn_cmd(editor_cmd)
 			end,
 		},
 		{
 			browser_name,
 			function()
-				if browser_is_available then
+				if browser_available then
 					spawn_cmd(browser_cmd)
 				else
-					-- robuster Fallback
 					spawn_cmd({ "xdg-open", "about:blank" })
 				end
 			end,
@@ -132,9 +169,13 @@ function Items.build_start(ctx)
 	}
 end
 
--- Kontextmenü für Tabs: Close / Float-Tile / Fullscreen
 function Items.build_clients(clients, _ctx)
+	-- ---------------------------------------------------------------------
+	-- Client
+	-- ---------------------------------------------------------------------
+
 	local c = nil
+
 	for _, cc in ipairs(clients or {}) do
 		if cc and cc.valid then
 			c = cc
@@ -145,6 +186,10 @@ function Items.build_clients(clients, _ctx)
 	if not c then
 		return {}
 	end
+
+	-- ---------------------------------------------------------------------
+	-- Items
+	-- ---------------------------------------------------------------------
 
 	return {
 		{
@@ -161,9 +206,10 @@ function Items.build_clients(clients, _ctx)
 				if not c.valid then
 					return
 				end
+
 				c.floating = not c.floating
+
 				if not c.floating then
-					-- zurück in Tile-Hierarchie
 					awful.client.setslave(c)
 				end
 			end,
@@ -174,6 +220,7 @@ function Items.build_clients(clients, _ctx)
 				if not c.valid then
 					return
 				end
+
 				c.fullscreen = not c.fullscreen
 				c:raise()
 			end,

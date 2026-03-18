@@ -11,7 +11,11 @@ local M = {}
 -- =========================================================================
 
 function M.arm(on_close)
-	local closer = function()
+	-- ---------------------------------------------------------------------
+	-- Helpers
+	-- ---------------------------------------------------------------------
+
+	local function closer()
 		if type(on_close) == "function" then
 			on_close()
 		end
@@ -23,25 +27,25 @@ function M.arm(on_close)
 
 	State.set_root_buttons(root.buttons())
 
-	local tmp_buttons = gears.table.join(
+	local tmp = gears.table.join(
 		State.get_root_buttons() or {},
 		awful.button({}, 1, closer),
 		awful.button({}, 2, closer),
 		awful.button({}, 3, closer)
 	)
 
-	root.buttons(tmp_buttons)
+	root.buttons(tmp)
 
 	-- ---------------------------------------------------------------------
 	-- Client Click
 	-- ---------------------------------------------------------------------
 
-	local client_callback = function()
+	local client_cb = function(_c, _x, _y, _button)
 		closer()
 	end
 
-	State.set_client_callback(client_callback)
-	client.connect_signal("button::press", client_callback)
+	State.set_client_callback(client_cb)
+	client.connect_signal("button::press", client_cb)
 end
 
 function M.disarm()
@@ -49,10 +53,10 @@ function M.disarm()
 	-- Root Buttons
 	-- ---------------------------------------------------------------------
 
-	local root_buttons = State.get_root_buttons()
-	if root_buttons then
+	local root_btns = State.get_root_buttons()
+	if root_btns then
 		pcall(function()
-			root.buttons(root_buttons)
+			root.buttons(root_btns)
 		end)
 	end
 
@@ -62,10 +66,10 @@ function M.disarm()
 	-- Client Click
 	-- ---------------------------------------------------------------------
 
-	local client_callback = State.get_client_callback()
-	if client_callback then
+	local client_cb = State.get_client_callback()
+	if client_cb then
 		pcall(function()
-			client.disconnect_signal("button::press", client_callback)
+			client.disconnect_signal("button::press", client_cb)
 		end)
 	end
 
