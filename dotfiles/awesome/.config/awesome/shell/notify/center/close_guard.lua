@@ -1,25 +1,15 @@
--- ~/.config/awesome/shell/notify/center/close_guard.lua
 local awful = require("awful")
 local gears = require("gears")
 
-local M = {}
+local State = require("shell.menu.lib.state")
 
-local armed = false
-local saved_root_buttons = nil
-local client_callback = nil
-local esc_grabber = nil
+local M = {}
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.arm(on_close)
-	if armed then
-		return
-	end
-
-	armed = true
-
 	-- ---------------------------------------------------------------------
 	-- Helpers
 	-- ---------------------------------------------------------------------
@@ -34,85 +24,52 @@ function M.arm(on_close)
 	-- Root Buttons
 	-- ---------------------------------------------------------------------
 
-	saved_root_buttons = root.buttons()
+	State.set_root_buttons(root.buttons())
 
-	root.buttons(
-		gears.table.join(
-			saved_root_buttons or {},
-			awful.button({}, 1, closer),
-			awful.button({}, 2, closer),
-			awful.button({}, 3, closer)
-		)
-	)
+	local tmp = gears.table.join(State.get_root_buttons() or {}, awful.button({}, 1, closer))
+
+	root.buttons(tmp)
 
 	-- ---------------------------------------------------------------------
 	-- Client Click
 	-- ---------------------------------------------------------------------
 
-	client_callback = function()
-		closer()
+	local client_cb = function(_c, _x, _y, button)
+		if button == 1 then
+			closer()
+		end
 	end
 
-	client.connect_signal("button::press", client_callback)
-
-	-- ---------------------------------------------------------------------
-	-- Escape
-	-- ---------------------------------------------------------------------
-
-	esc_grabber = awful.keygrabber({
-		stop_event = "release",
-		keypressed_callback = function(_, _, key)
-			if key == "Escape" then
-				closer()
-			end
-		end,
-	})
-
-	esc_grabber:start()
+	State.set_client_callback(client_cb)
+	client.connect_signal("button::press", client_cb)
 end
 
 function M.disarm()
-	if not armed then
-		return
-	end
-
-	armed = false
-
 	-- ---------------------------------------------------------------------
 	-- Root Buttons
 	-- ---------------------------------------------------------------------
 
-	if saved_root_buttons then
+	local root_btns = State.get_root_buttons()
+	if root_btns then
 		pcall(function()
-			root.buttons(saved_root_buttons)
+			root.buttons(root_btns)
 		end)
 	end
 
-	saved_root_buttons = nil
+	State.clear_root_buttons()
 
 	-- ---------------------------------------------------------------------
 	-- Client Click
 	-- ---------------------------------------------------------------------
 
-	if client_callback then
+	local client_cb = State.get_client_callback()
+	if client_cb then
 		pcall(function()
-			client.disconnect_signal("button::press", client_callback)
+			client.disconnect_signal("button::press", client_cb)
 		end)
 	end
 
-	client_callback = nil
-
-	-- ---------------------------------------------------------------------
-	-- Escape
-	-- ---------------------------------------------------------------------
-
-	if esc_grabber then
-		pcall(function()
-			esc_grabber:stop()
-		end)
-	end
-
-	esc_grabber = nil
+	State.clear_client_callback()
 end
 
 return M

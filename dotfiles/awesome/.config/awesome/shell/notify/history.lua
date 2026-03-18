@@ -1,12 +1,18 @@
 -- ~/.config/awesome/shell/notify/history.lua
+local gears = require("gears")
+
 local M = {}
+
+-- =========================================================================
+-- State
+-- =========================================================================
 
 local entries = {}
 local unread_count = 0
 local max_entries = 100
 
 -- =========================================================================
--- Helpers
+-- Internal
 -- =========================================================================
 
 local function shallow_copy(t)
@@ -39,7 +45,25 @@ local function normalize_text(value)
 		return ""
 	end
 
-	return tostring(value)
+	local text = tostring(value)
+	text = text:gsub("<br%s*/?>", "\n")
+	text = text:gsub("<.->", "")
+	text = gears.string.xml_unescape(text)
+
+	return text
+end
+
+local function copy_actions(notification)
+	local out = {}
+
+	for _, action in ipairs(notification.actions or {}) do
+		table.insert(out, {
+			label = normalize_text(action.name or action.label or "Action"),
+			object = action,
+		})
+	end
+
+	return out
 end
 
 local function normalize_entry(notification)
@@ -58,6 +82,7 @@ local function normalize_entry(notification)
 		timestamp = os.time(),
 		read = false,
 		raw = notification,
+		actions = copy_actions(notification),
 	}
 end
 
@@ -148,6 +173,7 @@ end
 
 function M.set_max_entries(value)
 	local n = tonumber(value)
+
 	if not n then
 		return
 	end

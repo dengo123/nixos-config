@@ -129,8 +129,11 @@ end
 
 local function rebuild_popup(popup)
 	local geo = resolve_popup_geometry(popup)
+
 	if not geo or geo.height <= 0 then
-		return false
+		return Popup.rebuild(popup, function()
+			return nil
+		end)
 	end
 
 	return Popup.rebuild(popup, function()

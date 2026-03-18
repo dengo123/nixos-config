@@ -30,9 +30,9 @@ function M.init(cfg)
 		bg = C.creme,
 		fg = C.black,
 		border = C.black,
-		radius = dpi(12),
+		radius = dpi(10),
 		icon_size = dpi(28),
-		margin = dpi(12),
+		margin = dpi(8),
 		border_w = dpi(1),
 	}
 
@@ -61,7 +61,7 @@ function M.init(cfg)
 		entry_fg = C.black,
 		entry_border = C.black,
 
-		entry_radius = dpi(12),
+		entry_radius = dpi(10),
 		entry_border_w = dpi(1),
 		entry_padding = dpi(6),
 		entry_spacing = dpi(6),
@@ -73,6 +73,17 @@ function M.init(cfg)
 		list_pad_right = dpi(0),
 		list_pad_bottom = dpi(0),
 		list_pad_left = dpi(0),
+
+		-- Actions
+		action_bg = C.creme,
+		action_fg = C.black,
+		action_border = border,
+
+		action_radius = dpi(8),
+		action_border_w = dpi(1),
+		action_spacing = dpi(6),
+		action_padding_h = dpi(8),
+		action_padding_v = dpi(4),
 	}
 end
 

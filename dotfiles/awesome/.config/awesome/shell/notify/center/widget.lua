@@ -1,4 +1,5 @@
 -- ~/.config/awesome/shell/notify/center/widget.lua
+local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
@@ -6,7 +7,7 @@ local wibox = require("wibox")
 local M = {}
 
 -- =========================================================================
--- Helpers
+-- Internal
 -- =========================================================================
 
 local function require_number(value, name)
@@ -60,6 +61,30 @@ local function resolve_theme()
 		list_pad_right = require_number(center.list_pad_right or 0, "beautiful.notify.center.list_pad_right"),
 		list_pad_bottom = require_number(center.list_pad_bottom or 0, "beautiful.notify.center.list_pad_bottom"),
 		list_pad_left = require_number(center.list_pad_left or 0, "beautiful.notify.center.list_pad_left"),
+
+		action_bg = require_string(
+			center.action_bg or center.entry_bg or notify.bg,
+			"beautiful.notify.center.action_bg"
+		),
+		action_fg = require_string(
+			center.action_fg or center.entry_fg or notify.fg,
+			"beautiful.notify.center.action_fg"
+		),
+		action_border = require_string(
+			center.action_border or center.entry_border or notify.border,
+			"beautiful.notify.center.action_border"
+		),
+		action_border_w = require_number(
+			center.action_border_w or center.entry_border_w or notify.border_w,
+			"beautiful.notify.center.action_border_w"
+		),
+		action_radius = require_number(
+			center.action_radius or center.entry_radius or notify.radius,
+			"beautiful.notify.center.action_radius"
+		),
+		action_spacing = require_number(center.action_spacing or 6, "beautiful.notify.center.action_spacing"),
+		action_padding_h = require_number(center.action_padding_h or 8, "beautiful.notify.center.action_padding_h"),
+		action_padding_v = require_number(center.action_padding_v or 4, "beautiful.notify.center.action_padding_v"),
 	}
 end
 
@@ -71,9 +96,11 @@ end
 
 local function entry_title(entry)
 	local title = entry.title
+
 	if title == nil or title == "" then
 		title = entry.app_name or "Notification"
 	end
+
 	return title
 end
 
@@ -97,11 +124,85 @@ local function make_textbox(theme, text, valign)
 	return inset
 end
 
-local function build_card(theme, title, message)
+local function invoke_action(entry, item)
+	local object = item.object
+
+	if not object then
+		return
+	end
+
+	if type(object.invoke) == "function" then
+		object:invoke()
+		return
+	end
+
+	if type(object.emit_signal) == "function" then
+		object:emit_signal("invoked")
+		return
+	end
+
+	if type(entry.raw) == "table" and type(entry.raw.destroy) == "function" then
+		entry.raw:destroy()
+	end
+end
+
+local function build_action(theme, entry, item)
+	local label = wibox.widget({
+		text = item.label or "Action",
+		align = "center",
+		valign = "center",
+		widget = wibox.widget.textbox,
+	})
+
+	local inner = wibox.container.margin(label)
+	inner.left = theme.action_padding_h
+	inner.right = theme.action_padding_h
+	inner.top = theme.action_padding_v
+	inner.bottom = theme.action_padding_v
+
+	local background = wibox.container.background(inner)
+	background.bg = theme.action_bg
+	background.fg = theme.action_fg
+	background.shape = rounded_shape(theme.action_radius)
+	background.shape_border_width = theme.action_border_w
+	background.shape_border_color = theme.action_border
+
+	background:buttons(gears.table.join(awful.button({}, 1, function()
+		invoke_action(entry, item)
+	end)))
+
+	return background
+end
+
+local function build_actions(theme, entry)
+	if type(entry.actions) ~= "table" or #entry.actions == 0 then
+		return nil
+	end
+
+	local row = wibox.layout.fixed.horizontal()
+	row.spacing = theme.action_spacing
+
+	for _, item in ipairs(entry.actions) do
+		row:add(build_action(theme, entry, item))
+	end
+
+	return row
+end
+
+local function build_card(theme, entry)
 	local text_column = wibox.layout.fixed.vertical()
 	text_column.spacing = 4
-	text_column:add(make_textbox(theme, title, "center"))
-	text_column:add(make_textbox(theme, message, "top"))
+	text_column:add(make_textbox(theme, entry_title(entry), "center"))
+
+	local message = entry_message(entry)
+	if message ~= "" then
+		text_column:add(make_textbox(theme, message, "top"))
+	end
+
+	local actions = build_actions(theme, entry)
+	if actions then
+		text_column:add(actions)
+	end
 
 	local inner = wibox.container.margin(text_column)
 	inner.left = theme.entry_padding
@@ -119,10 +220,6 @@ local function build_card(theme, title, message)
 	return background
 end
 
-local function build_entry(theme, entry)
-	return build_card(theme, entry_title(entry), entry_message(entry))
-end
-
 local function build_list(theme, entries)
 	if not entries or #entries == 0 then
 		return nil
@@ -132,7 +229,7 @@ local function build_list(theme, entries)
 	list.spacing = theme.entry_spacing
 
 	for _, entry in ipairs(entries) do
-		list:add(build_entry(theme, entry))
+		list:add(build_card(theme, entry))
 	end
 
 	return list

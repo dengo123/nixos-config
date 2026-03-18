@@ -1,5 +1,6 @@
 -- ~/.config/awesome/shell/notify/init.lua
 local beautiful = require("beautiful")
+local gears = require("gears")
 local naughty = require("naughty")
 local wibox = require("wibox")
 
@@ -10,12 +11,16 @@ local Shape = require("shell.notify.shape")
 
 local M = {}
 
+-- =========================================================================
+-- State
+-- =========================================================================
+
 local initialized = false
 local center_open = false
 local notify_callback_ready = false
 
 -- =========================================================================
--- Helpers
+-- Internal
 -- =========================================================================
 
 local function require_notify_theme()
@@ -124,6 +129,27 @@ local function apply_presets(cfg, notify_theme, shape_fn)
 	end
 end
 
+local function sanitize_markup_text(value)
+	if value == nil then
+		return nil
+	end
+
+	return gears.string.xml_escape(tostring(value))
+end
+
+local function sanitize_notify_args(args)
+	if type(args) ~= "table" then
+		return args
+	end
+
+	args.title = sanitize_markup_text(args.title)
+	args.text = sanitize_markup_text(args.text)
+	args.message = sanitize_markup_text(args.message)
+	args.app_name = sanitize_markup_text(args.app_name)
+
+	return args
+end
+
 local function emit_center_state()
 	awesome.emit_signal("notify::center_state", center_open)
 end
@@ -157,7 +183,7 @@ local function register_center_signals()
 	awesome.connect_signal("notify::close_center", close_center)
 end
 
-local function register_display_signal()
+local function register_notify_callback()
 	if notify_callback_ready then
 		return
 	end
@@ -171,7 +197,9 @@ local function register_display_signal()
 			args = prev_callback(args) or args
 		end
 
-		History.add(args or {})
+		args = sanitize_notify_args(args or {})
+		History.add(args)
+
 		return args
 	end
 end
@@ -187,45 +215,19 @@ function M.init(cfg)
 		return
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Theme
-	-- ---------------------------------------------------------------------
-
 	local notify_theme = require_notify_theme()
 	local shape_fn = resolve_shape(cfg, notify_theme)
-
-	-- ---------------------------------------------------------------------
-	-- Defaults
-	-- ---------------------------------------------------------------------
 
 	apply_defaults(cfg, notify_theme, shape_fn)
 	apply_widget_template(notify_theme, shape_fn)
 	apply_presets(cfg, notify_theme, shape_fn)
 
-	-- ---------------------------------------------------------------------
-	-- History
-	-- ---------------------------------------------------------------------
-
 	History.init(cfg.notify or {})
-
-	-- ---------------------------------------------------------------------
-	-- Rules
-	-- ---------------------------------------------------------------------
-
 	Rules.apply()
-
-	-- ---------------------------------------------------------------------
-	-- Center
-	-- ---------------------------------------------------------------------
-
 	Center.init(cfg)
 
-	-- ---------------------------------------------------------------------
-	-- Signals
-	-- ---------------------------------------------------------------------
-
 	register_center_signals()
-	register_display_signal()
+	register_notify_callback()
 	emit_center_state()
 
 	initialized = true
