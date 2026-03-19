@@ -80,10 +80,17 @@ return {
 	},
 
 	launchers = {
-		power = {
-			backdrop = true,
-			first_action = "hibernate",
-			show_both_sleep_actions = false,
+		session = {
+			power = {
+				backdrop = true,
+				first_action = "hibernate",
+				show_both_sleep_actions = false,
+			},
+
+			logoff = {
+				backdrop = true,
+				show_switch_user = false,
+			},
 		},
 
 		run = {

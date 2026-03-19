@@ -21,14 +21,14 @@ L.actions = req("shell.launchers.lib.actions")
 L.button = req("shell.launchers.lib.button")
 L.popup = req("shell.launchers.lib.popup")
 
-L.power = req("shell.launchers.power")
+L.session = req("shell.launchers.session")
 L.run = req("shell.launchers.run")
 
 local launcher_modules = {
 	{
-		key = "power",
+		key = "session",
 		mod = function()
-			return L.power
+			return L.session
 		end,
 	},
 	{
@@ -186,7 +186,23 @@ L.open = {
 		ensure_init()
 		opts = opts or {}
 		opts.cfg = opts.cfg or L.cfg or {}
-		return L.power.open(opts, L)
+		opts.variant = "power"
+		return L.session.open(opts, L)
+	end,
+
+	logoff = function(opts)
+		ensure_init()
+		opts = opts or {}
+		opts.cfg = opts.cfg or L.cfg or {}
+		opts.variant = "logoff"
+		return L.session.open(opts, L)
+	end,
+
+	session = function(opts)
+		ensure_init()
+		opts = opts or {}
+		opts.cfg = opts.cfg or L.cfg or {}
+		return L.session.open(opts, L)
 	end,
 
 	run = function(opts)

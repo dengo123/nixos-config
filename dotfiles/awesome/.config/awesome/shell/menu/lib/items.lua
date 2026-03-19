@@ -102,15 +102,15 @@ function Items.build_start(ctx)
 	local menu_cfg = cfg.menu or {}
 	local dynamic_labels = (menu_cfg.dynamic_labels ~= false)
 
-	local files_cmd = apps_cfg.files or "nemo"
-	local terminal_cmd = apps_cfg.terminal or "xterm"
-	local editor_cmd = apps_cfg.editor or "nano"
-	local browser_cmd = apps_cfg.browser or "firefox"
+	local files_cmd = apps_cfg.files or os.getenv("FILE_MANAGER")
+	local terminal_cmd = apps_cfg.terminal or os.getenv("TERMINAL")
+	local editor_cmd = apps_cfg.editor or os.getenv("EDITOR")
+	local browser_cmd = apps_cfg.browser or os.getenv("BROWSER")
 
-	local files_name = resolve_label(dynamic_labels, files_cmd, "files")
-	local terminal_name = resolve_label(dynamic_labels, terminal_cmd, "terminal")
-	local editor_name = resolve_label(dynamic_labels, editor_cmd, "editor")
-	local browser_name = resolve_label(dynamic_labels, browser_cmd, "browser")
+	local files_name = resolve_label(dynamic_labels, files_cmd, "Files")
+	local terminal_name = resolve_label(dynamic_labels, terminal_cmd, "Terminal")
+	local editor_name = resolve_label(dynamic_labels, editor_cmd, "Editor")
+	local browser_name = resolve_label(dynamic_labels, browser_cmd, "Browser")
 
 	local browser_available = cmd_exists(browser_cmd)
 
@@ -144,38 +144,39 @@ function Items.build_start(ctx)
 			end,
 		},
 		{
-			"run",
+			"Run",
 			function()
 				local Launchers = require("shell.launchers")
 				Launchers.open.run()
 			end,
 		},
 		{
-			"screensaver",
+			"Screensaver",
 			function()
 				awful.spawn.with_shell("xscreensaver-settings")
 			end,
 		},
 		{
-			"reload",
+			"Awesome Reload",
 			function()
 				awesome.restart()
 			end,
 		},
 		{
-			"hotkeys",
+			"Hotkeys",
 			function()
 				hotkeys_popup.show_help(nil, awful.screen.focused())
 			end,
 		},
 		{
-			"lock",
+			"Log Off",
 			function()
-				awful.spawn({ "dm-tool", "lock" })
+				local Launchers = require("shell.launchers")
+				Launchers.open.logoff()
 			end,
 		},
 		{
-			"power",
+			"Shut Down",
 			function()
 				local Launchers = require("shell.launchers")
 				Launchers.open.power()

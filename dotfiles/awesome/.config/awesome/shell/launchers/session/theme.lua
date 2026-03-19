@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/launchers/power/theme.lua
+-- ~/.config/awesome/shell/launchers/session/theme.lua
 local beautiful = require("beautiful")
 
 local Theme = {}
@@ -13,7 +13,7 @@ function Theme.init(cfg)
 	local colors = cfg.colors or {}
 	local backdrop = colors.overlay_40 or colors.black_40 or colors.transparent
 
-	beautiful.power = {
+	beautiful.session = {
 		-- ---------------------------------------------------------------------
 		-- Dialog
 		-- ---------------------------------------------------------------------
@@ -46,7 +46,6 @@ function Theme.init(cfg)
 		-- Header
 		-- ---------------------------------------------------------------------
 
-		header_title = "Turn off Computer",
 		header_font = "Sans",
 		header_font_size = 18,
 		header_icon_text = " XP",
@@ -64,15 +63,8 @@ function Theme.init(cfg)
 		pad_v = 24,
 
 		-- ---------------------------------------------------------------------
-		-- Actions
+		-- Footer
 		-- ---------------------------------------------------------------------
-
-		labels = {
-			hibernate = "Sleep",
-			suspend = "Stand By",
-			poweroff = "Turn Off",
-			reboot = "Restart",
-		},
 
 		cancel_label = "Cancel",
 
@@ -90,7 +82,7 @@ function Theme.init(cfg)
 		icon_label_lines = 1,
 		icon_label_color = colors.white,
 		icon_label_pad_top = 0,
-		icon_label_pad_bottom = 2,
+		icon_label_pad_bottom = 0,
 
 		icon_shape = "rounded",
 		icon_rounding = 14,
@@ -102,22 +94,11 @@ function Theme.init(cfg)
 		icon_focus_bg = colors.white and (colors.white .. "22") or nil,
 		icon_focus_border = colors.white,
 		icon_focus_bw = 4,
-
-		-- ---------------------------------------------------------------------
-		-- Assets
-		-- ---------------------------------------------------------------------
-
-		icons = {
-			hibernate = "ui/assets/hibernate.png",
-			suspend = "ui/assets/hibernate.png",
-			poweroff = "ui/assets/poweroff.png",
-			reboot = "ui/assets/reboot.png",
-		},
 	}
 end
 
 function Theme.get()
-	return beautiful.power
+	return beautiful.session
 end
 
 return Theme

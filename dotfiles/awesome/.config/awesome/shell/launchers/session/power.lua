@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/launchers/power/actions.lua
+-- ~/.config/awesome/shell/launchers/session/power.lua
 local awful = require("awful")
 local gears = require("gears")
 
@@ -15,9 +15,8 @@ local COMMANDS = {
 -- Helpers
 -- =========================================================================
 
-local function icon_from_theme(th, key)
-	local icons = th.icons or {}
-	local path = icons[key]
+local function icon_from_assets(assets, key)
+	local path = assets and assets[key]
 
 	if type(path) ~= "string" or #path == 0 then
 		return nil
@@ -34,9 +33,9 @@ local function power_cfg(cfg)
 	cfg = cfg or {}
 
 	local launchers_cfg = cfg.launchers or {}
-	local launcher_power_cfg = launchers_cfg.power or {}
+	local session_cfg = launchers_cfg.session or {}
 
-	return launcher_power_cfg
+	return session_cfg.power or {}
 end
 
 local function resolve_first_action(cfg)
@@ -53,39 +52,44 @@ local function show_both_sleep_actions(cfg)
 	return power_cfg(cfg).show_both_sleep_actions == true
 end
 
-local function make_action(th, key)
-	local labels = assert(th.labels, "power.actions: labels fehlen")
-	local cmd = assert(COMMANDS[key], "power.actions: unbekannter command key: " .. tostring(key))
+local function make_action(key, label, assets)
+	local cmd = assert(COMMANDS[key], "session.power: unbekannter command key: " .. tostring(key))
 
 	return {
 		key = key,
-		icon = icon_from_theme(th, key),
-		label = labels[key],
+		icon = icon_from_assets(assets, key),
+		label = label,
 		on_press = function()
 			awful.spawn.with_shell(cmd)
 		end,
 	}
 end
 
-local function sleep_actions(th, cfg)
+local function sleep_actions(cfg, assets)
 	local first = resolve_first_action(cfg)
 
 	if show_both_sleep_actions(cfg) then
 		if first == "suspend" then
 			return {
-				make_action(th, "suspend"),
-				make_action(th, "hibernate"),
+				make_action("suspend", "Stand By", assets),
+				make_action("hibernate", "Sleep", assets),
 			}
 		end
 
 		return {
-			make_action(th, "hibernate"),
-			make_action(th, "suspend"),
+			make_action("hibernate", "Sleep", assets),
+			make_action("suspend", "Stand By", assets),
+		}
+	end
+
+	if first == "suspend" then
+		return {
+			make_action("suspend", "Stand By", assets),
 		}
 	end
 
 	return {
-		make_action(th, first),
+		make_action("hibernate", "Sleep", assets),
 	}
 end
 
@@ -93,17 +97,28 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(th, cfg)
+function M.build(_th, cfg)
+	local assets = {
+		hibernate = "ui/assets/hibernate.png",
+		suspend = "ui/assets/hibernate.png",
+		poweroff = "ui/assets/poweroff.png",
+		reboot = "ui/assets/reboot.png",
+	}
+
 	local actions = {}
 
-	for _, action in ipairs(sleep_actions(th, cfg)) do
+	for _, action in ipairs(sleep_actions(cfg, assets)) do
 		table.insert(actions, action)
 	end
 
-	table.insert(actions, make_action(th, "poweroff"))
-	table.insert(actions, make_action(th, "reboot"))
+	table.insert(actions, make_action("poweroff", "Turn Off", assets))
+	table.insert(actions, make_action("reboot", "Restart", assets))
 
-	return actions
+	return {
+		header_title = "Turn off Computer",
+		cancel_label = "Cancel",
+		actions = actions,
+	}
 end
 
 return M

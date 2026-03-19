@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/launchers/power/icons.lua
+-- ~/.config/awesome/shell/launchers/session/icons.lua
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")

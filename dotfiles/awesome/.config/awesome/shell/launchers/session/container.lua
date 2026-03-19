@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/launchers/power/container.lua
+-- ~/.config/awesome/shell/launchers/session/container.lua
 local wibox = require("wibox")
 local gears = require("gears")
 
