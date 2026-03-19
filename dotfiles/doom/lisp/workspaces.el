@@ -24,7 +24,24 @@
     "Buffers allowed in all workspaces.")
 
   ;; ------------------------------
-  ;; Helper: project root per workspace speichern
+  ;; Helpers
+  ;; ------------------------------
+
+  (defun my/ws-safe (s)
+    "Make S safe to use in buffer names."
+    (replace-regexp-in-string
+     "[^[:alnum:]._+-]" "_" (or s "main")))
+
+  (defun my/workspace-vterm-popup-name (ws)
+    "Return popup vterm buffer name for workspace WS."
+    (format "*vterm-popup:%s*" (my/ws-safe ws)))
+
+  (defun my/workspace-vterm-name (ws)
+    "Return full vterm buffer name for workspace WS."
+    (format "*vterm:%s*" (my/ws-safe ws)))
+
+  ;; ------------------------------
+  ;; Project root per workspace speichern
   ;; ------------------------------
 
   (defun my/workspace-set-project-root ()
@@ -35,22 +52,9 @@
   (add-hook 'projectile-after-switch-project-hook
             #'my/workspace-set-project-root)
 
-;; ───────────────────────────────────────────────────────────────────────────
-;; Allow Policy (HARD ISOLATION) + prune on workspace switch
-;; ───────────────────────────────────────────────────────────────────────────
-
-(after! persp-mode
-  (defconst my/workspace-global-buffers
-    '("*doom*" "*scratch*" "*Messages*" "*Warnings*")
-    "Buffers allowed in all workspaces.")
-
-  (defun my/workspace-set-project-root ()
-    "Attach projectile root to current workspace."
-    (when-let ((root (projectile-project-root)))
-      (persp-set-parameter 'project-root root (get-current-persp))))
-
-  (add-hook 'projectile-after-switch-project-hook
-            #'my/workspace-set-project-root)
+  ;; ------------------------------
+  ;; Allow Policy (HARD ISOLATION)
+  ;; ------------------------------
 
   (defun my/workspace-allowed-buffer-p (buf persp)
     "Return non-nil if BUF is allowed inside PERSP."
@@ -63,23 +67,26 @@
            ;; Always allowed
            ((member name my/workspace-global-buffers) t)
 
-           ;; vterm popups: only the one for this workspace
+           ;; vterm popup: only the one for this workspace
            ((string-prefix-p "*vterm-popup:" name)
-            (string= name (my/vterm-popup-buffer-for ws)))
+            (string= name (my/workspace-vterm-popup-name ws)))
 
-           ;; vterm "here": only the one for this workspace
+           ;; full vterm: only the one for this workspace
            ((string-prefix-p "*vterm:" name)
-            (string= name (my/vterm-buffer-for ws)))
+            (or (string= name (my/workspace-vterm-name ws))
+                (string-prefix-p
+                 (format "*vterm:%s:" (my/ws-safe ws))
+                 name)))
 
-           ;; block generic vterm buffers (*vterm*, *vterm<2>*, ...)
+           ;; generic unnamed vterms are never allowed
            ((derived-mode-p 'vterm-mode)
             nil)
 
-           ;; main: allow only non-file buffers
+           ;; main: only non-file buffers
            ((string= ws "main")
             (null buffer-file-name))
 
-           ;; project workspace: files must live under the workspace root
+           ;; project workspace: file must be inside project root
            (root
             (and buffer-file-name
                  (string-prefix-p (file-truename root)
@@ -90,7 +97,7 @@
             (null buffer-file-name)))))))
 
   (defun my/workspace-prune-current ()
-    "Remove non-allowed buffers from current workspace (do not kill)."
+    "Remove non-allowed buffers from current workspace."
     (let ((persp (get-current-persp)))
       (dolist (buf (persp-buffers persp))
         (unless (my/workspace-allowed-buffer-p buf persp)

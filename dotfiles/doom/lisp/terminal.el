@@ -39,8 +39,7 @@
 
 (defun my/vterm--create-buffer (bufname)
   "Create a vterm buffer named BUFNAME without disturbing window layout."
-  (let ((b nil)
-        (vterm-buffer-name-string (substring bufname 1 -1)))
+  (let ((b nil))
     (save-window-excursion
       (setq b (vterm)))
     (with-current-buffer b
@@ -116,7 +115,16 @@
       (select-window mid))))
 
 ;; ---------------------------------------------------------------------------
-;; vterm setup + keybinds
+;; Global Doom leader bindings
+;; ---------------------------------------------------------------------------
+
+(map! :leader
+      :desc "vterm popup (per-workspace)" "o t" #'my/vterm-popup-toggle
+      :desc "vterm here (per-workspace)"  "o T" #'my/vterm-here
+      :desc "Main dashboard"              "o M" #'my/main-dashboard)
+
+;; ---------------------------------------------------------------------------
+;; vterm setup
 ;; ---------------------------------------------------------------------------
 
 (after! vterm
@@ -124,12 +132,6 @@
   (add-hook 'vterm-mode-hook #'evil-emacs-state)
 
   ;; Doom leader replacement inside vterm
-  (define-key vterm-mode-map (kbd "C-c SPC") doom-leader-map)
-
-  ;; Custom terminal actions reachable via SPC … and therefore also via C-c SPC …
-  (map! :leader
-        :desc "vterm popup (per-workspace)" "o t" #'my/vterm-popup-toggle
-        :desc "vterm here (per-workspace)"  "o T" #'my/vterm-here
-        :desc "Main dashboard"              "o M" #'my/main-dashboard))
+  (define-key vterm-mode-map (kbd "C-c SPC") doom-leader-map))
 
 ;;; terminal.el ends here
