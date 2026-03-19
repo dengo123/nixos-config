@@ -88,6 +88,16 @@ local function ensure_init()
 	end
 end
 
+local function safe_is_open(mod)
+	return mod and type(mod.is_open) == "function" and mod.is_open() == true
+end
+
+local function safe_close(mod)
+	if mod and type(mod.close) == "function" then
+		mod.close()
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -97,15 +107,47 @@ function L.init()
 		return L
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Shared Infra
-	-- ---------------------------------------------------------------------
-
 	L.ui_api = build_ui_api()
 	assert(type(L.popup.show) == "function", "launchers.popup.show required")
 
 	initialized = true
 	return L
+end
+
+function L.is_any_open()
+	ensure_init()
+
+	return safe_is_open(L.run) or safe_is_open(L.power)
+end
+
+function L.close_all()
+	ensure_init()
+
+	safe_close(L.run)
+	safe_close(L.power)
+end
+
+function L.build_overlays()
+	ensure_init()
+
+	return {
+		{
+			is_open = function()
+				return safe_is_open(L.power)
+			end,
+			close = function()
+				safe_close(L.power)
+			end,
+		},
+		{
+			is_open = function()
+				return safe_is_open(L.run)
+			end,
+			close = function()
+				safe_close(L.run)
+			end,
+		},
+	}
 end
 
 L.open = {

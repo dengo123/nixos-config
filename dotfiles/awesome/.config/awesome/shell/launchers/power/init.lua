@@ -1,7 +1,7 @@
 -- ~/.config/awesome/shell/launchers/power/init.lua
 local awful = require("awful")
-local gears = require("gears")
 
+local Actions = require("shell.launchers.power.actions")
 local Container = require("shell.launchers.power.container")
 local Layout = require("shell.launchers.power.layout")
 local Icons = require("shell.launchers.power.icons")
@@ -49,52 +49,6 @@ local function resolve_dims(th)
 	}
 end
 
-local function icon_from_theme(th, key)
-	local icons = th.icons or {}
-	local path = icons[key]
-
-	if type(path) ~= "string" or #path == 0 then
-		return nil
-	end
-
-	if path:match("^/") then
-		return path
-	end
-
-	return gears.filesystem.get_configuration_dir() .. path
-end
-
-local function make_power_action(cmd)
-	return function()
-		awful.spawn.with_shell(cmd)
-	end
-end
-
-local function build_actions(th)
-	local labels = assert(th.labels, "power: labels fehlen")
-
-	return {
-		{
-			icon = icon_from_theme(th, "hibernate"),
-			emoji = "🚪",
-			label = labels.hibernate,
-			on_press = make_power_action("systemctl hibernate"),
-		},
-		{
-			icon = icon_from_theme(th, "poweroff"),
-			emoji = "⏻",
-			label = labels.poweroff,
-			on_press = make_power_action("systemctl poweroff"),
-		},
-		{
-			icon = icon_from_theme(th, "reboot"),
-			emoji = "🔄",
-			label = labels.reboot,
-			on_press = make_power_action("systemctl reboot"),
-		},
-	}
-end
-
 local function resolve_popup_width(th, required_w)
 	if required_w and required_w > 0 then
 		return required_w
@@ -131,8 +85,9 @@ function M.open(opts, Lib)
 	-- ---------------------------------------------------------------------
 
 	local handle = nil
+	local actions = Actions.build(th)
 
-	local row, _, required_w = Layout.build_row(build_actions(th), th, d, {
+	local row, _, required_w = Layout.build_row(actions, th, d, {
 		mk_icon_button = assert(Icons and Icons.mk_icon_button, "power.icons.mk_icon_button fehlt"),
 	}, function()
 		return handle and handle.close
@@ -169,7 +124,7 @@ function M.open(opts, Lib)
 
 	local bound = Lib.actions.bind({
 		handle = handle,
-		gears = gears,
+		actions = actions,
 	})
 
 	act_cancel = bound[th.cancel_label] or act_cancel

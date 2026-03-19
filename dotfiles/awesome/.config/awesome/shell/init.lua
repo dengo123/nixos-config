@@ -46,15 +46,13 @@ end
 local function build_overlays()
 	local ordered = {}
 
-	if M.launchers and M.launchers.power then
-		table.insert(ordered, build_overlay_entry(M.launchers.power, "is_open", "close"))
+	if M.launchers and type(M.launchers.build_overlays) == "function" then
+		for _, entry in ipairs(M.launchers.build_overlays()) do
+			table.insert(ordered, entry)
+		end
 	end
 
-	if M.launchers and M.launchers.run then
-		table.insert(ordered, build_overlay_entry(M.launchers.run, "is_open", "close"))
-	end
-
-	table.insert(ordered, build_overlay_entry(M.menu, "is_open", "close"))
+	table.insert(ordered, build_overlay_entry(M.menu, "is_open", "hide"))
 	table.insert(ordered, build_overlay_entry(M.notify, "is_center_open", "close_center"))
 
 	return {
@@ -109,19 +107,19 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	do
-		local wcfg = {}
+		local workspace_cfg = {}
 
-		for k, v in pairs(cfg) do
-			wcfg[k] = v
+		for key, value in pairs(cfg) do
+			workspace_cfg[key] = value
 		end
 
 		local wallpaper_fn = resolve_wallpaper_fn(ui)
 
 		if wallpaper_fn then
-			wcfg.wallpaper_fn = wallpaper_fn
+			workspace_cfg.wallpaper_fn = wallpaper_fn
 		end
 
-		local workspace_api = M.workspaces.init(wcfg)
+		local workspace_api = M.workspaces.init(workspace_cfg)
 
 		if workspace_api then
 			M.workspaces = workspace_api
@@ -133,11 +131,19 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	M.windowing.init({
-		modkey = cfg.input.modkey,
+		modkey = cfg.input and cfg.input.modkey,
 		mouse = input.mouse,
 		ui = ui,
 		cfg = cfg,
 	})
+
+	-- ---------------------------------------------------------------------
+	-- Launchers
+	-- ---------------------------------------------------------------------
+
+	if M.launchers and type(M.launchers.init) == "function" then
+		M.launchers.init()
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Menu
@@ -159,23 +165,8 @@ function M.init(args)
 	-- Runtime State
 	-- ---------------------------------------------------------------------
 
-	cfg.launchers = M.launchers
 	cfg.overlays = build_overlays()
 	cfg.actions = build_actions()
-
-	-- ---------------------------------------------------------------------
-	-- External Launcher
-	-- ---------------------------------------------------------------------
-
-	if type(cfg.apps.launcher) == "string" and cfg.apps.launcher:lower() ~= "launcher" and #cfg.apps.launcher > 0 then
-		local cmd = cfg.apps.launcher
-
-		cfg.launcher_fn = function()
-			awful.spawn.with_shell(cmd)
-		end
-	else
-		cfg.launcher_fn = nil
-	end
 
 	-- ---------------------------------------------------------------------
 	-- Bars

@@ -27,6 +27,37 @@ local function require_table(value, name)
 	return value
 end
 
+local function needs_shell(cmd)
+	if type(cmd) ~= "string" then
+		return false
+	end
+
+	return cmd:find("[%s][\"']")
+		or cmd:find("||", 1, true)
+		or cmd:find("&&", 1, true)
+		or cmd:find("~", 1, true)
+		or cmd:find("%$")
+		or cmd:find("[<>|;&]")
+end
+
+local function spawn_cmd(cmd)
+	if type(cmd) == "table" then
+		awful.spawn(cmd)
+		return true
+	end
+
+	if type(cmd) == "string" and cmd ~= "" then
+		if needs_shell(cmd) then
+			awful.spawn.with_shell(cmd)
+		else
+			awful.spawn(cmd)
+		end
+		return true
+	end
+
+	return false
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -44,9 +75,9 @@ function M.build(opts)
 	local cfg = opts.cfg or {}
 	local menu_api = opts.menu_api
 
+	local apps_cfg = cfg.apps or {}
 	local bar_cfg = cfg.bar or {}
-	local start_cfg = bar_cfg.start or {}
-	local start_action = start_cfg.action or "menu"
+	local start_action = tostring(bar_cfg.start_action or "menu"):lower()
 
 	-- ---------------------------------------------------------------------
 	-- Theme
@@ -174,20 +205,29 @@ function M.build(opts)
 	end
 
 	local function on_left_click()
-		local value = tostring(start_action):lower()
-
-		if value == "menu" then
+		if start_action == "menu" then
 			toggle_menu()
 			return
 		end
 
-		if value == "rofi" then
+		if start_action == "rofi" then
 			awful.spawn.with_shell("rofi -show drun")
 			return
 		end
 
-		if value == "emacs" then
-			awful.spawn.with_shell("emacsclient -c -a ''")
+		if start_action == "editor" then
+			if spawn_cmd(apps_cfg.editor) then
+				return
+			end
+			toggle_menu()
+			return
+		end
+
+		if start_action == "terminal" then
+			if spawn_cmd(apps_cfg.terminal) then
+				return
+			end
+			toggle_menu()
 			return
 		end
 
