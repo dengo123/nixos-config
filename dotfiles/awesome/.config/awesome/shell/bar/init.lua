@@ -94,12 +94,12 @@ function M.setup(s, args)
 	local ui = args.ui
 	local menu_api = args.menu_api
 
-	local system_cfg = cfg.system or {}
+	local input_cfg = cfg.system or {}
 	local tags_cfg = cfg.tags or {}
 	local bar_cfg = cfg.bar or {}
 	local clock_cfg = bar_cfg.clock or {}
 
-	local modkey = system_cfg.modkey or "Mod4"
+	local modkey = input_cfg.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
 
 	local start_on_primary_only = (bar_cfg.start_on_primary_only == true)
@@ -191,12 +191,16 @@ function M.setup(s, args)
 				screen = s,
 				theme = start_theme,
 				bar_height = props.height,
-				launcher = system_cfg.launcher,
-				terminal = system_cfg.terminal,
-				menu = cfg.mymainmenu,
+				cfg = cfg,
 				menu_api = menu_api and {
-					show_for_widget = function(widget)
+					show_for_start_widget = function(_screen, widget)
 						menu_api.show_for_start_widget(s, widget)
+					end,
+					hide = function()
+						menu_api.hide()
+					end,
+					is_open = function()
+						return menu_api.is_open()
 					end,
 					get_start_items = function()
 						return menu_api.get_start_items()

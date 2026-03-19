@@ -41,9 +41,12 @@ function M.build(opts)
 	local screen = opts.screen or (mouse and mouse.screen) or nil
 	local theme = assert(opts.theme, "start widget: opts.theme fehlt")
 	local bar_height = require_number(opts.bar_height, "opts.bar_height")
-
-	local launcher = opts.launcher
+	local cfg = opts.cfg or {}
 	local menu_api = opts.menu_api
+
+	local bar_cfg = cfg.bar or {}
+	local start_cfg = bar_cfg.start or {}
+	local start_action = start_cfg.action or "menu"
 
 	-- ---------------------------------------------------------------------
 	-- Theme
@@ -145,21 +148,38 @@ function M.build(opts)
 	-- ---------------------------------------------------------------------
 
 	local function show_menu()
-		if menu_api and menu_api.show_for_widget then
-			menu_api.show_for_widget(btn)
+		if menu_api and type(menu_api.show_for_start_widget) == "function" then
+			menu_api.show_for_start_widget(screen, btn)
 			return true
 		end
 
 		return false
 	end
 
-	local function on_left_click()
-		if launcher == nil or launcher == "" then
-			show_menu()
-			return
+	local function hide_menu()
+		if menu_api and type(menu_api.hide) == "function" then
+			menu_api.hide()
+			return true
 		end
 
-		local value = tostring(launcher):lower()
+		return false
+	end
+
+	local function toggle_menu()
+		if menu_api and type(menu_api.is_open) == "function" and menu_api.is_open() then
+			return hide_menu()
+		end
+
+		return show_menu()
+	end
+
+	local function on_left_click()
+		local value = tostring(start_action):lower()
+
+		if value == "menu" then
+			toggle_menu()
+			return
+		end
 
 		if value == "rofi" then
 			awful.spawn.with_shell("rofi -show drun")
@@ -167,11 +187,11 @@ function M.build(opts)
 		end
 
 		if value == "emacs" then
-			awful.spawn.with_shell("emacsclient -c || emacs")
+			awful.spawn.with_shell("emacsclient -c -a ''")
 			return
 		end
 
-		show_menu()
+		toggle_menu()
 	end
 
 	-- ---------------------------------------------------------------------
@@ -189,7 +209,7 @@ function M.build(opts)
 	btn:buttons(gears.table.join(
 		awful.button({}, 1, on_left_click),
 		awful.button({}, 3, function()
-			show_menu()
+			toggle_menu()
 		end)
 	))
 

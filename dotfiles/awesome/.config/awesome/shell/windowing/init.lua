@@ -36,8 +36,8 @@ function M.init(args)
 	local cfg = args.cfg or {}
 	local ui = args.ui or {}
 
-	local focus_cfg = cfg.focus or {}
 	local windowing_cfg = cfg.windowing or {}
+	local focus_cfg = windowing_cfg.focus or {}
 	local fullscreen_cfg = windowing_cfg.fullscreen or {}
 
 	local theme = ui.theme and ui.theme.windows

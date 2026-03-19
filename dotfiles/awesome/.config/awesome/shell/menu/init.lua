@@ -4,7 +4,6 @@ local awful = require("awful")
 local Items = require("shell.menu.items")
 local Place = require("shell.menu.lib.placement")
 local State = require("shell.menu.lib.state")
-local Keygrab = require("shell.menu.lib.keygrab")
 local CloseGuard = require("shell.menu.lib.close_guard")
 local Popup = require("shell.menu.lib.popup")
 
@@ -39,20 +38,30 @@ end
 
 local function get_start_items()
 	local items = Items.build_start(State.get_context())
+
 	assert(type(items) == "table" and #items > 0, "shell.menu: Start-Items leer")
+
 	return items
 end
 
 local function get_client_items(clients)
 	local items = Items.build_clients(clients, State.get_context())
+
 	assert(type(items) == "table" and #items > 0, "shell.menu: Tabs-Items leer")
+
 	return items
 end
 
 local function ensure_closed()
 	Popup.hide()
-	Keygrab.stop()
 	CloseGuard.disarm()
+end
+
+local function tabs_enabled()
+	local cfg = State.get_context().cfg or {}
+	local menu_cfg = cfg.menu or {}
+
+	return menu_cfg.tabs ~= false
 end
 
 local function open_menu(items, coords)
@@ -70,10 +79,6 @@ local function open_menu(items, coords)
 	CloseGuard.arm(function()
 		Menu.hide()
 	end)
-
-	Keygrab.start(function()
-		Menu.hide()
-	end)
 end
 
 -- =========================================================================
@@ -82,11 +87,6 @@ end
 
 function Menu.init(args)
 	args = args or {}
-
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	State.set_context(args)
 end
 
@@ -95,16 +95,11 @@ function Menu.get_start_items()
 end
 
 function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
-	-- ---------------------------------------------------------------------
-	-- Items
-	-- ---------------------------------------------------------------------
+	if not tabs_enabled() then
+		return
+	end
 
 	local items = get_client_items(clients)
-
-	-- ---------------------------------------------------------------------
-	-- Popup
-	-- ---------------------------------------------------------------------
-
 	local x, y = Place.coords_for_tabs(s, anchor and anchor.x_left, #items)
 
 	open_menu(items, {
@@ -114,16 +109,7 @@ function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
 end
 
 function Menu.show_for_start_widget(s, _widget)
-	-- ---------------------------------------------------------------------
-	-- Items
-	-- ---------------------------------------------------------------------
-
 	local items = get_start_items()
-
-	-- ---------------------------------------------------------------------
-	-- Popup
-	-- ---------------------------------------------------------------------
-
 	local x, y = Place.coords_for_start(s, #items)
 
 	open_menu(items, {
@@ -133,14 +119,16 @@ function Menu.show_for_start_widget(s, _widget)
 end
 
 function Menu.build_main()
-	-- ---------------------------------------------------------------------
-	-- Menu
-	-- ---------------------------------------------------------------------
-
 	return awful.menu({
 		items = get_start_items(),
 		theme = get_theme(),
 	})
+end
+
+function Menu.is_open()
+	local menu = State.get_menu()
+
+	return menu ~= nil and menu.wibox ~= nil and menu.wibox.valid and menu.wibox.visible == true
 end
 
 function Menu.hide()

@@ -8,6 +8,19 @@ local Items = {}
 -- Helpers
 -- =========================================================================
 
+local function needs_shell(cmd)
+	if type(cmd) ~= "string" then
+		return false
+	end
+
+	return cmd:find("[%s][\"']")
+		or cmd:find("||", 1, true)
+		or cmd:find("&&", 1, true)
+		or cmd:find("~", 1, true)
+		or cmd:find("%$")
+		or cmd:find("[<>|;&]")
+end
+
 local function spawn_cmd(cmd)
 	if type(cmd) == "table" then
 		awful.spawn(cmd)
@@ -15,7 +28,7 @@ local function spawn_cmd(cmd)
 	end
 
 	if type(cmd) == "string" then
-		if cmd:find("||") or cmd:find("~") then
+		if needs_shell(cmd) then
 			awful.spawn.with_shell(cmd)
 		else
 			awful.spawn(cmd)
@@ -61,15 +74,19 @@ local function label_for(cmd, fallback)
 	return fallback
 end
 
+local function resolve_label(dynamic_labels, cmd, fallback)
+	if dynamic_labels then
+		return label_for(cmd, fallback)
+	end
+
+	return fallback
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function Items.build_start(ctx)
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	local ui = ctx.ui or {}
 	local cfg = ctx.cfg or {}
 
@@ -81,23 +98,21 @@ function Items.build_start(ctx)
 		return items
 	end
 
-	local system_cfg = cfg.system or {}
+	local apps_cfg = cfg.apps or {}
+	local menu_cfg = cfg.menu or {}
+	local dynamic_labels = (menu_cfg.dynamic_labels ~= false)
 
-	local files_cmd = system_cfg.files or "nemo"
-	local terminal_cmd = system_cfg.terminal or "xterm"
-	local editor_cmd = system_cfg.editor or "nano"
-	local browser_cmd = system_cfg.browser or "firefox"
+	local files_cmd = apps_cfg.files or "nemo"
+	local terminal_cmd = apps_cfg.terminal or "xterm"
+	local editor_cmd = apps_cfg.editor or "nano"
+	local browser_cmd = apps_cfg.browser or "firefox"
 
-	local files_name = label_for(files_cmd, "files")
-	local terminal_name = label_for(terminal_cmd, "terminal")
-	local editor_name = label_for(editor_cmd, "editor")
-	local browser_name = label_for(browser_cmd, "browser")
+	local files_name = resolve_label(dynamic_labels, files_cmd, "files")
+	local terminal_name = resolve_label(dynamic_labels, terminal_cmd, "terminal")
+	local editor_name = resolve_label(dynamic_labels, editor_cmd, "editor")
+	local browser_name = resolve_label(dynamic_labels, browser_cmd, "browser")
 
 	local browser_available = cmd_exists(browser_cmd)
-
-	-- ---------------------------------------------------------------------
-	-- Items
-	-- ---------------------------------------------------------------------
 
 	return {
 		{
@@ -170,10 +185,6 @@ function Items.build_start(ctx)
 end
 
 function Items.build_clients(clients, _ctx)
-	-- ---------------------------------------------------------------------
-	-- Client
-	-- ---------------------------------------------------------------------
-
 	local c = nil
 
 	for _, cc in ipairs(clients or {}) do
@@ -186,10 +197,6 @@ function Items.build_clients(clients, _ctx)
 	if not c then
 		return {}
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Items
-	-- ---------------------------------------------------------------------
 
 	return {
 		{

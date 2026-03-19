@@ -6,8 +6,6 @@ return {
 		browser = "firefox",
 		files = "nemo",
 		calendar = "gnome-calendar",
-
-		launcher = nil,
 	},
 
 	input = {
@@ -18,6 +16,8 @@ return {
 	bar = {
 		position = "bottom",
 		start_on_primary_only = false,
+
+		start_action = "menu",
 
 		reveal_on_fullscreen_edge = true,
 		reveal_trigger_px = 2,
@@ -43,14 +43,14 @@ return {
 		},
 	},
 
-	focus = {
-		sloppy = true,
-		center_mouse = false,
-		raise_on_mouse = false,
-		block_ms = 150,
-	},
-
 	windowing = {
+		focus = {
+			sloppy = true,
+			center_mouse = false,
+			raise_on_mouse = false,
+			block_ms = 150,
+		},
+
 		titlebars = true,
 		floating = {
 			files = true,
@@ -62,6 +62,11 @@ return {
 				never_dim_primary = true,
 			},
 		},
+	},
+
+	menu = {
+		tabs = true,
+		dynamic_labels = true,
 	},
 
 	notify = {
