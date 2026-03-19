@@ -4,21 +4,22 @@ local function safe_require(path)
 	if ok then
 		return mod
 	end
+
 	return nil
 end
 
-local Policies = {
-	signals = safe_require("shell.windowing.policies.signals"),
-	rules = safe_require("shell.windowing.policies.rules"),
-	focus = safe_require("shell.windowing.policies.focus"),
-	fullscreen_dim = safe_require("shell.windowing.policies.fullscreen_dim"),
+local Behavior = {
+	signals = safe_require("shell.windowing.behavior.signals"),
+	rules = safe_require("shell.windowing.behavior.rules"),
+	focus = safe_require("shell.windowing.behavior.focus"),
+	fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
 }
 
-local Container = require("shell.windowing.container")
-local Titlebar = require("shell.windowing.titlebar")
+local Container = require("shell.windowing.ui.container")
+local Titlebar = require("shell.windowing.ui.titlebar")
 
 local M = {
-	actions = require("shell.windowing.actions"),
+	actions = require("shell.windowing.runtime.actions"),
 }
 
 -- =========================================================================
@@ -58,8 +59,8 @@ function M.init(args)
 	-- Rules
 	-- ---------------------------------------------------------------------
 
-	if Policies.rules and Policies.rules.apply then
-		Policies.rules.apply({
+	if Behavior.rules and Behavior.rules.apply then
+		Behavior.rules.apply({
 			modkey = modkey,
 			mouse = mouse,
 			cfg = cfg,
@@ -70,8 +71,8 @@ function M.init(args)
 	-- Focus
 	-- ---------------------------------------------------------------------
 
-	if Policies.focus and Policies.focus.init then
-		Policies.focus.init(focus_cfg)
+	if Behavior.focus and Behavior.focus.init then
+		Behavior.focus.init(focus_cfg)
 	end
 
 	-- ---------------------------------------------------------------------
@@ -86,12 +87,12 @@ function M.init(args)
 	-- Signals
 	-- ---------------------------------------------------------------------
 
-	if Policies.signals and Policies.signals.apply then
-		Policies.signals.apply({
+	if Behavior.signals and Behavior.signals.apply then
+		Behavior.signals.apply({
 			attach_titlebar = function(c)
 				Titlebar.attach_titlebar(c, button_style)
 			end,
-			focus = Policies.focus,
+			focus = Behavior.focus,
 			container = Container,
 		})
 	end
@@ -100,7 +101,7 @@ function M.init(args)
 	-- Fullscreen Dim
 	-- ---------------------------------------------------------------------
 
-	if Policies.fullscreen_dim and Policies.fullscreen_dim.init then
+	if Behavior.fullscreen_dim and Behavior.fullscreen_dim.init then
 		local dim_cfg = fullscreen_cfg.dim
 
 		if dim_cfg ~= false then
@@ -108,7 +109,7 @@ function M.init(args)
 				dim_cfg = { enabled = true }
 			end
 
-			Policies.fullscreen_dim.init(dim_cfg)
+			Behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
 end

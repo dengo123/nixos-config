@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/policies/rules.lua
+-- ~/.config/awesome/shell/windowing/behavior/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
@@ -6,6 +6,8 @@ local gears = require("gears")
 local M = {}
 
 local portrait_autosize_ready = false
+local centered_autosize_ready = false
+local tall_centered_reinforce_ready = false
 
 -- =========================================================================
 -- Helpers
@@ -110,12 +112,53 @@ local function build_terminal_match(terminal)
 		add_unique(classes, "Tilix")
 	elseif base == "konsole" then
 		add_unique(classes, "Konsole")
+	elseif base == "xterm" then
+		add_unique(classes, "XTerm")
 	end
 
 	return {
 		class = classes,
 		instance = instances,
 	}
+end
+
+local function client_class(c)
+	return tostring(c and c.class or ""):lower()
+end
+
+local function client_instance(c)
+	return tostring(c and c.instance or ""):lower()
+end
+
+local function is_terminal_client(c)
+	local class = client_class(c)
+	local instance = client_instance(c)
+
+	return class == "xterm"
+		or instance == "xterm"
+		or class == "alacritty"
+		or instance == "alacritty"
+		or class == "kitty"
+		or instance == "kitty"
+		or class == "wezterm"
+		or instance == "wezterm"
+		or class == "gnome-terminal"
+		or instance == "gnome-terminal"
+		or class == "org.gnome.terminal"
+		or instance == "org.gnome.terminal"
+		or class == "konsole"
+		or instance == "konsole"
+end
+
+local function is_copyq_client(c)
+	local class = client_class(c)
+	local instance = client_instance(c)
+
+	return class == "copyq" or instance == "copyq"
+end
+
+local function is_tall_centered_client(c)
+	return is_terminal_client(c) or is_copyq_client(c)
 end
 
 -- =========================================================================
@@ -183,6 +226,146 @@ local function hook_portrait_autosize()
 end
 
 -- =========================================================================
+-- Centered Autosize
+-- =========================================================================
+
+local function centered_autosize_apply(c)
+	if not (c and c.valid) then
+		return
+	end
+
+	if not c.centered_autosize then
+		return
+	end
+
+	if not c.floating or c.fullscreen then
+		return
+	end
+
+	local s = c.screen
+	if not s then
+		return
+	end
+
+	local wa = s.workarea
+	local width = math.floor(math.min(wa.width * 0.36, 620))
+
+	width = math.max(width, 420)
+
+	local height = math.floor(width * 1.60)
+	local max_height = math.floor(wa.height * 0.90)
+
+	if height > max_height then
+		height = max_height
+		width = math.floor(height / 1.60)
+	end
+
+	local x = wa.x + math.floor((wa.width - width) / 2)
+	local y = wa.y + math.floor((wa.height - height) / 2)
+
+	c.maximized = false
+	c.maximized_horizontal = false
+	c.maximized_vertical = false
+
+	c:geometry({
+		x = x,
+		y = y,
+		width = width,
+		height = height,
+	})
+end
+
+local function hook_centered_autosize()
+	if centered_autosize_ready then
+		return
+	end
+
+	client.connect_signal("manage", function(c)
+		gears.timer.delayed_call(function()
+			centered_autosize_apply(c)
+		end)
+	end)
+
+	client.connect_signal("property::floating", function(c)
+		centered_autosize_apply(c)
+	end)
+
+	screen.connect_signal("property::geometry", function(s)
+		for _, c in ipairs(s.clients) do
+			centered_autosize_apply(c)
+		end
+	end)
+
+	centered_autosize_ready = true
+end
+
+-- =========================================================================
+-- Tall Centered Reinforce
+-- =========================================================================
+
+local function normalize_tall_centered_client(c)
+	if not (c and c.valid) then
+		return
+	end
+
+	c.floating = true
+	c.fullscreen = false
+	c.maximized = false
+	c.maximized_horizontal = false
+	c.maximized_vertical = false
+	c.centered_autosize = true
+	c.portrait_autosize = false
+
+	centered_autosize_apply(c)
+end
+
+local function reinforce_tall_centered_client(c)
+	if not is_tall_centered_client(c) then
+		return
+	end
+
+	normalize_tall_centered_client(c)
+
+	gears.timer.delayed_call(function()
+		normalize_tall_centered_client(c)
+	end)
+
+	gears.timer.start_new(0.15, function()
+		normalize_tall_centered_client(c)
+		return false
+	end)
+
+	gears.timer.start_new(0.50, function()
+		normalize_tall_centered_client(c)
+		return false
+	end)
+end
+
+local function hook_tall_centered_reinforce()
+	if tall_centered_reinforce_ready then
+		return
+	end
+
+	client.connect_signal("property::maximized", function(c)
+		if is_tall_centered_client(c) and c.floating then
+			gears.timer.delayed_call(function()
+				normalize_tall_centered_client(c)
+			end)
+		end
+	end)
+
+	client.connect_signal("property::fullscreen", function(c)
+		if is_tall_centered_client(c) and c.floating then
+			gears.timer.delayed_call(function()
+				normalize_tall_centered_client(c)
+			end)
+		end
+	end)
+
+	tall_centered_reinforce_ready = true
+end
+
+-- =========================================================================
 -- Public API
 -- =========================================================================
 
@@ -197,12 +380,12 @@ function M.apply(o)
 	local mouse = o.mouse
 	local cfg = o.cfg or {}
 
-	local system_cfg = cfg.system or {}
+	local apps_cfg = cfg.apps or {}
 	local windowing_cfg = cfg.windowing or {}
 	local floating_cfg = windowing_cfg.floating or {}
 
-	local file_manager = system_cfg.files
-	local terminal = system_cfg.terminal
+	local file_manager = apps_cfg.files
+	local terminal = apps_cfg.terminal
 
 	local files_floating = (floating_cfg.files ~= false)
 	local terminals_floating = (floating_cfg.terminals == true)
@@ -244,6 +427,7 @@ function M.apply(o)
 				floating = true,
 				placement = awful.placement.centered,
 				portrait_autosize = true,
+				centered_autosize = false,
 			},
 		})
 	end
@@ -262,9 +446,59 @@ function M.apply(o)
 				floating = true,
 				placement = awful.placement.centered,
 				portrait_autosize = false,
+				centered_autosize = true,
 			},
+			callback = function(c)
+				reinforce_tall_centered_client(c)
+			end,
 		})
 	end
+
+	-- ---------------------------------------------------------------------
+	-- CopyQ
+	-- ---------------------------------------------------------------------
+
+	table.insert(rules, {
+		rule_any = {
+			class = { "copyq", "CopyQ" },
+			instance = { "copyq" },
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			portrait_autosize = false,
+			centered_autosize = true,
+		},
+		callback = function(c)
+			reinforce_tall_centered_client(c)
+		end,
+	})
+
+	-- ---------------------------------------------------------------------
+	-- Calendar
+	-- ---------------------------------------------------------------------
+
+	table.insert(rules, {
+		rule_any = {
+			class = {
+				"gnome-calendar",
+				"org.gnome.Calendar",
+				"Org.gnome.Calendar",
+				"Gnome-calendar",
+				"Gnome-Calendar",
+			},
+			instance = { "gnome-calendar" },
+		},
+		properties = {
+			floating = true,
+			placement = awful.placement.centered,
+			portrait_autosize = true,
+			centered_autosize = false,
+		},
+		callback = function(c)
+			portrait_autosize_apply(c)
+		end,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- System Utilities
@@ -279,12 +513,6 @@ function M.apply(o)
 				"Gnome-disks",
 				"Org.gnome.DiskUtility",
 				"org.gnome.DiskUtility",
-				"copyq",
-				"CopyQ",
-				"org.gnome.Calendar",
-				"Org.gnome.Calendar",
-				"Gnome-calendar",
-				"Gnome-Calendar",
 				".xscreensaver-demo-wrapped",
 				"XScreenSaver",
 			},
@@ -293,8 +521,6 @@ function M.apply(o)
 				"blueman-manager",
 				"pavucontrol",
 				"gnome-disks",
-				"copyq",
-				"gnome-calendar",
 				".xscreensaver-demo-wrapped",
 				"xscreensaver",
 				"xscreensaver-demo",
@@ -304,9 +530,6 @@ function M.apply(o)
 				"Bluetooth",
 				"GNOME Disks",
 				"Volume Control",
-				"CopyQ",
-				"Calendar",
-				"GNOME Calendar",
 				"XScreenSaver",
 				"XScreenSaver Preferences",
 			},
@@ -315,6 +538,7 @@ function M.apply(o)
 			floating = true,
 			placement = awful.placement.centered,
 			portrait_autosize = true,
+			centered_autosize = false,
 		},
 	})
 
@@ -331,6 +555,7 @@ function M.apply(o)
 			floating = true,
 			placement = awful.placement.centered,
 			portrait_autosize = true,
+			centered_autosize = false,
 		},
 	})
 
@@ -362,6 +587,8 @@ function M.apply(o)
 
 	awful.rules.rules = rules
 	hook_portrait_autosize()
+	hook_centered_autosize()
+	hook_tall_centered_reinforce()
 end
 
 return M
