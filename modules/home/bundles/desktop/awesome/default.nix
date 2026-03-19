@@ -27,6 +27,14 @@ in {
         };
       };
 
+      config = {
+        systray = {
+          enable = true;
+          startUdiskie = false;
+          startCopyQ = false;
+        };
+      };
+
       services = {
         xscreensaver = {
           enable = true;
@@ -64,11 +72,6 @@ in {
     };
 
     home.packages = with pkgs; [
-      pavucontrol
-      pasystray
-      networkmanagerapplet
-      blueman
-      udiskie
       copyq
       gnome-calendar
     ];

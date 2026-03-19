@@ -13,19 +13,17 @@ with lib.${namespace}; let
   mkTrayService = {
     name,
     exec,
-    after ? [],
-    restart ? "on-failure",
+    after ? ["graphical-session.target"],
   }: {
     "systray-${name}" = {
       Unit = {
         Description = "Systray: ${name}";
-        After = ["graphical-session.target" "tray.target"] ++ after;
-        Wants = ["tray.target"];
+        After = after;
         PartOf = ["graphical-session.target"];
       };
       Service = {
         ExecStart = exec;
-        Restart = restart;
+        Restart = "on-failure";
         RestartSec = 2;
       };
       Install = {
@@ -57,18 +55,9 @@ in {
     startBlueman = mkBoolOpt true "Start Blueman applet (bluetooth) with systemd.";
     startPasystray = mkBoolOpt true "Start pasystray (audio) with systemd.";
     startNmApplet = mkBoolOpt true "Start nm-applet (network) with systemd.";
-    startUdiskie = mkBoolOpt true "Start udiskie (automount tray).";
-    udiskieArgs = mkOpt types.str "--tray --automount --notify" "Extra args for udiskie.";
-    startCopyQ = mkBoolOpt true "Start CopyQ clipboard manager (tray).";
   };
 
   config = mkIf cfg.enable {
-    systemd.user.targets.tray = {
-      Unit = {
-        Description = "Awesome tray host is ready";
-      };
-    };
-
     systemd.user.services = mkMerge [
       (mkIf cfg.startBlueman (mkTrayService {
         name = "blueman";
@@ -82,18 +71,7 @@ in {
 
       (mkIf cfg.startNmApplet (mkTrayService {
         name = "nm-applet";
-        exec = "${pkgs.networkmanagerapplet}/bin/nm-applet";
-      }))
-
-      (mkIf cfg.startUdiskie (mkTrayService {
-        name = "udiskie";
-        exec = "${pkgs.udiskie}/bin/udiskie ${cfg.udiskieArgs}";
-      }))
-
-      (mkIf cfg.startCopyQ (mkTrayService {
-        name = "copyq";
-        exec = "${pkgs.copyq}/bin/copyq";
-        restart = "always";
+        exec = "${pkgs.networkmanagerapplet}/bin/nm-applet --indicator";
       }))
     ];
 
@@ -105,8 +83,6 @@ in {
         "blueberry.desktop"
         "blueberry-tray.desktop"
         "nm-applet.desktop"
-        "udiskie.desktop"
-        "copyq.desktop"
       ])
     ];
   };

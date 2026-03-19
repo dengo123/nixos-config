@@ -13,6 +13,15 @@ return {
 		return_app = "editor",
 	},
 
+	system = {
+		autostart = {
+			copyq = {
+				enable = true,
+				delay = 1.5,
+			},
+		},
+	},
+
 	bar = {
 		position = "bottom",
 		start_on_primary_only = false,
@@ -45,15 +54,16 @@ return {
 
 	windowing = {
 		rounded_corners = true,
+		titlebars = true,
 
 		focus = {
 			sloppy = true,
 			center_mouse = false,
 			raise_on_mouse = false,
 			block_ms = 150,
+			mouse_follows_focus = true,
 		},
 
-		titlebars = true,
 		floating = {
 			files = true,
 			terminals = true,
@@ -69,7 +79,7 @@ return {
 	launchers = {
 		power = {
 			backdrop = true,
-			first_action = "hibernate", -- "hibernate" | "suspend"
+			first_action = "hibernate",
 			show_both_sleep_actions = false,
 		},
 

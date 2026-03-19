@@ -9,8 +9,33 @@ F.center_mouse = true
 F.raise_on_mouse = false
 F.block_ms = 150
 
+F.mouse_follows_focus = false
+
 F._kbd_recent = false
 F._suppress_center = false
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function warp_to_client(c)
+	if not (c and c.valid) or c.minimized or not c:isvisible() then
+		return
+	end
+
+	gears.timer.delayed_call(function()
+		if not (c and c.valid) or c.minimized or not c:isvisible() then
+			return
+		end
+
+		local g = c:geometry()
+
+		mouse.coords({
+			x = g.x + math.floor(g.width / 2),
+			y = g.y + math.floor(g.height / 2),
+		})
+	end)
+end
 
 -- =========================================================================
 -- Public API
@@ -27,6 +52,8 @@ function F.init(o)
 	F.center_mouse = (o.center_mouse ~= false)
 	F.raise_on_mouse = (o.raise_on_mouse == true)
 	F.block_ms = tonumber(o.block_ms) or 150
+
+	F.mouse_follows_focus = (o.mouse_follows_focus == true)
 
 	-- ---------------------------------------------------------------------
 	-- Signals
@@ -72,6 +99,15 @@ function F:on_mouse_enter(c)
 end
 
 function F:on_focus(c)
+	if not (c and c.valid) or c.minimized or not c:isvisible() then
+		return
+	end
+
+	if F.mouse_follows_focus and not F._suppress_center then
+		warp_to_client(c)
+		return
+	end
+
 	if not F.center_mouse then
 		return
 	end
@@ -80,22 +116,7 @@ function F:on_focus(c)
 		return
 	end
 
-	if not (c and c.valid) or c.minimized or not c:isvisible() then
-		return
-	end
-
-	gears.timer.delayed_call(function()
-		if not (c and c.valid) or c.minimized or not c:isvisible() then
-			return
-		end
-
-		local g = c:geometry()
-
-		mouse.coords({
-			x = g.x + math.floor(g.width / 2),
-			y = g.y + math.floor(g.height / 2),
-		})
-	end)
+	warp_to_client(c)
 end
 
 return F
