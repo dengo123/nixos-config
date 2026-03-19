@@ -10,7 +10,7 @@ return function(modkey, launchers_api)
 	local function bind(mods, key, fn, desc)
 		return awful.key(mods, key, fn, {
 			description = desc,
-			group = "power",
+			group = "launchers",
 		})
 	end
 
@@ -47,7 +47,7 @@ return function(modkey, launchers_api)
 					modal_keys,
 					awful.key(mods, key, fn, {
 						description = desc or key,
-						group = "power",
+						group = "launchers",
 					})
 				)
 			end

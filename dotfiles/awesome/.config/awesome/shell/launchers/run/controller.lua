@@ -43,7 +43,6 @@ function M.new(ctx)
 	local browser = ctx.web and ctx.web.browser
 	local engine = ctx.web and ctx.web.engine
 	local apps = ctx.apps or {}
-	local configured_modkey = ctx.modkey or "Mod4"
 
 	local state = {
 		prompt_running = false,
@@ -62,16 +61,6 @@ function M.new(ctx)
 
 		local ok = pcall(fn, ...)
 		return ok
-	end
-
-	local function has_modifier(mods, needle)
-		for _, mod in ipairs(mods or {}) do
-			if mod == needle then
-				return true
-			end
-		end
-
-		return false
 	end
 
 	local function current_text()
@@ -263,9 +252,6 @@ function M.new(ctx)
 			keypressed_callback = function(mod, key)
 				mod = mod or {}
 
-				local has_modkey = has_modifier(mod, configured_modkey)
-				local has_shift = has_modifier(mod, "Shift")
-
 				if #mod == 0 and key == "Escape" then
 					stop_prompt()
 					if ctx.hide_menu_popup then
@@ -277,21 +263,6 @@ function M.new(ctx)
 				if #mod == 0 and key == "Tab" then
 					cycle_mode()
 					gears.timer.delayed_call(update_autofill)
-					return true
-				end
-
-				if has_modkey and not has_shift and key == "space" then
-					switch_mode_keep_prompt("run")
-					return true
-				end
-
-				if has_modkey and not has_shift and key == "slash" then
-					switch_mode_keep_prompt("local")
-					return true
-				end
-
-				if has_modkey and has_shift and key == "slash" then
-					switch_mode_keep_prompt("web")
 					return true
 				end
 
