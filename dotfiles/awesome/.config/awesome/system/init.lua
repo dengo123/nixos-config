@@ -1,3 +1,4 @@
+-- ~/.config/awesome/system/init.lua
 local gears = require("gears")
 
 local config = require("system.config")

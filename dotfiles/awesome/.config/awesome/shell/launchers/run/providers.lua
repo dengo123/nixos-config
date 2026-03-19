@@ -63,6 +63,151 @@ local function spawn_shell_bg(cmd)
 	awful.spawn.with_shell(cmd)
 end
 
+local function path_exists(path)
+	if not path or path == "" then
+		return false
+	end
+
+	local ok, _, code = os.rename(path, path)
+	if ok then
+		return true
+	end
+
+	return code == 13
+end
+
+local function is_directory(path)
+	if not path or path == "" then
+		return false
+	end
+
+	local probe = io.popen(string.format("test -d %s; printf %%s $?", sh_quote(path)))
+	if not probe then
+		return false
+	end
+
+	local rc = probe:read("*a")
+	probe:close()
+
+	return rc == "0"
+end
+
+local function is_regular_file(path)
+	if not path or path == "" then
+		return false
+	end
+
+	local probe = io.popen(string.format("test -f %s; printf %%s $?", sh_quote(path)))
+	if not probe then
+		return false
+	end
+
+	local rc = probe:read("*a")
+	probe:close()
+
+	return rc == "0"
+end
+
+local function lowercase_suffix(path)
+	local suffix = tostring(path or ""):match("%.([^.]+)$")
+	if not suffix then
+		return nil
+	end
+
+	return suffix:lower()
+end
+
+local TEXT_SUFFIXES = {
+	txt = true,
+	md = true,
+	rst = true,
+	org = true,
+	nix = true,
+	lua = true,
+	py = true,
+	sh = true,
+	bash = true,
+	zsh = true,
+	fish = true,
+	js = true,
+	ts = true,
+	tsx = true,
+	jsx = true,
+	json = true,
+	yaml = true,
+	yml = true,
+	toml = true,
+	ini = true,
+	conf = true,
+	cfg = true,
+	service = true,
+	env = true,
+	log = true,
+	c = true,
+	h = true,
+	cpp = true,
+	hpp = true,
+	rs = true,
+	go = true,
+	java = true,
+	kt = true,
+	cs = true,
+	rb = true,
+	php = true,
+	html = true,
+	css = true,
+	scss = true,
+	xml = true,
+	sql = true,
+	csv = true,
+	tex = true,
+	el = true,
+}
+
+local function is_text_like_file(path)
+	local suffix = lowercase_suffix(path)
+	if suffix and TEXT_SUFFIXES[suffix] then
+		return true
+	end
+
+	local probe = io.popen(string.format("file --mime-type -b %s 2>/dev/null", sh_quote(path)))
+	if not probe then
+		return false
+	end
+
+	local mime = trim(probe:read("*a") or "")
+	probe:close()
+
+	if mime:match("^text/") then
+		return true
+	end
+
+	if
+		mime == "application/json"
+		or mime == "application/xml"
+		or mime == "application/javascript"
+		or mime == "application/x-shellscript"
+	then
+		return true
+	end
+
+	return false
+end
+
+local function open_with_files(target, apps_cfg)
+	local files_cmd = apps_cfg.files or os.getenv("FILE_MANAGER") or "xdg-open"
+	spawn_shell_bg(string.format("%s %q >/dev/null 2>&1 &", files_cmd, target))
+end
+
+local function open_with_editor(target, apps_cfg)
+	local editor_cmd = apps_cfg.editor or os.getenv("EDITOR") or "nano"
+	spawn_shell_bg(string.format("%s %q >/dev/null 2>&1 &", editor_cmd, target))
+end
+
+local function open_with_system(target)
+	spawn_shell_bg(string.format("xdg-open %q >/dev/null 2>&1 &", target))
+end
+
 -- =========================================================================
 -- Run
 -- =========================================================================
@@ -160,18 +305,36 @@ end
 -- Local
 -- =========================================================================
 
-function P.local_open(query, home)
+function P.local_open(query, home, local_cfg)
 	local target = resolve_local_target(query, home)
 	if not target or target == "" then
 		return
 	end
 
-	local files = os.getenv("FILE_MANAGER")
-	if not files or files == "" then
-		files = "xdg-open"
+	local_cfg = local_cfg or {}
+	local apps_cfg = local_cfg.apps or {}
+
+	if not path_exists(target) then
+		open_with_files(target, apps_cfg)
+		return
 	end
 
-	spawn_shell_bg(string.format("%s %q >/dev/null 2>&1 &", files, target))
+	if is_directory(target) then
+		open_with_files(target, apps_cfg)
+		return
+	end
+
+	if is_regular_file(target) then
+		if is_text_like_file(target) then
+			open_with_editor(target, apps_cfg)
+			return
+		end
+
+		open_with_system(target)
+		return
+	end
+
+	open_with_system(target)
 end
 
 -- =========================================================================

@@ -202,6 +202,7 @@ end
 
 local function emit_center_state()
 	awesome.emit_signal("notify::center_state", center_open)
+	awesome.emit_signal("ui::overlays_changed")
 end
 
 local function open_center()
@@ -284,6 +285,22 @@ function M.init(cfg)
 	emit_center_state()
 
 	initialized = true
+end
+
+function M.is_center_open()
+	return center_open == true
+end
+
+function M.open_center()
+	open_center()
+end
+
+function M.close_center()
+	close_center()
+end
+
+function M.toggle_center()
+	toggle_center()
 end
 
 return M

@@ -4,6 +4,7 @@ local awful = require("awful")
 local L = {}
 
 local initialized = false
+local runtime_cfg = {}
 
 local function req(path)
 	local ok, mod = pcall(require, path)
@@ -22,6 +23,21 @@ L.popup = req("shell.launchers.lib.popup")
 
 L.power = req("shell.launchers.power")
 L.run = req("shell.launchers.run")
+
+local launcher_modules = {
+	{
+		key = "power",
+		mod = function()
+			return L.power
+		end,
+	},
+	{
+		key = "run",
+		mod = function()
+			return L.run
+		end,
+	},
+}
 
 -- =========================================================================
 -- Helpers
@@ -84,7 +100,7 @@ end
 
 local function ensure_init()
 	if not initialized then
-		L.init()
+		L.init(runtime_cfg)
 	end
 end
 
@@ -98,16 +114,26 @@ local function safe_close(mod)
 	end
 end
 
+local function each_launcher(fn)
+	for _, entry in ipairs(launcher_modules) do
+		local mod = entry.mod()
+		fn(entry.key, mod)
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function L.init()
+function L.init(cfg)
 	if initialized then
 		return L
 	end
 
+	runtime_cfg = cfg or {}
+	L.cfg = runtime_cfg
 	L.ui_api = build_ui_api()
+
 	assert(type(L.popup.show) == "function", "launchers.popup.show required")
 
 	initialized = true
@@ -117,47 +143,56 @@ end
 function L.is_any_open()
 	ensure_init()
 
-	return safe_is_open(L.run) or safe_is_open(L.power)
+	local open = false
+
+	each_launcher(function(_, mod)
+		if safe_is_open(mod) then
+			open = true
+		end
+	end)
+
+	return open
 end
 
 function L.close_all()
 	ensure_init()
 
-	safe_close(L.run)
-	safe_close(L.power)
+	each_launcher(function(_, mod)
+		safe_close(mod)
+	end)
 end
 
 function L.build_overlays()
 	ensure_init()
 
-	return {
-		{
+	local overlays = {}
+
+	each_launcher(function(_, mod)
+		table.insert(overlays, {
 			is_open = function()
-				return safe_is_open(L.power)
+				return safe_is_open(mod)
 			end,
 			close = function()
-				safe_close(L.power)
+				safe_close(mod)
 			end,
-		},
-		{
-			is_open = function()
-				return safe_is_open(L.run)
-			end,
-			close = function()
-				safe_close(L.run)
-			end,
-		},
-	}
+		})
+	end)
+
+	return overlays
 end
 
 L.open = {
 	power = function(opts)
 		ensure_init()
+		opts = opts or {}
+		opts.cfg = opts.cfg or L.cfg or {}
 		return L.power.open(opts, L)
 	end,
 
 	run = function(opts)
 		ensure_init()
+		opts = opts or {}
+		opts.cfg = opts.cfg or L.cfg or {}
 		return L.run.open(opts, L)
 	end,
 }

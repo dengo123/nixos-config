@@ -5,17 +5,35 @@ local Actions = require("shell.launchers.power.actions")
 local Container = require("shell.launchers.power.container")
 local Layout = require("shell.launchers.power.layout")
 local Icons = require("shell.launchers.power.icons")
+local Theme = require("shell.launchers.power.theme")
 
-local M = {}
+local M = {
+	_handle = nil,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function resolve_theme(Lib, overrides)
-	local ui_api = Lib and Lib.ui_api
-	assert(ui_api and ui_api.resolve_theme, "power: Lib.ui_api.resolve_theme fehlt")
-	return ui_api.resolve_theme("power", overrides or {})
+local function resolve_theme(cfg, overrides)
+	Theme.init(cfg or {})
+
+	local theme = Theme.get()
+	assert(type(theme) == "table", "power: theme.get() lieferte kein table")
+
+	if type(overrides) ~= "table" or next(overrides) == nil then
+		return theme
+	end
+
+	local merged = {}
+	for key, value in pairs(theme) do
+		merged[key] = value
+	end
+	for key, value in pairs(overrides) do
+		merged[key] = value
+	end
+
+	return merged
 end
 
 local function resolve_dims(th)
@@ -61,13 +79,43 @@ local function resolve_popup_width(th, required_w)
 	return nil
 end
 
+local function clear_handle_if_closed()
+	if M._handle and M._handle.is_open and not M._handle.is_open() then
+		M._handle = nil
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
+function M.is_open()
+	clear_handle_if_closed()
+	return M._handle and M._handle.is_open and M._handle.is_open() or false
+end
+
+function M.close()
+	clear_handle_if_closed()
+
+	if M._handle and M._handle.close then
+		M._handle.close()
+	end
+
+	M._handle = nil
+end
+
 function M.open(opts, Lib)
 	opts = opts or {}
 	Lib = Lib or require("shell.launchers")
+
+	-- ---------------------------------------------------------------------
+	-- Toggle existing
+	-- ---------------------------------------------------------------------
+
+	if M.is_open() then
+		M.close()
+		return nil
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Config
@@ -77,7 +125,8 @@ function M.open(opts, Lib)
 	assert(Lib and Lib.button, "power: Lib.button fehlt")
 	assert(Lib and Lib.actions, "power: Lib.actions fehlt")
 
-	local th = resolve_theme(Lib, opts.theme)
+	local cfg = opts.cfg or {}
+	local th = resolve_theme(cfg, opts.theme)
 	local d = resolve_dims(th)
 
 	-- ---------------------------------------------------------------------
@@ -85,7 +134,7 @@ function M.open(opts, Lib)
 	-- ---------------------------------------------------------------------
 
 	local handle = nil
-	local actions = Actions.build(th)
+	local actions = Actions.build(th, cfg)
 
 	local row, _, required_w = Layout.build_row(actions, th, d, {
 		mk_icon_button = assert(Icons and Icons.mk_icon_button, "power.icons.mk_icon_button fehlt"),
@@ -109,14 +158,19 @@ function M.open(opts, Lib)
 	-- Open
 	-- ---------------------------------------------------------------------
 
+	local launchers_cfg = cfg.launchers or {}
+	local power_cfg = launchers_cfg.power or {}
+
 	handle = Lib.popup.show(stack, th, {
 		width = resolve_popup_width(th, required_w),
 		height = d.h,
 		placement = awful.placement.centered,
-		use_backdrop = true,
+		use_backdrop = (power_cfg.backdrop ~= false),
 		group = "launchers",
 		show_root = "with_bars",
 	})
+
+	M._handle = handle
 
 	-- ---------------------------------------------------------------------
 	-- Bind Actions

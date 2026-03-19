@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/power.lua
+-- ~/.config/awesome/shell/launchers/power/theme.lua
 local beautiful = require("beautiful")
 
 local Theme = {}
@@ -10,16 +10,8 @@ local Theme = {}
 function Theme.init(cfg)
 	cfg = cfg or {}
 
-	-- ------------------------------------------------------------------------
-	-- Colors
-	-- ------------------------------------------------------------------------
-
-	local C = cfg.colors or {}
-	local backdrop = C.overlay_40 or C.black_40 or C.transparent
-
-	-- ------------------------------------------------------------------------
-	-- Power
-	-- ------------------------------------------------------------------------
+	local colors = cfg.colors or {}
+	local backdrop = colors.overlay_40 or colors.black_40 or colors.transparent
 
 	beautiful.power = {
 		-- ---------------------------------------------------------------------
@@ -30,8 +22,8 @@ function Theme.init(cfg)
 		dialog_h = 360,
 		dialog_radius = 0,
 		dialog_border_width = 0,
-		dialog_border = C.blue_dark,
-		dialog_bg = C.blue_dark,
+		dialog_border = colors.blue_dark,
+		dialog_bg = colors.blue_dark,
 		backdrop = backdrop,
 
 		-- ---------------------------------------------------------------------
@@ -43,12 +35,12 @@ function Theme.init(cfg)
 		header_h = 80,
 		footer_h = 80,
 
-		header_bg = C.blue_dark,
-		header_fg = C.white,
-		body_bg = C.blue_light,
-		body_fg = C.black,
-		footer_bg = C.blue_dark,
-		footer_fg = C.white,
+		header_bg = colors.blue_dark,
+		header_fg = colors.white,
+		body_bg = colors.blue_light,
+		body_fg = colors.black,
+		footer_bg = colors.blue_dark,
+		footer_fg = colors.white,
 
 		-- ---------------------------------------------------------------------
 		-- Header
@@ -76,7 +68,8 @@ function Theme.init(cfg)
 		-- ---------------------------------------------------------------------
 
 		labels = {
-			hibernate = "Hibernate",
+			hibernate = "Sleep",
+			suspend = "Stand By",
 			poweroff = "Turn Off",
 			reboot = "Restart",
 		},
@@ -95,17 +88,19 @@ function Theme.init(cfg)
 		icon_label_size = 12,
 		icon_label_leading = 1.25,
 		icon_label_lines = 1,
-		icon_label_color = C.white,
+		icon_label_color = colors.white,
+		icon_label_pad_top = 0,
+		icon_label_pad_bottom = 2,
 
 		icon_shape = "rounded",
 		icon_rounding = 14,
 
-		icon_hover_bg = C.white and (C.white .. "22") or nil,
-		icon_hover_border = C.white,
+		icon_hover_bg = colors.white and (colors.white .. "22") or nil,
+		icon_hover_border = colors.white,
 		icon_hover_bw = 4,
 
-		icon_focus_bg = C.white and (C.white .. "22") or nil,
-		icon_focus_border = C.white,
+		icon_focus_bg = colors.white and (colors.white .. "22") or nil,
+		icon_focus_border = colors.white,
 		icon_focus_bw = 4,
 
 		-- ---------------------------------------------------------------------
@@ -114,15 +109,12 @@ function Theme.init(cfg)
 
 		icons = {
 			hibernate = "ui/assets/hibernate.png",
+			suspend = "ui/assets/hibernate.png",
 			poweroff = "ui/assets/poweroff.png",
 			reboot = "ui/assets/reboot.png",
 		},
 	}
 end
-
--- ============================================================================
--- Public API
--- ============================================================================
 
 function Theme.get()
 	return beautiful.power

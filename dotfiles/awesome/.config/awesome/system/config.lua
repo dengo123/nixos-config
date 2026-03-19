@@ -66,6 +66,18 @@ return {
 		},
 	},
 
+	launchers = {
+		power = {
+			backdrop = true,
+			first_action = "hibernate", -- "hibernate" | "suspend"
+			show_both_sleep_actions = false,
+		},
+
+		run = {
+			web_engine = "https://duckduckgo.com/?q=%s",
+		},
+	},
+
 	menu = {
 		tabs = true,
 		dynamic_labels = true,

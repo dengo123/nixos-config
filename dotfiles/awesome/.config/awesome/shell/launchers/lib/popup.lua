@@ -1,34 +1,25 @@
 -- ~/.config/awesome/shell/launchers/lib/popup.lua
--- Reiner Popup-Lifecycle (ohne Border/Shape/Radius-Zeichnung!)
--- Borders, Shapes, Radius etc. werden ausschließlich in den Containern der
--- einzelnen Launcher (run/container.lua, power/container.lua) gezeichnet.
---
--- API:
---   local Popup = require("shell.launchers.lib.popup")
---   local h = Popup.show(form_widget, theme, {
---     screen=..., width=..., height=...,
---     placement=awful.placement.centered,
---     use_backdrop=true, close_on_backdrop=false,
---     show_root=false|"with_bars"|"full",
---     group="launchers",
---   })
---   h.close()
-
 local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local Popup, _open = {}, {}
+local Popup = {}
 
--- ================== Utils ==================
-local function nz(x, fb)
-	return x == nil and fb or x
+local open_handles = {}
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function nz(value, fallback)
+	return value == nil and fallback or value
 end
 
 local function set_clients_visible(scr, on)
 	local ok, clients = pcall(function()
 		return client.get(scr)
 	end)
+
 	if ok and clients then
 		for _, c in ipairs(clients) do
 			c.hidden = not on
@@ -44,30 +35,35 @@ local function set_bars_visible(scr, on)
 	end
 end
 
-function Popup.close_all()
-	for i = #_open, 1, -1 do
-		local h = _open[i]
-		if h and h.close then
-			h.close(true)
+local function remove_handle(handle)
+	for i = #open_handles, 1, -1 do
+		if open_handles[i] == handle then
+			table.remove(open_handles, i)
+			break
 		end
-		_open[i] = nil
 	end
 end
 
--- ================== Main ==================
--- opts:
---   screen, width (req), height (req)
---   placement? (default awful.placement.centered)
---   use_backdrop? (default true)
---   close_on_backdrop? (default false)
---   show_root? = false|"with_bars"|"full" (default "with_bars")
---   group? (nur Tagging/Debug)
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function Popup.close_all()
+	for i = #open_handles, 1, -1 do
+		local handle = open_handles[i]
+		if handle and type(handle.close) == "function" then
+			handle.close(true)
+		end
+	end
+end
+
 function Popup.show(form_widget, th, opts)
-	opts, th = (opts or {}), (th or {})
+	opts = opts or {}
+	th = th or {}
 
 	local s = opts.screen or awful.screen.focused()
-	local W = assert(opts.width, "popup.show: width required")
-	local H = assert(opts.height, "popup.show: height required")
+	local width = assert(opts.width, "popup.show: width required")
+	local height = assert(opts.height, "popup.show: height required")
 
 	local placement_fn = opts.placement or awful.placement.centered
 	local use_backdrop = nz(opts.use_backdrop, true)
@@ -84,7 +80,6 @@ function Popup.show(form_widget, th, opts)
 	local hide_clients = (show_root_mode == "with_bars") or (show_root_mode == "full")
 	local hide_bars = (show_root_mode == "full")
 
-	-- ---------- Backdrop (optional) ----------
 	local backdrop = nil
 	if use_backdrop then
 		backdrop = wibox({
@@ -92,49 +87,65 @@ function Popup.show(form_widget, th, opts)
 			visible = true,
 			ontop = true,
 			type = "splash",
-			bg = nz(th.backdrop, "#00000066"), -- nur Backdrop-Farbe
+			bg = nz(th.backdrop, "#00000066"),
 		})
+
 		backdrop.input_passthrough = false
+
 		if show_root_mode == "with_bars" then
 			local wa = s.workarea
-			backdrop:geometry({ x = wa.x, y = wa.y, width = wa.width, height = wa.height })
+			backdrop:geometry({
+				x = wa.x,
+				y = wa.y,
+				width = wa.width,
+				height = wa.height,
+			})
 		else
 			backdrop:geometry(s.geometry)
 		end
 	end
 
-	-- ---------- Popup (reiner Träger; kein Border/Shape hier!) ----------
 	local popup = awful.popup({
 		screen = s,
 		ontop = true,
 		visible = false,
 		type = "dialog",
-		bg = "#00000000", -- bleibt voll transparent
+		bg = "#00000000",
 		placement = placement_fn,
 		shape = opts.shape,
 		widget = wibox.widget({
 			form_widget,
 			strategy = "exact",
-			width = W,
-			height = H,
+			width = width,
+			height = height,
 			widget = wibox.container.constraint,
 		}),
 	})
 
-	-- ---------- Lifecycle ----------
-	local function remove_from_open()
-		for i = #_open, 1, -1 do
-			if _open[i] and _open[i].popup == popup then
-				table.remove(_open, i)
-				break
-			end
-		end
+	local handle = {
+		popup = popup,
+		backdrop = backdrop,
+		screen = s,
+		group = opts.group or "launchers",
+		_is_open = false,
+	}
+
+	function handle.is_open()
+		return handle._is_open == true
 	end
 
 	local function really_close()
+		if not handle._is_open then
+			return
+		end
+
+		handle._is_open = false
+
 		if popup then
 			popup.visible = false
+			popup.widget = nil
 		end
+
 		if backdrop then
 			backdrop.visible = false
 		end
@@ -142,31 +153,47 @@ function Popup.show(form_widget, th, opts)
 		if hide_clients then
 			set_clients_visible(s, true)
 		end
+
 		if hide_bars then
 			set_bars_visible(s, true)
 		end
 
-		if popup then
-			popup.widget = nil
-		end
-		remove_from_open()
+		remove_handle(handle)
+		awesome.emit_signal("ui::overlays_changed")
 	end
 
 	local function close()
+		pcall(function()
+			tag.disconnect_signal("property::selected", on_tag_selected)
+		end)
+		pcall(function()
+			screen.disconnect_signal("removed", on_screen_removed)
+		end)
+		pcall(function()
+			screen.disconnect_signal("added", on_screen_added)
+		end)
+		pcall(function()
+			screen.disconnect_signal("primary_changed", on_primary_changed)
+		end)
+
 		really_close()
 	end
+
+	handle.close = close
 
 	if hide_clients then
 		set_clients_visible(s, false)
 	end
+
 	if hide_bars then
 		set_bars_visible(s, false)
 	end
 
 	popup.visible = true
 	placement_fn(popup, { honor_workarea = true })
+	handle._is_open = true
+	awesome.emit_signal("ui::overlays_changed")
 
-	-- Backdrop-Interaktion
 	if backdrop then
 		if close_on_backdrop then
 			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
@@ -183,17 +210,19 @@ function Popup.show(form_widget, th, opts)
 		end
 	end
 
-	-- Auto-Close bei Tag/Screen-Änderungen
-	local function on_tag_selected()
+	function on_tag_selected()
 		close()
 	end
-	local function on_screen_removed()
+
+	function on_screen_removed()
 		close()
 	end
-	local function on_screen_added()
+
+	function on_screen_added()
 		close()
 	end
-	local function on_primary_changed()
+
+	function on_primary_changed()
 		close()
 	end
 
@@ -202,25 +231,8 @@ function Popup.show(form_widget, th, opts)
 	screen.connect_signal("added", on_screen_added)
 	screen.connect_signal("primary_changed", on_primary_changed)
 
-	local orig_close = close
-	close = function(...)
-		pcall(function()
-			tag.disconnect_signal("property::selected", on_tag_selected)
-		end)
-		pcall(function()
-			screen.disconnect_signal("removed", on_screen_removed)
-		end)
-		pcall(function()
-			screen.disconnect_signal("added", on_screen_added)
-		end)
-		pcall(function()
-			screen.disconnect_signal("primary_changed", on_primary_changed)
-		end)
-		return orig_close(...)
-	end
+	table.insert(open_handles, handle)
 
-	local handle = { close = close, popup = popup, backdrop = backdrop, screen = s, group = opts.group or "launchers" }
-	table.insert(_open, handle)
 	return handle
 end
 

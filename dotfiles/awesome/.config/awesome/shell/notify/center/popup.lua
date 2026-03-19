@@ -1,7 +1,62 @@
--- shell/notify/center/popup.lua
+-- ~/.config/awesome/shell/notify/center/popup.lua
+local awful = require("awful")
+local gears = require("gears")
 local wibox = require("wibox")
 
 local M = {}
+
+local runtime = {
+	root_buttons = nil,
+	client_callback = nil,
+}
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function disarm_close_guard()
+	if runtime.root_buttons then
+		pcall(function()
+			root.buttons(runtime.root_buttons)
+		end)
+	end
+
+	runtime.root_buttons = nil
+
+	if runtime.client_callback then
+		pcall(function()
+			client.disconnect_signal("button::press", runtime.client_callback)
+		end)
+	end
+
+	runtime.client_callback = nil
+end
+
+local function arm_close_guard(on_close)
+	local function closer()
+		if type(on_close) == "function" then
+			on_close()
+		end
+	end
+
+	runtime.root_buttons = root.buttons()
+
+	local tmp = gears.table.join(
+		runtime.root_buttons or {},
+		awful.button({}, 1, closer),
+		awful.button({}, 2, closer),
+		awful.button({}, 3, closer)
+	)
+
+	root.buttons(tmp)
+
+	local client_cb = function()
+		closer()
+	end
+
+	runtime.client_callback = client_cb
+	client.connect_signal("button::press", client_cb)
+end
 
 -- =========================================================================
 -- Public API
@@ -47,10 +102,6 @@ function M.rebuild(popup, build_panel)
 	})
 
 	return true
-end
-
-local function safe_extra_height()
-	return 8
 end
 
 function M.apply_geometry(popup, geo)
@@ -105,6 +156,8 @@ function M.set_visible(args, open)
 	local screens = args.screens or {}
 	local key_for_screen = args.key_for_screen
 	local sync_popups = args.sync_popups
+	local close_on_click_outside = (args.close_on_click_outside == true)
+	local on_close_request = args.on_close_request
 	local on_open = args.on_open
 	local on_close = args.on_close
 
@@ -123,14 +176,24 @@ function M.set_visible(args, open)
 	end
 
 	if open == true then
+		if close_on_click_outside then
+			arm_close_guard(on_close_request)
+		end
+
 		if type(on_open) == "function" then
 			on_open()
 		end
 	else
+		disarm_close_guard()
+
 		if type(on_close) == "function" then
 			on_close()
 		end
 	end
+end
+
+function M.disarm()
+	disarm_close_guard()
 end
 
 return M

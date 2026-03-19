@@ -1,20 +1,21 @@
 -- ~/.config/awesome/shell/menu/init.lua
 local awful = require("awful")
 
-local Items = require("shell.menu.items")
+local Items = require("shell.menu.lib.items")
 local Place = require("shell.menu.lib.placement")
-local State = require("shell.menu.lib.state")
-local CloseGuard = require("shell.menu.lib.close_guard")
 local Popup = require("shell.menu.lib.popup")
 
-local Menu = {}
+local Menu = {
+	ui = nil,
+	cfg = nil,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
 local function get_theme()
-	local ui = State.get_context().ui or {}
+	local ui = Menu.ui or {}
 	local theme = ui.theme and ui.theme.menu
 
 	assert(theme and type(theme.get) == "function", "shell.menu: ui.theme.menu.get() fehlt")
@@ -36,8 +37,15 @@ local function get_theme()
 	return out
 end
 
+local function get_context()
+	return {
+		ui = Menu.ui or {},
+		cfg = Menu.cfg or {},
+	}
+end
+
 local function get_start_items()
-	local items = Items.build_start(State.get_context())
+	local items = Items.build_start(get_context())
 
 	assert(type(items) == "table" and #items > 0, "shell.menu: Start-Items leer")
 
@@ -45,40 +53,27 @@ local function get_start_items()
 end
 
 local function get_client_items(clients)
-	local items = Items.build_clients(clients, State.get_context())
+	local items = Items.build_clients(clients, get_context())
 
 	assert(type(items) == "table" and #items > 0, "shell.menu: Tabs-Items leer")
 
 	return items
 end
 
-local function ensure_closed()
-	Popup.hide()
-	CloseGuard.disarm()
-end
-
 local function tabs_enabled()
-	local cfg = State.get_context().cfg or {}
+	local cfg = Menu.cfg or {}
 	local menu_cfg = cfg.menu or {}
 
 	return menu_cfg.tabs ~= false
 end
 
 local function open_menu(items, coords)
-	ensure_closed()
-
 	Popup.show({
 		items = items,
 		theme = get_theme(),
 		coords = coords,
-		on_closed = function()
-			ensure_closed()
-		end,
+		on_closed = function() end,
 	})
-
-	CloseGuard.arm(function()
-		Menu.hide()
-	end)
 end
 
 -- =========================================================================
@@ -87,7 +82,9 @@ end
 
 function Menu.init(args)
 	args = args or {}
-	State.set_context(args)
+
+	Menu.ui = args.ui or {}
+	Menu.cfg = args.cfg or {}
 end
 
 function Menu.get_start_items()
@@ -100,7 +97,7 @@ function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
 	end
 
 	local items = get_client_items(clients)
-	local x, y = Place.coords_for_tabs(s, anchor and anchor.x_left, #items)
+	local x, y = Place.coords_for_tabs(Menu.ui, s, anchor and anchor.x_left, #items)
 
 	open_menu(items, {
 		x = x,
@@ -110,7 +107,7 @@ end
 
 function Menu.show_for_start_widget(s, _widget)
 	local items = get_start_items()
-	local x, y = Place.coords_for_start(s, #items)
+	local x, y = Place.coords_for_start(Menu.ui, s, #items)
 
 	open_menu(items, {
 		x = x,
@@ -126,13 +123,11 @@ function Menu.build_main()
 end
 
 function Menu.is_open()
-	local menu = State.get_menu()
-
-	return menu ~= nil and menu.wibox ~= nil and menu.wibox.valid and menu.wibox.visible == true
+	return Popup.is_open()
 end
 
 function Menu.hide()
-	ensure_closed()
+	Popup.hide()
 end
 
 return Menu

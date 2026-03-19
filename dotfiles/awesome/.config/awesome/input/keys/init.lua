@@ -1,4 +1,4 @@
--- input/keys/init.lua
+-- ~/.config/awesome/input/keys/init.lua
 local gears = require("gears")
 local Escape = require("input.keys.runtime.escape")
 local M = {}
@@ -15,8 +15,8 @@ function M.apply(cfg)
 		require("input.keys.global.state")(modkey),
 		require("input.keys.global.apps")(modkey, cfg),
 		require("input.keys.global.awesome")(modkey),
-		require("input.keys.global.run")(modkey, cfg.launchers),
-		require("input.keys.global.power")(modkey, cfg.launchers),
+		require("input.keys.global.run")(modkey, cfg.api and cfg.api.launchers),
+		require("input.keys.global.power")(modkey, cfg.api and cfg.api.launchers),
 		require("input.keys.global.screenshot")(modkey),
 		require("input.keys.global.media")(modkey, cfg)
 	)

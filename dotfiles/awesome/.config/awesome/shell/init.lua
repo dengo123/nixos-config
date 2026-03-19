@@ -142,7 +142,7 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	if M.launchers and type(M.launchers.init) == "function" then
-		M.launchers.init()
+		M.launchers.init(cfg)
 	end
 
 	-- ---------------------------------------------------------------------
@@ -152,7 +152,6 @@ function M.init(args)
 	M.menu.init({
 		ui = ui,
 		cfg = cfg,
-		launchers = M.launchers,
 	})
 
 	-- ---------------------------------------------------------------------
@@ -167,6 +166,14 @@ function M.init(args)
 
 	cfg.overlays = build_overlays()
 	cfg.actions = build_actions()
+
+	cfg.api = {
+		launchers = M.launchers,
+		menu = M.menu,
+		notify = M.notify,
+		workspaces = M.workspaces,
+		windowing = M.windowing,
+	}
 
 	-- ---------------------------------------------------------------------
 	-- Bars

@@ -1,8 +1,7 @@
--- shell/notify/center/init.lua
+-- ~/.config/awesome/shell/notify/center/init.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 
-local CloseGuard = require("shell.notify.center.close_guard")
 local Geometry = require("shell.notify.center.geometry")
 local Popup = require("shell.notify.center.popup")
 local Signals = require("shell.notify.center.signals")
@@ -44,7 +43,8 @@ local function center_cfg()
 end
 
 local function notify_theme()
-	return require_table(beautiful.notify, "beautiful.notify")
+	local notify = require_table(beautiful.notify, "beautiful.notify")
+	return notify
 end
 
 local function center_theme()
@@ -206,16 +206,12 @@ local function set_visible(open)
 		screens = target_screens(),
 		key_for_screen = key_for_screen,
 		sync_popups = sync_popups,
-		on_open = function()
-			if center_cfg().close_on_click_outside == true then
-				CloseGuard.arm(function()
-					awesome.emit_signal("notify::close_center")
-				end)
-			end
+		close_on_click_outside = (center_cfg().close_on_click_outside == true),
+		on_close_request = function()
+			awesome.emit_signal("notify::close_center")
 		end,
-		on_close = function()
-			CloseGuard.disarm()
-		end,
+		on_open = function() end,
+		on_close = function() end,
 	}, open)
 end
 

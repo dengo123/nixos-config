@@ -1,4 +1,4 @@
--- input/keys/global/escape.lua
+-- ~/.config/awesome/input/keys/global/escape.lua
 local awful = require("awful")
 local gears = require("gears")
 
@@ -78,6 +78,12 @@ function M.init(args)
 			uninstall(base_globalkeys)
 		end
 	end)
+
+	if any_overlay_open(args.overlays) then
+		install(base_globalkeys)
+	else
+		uninstall(base_globalkeys)
+	end
 end
 
 return M

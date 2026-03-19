@@ -8,6 +8,7 @@ local View = require("shell.launchers.run.view")
 local Providers = require("shell.launchers.run.providers")
 local Complete = require("shell.launchers.run.complete")
 local Controller = require("shell.launchers.run.controller")
+local Theme = require("shell.launchers.run.theme")
 
 local M = {}
 
@@ -37,20 +38,21 @@ local function dims(panel)
 	}
 end
 
-local function resolve_theme(Lib, overrides)
-	must(Lib and Lib.ui_api and type(Lib.ui_api.resolve_theme) == "function", "Lib.ui_api.resolve_theme not available")
-	return Lib.ui_api.resolve_theme("run", overrides or {})
+local function resolve_theme(cfg, overrides)
+	local theme = Theme.get(cfg or {}, overrides or {})
+	must(type(theme) == "table", "theme for 'run' invalid")
+	return theme
 end
 
 local function resolve_web_cfg(cfg)
-	local system_cfg = cfg.system or {}
-	local search_cfg = cfg.search or {}
+	local apps_cfg = cfg.apps or {}
+	local launchers_cfg = cfg.launchers or {}
+	local run_cfg = launchers_cfg.run or {}
 
-	return search_cfg.web
-		or {
-			browser = system_cfg.browser or "firefox",
-			engine = "https://duckduckgo.com/?q=%s",
-		}
+	return {
+		browser = apps_cfg.browser or "firefox",
+		engine = run_cfg.web_engine or "https://duckduckgo.com/?q=%s",
+	}
 end
 
 -- =========================================================================
@@ -68,7 +70,7 @@ function M.open(opts, Lib)
 	local cfg = opts.cfg or {}
 	local web_cfg = resolve_web_cfg(cfg)
 
-	local th = resolve_theme(Lib, opts.theme)
+	local th = resolve_theme(cfg, opts.theme)
 	must(th and th.panel and th.search, "theme for 'run' must provide {panel, search}")
 
 	local panel = th.panel
@@ -156,6 +158,8 @@ function M.open(opts, Lib)
 	-- Container
 	-- ---------------------------------------------------------------------
 
+	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
+
 	local stack = Container.build(panel, d, {
 		title = opts.title or panel.title,
 		body = body_widget,
@@ -165,8 +169,6 @@ function M.open(opts, Lib)
 			cancel_btn,
 		},
 	})
-
-	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
 
 	local handle = Lib.ui_api.open_panel(stack, panel, {
 		use_backdrop = false,
@@ -214,6 +216,8 @@ function M.open(opts, Lib)
 		complete = Complete,
 		web = web_cfg,
 		home = os.getenv("HOME"),
+		apps = cfg.apps or {},
+		modkey = cfg.input and cfg.input.modkey or "Mod4",
 
 		hide_menu_popup = function()
 			if handle and handle.close then

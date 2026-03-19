@@ -204,6 +204,13 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 			return
 		end
 
+		if type(menu_api.is_open) == "function" and menu_api.is_open() then
+			if type(menu_api.hide) == "function" then
+				menu_api.hide()
+			end
+			return
+		end
+
 		local target = (lead and lead.valid) and lead or pick_lead(clients)
 		if not (target and target.valid) then
 			return

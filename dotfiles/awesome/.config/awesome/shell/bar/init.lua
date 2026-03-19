@@ -167,6 +167,12 @@ function M.setup(s, args)
 			show_for_widget_with_clients_at = function(widget, clients, anchor)
 				menu_api.show_for_tabs_widget_with_clients_at(s, widget, clients, anchor)
 			end,
+			is_open = function()
+				return menu_api.is_open()
+			end,
+			hide = function()
+				menu_api.hide()
+			end,
 		} or nil,
 	})
 

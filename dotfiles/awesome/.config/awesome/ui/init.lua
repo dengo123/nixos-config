@@ -14,8 +14,6 @@ local THEME_PARTS = {
 	"tabs",
 	"windows",
 	"wibar",
-	"power",
-	"run",
 }
 
 -- =========================================================================
@@ -65,8 +63,6 @@ local function lock_theme_prefixes()
 		"notify_",
 		"tabs_",
 		"start_",
-		"power_",
-		"run_",
 	}, "error")
 end
 

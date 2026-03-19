@@ -105,7 +105,10 @@ function M.mk_icon_button(args)
 		local extra_w = assert(tonumber(th.icon_cell_extra_w), "power.icons: icon_cell_extra_w fehlt/ungültig")
 		local label_w = box_side + extra_w
 
-		label_h = math.ceil(label_size * label_leading)
+		local label_pad_top = tonumber(th.icon_label_pad_top) or 0
+		local label_pad_bottom = tonumber(th.icon_label_pad_bottom) or 0
+
+		label_h = math.ceil(label_size * label_leading) + label_pad_top + label_pad_bottom
 
 		local label_widget = wibox.widget({
 			markup = string.format(
@@ -118,12 +121,16 @@ function M.mk_icon_button(args)
 			valign = "center",
 			wrap = "none",
 			ellipsize = "none",
-			forced_height = label_h,
 			widget = wibox.widget.textbox,
 		})
 
 		label_block = wibox.widget({
-			label_widget,
+			{
+				label_widget,
+				top = label_pad_top,
+				bottom = label_pad_bottom,
+				widget = wibox.container.margin,
+			},
 			strategy = "exact",
 			width = label_w,
 			widget = wibox.container.constraint,
@@ -134,24 +141,15 @@ function M.mk_icon_button(args)
 	-- Layout
 	-- ------------------------------------------------------------------------
 
-	local v_spacing = (label_block and label_h > 0) and spacing or 0
-	local offset = math.floor(((label_block and label_h or 0) + v_spacing) / 2)
-
-	local square_centered = wibox.widget({
+	local content = wibox.widget({
 		{
 			hover_square,
 			halign = "center",
 			valign = "center",
 			widget = wibox.container.place,
 		},
-		top = offset,
-		widget = wibox.container.margin,
-	})
-
-	local content = wibox.widget({
-		square_centered,
 		label_block,
-		spacing = spacing,
+		spacing = (label_block and spacing or 0),
 		layout = wibox.layout.fixed.vertical,
 	})
 

@@ -2,87 +2,127 @@
 local awful = require("awful")
 local gears = require("gears")
 
-return function(modkey, launchers) -- << Injection!
+return function(modkey, launchers_api)
+	-- =========================================================================
+	-- Helpers
+	-- =========================================================================
+
 	local function bind(mods, key, fn, desc)
-		return awful.key(mods, key, fn, { description = desc, group = "power" })
+		return awful.key(mods, key, fn, {
+			description = desc,
+			group = "power",
+		})
 	end
 
-	local MODS = { {}, { "Mod4" } }
+	local function spawn_shell(cmd)
+		awful.spawn.with_shell(cmd)
+	end
+
+	local function can_open_power()
+		return launchers_api and launchers_api.open and type(launchers_api.open.power) == "function"
+	end
+
+	-- =========================================================================
+	-- Modal Keys
+	-- =========================================================================
 
 	local function install_modal_keys(handle)
-		local old = root.keys()
-		local extra = {}
+		local previous_root_keys = root.keys()
+		local modal_keys = {}
 
-		local function add_allmods(key, fn, desc)
-			for _, m in ipairs(MODS) do
-				table.insert(extra, awful.key(m, key, fn, { description = desc or key, group = "power" }))
-			end
-		end
-		local function run(cmd)
-			awful.spawn.with_shell(cmd)
-		end
-		local function close()
-			if handle and handle.close then
+		local modal_mod_sets = {
+			{},
+			{ modkey },
+		}
+
+		local function close_handle()
+			if handle and type(handle.close) == "function" then
 				handle.close()
 			end
 		end
 
-		add_allmods("u", function()
-			close()
-			run("systemctl suspend")
-		end, "Suspend")
-		add_allmods("h", function()
-			close()
-			run("systemctl hibernate")
-		end, "Hibernate")
-		add_allmods("r", function()
-			close()
-			run("systemctl reboot")
-		end, "Reboot")
-		add_allmods("p", function()
-			close()
-			run("systemctl poweroff")
-		end, "Poweroff")
-		add_allmods("l", function()
-			close()
-			run([[ if command -v loginctl >/dev/null 2>&1; then
-               loginctl terminate-user "$USER"
-             else
-               pkill -KILL -u "$USER"
-             fi ]])
-		end, "Logout")
-		add_allmods("s", function()
-			close()
-			run([[ if command -v dm-tool >/dev/null 2>&1; then
-               dm-tool switch-to-greeter
-             elif command -v gdmflexiserver >/dev/null 2>&1; then
-               gdmflexiserver
-             else
-               command -v notify-send >/dev/null 2>&1 && notify-send "Switch user" "Kein passender DM-Befehl gefunden."
-             fi ]])
-		end, "Switch user")
-		add_allmods("Escape", function()
-			close()
-		end, "Cancel")
+		local function add_modal_key(key, fn, desc)
+			for _, mods in ipairs(modal_mod_sets) do
+				table.insert(
+					modal_keys,
+					awful.key(mods, key, fn, {
+						description = desc or key,
+						group = "power",
+					})
+				)
+			end
+		end
 
-		local joined = old and gears.table.join(old, table.unpack(extra)) or gears.table.join(table.unpack(extra))
-		root.keys(joined)
+		-- ---------------------------------------------------------------------
+		-- Actions
+		-- ---------------------------------------------------------------------
 
-		local oc = handle.close
+		add_modal_key("u", function()
+			close_handle()
+			spawn_shell("systemctl suspend")
+		end, "stand by")
+
+		add_modal_key("h", function()
+			close_handle()
+			spawn_shell("systemctl hibernate")
+		end, "sleep")
+
+		add_modal_key("r", function()
+			close_handle()
+			spawn_shell("systemctl reboot")
+		end, "reboot")
+
+		add_modal_key("p", function()
+			close_handle()
+			spawn_shell("systemctl poweroff")
+		end, "poweroff")
+
+		add_modal_key("Escape", function()
+			close_handle()
+		end, "cancel")
+
+		-- ---------------------------------------------------------------------
+		-- Install
+		-- ---------------------------------------------------------------------
+
+		local joined_keys
+		if previous_root_keys then
+			joined_keys = gears.table.join(previous_root_keys, table.unpack(modal_keys))
+		else
+			joined_keys = gears.table.join(table.unpack(modal_keys))
+		end
+
+		root.keys(joined_keys)
+
+		local original_close = handle.close
 		handle.close = function(...)
-			if old then
-				root.keys(old)
+			if previous_root_keys then
+				root.keys(previous_root_keys)
 			else
 				root.keys(nil)
 			end
-			return oc(...)
+
+			if type(original_close) == "function" then
+				return original_close(...)
+			end
 		end
 	end
 
-	return gears.table.join(bind({ modkey }, "Escape", function()
-		local handle = launchers.open.power({})
+	-- =========================================================================
+	-- Public Keys
+	-- =========================================================================
+
+	local function open_power_dialog()
+		if not can_open_power() then
+			return
+		end
+
+		local handle = launchers_api.open.power({})
+
 		if handle then
 			install_modal_keys(handle)
 		end
-	end, "open power dialog (modal hotkeys)"))
+	end
+
+	return gears.table.join(bind({ modkey }, "End", open_power_dialog, "open power dialog (modal hotkeys)"))
 end
