@@ -1,7 +1,9 @@
 -- ~/.config/awesome/shell/menu/init.lua
 local awful = require("awful")
 
-local Items = require("shell.menu.lib.items")
+local Theme = require("shell.menu.theme")
+local Layout = require("shell.menu.layout")
+local Items = require("shell.menu.items")
 local Place = require("shell.menu.lib.placement")
 local Popup = require("shell.menu.lib.popup")
 
@@ -15,13 +17,9 @@ local Menu = {
 -- =========================================================================
 
 local function get_theme()
-	local ui = Menu.ui or {}
-	local theme = ui.theme and ui.theme.menu
+	local out = Theme.get()
 
-	assert(theme and type(theme.get) == "function", "shell.menu: ui.theme.menu.get() fehlt")
-
-	local out = theme.get()
-	assert(type(out) == "table", "shell.menu: ui.theme.menu.get() lieferte kein table")
+	assert(type(out) == "table", "shell.menu: theme.get() lieferte kein table")
 
 	assert(out.width, "shell.menu: theme.width fehlt")
 	assert(out.height, "shell.menu: theme.height fehlt")
@@ -85,6 +83,9 @@ function Menu.init(args)
 
 	Menu.ui = args.ui or {}
 	Menu.cfg = args.cfg or {}
+
+	Theme.init(Menu.cfg)
+	Layout.init(Menu.cfg)
 end
 
 function Menu.get_start_items()
@@ -97,7 +98,7 @@ function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
 	end
 
 	local items = get_client_items(clients)
-	local x, y = Place.coords_for_tabs(Menu.ui, s, anchor and anchor.x_left, #items)
+	local x, y = Place.coords_for_tabs(s, anchor and anchor.x_left, #items)
 
 	open_menu(items, {
 		x = x,
@@ -107,7 +108,7 @@ end
 
 function Menu.show_for_start_widget(s, _widget)
 	local items = get_start_items()
-	local x, y = Place.coords_for_start(Menu.ui, s, #items)
+	local x, y = Place.coords_for_start(s, #items)
 
 	open_menu(items, {
 		x = x,

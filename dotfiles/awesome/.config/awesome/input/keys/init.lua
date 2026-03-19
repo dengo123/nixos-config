@@ -17,6 +17,7 @@ function M.apply(cfg)
 		require("input.keys.global.awesome")(modkey),
 		require("input.keys.global.run")(modkey, cfg.api and cfg.api.launchers),
 		require("input.keys.global.power")(modkey, cfg.api and cfg.api.launchers),
+		require("input.keys.global.logoff")(modkey, cfg.api and cfg.api.launchers),
 		require("input.keys.global.screenshot")(modkey),
 		require("input.keys.global.media")(modkey, cfg)
 	)

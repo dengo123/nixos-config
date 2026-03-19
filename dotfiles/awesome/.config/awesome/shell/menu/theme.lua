@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/menu.lua
+-- ~/.config/awesome/shell/menu/theme.lua
 local beautiful = require("beautiful")
 local gears = require("gears")
 local xr = require("beautiful.xresources")
@@ -39,15 +39,11 @@ function M.init(cfg)
 	beautiful.menu_height = dpi(28)
 	beautiful.menu_width = dpi(220)
 
-	beautiful.menu_gap = dpi(4)
-	beautiful.menu_x_padding = dpi(0)
-	beautiful.menu_align = "left"
-	beautiful.menu_x_offset = 0
-	beautiful.menu_submenu = "›"
-
 	beautiful.menu_shape = function(cr, w, h)
 		gears.shape.rounded_rect(cr, w, h, beautiful.border_radius or dpi(6))
 	end
+
+	beautiful.menu_submenu = "›"
 
 	-- ---------------------------------------------------------------------
 	-- Hotkeys
@@ -69,10 +65,6 @@ function M.init(cfg)
 end
 
 function M.get()
-	-- ---------------------------------------------------------------------
-	-- Theme Object
-	-- ---------------------------------------------------------------------
-
 	return {
 		width = beautiful.menu_width,
 		height = beautiful.menu_height,
@@ -84,21 +76,6 @@ function M.get()
 		border_width = beautiful.menu_border_width,
 		shape = beautiful.menu_shape,
 		submenu = beautiful.menu_submenu,
-	}
-end
-
-function M.props()
-	-- ---------------------------------------------------------------------
-	-- Theme Object
-	-- ---------------------------------------------------------------------
-
-	return {
-		item_height = beautiful.menu_height,
-		width = beautiful.menu_width,
-		gap = beautiful.menu_gap,
-		x_padding = beautiful.menu_x_padding,
-		align = beautiful.menu_align,
-		x_offset = beautiful.menu_x_offset,
 	}
 end
 

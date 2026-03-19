@@ -9,7 +9,6 @@ local M = {
 
 local THEME_PARTS = {
 	"start",
-	"menu",
 	"notify",
 	"tabs",
 	"windows",
@@ -58,8 +57,6 @@ local function lock_theme_prefixes()
 		"layoutbox_",
 		"border_",
 		"titlebar_",
-		"menu_",
-		"hotkeys_",
 		"notify_",
 		"tabs_",
 		"start_",

@@ -1,5 +1,6 @@
 -- ~/.config/awesome/shell/menu/items.lua
 local awful = require("awful")
+local gears = require("gears")
 local hotkeys_popup = require("awful.hotkeys_popup")
 
 local Items = {}
@@ -82,6 +83,44 @@ local function resolve_label(dynamic_labels, cmd, fallback)
 	return fallback
 end
 
+local function resolve_asset(path)
+	if type(path) ~= "string" or path == "" then
+		return nil
+	end
+
+	if path:match("^/") then
+		return path
+	end
+
+	return gears.filesystem.get_configuration_dir() .. path
+end
+
+local function app_icon_name(kind, cmd)
+	local exe = first_token(cmd)
+
+	if kind == "files" then
+		return exe or "system-file-manager"
+	end
+
+	if kind == "terminal" then
+		return exe or "utilities-terminal"
+	end
+
+	if kind == "editor" then
+		return exe or "accessories-text-editor"
+	end
+
+	if kind == "browser" then
+		return exe or "web-browser"
+	end
+
+	return exe
+end
+
+local function mk_item(label, fn, icon)
+	return { label, fn, icon }
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -115,73 +154,52 @@ function Items.build_start(ctx)
 	local browser_available = cmd_exists(browser_cmd)
 
 	return {
-		{
-			files_name,
-			function()
-				spawn_cmd(files_cmd)
-			end,
-		},
-		{
-			terminal_name,
-			function()
-				spawn_cmd(terminal_cmd)
-			end,
-		},
-		{
-			editor_name,
-			function()
-				spawn_cmd(editor_cmd)
-			end,
-		},
-		{
-			browser_name,
-			function()
-				if browser_available then
-					spawn_cmd(browser_cmd)
-				else
-					spawn_cmd({ "xdg-open", "about:blank" })
-				end
-			end,
-		},
-		{
-			"Run",
-			function()
-				local Launchers = require("shell.launchers")
-				Launchers.open.run()
-			end,
-		},
-		{
-			"Screensaver",
-			function()
-				awful.spawn.with_shell("xscreensaver-settings")
-			end,
-		},
-		{
-			"Awesome Reload",
-			function()
-				awesome.restart()
-			end,
-		},
-		{
-			"Hotkeys",
-			function()
-				hotkeys_popup.show_help(nil, awful.screen.focused())
-			end,
-		},
-		{
-			"Log Off",
-			function()
-				local Launchers = require("shell.launchers")
-				Launchers.open.logoff()
-			end,
-		},
-		{
-			"Shut Down",
-			function()
-				local Launchers = require("shell.launchers")
-				Launchers.open.power()
-			end,
-		},
+		mk_item(files_name, function()
+			spawn_cmd(files_cmd)
+		end, app_icon_name("files", files_cmd)),
+
+		mk_item(terminal_name, function()
+			spawn_cmd(terminal_cmd)
+		end, app_icon_name("terminal", terminal_cmd)),
+
+		mk_item(editor_name, function()
+			spawn_cmd(editor_cmd)
+		end, app_icon_name("editor", editor_cmd)),
+
+		mk_item(browser_name, function()
+			if browser_available then
+				spawn_cmd(browser_cmd)
+			else
+				spawn_cmd({ "xdg-open", "about:blank" })
+			end
+		end, app_icon_name("browser", browser_cmd)),
+
+		mk_item("Run", function()
+			local Launchers = require("shell.launchers")
+			Launchers.open.run()
+		end, "system-run"),
+
+		mk_item("Screensaver", function()
+			awful.spawn.with_shell("xscreensaver-settings")
+		end, "preferences-desktop-screensaver"),
+
+		mk_item("Awesome Reload", function()
+			awesome.restart()
+		end, "view-refresh"),
+
+		mk_item("Hotkeys", function()
+			hotkeys_popup.show_help(nil, awful.screen.focused())
+		end, "preferences-desktop-keyboard-shortcuts"),
+
+		mk_item("Log Off", function()
+			local Launchers = require("shell.launchers")
+			Launchers.open.logoff()
+		end, nil),
+
+		mk_item("Shut Down", function()
+			local Launchers = require("shell.launchers")
+			Launchers.open.power()
+		end, nil),
 	}
 end
 
@@ -200,39 +218,32 @@ function Items.build_clients(clients, _ctx)
 	end
 
 	return {
-		{
-			"Close",
-			function()
-				if c.valid then
-					c:kill()
-				end
-			end,
-		},
-		{
-			"Floating / Tiling",
-			function()
-				if not c.valid then
-					return
-				end
+		mk_item("Close", function()
+			if c.valid then
+				c:kill()
+			end
+		end, "window-close"),
 
-				c.floating = not c.floating
+		mk_item("Floating / Tiling", function()
+			if not c.valid then
+				return
+			end
 
-				if not c.floating then
-					awful.client.setslave(c)
-				end
-			end,
-		},
-		{
-			"Fullscreen",
-			function()
-				if not c.valid then
-					return
-				end
+			c.floating = not c.floating
 
-				c.fullscreen = not c.fullscreen
-				c:raise()
-			end,
-		},
+			if not c.floating then
+				awful.client.setslave(c)
+			end
+		end, "window-restore"),
+
+		mk_item("Fullscreen", function()
+			if not c.valid then
+				return
+			end
+
+			c.fullscreen = not c.fullscreen
+			c:raise()
+		end, "view-fullscreen"),
 	}
 end
 
