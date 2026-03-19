@@ -81,6 +81,7 @@ function M.init(args)
 
 	Container.init({
 		shape_fn = shape_fn,
+		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
 
 	-- ---------------------------------------------------------------------

@@ -44,6 +44,8 @@ return {
 	},
 
 	windowing = {
+		rounded_corners = true,
+
 		focus = {
 			sloppy = true,
 			center_mouse = false,
