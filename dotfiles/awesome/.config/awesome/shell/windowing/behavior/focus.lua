@@ -4,21 +4,156 @@ local gears = require("gears")
 
 local F = {}
 
-F.sloppy = true
-F.center_mouse = true
 F.raise_on_mouse = false
 F.block_ms = 150
 
-F.mouse_follows_focus = false
+F.center_mouse_enable = true
+F.center_mouse_exclude_layouts = {}
+F.center_mouse_exclude_states = {}
 
 F._kbd_recent = false
 F._suppress_center = false
+F._mouse_by_client = setmetatable({}, { __mode = "k" })
+F._last_focused_client = nil
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function warp_to_client(c)
+local function list_to_set(list)
+	local set = {}
+
+	for _, v in ipairs(list or {}) do
+		if type(v) == "string" and v ~= "" then
+			set[v] = true
+		end
+	end
+
+	return set
+end
+
+local function current_layout_name(c)
+	if not (c and c.valid and c.screen) then
+		return nil
+	end
+
+	local layout = awful.layout.get(c.screen)
+	if not layout then
+		return nil
+	end
+
+	return awful.layout.getname(layout)
+end
+
+local function client_has_excluded_state(c)
+	if not (c and c.valid) then
+		return false
+	end
+
+	if F.center_mouse_exclude_states.fullscreen and c.fullscreen then
+		return true
+	end
+
+	if F.center_mouse_exclude_states.maximized and c.maximized then
+		return true
+	end
+
+	if F.center_mouse_exclude_states.maximized_horizontal and c.maximized_horizontal then
+		return true
+	end
+
+	if F.center_mouse_exclude_states.maximized_vertical and c.maximized_vertical then
+		return true
+	end
+
+	if F.center_mouse_exclude_states.floating and c.floating then
+		return true
+	end
+
+	return false
+end
+
+local function should_center_mouse(c)
+	if not F.center_mouse_enable then
+		return false
+	end
+
+	local layout_name = current_layout_name(c)
+	if layout_name and F.center_mouse_exclude_layouts[layout_name] then
+		return false
+	end
+
+	if client_has_excluded_state(c) then
+		return false
+	end
+
+	return true
+end
+
+local function clamp(v, lo, hi)
+	if v < lo then
+		return lo
+	end
+
+	if v > hi then
+		return hi
+	end
+
+	return v
+end
+
+local function remember_mouse_for_client(c)
+	if not (c and c.valid) or c.minimized or not c:isvisible() then
+		return
+	end
+
+	local g = c:geometry()
+	local m = mouse.coords()
+
+	if m.x < g.x or m.x >= (g.x + g.width) or m.y < g.y or m.y >= (g.y + g.height) then
+		return
+	end
+
+	F._mouse_by_client[c] = {
+		rx = (m.x - g.x) / math.max(g.width, 1),
+		ry = (m.y - g.y) / math.max(g.height, 1),
+	}
+end
+
+local function move_mouse_to_client(c)
+	if not (c and c.valid) or c.minimized or not c:isvisible() then
+		return
+	end
+
+	gears.timer.delayed_call(function()
+		if not (c and c.valid) or c.minimized or not c:isvisible() then
+			return
+		end
+
+		local g = c:geometry()
+		local mem = F._mouse_by_client[c]
+
+		if mem then
+			local px = g.x + math.floor(g.width * mem.rx)
+			local py = g.y + math.floor(g.height * mem.ry)
+
+			mouse.coords({
+				x = clamp(px, g.x + 12, g.x + math.max(12, g.width - 12)),
+				y = clamp(py, g.y + 12, g.y + math.max(12, g.height - 12)),
+			})
+			return
+		end
+
+		local m = mouse.coords()
+
+		mouse.coords({
+			x = clamp(m.x, g.x + 12, g.x + math.max(12, g.width - 12)),
+			y = clamp(m.y, g.y + 12, g.y + math.max(12, g.height - 12)),
+		})
+	end)
+end
+
+local function center_mouse_in_client(c)
 	if not (c and c.valid) or c.minimized or not c:isvisible() then
 		return
 	end
@@ -48,12 +183,19 @@ function F.init(o)
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	F.sloppy = (o.sloppy ~= false)
-	F.center_mouse = (o.center_mouse ~= false)
 	F.raise_on_mouse = (o.raise_on_mouse == true)
 	F.block_ms = tonumber(o.block_ms) or 150
 
-	F.mouse_follows_focus = (o.mouse_follows_focus == true)
+	local center_cfg = o.center_mouse
+	if type(center_cfg) == "table" then
+		F.center_mouse_enable = (center_cfg.enable ~= false)
+		F.center_mouse_exclude_layouts = list_to_set(center_cfg.exclude_layouts)
+		F.center_mouse_exclude_states = list_to_set(center_cfg.exclude_states)
+	else
+		F.center_mouse_enable = (center_cfg ~= false)
+		F.center_mouse_exclude_layouts = {}
+		F.center_mouse_exclude_states = {}
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Signals
@@ -79,10 +221,6 @@ function F.init(o)
 end
 
 function F:on_mouse_enter(c)
-	if not F.sloppy then
-		return
-	end
-
 	if not (c and c.valid) then
 		return
 	end
@@ -91,7 +229,13 @@ function F:on_mouse_enter(c)
 		return
 	end
 
+	local prev = client.focus
+	if prev and prev ~= c and prev.valid then
+		remember_mouse_for_client(prev)
+	end
+
 	client.focus = c
+	F._last_focused_client = c
 
 	if F.raise_on_mouse then
 		c:raise()
@@ -103,20 +247,22 @@ function F:on_focus(c)
 		return
 	end
 
-	if F.mouse_follows_focus and not F._suppress_center then
-		warp_to_client(c)
-		return
+	local prev = F._last_focused_client
+	if prev and prev ~= c and prev.valid then
+		remember_mouse_for_client(prev)
 	end
-
-	if not F.center_mouse then
-		return
-	end
+	F._last_focused_client = c
 
 	if not F._kbd_recent or F._suppress_center then
 		return
 	end
 
-	warp_to_client(c)
+	if should_center_mouse(c) then
+		center_mouse_in_client(c)
+		return
+	end
+
+	move_mouse_to_client(c)
 end
 
 return F

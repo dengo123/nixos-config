@@ -57,11 +57,14 @@ return {
 		titlebars = true,
 
 		focus = {
-			sloppy = true,
-			center_mouse = false,
 			raise_on_mouse = false,
 			block_ms = 150,
-			mouse_follows_focus = true,
+
+			center_mouse = {
+				enable = false,
+				exclude_layouts = { "max" },
+				exclude_states = { "fullscreen" },
+			},
 		},
 
 		floating = {
@@ -103,7 +106,6 @@ return {
 		},
 
 		center = {
-			close_on_escape = true,
 			close_on_click_outside = true,
 			close_on_tag_switch = true,
 			close_on_client_focus = false,
