@@ -4,18 +4,29 @@ local beautiful = require("beautiful")
 
 local M = {}
 
+local runtime_cfg = {}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function tags_cfg()
+	return runtime_cfg.tags or {}
+end
+
 local function resolve_gap()
-	local gap = tonumber(beautiful.useless_gap)
-	assert(gap ~= nil, "workspaces.spacing_policy: beautiful.useless_gap fehlt/ungueltig")
+	local gap = tonumber(tags_cfg().gap)
+	assert(gap ~= nil, "workspaces.spacing_policy: cfg.tags.gap fehlt/ungueltig")
 	return gap
 end
 
-local function is_enabled()
-	return beautiful.max_pad_on ~= false
+local function apply_beautiful_spacing()
+	local gap = resolve_gap()
+
+	beautiful.useless_gap = gap
+	beautiful.gap_single_client = true
+	beautiful.max_pad_on = true
+	beautiful.max_pad_same_as_gap = true
 end
 
 -- =========================================================================
@@ -27,7 +38,7 @@ local function apply(s)
 		return
 	end
 
-	if not is_enabled() or not s.selected_tag then
+	if not s.selected_tag then
 		awful.screen.padding(s, nil)
 		return
 	end
@@ -52,7 +63,11 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init()
+function M.init(cfg)
+	runtime_cfg = cfg or {}
+
+	apply_beautiful_spacing()
+
 	awful.screen.connect_for_each_screen(function(s)
 		apply(s)
 	end)

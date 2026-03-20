@@ -16,6 +16,7 @@ local Behavior = {
 }
 
 local Container = require("shell.windowing.ui.container")
+local Theme = require("shell.windowing.ui.theme")
 local Titlebar = require("shell.windowing.ui.titlebar")
 
 local M = {
@@ -34,13 +35,11 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	local cfg = args.cfg or {}
-	local ui = args.ui or {}
 
 	local windowing_cfg = cfg.windowing or {}
 	local focus_cfg = windowing_cfg.focus or {}
 	local fullscreen_cfg = windowing_cfg.fullscreen or {}
 
-	local theme = ui.theme and ui.theme.windows
 	local modkey = args.modkey
 	local mouse = args.mouse
 
@@ -48,12 +47,10 @@ function M.init(args)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	if theme and theme.init then
-		pcall(theme.init, cfg)
-	end
+	pcall(Theme.init, cfg)
 
-	local shape_fn = theme and theme.shape_fn and theme.shape_fn() or nil
-	local button_style = theme and theme.button_style and theme.button_style(cfg) or {}
+	local shape_fn = Theme.shape_fn and Theme.shape_fn() or nil
+	local button_style = Theme.button_style and Theme.button_style(cfg) or {}
 
 	-- ---------------------------------------------------------------------
 	-- Rules

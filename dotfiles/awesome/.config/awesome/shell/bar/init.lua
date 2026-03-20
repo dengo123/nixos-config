@@ -1,21 +1,27 @@
 -- ~/.config/awesome/shell/bar/init.lua
 local awful = require("awful")
-local gears = require("gears")
 local wibox = require("wibox")
 
-local Reveal = require("shell.bar.reveal")
-local Sections = require("shell.bar.sections")
-local Clock = require("shell.bar.widgets.clock")
-local Layoutbox = require("shell.bar.widgets.layoutbox")
-local Notify = require("shell.bar.widgets.notify")
-local Start = require("shell.bar.widgets.start")
-local Systray = require("shell.bar.widgets.systray")
-local Tabs = require("shell.bar.widgets.tabs")
-local Tags = require("shell.bar.widgets.tags")
+local Widgets = {
+	clock = require("shell.bar.widgets.clock"),
+	layoutbox = require("shell.bar.widgets.layoutbox"),
+	notify = require("shell.bar.widgets.notify"),
+	start = require("shell.bar.widgets.start"),
+	systray = require("shell.bar.widgets.systray"),
+	tabs = require("shell.bar.widgets.tabs"),
+	tags = require("shell.bar.widgets.tags"),
+}
 
-local StartTheme = require("shell.bar.themes.start")
-local TabsTheme = require("shell.bar.themes.tabs")
-local WibarTheme = require("shell.bar.themes.wibar")
+local Themes = {
+	start = require("shell.bar.themes.start"),
+	tabs = require("shell.bar.themes.tabs"),
+	wibar = require("shell.bar.themes.wibar"),
+}
+
+local Bar = {
+	reveal = require("shell.bar.reveal"),
+	sections = require("shell.bar.sections"),
+}
 
 local M = {}
 
@@ -65,13 +71,13 @@ function M.setup(s, args)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	pcall(WibarTheme.init, cfg)
-	pcall(StartTheme.init, cfg)
-	pcall(TabsTheme.init, cfg)
+	pcall(Themes.wibar.init, cfg)
+	pcall(Themes.start.init, cfg)
+	pcall(Themes.tabs.init, cfg)
 
-	local wibar_theme = WibarTheme
-	local start_theme = StartTheme.get()
-	local tabs_theme = TabsTheme.get()
+	local wibar_theme = Themes.wibar
+	local start_theme = Themes.start.get()
+	local tabs_theme = Themes.tabs.get()
 	local menu_theme = cfg.menus
 
 	-- ---------------------------------------------------------------------
@@ -95,7 +101,7 @@ function M.setup(s, args)
 	-- Widgets
 	-- ---------------------------------------------------------------------
 
-	local tabs = Tabs.build(s, {
+	local tabs = Widgets.tabs.build(s, {
 		modkey = modkey,
 		group_by_class = true,
 		theme = tabs_theme,
@@ -114,13 +120,13 @@ function M.setup(s, args)
 		} or nil,
 	})
 
-	local tags = show_tags and Tags.build(s, {}) or nil
+	local tags = show_tags and Widgets.tags.build(s, {}) or nil
 
-	local tray = showtray and Systray.build({
+	local tray = showtray and Widgets.systray.build({
 		menu_theme = menu_theme,
 	}) or nil
 
-	local clock = Clock.build(s, {
+	local clock = Widgets.clock.build(s, {
 		show_seconds = (clock_cfg.show_seconds == true),
 		app = cfg.apps.calendar,
 		calendar_enable = (clock_cfg.calendar_enable ~= false),
@@ -128,10 +134,10 @@ function M.setup(s, args)
 		bar_position = props.position,
 	})
 
-	local layoutbox = Layoutbox.build(s)
+	local layoutbox = Widgets.layoutbox.build(s)
 
 	local start_btn = show_start
-			and Start.build({
+			and Widgets.start.build({
 				screen = s,
 				theme = start_theme,
 				bar_height = props.height,
@@ -153,7 +159,7 @@ function M.setup(s, args)
 			})
 		or nil
 
-	local notify = show_notify and Notify.build(s, {}) or nil
+	local notify = show_notify and Widgets.notify.build(s, {}) or nil
 
 	-- ---------------------------------------------------------------------
 	-- Sections
@@ -165,7 +171,7 @@ function M.setup(s, args)
 		opacity = 0,
 	})
 
-	local sections = Sections.build({
+	local sections = Bar.sections.build({
 		show_start = show_start,
 		show_tags = show_tags,
 		show_notify = show_notify,
@@ -207,11 +213,11 @@ function M.setup(s, args)
 
 	if reveal_on_fullscreen_edge then
 		if not reveal_signals_ready then
-			Reveal.init_signals()
+			Bar.reveal.init_signals()
 			reveal_signals_ready = true
 		end
 
-		Reveal.attach(s, s.mywibar, {
+		Bar.reveal.attach(s, s.mywibar, {
 			edge = props.position,
 			trigger_px = reveal_trigger_px,
 			hide_delay = reveal_hide_delay,

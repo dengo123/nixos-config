@@ -51,6 +51,9 @@ return {
 		fixed_count = 2,
 		default_layout = "max",
 
+		gap = 4,
+		max_padding = true,
+
 		delete = {
 			kill_clients = true,
 			soft_mode = "exclusive",
