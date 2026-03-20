@@ -5,7 +5,6 @@ local Layouts = require("shell.workspaces.runtime.layouts")
 
 local M = {}
 
-local last = setmetatable({}, { __mode = "k" })
 local runtime_cfg = {}
 
 -- =========================================================================
@@ -14,10 +13,6 @@ local runtime_cfg = {}
 
 local function tags_cfg()
 	return runtime_cfg.tags or {}
-end
-
-local function layouts_cfg()
-	return tags_cfg().layouts or {}
 end
 
 local function mode()
@@ -45,14 +40,6 @@ local function expand_entry(entry, s)
 
 	if entry == "tile_cross" then
 		return horizontal and awful.layout.suit.tile.right or awful.layout.suit.tile.bottom
-	end
-
-	if entry == "max" then
-		if (not horizontal) and Layouts.use_max_fullscreen_for_portrait(runtime_cfg) then
-			return awful.layout.suit.max.fullscreen
-		end
-
-		return awful.layout.suit.max
 	end
 
 	return Layouts.resolve(entry)
@@ -134,61 +121,7 @@ local function normalize_for_screen(layout, s)
 		return awful.layout.suit.tile.right
 	end
 
-	if layout == awful.layout.suit.max and not horizontal and Layouts.use_max_fullscreen_for_portrait(runtime_cfg) then
-		return awful.layout.suit.max.fullscreen
-	end
-
-	if layout == awful.layout.suit.max.fullscreen and horizontal then
-		return awful.layout.suit.max
-	end
-
-	if layout == awful.layout.suit.max.fullscreen and not Layouts.use_max_fullscreen_for_portrait(runtime_cfg) then
-		return awful.layout.suit.max
-	end
-
 	return layout
-end
-
-local function bridge_sister_to_max(t, s)
-	local horizontal = is_horizontal_screen(s)
-	local prev = last[t]
-	local current = t.layout
-
-	if horizontal then
-		if prev == awful.layout.suit.fair and current == awful.layout.suit.fair.horizontal then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.tile and current == awful.layout.suit.tile.top then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.tile.right and current == awful.layout.suit.tile.bottom then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.max and current == awful.layout.suit.max.fullscreen then
-			return awful.layout.suit.fair
-		end
-	else
-		if prev == awful.layout.suit.fair.horizontal and current == awful.layout.suit.fair then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.tile.top and current == awful.layout.suit.tile then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.tile.bottom and current == awful.layout.suit.tile.right then
-			return awful.layout.suit.max
-		end
-
-		if prev == awful.layout.suit.max.fullscreen and current == awful.layout.suit.max then
-			return awful.layout.suit.fair.horizontal
-		end
-	end
-
-	return nil
 end
 
 local function fallback_layout(s)
@@ -213,25 +146,12 @@ local function enforce_on_tag(t)
 
 	set_tag_layouts_for_screen(t, s)
 
-	if mode() == "tiling" then
-		local bridged = bridge_sister_to_max(t, s)
-
-		if bridged and in_allowed(bridged, allowed) then
-			t._enforce_busy = true
-			t.layout = bridged
-			t._enforce_busy = nil
-			last[t] = t.layout
-			return
-		end
-	end
-
 	local wanted = (mode() == "tiling") and normalize_for_screen(t.layout, s) or t.layout
 
 	if in_allowed(wanted, allowed) and wanted ~= t.layout then
 		t._enforce_busy = true
 		t.layout = wanted
 		t._enforce_busy = nil
-		last[t] = t.layout
 		return
 	end
 
@@ -240,8 +160,6 @@ local function enforce_on_tag(t)
 		t.layout = fallback_layout(s)
 		t._enforce_busy = nil
 	end
-
-	last[t] = t.layout
 end
 
 local function enforce_all_on_screen(s)

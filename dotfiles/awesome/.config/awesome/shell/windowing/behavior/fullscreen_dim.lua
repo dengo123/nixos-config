@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/policies/fullscreen_dim.lua
+-- ~/.config/awesome/shell/windowing/behavior/fullscreen_dim.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")

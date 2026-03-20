@@ -69,17 +69,17 @@ local function screen_has_visible_fullscreen_client(s)
 	return false
 end
 
-local function selected_tag_uses_reveal_layout(s)
-	local t = s and s.selected_tag
-	if not t then
-		return false
-	end
-
-	return t.layout == awful.layout.suit.max.fullscreen
+local function bar_normally_visible(s)
+	local bar = bars[s]
+	return bar and bar.valid and bar._normal_visibility_enabled == true
 end
 
 local function reveal_active_for_screen(s)
-	return screen_has_visible_fullscreen_client(s) or selected_tag_uses_reveal_layout(s)
+	if bar_normally_visible(s) then
+		return screen_has_visible_fullscreen_client(s)
+	end
+
+	return true
 end
 
 local function cancel_hide_timer(s)
@@ -288,12 +288,6 @@ function M.init_signals()
 	-- ---------------------------------------------------------------------
 	-- Tag Signals
 	-- ---------------------------------------------------------------------
-
-	tag.connect_signal("property::layout", function(t)
-		if t and t.screen then
-			schedule_update()
-		end
-	end)
 
 	tag.connect_signal("property::selected", schedule_update)
 

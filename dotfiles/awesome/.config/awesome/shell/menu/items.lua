@@ -83,28 +83,6 @@ local function resolve_label(dynamic_labels, cmd, fallback)
 	return fallback
 end
 
-local function app_icon_name(kind, cmd)
-	local exe = first_token(cmd)
-
-	if kind == "files" then
-		return exe or "system-file-manager"
-	end
-
-	if kind == "terminal" then
-		return exe or "utilities-terminal"
-	end
-
-	if kind == "editor" then
-		return exe or "accessories-text-editor"
-	end
-
-	if kind == "browser" then
-		return exe or "web-browser"
-	end
-
-	return exe
-end
-
 local function mk_item(label, fn, icon)
 	return { label, fn, icon }
 end
@@ -175,15 +153,15 @@ function Items.build_start(ctx)
 	return {
 		mk_item(files_name, function()
 			spawn_cmd(files_cmd)
-		end, app_icon_name("files", files_cmd)),
+		end, nil),
 
 		mk_item(terminal_name, function()
 			spawn_cmd(terminal_cmd)
-		end, app_icon_name("terminal", terminal_cmd)),
+		end, nil),
 
 		mk_item(editor_name, function()
 			spawn_cmd(editor_cmd)
-		end, app_icon_name("editor", editor_cmd)),
+		end, nil),
 
 		mk_item(browser_name, function()
 			if browser_available then
@@ -191,24 +169,24 @@ function Items.build_start(ctx)
 			else
 				spawn_cmd({ "xdg-open", "about:blank" })
 			end
-		end, app_icon_name("browser", browser_cmd)),
+		end, nil),
 
 		mk_item("Run", function()
 			local launchers = require("shell.launchers")
 			launchers.open.run()
-		end, "system-run"),
+		end, nil),
 
 		mk_item("Screensaver", function()
 			awful.spawn.with_shell("xscreensaver-settings")
-		end, "preferences-desktop-screensaver"),
+		end, nil),
 
 		mk_item("Awesome Reload", function()
 			awesome.restart()
-		end, "view-refresh"),
+		end, nil),
 
 		mk_item("Hotkeys", function()
 			hotkeys_popup.show_help(nil, awful.screen.focused())
-		end, "preferences-desktop-keyboard-shortcuts"),
+		end, nil),
 
 		mk_item("Log Off", function()
 			local launchers = require("shell.launchers")
@@ -242,7 +220,7 @@ function Items.build_clients(clients, ctx)
 			if c.valid then
 				c:kill()
 			end
-		end, "window-close"),
+		end, nil),
 
 		mk_item(layout_state_label(cfg), function()
 			if not c.valid then
@@ -250,7 +228,7 @@ function Items.build_clients(clients, ctx)
 			end
 
 			toggle_layout_state(c, cfg)
-		end, "window-restore"),
+		end, nil),
 
 		mk_item("Fullscreen", function()
 			if not c.valid then
@@ -259,7 +237,7 @@ function Items.build_clients(clients, ctx)
 
 			c.fullscreen = not c.fullscreen
 			c:raise()
-		end, "view-fullscreen"),
+		end, nil),
 	}
 end
 

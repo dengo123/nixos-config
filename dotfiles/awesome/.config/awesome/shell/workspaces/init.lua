@@ -1,12 +1,6 @@
 -- ~/.config/awesome/shell/workspaces/init.lua
 local awful = require("awful")
 
-local Runtime = {
-	actions = require("shell.workspaces.runtime.actions"),
-	base = require("shell.workspaces.runtime.base"),
-	layouts = require("shell.workspaces.runtime.layouts"),
-}
-
 local function safe_require(path)
 	local ok, mod = pcall(require, path)
 	if ok then
@@ -16,13 +10,27 @@ local function safe_require(path)
 	return nil
 end
 
+local Runtime = {
+	actions = safe_require("shell.workspaces.runtime.actions"),
+	base = safe_require("shell.workspaces.runtime.base"),
+	layouts = safe_require("shell.workspaces.runtime.layouts"),
+	sync = safe_require("shell.workspaces.runtime.sync"),
+	dynamic = safe_require("shell.workspaces.runtime.dynamic"),
+}
+
 local Policies = {
-	layout = require("shell.workspaces.policies.layout_policy"),
-	spacing = require("shell.workspaces.policies.spacing_policy"),
+	layout = safe_require("shell.workspaces.policies.layout_policy"),
+	spacing = safe_require("shell.workspaces.policies.spacing_policy"),
 	focus = safe_require("shell.workspaces.policies.focus_policy"),
 	client = safe_require("shell.workspaces.policies.client_policy"),
 	autorandr = safe_require("shell.workspaces.policies.autorandr_policy"),
 }
+
+assert(Runtime.actions and type(Runtime.actions) == "table", "workspaces.init: runtime.actions fehlt")
+assert(Runtime.base and type(Runtime.base) == "table", "workspaces.init: runtime.base fehlt")
+assert(Runtime.layouts and type(Runtime.layouts) == "table", "workspaces.init: runtime.layouts fehlt")
+assert(Policies.layout and type(Policies.layout) == "table", "workspaces.init: policies.layout fehlt")
+assert(Policies.spacing and type(Policies.spacing) == "table", "workspaces.init: policies.spacing fehlt")
 
 local M = {}
 
@@ -69,17 +77,21 @@ function M.init(cfg)
 
 	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
 	local use_sync = (selection_mode == "sync")
-	local impl = use_sync and require("shell.workspaces.runtime.sync") or Runtime.base
+	local impl = use_sync and Runtime.sync or Runtime.base
 
-	if Runtime.layouts and Runtime.layouts.apply then
+	if use_sync then
+		assert(Runtime.sync and type(Runtime.sync) == "table", "workspaces.init: runtime.sync fehlt")
+	end
+
+	if Runtime.layouts and type(Runtime.layouts.apply) == "function" then
 		Runtime.layouts.apply(cfg)
 	end
 
-	if Policies.layout and Policies.layout.init_enforcement then
+	if Policies.layout and type(Policies.layout.init_enforcement) == "function" then
 		Policies.layout.init_enforcement(cfg)
 	end
 
-	if Policies.client and Policies.client.init then
+	if Policies.client and type(Policies.client.init) == "function" then
 		Policies.client.init(cfg)
 	end
 
@@ -91,9 +103,9 @@ function M.init(cfg)
 	})
 
 	if tostring(tags_cfg.mode or "fixed"):lower() == "dynamic" then
-		local dyn = require("shell.workspaces.runtime.dynamic")
+		assert(Runtime.dynamic and type(Runtime.dynamic) == "table", "workspaces.init: runtime.dynamic fehlt")
 
-		dyn.enable(Runtime.base, {
+		Runtime.dynamic.enable(Runtime.base, {
 			kill_clients_in_tag = Policies.client and Policies.client.kill_clients_in_tag or function(_) end,
 			apply_layout_policy = Policies.layout and Policies.layout.apply_layout_policy or function(_) end,
 		})

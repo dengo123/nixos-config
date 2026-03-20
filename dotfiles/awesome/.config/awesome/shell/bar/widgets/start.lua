@@ -77,7 +77,7 @@ function M.build(opts)
 
 	local apps_cfg = cfg.apps or {}
 	local bar_cfg = cfg.bar or {}
-	local start_action = tostring(bar_cfg.start_action or "menu"):lower()
+	local start_action = tostring(opts.start_action or bar_cfg.start_action or "menu"):lower()
 
 	-- ---------------------------------------------------------------------
 	-- Theme

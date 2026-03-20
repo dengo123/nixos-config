@@ -1,11 +1,26 @@
 -- ~/.config/awesome/shell/menu/init.lua
 local awful = require("awful")
 
-local Theme = require("shell.menu.theme")
-local Layout = require("shell.menu.layout")
-local Items = require("shell.menu.items")
-local Place = require("shell.menu.lib.placement")
-local Popup = require("shell.menu.lib.popup")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
+
+	return nil
+end
+
+local Theme = safe_require("shell.menu.theme")
+local Layout = safe_require("shell.menu.layout")
+local Items = safe_require("shell.menu.items")
+local Place = safe_require("shell.menu.lib.placement")
+local Popup = safe_require("shell.menu.lib.popup")
+
+assert(Theme and type(Theme) == "table", "shell.menu: theme fehlt")
+assert(Layout and type(Layout) == "table", "shell.menu: layout fehlt")
+assert(Items and type(Items) == "table", "shell.menu: items fehlt")
+assert(Place and type(Place) == "table", "shell.menu: placement fehlt")
+assert(Popup and type(Popup) == "table", "shell.menu: popup fehlt")
 
 local Menu = {
 	ui = nil,
@@ -20,17 +35,6 @@ local function get_theme()
 	local out = Theme.get()
 
 	assert(type(out) == "table", "shell.menu: theme.get() lieferte kein table")
-
-	assert(out.width, "shell.menu: theme.width fehlt")
-	assert(out.height, "shell.menu: theme.height fehlt")
-	assert(out.bg_normal, "shell.menu: theme.bg_normal fehlt")
-	assert(out.fg_normal, "shell.menu: theme.fg_normal fehlt")
-	assert(out.bg_focus, "shell.menu: theme.bg_focus fehlt")
-	assert(out.fg_focus, "shell.menu: theme.fg_focus fehlt")
-	assert(out.border_color, "shell.menu: theme.border_color fehlt")
-	assert(out.border_width, "shell.menu: theme.border_width fehlt")
-	assert(out.shape, "shell.menu: theme.shape fehlt")
-	assert(out.submenu, "shell.menu: theme.submenu fehlt")
 
 	return out
 end
@@ -84,8 +88,13 @@ function Menu.init(args)
 	Menu.ui = args.ui or {}
 	Menu.cfg = args.cfg or {}
 
-	Theme.init(Menu.cfg)
-	Layout.init(Menu.cfg)
+	if Theme and type(Theme.init) == "function" then
+		Theme.init(Menu.cfg)
+	end
+
+	if Layout and type(Layout.init) == "function" then
+		Layout.init(Menu.cfg)
+	end
 end
 
 function Menu.get_start_items()

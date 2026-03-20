@@ -50,10 +50,9 @@ function C.apply(c, _opts)
 
 	local maximized = c.fullscreen or c.maximized or c.maximized_vertical or c.maximized_horizontal
 
-	local border_width =
-		assert(tonumber(beautiful.border_width), "windowing.container: beautiful.border_width fehlt/ungültig")
-	local border_normal = assert(beautiful.border_normal, "windowing.container: beautiful.border_normal fehlt")
-	local border_focus = assert(beautiful.border_focus, "windowing.container: beautiful.border_focus fehlt")
+	local border_width = tonumber(beautiful.border_width)
+	local border_normal = beautiful.border_normal
+	local border_focus = beautiful.border_focus
 
 	c.border_width = maximized and 0 or border_width
 	c.border_color = (c == client.focus) and border_focus or border_normal
@@ -61,10 +60,9 @@ function C.apply(c, _opts)
 	local shape_fn = C.shape_fn
 
 	if not shape_fn and C.rounded_corners ~= false then
-		local radius =
-			assert(tonumber(beautiful.border_radius), "windowing.container: beautiful.border_radius fehlt/ungültig")
+		local radius = tonumber(beautiful.border_radius)
 
-		if radius > 0 then
+		if radius and radius > 0 then
 			shape_fn = function(cr, w, h)
 				if (w or 0) >= 2 and (h or 0) >= 2 then
 					gears.shape.rounded_rect(cr, w, h, radius)
@@ -84,8 +82,8 @@ function C.attach_titlebar(c, style, actions, cfg, opts)
 	local Buttons = buttons_api(opts)
 	assert(Buttons and type(Buttons.build) == "function", "windowing.container: api.titlebar_buttons.build fehlt")
 
-	local pos = assert(beautiful.titlebar_position, "container: beautiful.titlebar_position fehlt")
-	local size = assert(tonumber(beautiful.titlebar_height), "container: beautiful.titlebar_height fehlt/ungültig")
+	local pos = beautiful.titlebar_position
+	local size = tonumber(beautiful.titlebar_height)
 
 	local buttons = gears.table.join(
 		awful.button({}, 1, function()

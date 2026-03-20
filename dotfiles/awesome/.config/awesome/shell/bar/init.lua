@@ -1,27 +1,54 @@
 -- ~/.config/awesome/shell/bar/init.lua
 local awful = require("awful")
+local beautiful = require("beautiful")
 local wibox = require("wibox")
 
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
+
+	return nil
+end
+
 local Widgets = {
-	clock = require("shell.bar.widgets.clock"),
-	layoutbox = require("shell.bar.widgets.layoutbox"),
-	notify = require("shell.bar.widgets.notify"),
-	start = require("shell.bar.widgets.start"),
-	systray = require("shell.bar.widgets.systray"),
-	tabs = require("shell.bar.widgets.tabs"),
-	tags = require("shell.bar.widgets.tags"),
+	clock = safe_require("shell.bar.widgets.clock"),
+	layoutbox = safe_require("shell.bar.widgets.layoutbox"),
+	notify = safe_require("shell.bar.widgets.notify"),
+	start = safe_require("shell.bar.widgets.start"),
+	systray = safe_require("shell.bar.widgets.systray"),
+	tabs = safe_require("shell.bar.widgets.tabs"),
+	tags = safe_require("shell.bar.widgets.tags"),
 }
 
 local Themes = {
-	start = require("shell.bar.themes.start"),
-	tabs = require("shell.bar.themes.tabs"),
-	wibar = require("shell.bar.themes.wibar"),
+	start = safe_require("shell.bar.themes.start"),
+	tabs = safe_require("shell.bar.themes.tabs"),
+	wibar = safe_require("shell.bar.themes.wibar"),
 }
 
 local Bar = {
-	reveal = require("shell.bar.reveal"),
-	sections = require("shell.bar.sections"),
+	policy = safe_require("shell.bar.policy"),
+	reveal = safe_require("shell.bar.reveal"),
+	sections = safe_require("shell.bar.sections"),
 }
+
+assert(Widgets.clock and type(Widgets.clock) == "table", "bar.init: widgets.clock fehlt")
+assert(Widgets.layoutbox and type(Widgets.layoutbox) == "table", "bar.init: widgets.layoutbox fehlt")
+assert(Widgets.notify and type(Widgets.notify) == "table", "bar.init: widgets.notify fehlt")
+assert(Widgets.start and type(Widgets.start) == "table", "bar.init: widgets.start fehlt")
+assert(Widgets.systray and type(Widgets.systray) == "table", "bar.init: widgets.systray fehlt")
+assert(Widgets.tabs and type(Widgets.tabs) == "table", "bar.init: widgets.tabs fehlt")
+assert(Widgets.tags and type(Widgets.tags) == "table", "bar.init: widgets.tags fehlt")
+
+assert(Themes.start and type(Themes.start) == "table", "bar.init: themes.start fehlt")
+assert(Themes.tabs and type(Themes.tabs) == "table", "bar.init: themes.tabs fehlt")
+assert(Themes.wibar and type(Themes.wibar) == "table", "bar.init: themes.wibar fehlt")
+
+assert(Bar.policy and type(Bar.policy) == "table", "bar.init: policy fehlt")
+assert(Bar.reveal and type(Bar.reveal) == "table", "bar.init: reveal fehlt")
+assert(Bar.sections and type(Bar.sections) == "table", "bar.init: sections fehlt")
 
 local M = {}
 
@@ -49,7 +76,8 @@ function M.setup(s, args)
 	local modkey = input_cfg.modkey or "Mod4"
 	local showtray = (args.systray ~= false)
 
-	local start_on_primary_only = (bar_cfg.start_on_primary_only == true)
+	local bar_normally_visible = Bar.policy.bar_enabled_on_screen(s, bar_cfg)
+	local start_enabled = Bar.policy.start_enabled_on_screen(s, bar_cfg)
 	local bar_position = bar_cfg.position
 	local bar_notify_mode = tostring(bar_cfg.show_notify or "primary"):lower()
 
@@ -62,9 +90,9 @@ function M.setup(s, args)
 	local primary = screen.primary or awful.screen.focused()
 	local is_primary = (s == primary)
 
-	local show_start = (not start_on_primary_only) or is_primary
-	local show_tags = (not tags_on_primary_only) or is_primary
-	local show_notify = (bar_notify_mode ~= "primary") or is_primary
+	local show_start = start_enabled
+	local show_tags = bar_normally_visible and ((not tags_on_primary_only) or is_primary)
+	local show_notify = bar_normally_visible and ((bar_notify_mode ~= "primary") or is_primary)
 
 	-- ---------------------------------------------------------------------
 	-- Theme
@@ -141,6 +169,7 @@ function M.setup(s, args)
 				theme = start_theme,
 				bar_height = props.height,
 				cfg = cfg,
+				start_action = Bar.policy.start_action(bar_cfg),
 				menu_api = menu_api and {
 					show_for_start_widget = function(_screen, widget)
 						menu_api.show_for_start_widget(s, widget)
@@ -197,7 +226,10 @@ function M.setup(s, args)
 		opacity = props.opacity,
 		shape = props.shape,
 		margins = props.margins,
+		visible = bar_normally_visible,
 	})
+
+	s.mywibar._normal_visibility_enabled = bar_normally_visible
 
 	s.mywibar:setup({
 		layout = wibox.layout.align.horizontal,

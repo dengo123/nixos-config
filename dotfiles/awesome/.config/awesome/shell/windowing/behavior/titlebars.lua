@@ -17,25 +17,25 @@ local function titlebars_cfg()
 
 	if value == false then
 		return {
-			mode = "off",
+			show = "off",
 			exclude = {},
 		}
 	end
 
 	return {
-		mode = "on",
+		show = "on",
 		exclude = {},
 	}
 end
 
-local function titlebar_mode()
-	local mode = tostring(titlebars_cfg().mode or "on"):lower()
+local function titlebar_show()
+	local show = tostring(titlebars_cfg().show or titlebars_cfg().mode or "on"):lower()
 
-	if mode == "off" then
+	if show == "off" then
 		return "off"
 	end
 
-	if mode == "floating_only" then
+	if show == "floating_only" then
 		return "floating_only"
 	end
 
@@ -124,14 +124,18 @@ function M.init(o)
 	runtime_cfg = o.cfg or o or {}
 end
 
+function M.show()
+	return titlebar_show()
+end
+
 function M.mode()
-	return titlebar_mode()
+	return titlebar_show()
 end
 
 function M.enabled_for(c, api)
-	local mode = titlebar_mode()
+	local show = titlebar_show()
 
-	if mode == "off" then
+	if show == "off" then
 		return false
 	end
 
@@ -139,7 +143,7 @@ function M.enabled_for(c, api)
 		return false
 	end
 
-	if mode == "floating_only" then
+	if show == "floating_only" then
 		return c.floating == true
 	end
 

@@ -1,14 +1,29 @@
 -- ~/.config/awesome/shell/init.lua
 local awful = require("awful")
 
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
+
+	return nil
+end
+
 local M = {
-	bar = require("shell.bar"),
-	workspaces = require("shell.workspaces"),
-	windowing = require("shell.windowing"),
-	launchers = require("shell.launchers"),
-	menu = require("shell.menu"),
-	notify = require("shell.notify"),
+	bar = safe_require("shell.bar"),
+	workspaces = safe_require("shell.workspaces"),
+	windowing = safe_require("shell.windowing"),
+	launchers = safe_require("shell.launchers"),
+	menu = safe_require("shell.menu"),
+	notify = safe_require("shell.notify"),
 }
+
+assert(M.bar and type(M.bar) == "table", "shell.init: shell.bar fehlt")
+assert(M.workspaces and type(M.workspaces) == "table", "shell.init: shell.workspaces fehlt")
+assert(M.windowing and type(M.windowing) == "table", "shell.init: shell.windowing fehlt")
+assert(M.menu and type(M.menu) == "table", "shell.init: shell.menu fehlt")
+assert(M.notify and type(M.notify) == "table", "shell.init: shell.notify fehlt")
 
 -- =========================================================================
 -- Helpers
@@ -109,19 +124,15 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	do
-		local workspace_cfg = {}
-
-		for key, value in pairs(cfg) do
-			workspace_cfg[key] = value
-		end
-
 		local wallpaper_fn = resolve_wallpaper_fn(ui)
 
 		if wallpaper_fn then
-			workspace_cfg.wallpaper_fn = wallpaper_fn
+			cfg.wallpaper_fn = wallpaper_fn
 		end
 
-		local workspace_api = M.workspaces.init(workspace_cfg)
+		assert(type(M.workspaces.init) == "function", "shell.init: shell.workspaces.init fehlt")
+
+		local workspace_api = M.workspaces.init(cfg)
 
 		if workspace_api then
 			M.workspaces = workspace_api
@@ -132,12 +143,18 @@ function M.init(args)
 	-- Windowing
 	-- ---------------------------------------------------------------------
 
-	M.windowing.init({
+	assert(type(M.windowing.init) == "function", "shell.init: shell.windowing.init fehlt")
+
+	local windowing_api = M.windowing.init({
 		modkey = cfg.input and cfg.input.modkey,
 		mouse = input.mouse,
 		ui = ui,
 		cfg = cfg,
 	})
+
+	if windowing_api then
+		M.windowing = windowing_api
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Launchers
@@ -151,6 +168,8 @@ function M.init(args)
 	-- Menu
 	-- ---------------------------------------------------------------------
 
+	assert(type(M.menu.init) == "function", "shell.init: shell.menu.init fehlt")
+
 	M.menu.init({
 		ui = ui,
 		cfg = cfg,
@@ -159,6 +178,8 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 	-- Notifications
 	-- ---------------------------------------------------------------------
+
+	assert(type(M.notify.init) == "function", "shell.init: shell.notify.init fehlt")
 
 	M.notify.init(cfg)
 
@@ -181,10 +202,11 @@ function M.init(args)
 	-- Bars
 	-- ---------------------------------------------------------------------
 
+	assert(type(M.bar.setup) == "function", "shell.init: shell.bar.setup fehlt")
+
 	awful.screen.connect_for_each_screen(function(s)
 		M.bar.setup(s, {
 			cfg = cfg,
-			ui = ui,
 			menu_api = M.menu,
 		})
 	end)

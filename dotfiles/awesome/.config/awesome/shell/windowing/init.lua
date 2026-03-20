@@ -15,22 +15,27 @@ local Behavior = {
 }
 
 local Runtime = {
-	actions = require("shell.windowing.runtime.actions"),
+	actions = safe_require("shell.windowing.runtime.actions"),
 	signals = safe_require("shell.windowing.runtime.signals"),
-	state = require("shell.windowing.runtime.state"),
+	state = safe_require("shell.windowing.runtime.state"),
 }
 
 local UI = {
-	container = require("shell.windowing.ui.container"),
-	theme = require("shell.windowing.ui.theme"),
-	titlebar_buttons = require("shell.windowing.ui.titlebar_buttons"),
+	container = safe_require("shell.windowing.ui.container"),
+	theme = safe_require("shell.windowing.ui.theme"),
+	titlebar_buttons = safe_require("shell.windowing.ui.titlebar_buttons"),
 }
 
 local Modules = {
-	clients = require("shell.windowing.clients"),
-	floating = require("shell.windowing.floating"),
+	clients = safe_require("shell.windowing.clients"),
+	floating = safe_require("shell.windowing.floating"),
 	rules = safe_require("shell.windowing.rules"),
 }
+
+assert(Runtime.actions and type(Runtime.actions) == "table", "windowing.init: runtime.actions fehlt")
+assert(Runtime.state and type(Runtime.state) == "table", "windowing.init: runtime.state fehlt")
+assert(UI.container and type(UI.container) == "table", "windowing.init: ui.container fehlt")
+assert(UI.theme and type(UI.theme) == "table", "windowing.init: ui.theme fehlt")
 
 local M = {
 	actions = nil,
@@ -79,14 +84,10 @@ end
 function M.init(args)
 	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	local cfg = args.cfg or {}
 	local windowing_cfg = cfg.windowing or {}
 	local focus_cfg = windowing_cfg.focus or {}
-	local fullscreen_cfg = windowing_cfg.fullscreen or {}
+	local fullscreen_dim_cfg = windowing_cfg.fullscreen_dim or {}
 
 	local modkey = args.modkey
 	local mouse = args.mouse
@@ -95,10 +96,6 @@ function M.init(args)
 
 	M.api = api
 	M.actions = api.actions
-
-	-- ---------------------------------------------------------------------
-	-- Runtime
-	-- ---------------------------------------------------------------------
 
 	init_module(api.actions, {
 		cfg = cfg,
@@ -110,10 +107,6 @@ function M.init(args)
 		api = api,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Theme
-	-- ---------------------------------------------------------------------
-
 	init_module(api.ui.theme, {
 		cfg = cfg,
 		api = api,
@@ -122,20 +115,12 @@ function M.init(args)
 	local shape_fn = api.ui.theme and api.ui.theme.shape_fn and api.ui.theme.shape_fn() or nil
 	local button_style = api.ui.theme and api.ui.theme.button_style and api.ui.theme.button_style(cfg) or {}
 
-	-- ---------------------------------------------------------------------
-	-- Rules
-	-- ---------------------------------------------------------------------
-
 	apply_module(api.rules, {
 		cfg = cfg,
 		api = api,
 		modkey = modkey,
 		mouse = mouse,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Focus
-	-- ---------------------------------------------------------------------
 
 	init_module(api.behavior.focus, {
 		cfg = cfg,
@@ -145,18 +130,10 @@ function M.init(args)
 		center_mouse = focus_cfg.center_mouse,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Titlebars
-	-- ---------------------------------------------------------------------
-
 	init_module(api.titlebars, {
 		cfg = cfg,
 		api = api,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Container
-	-- ---------------------------------------------------------------------
 
 	init_module(api.ui.container, {
 		cfg = cfg,
@@ -164,10 +141,6 @@ function M.init(args)
 		shape_fn = shape_fn,
 		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Runtime Signals
-	-- ---------------------------------------------------------------------
 
 	apply_module(api.runtime.signals, {
 		cfg = cfg,
@@ -181,12 +154,8 @@ function M.init(args)
 		end,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Fullscreen Dim
-	-- ---------------------------------------------------------------------
-
 	if api.behavior.fullscreen_dim and type(api.behavior.fullscreen_dim.init) == "function" then
-		local dim_cfg = fullscreen_cfg.dim
+		local dim_cfg = fullscreen_dim_cfg
 
 		if dim_cfg ~= false then
 			if type(dim_cfg) ~= "table" then
@@ -196,15 +165,6 @@ function M.init(args)
 			api.behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Fullscreen Portrait
-	-- ---------------------------------------------------------------------
-
-	init_module(api.behavior.fullscreen_portrait, {
-		cfg = cfg,
-		api = api,
-	})
 
 	return M
 end

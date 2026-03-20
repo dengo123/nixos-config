@@ -48,13 +48,16 @@ return {
 
 	bar = {
 		position = "bottom",
-		start_on_primary_only = false,
 
-		start_action = "menu",
+		screen = "primary_only", -- all | primary_only | landscape_only | off
 
-		reveal_on_fullscreen_edge = true,
 		reveal_trigger_px = 2,
 		reveal_hide_delay = 0.20,
+
+		start = {
+			show = "all", -- all | primary_only | landscape_only | off
+			action = "menu", -- menu | rofi | terminal | editor
+		},
 
 		clock = {
 			show_seconds = false,
@@ -62,7 +65,7 @@ return {
 			calendar_use_menu_theme = false,
 		},
 
-		show_notify = "primary",
+		show_notify = "primary", -- primary | all
 	},
 
 	-- =========================================================================
@@ -83,8 +86,6 @@ return {
 				"tile_main",
 				"tile_cross",
 			},
-
-			use_max_fullscreen_for_portrait = true,
 		},
 
 		gap = 4,
@@ -102,7 +103,7 @@ return {
 
 	windowing = {
 		titlebars = {
-			mode = "on",
+			show = "on", -- on | floating_only | off
 			exclude = { "terminal", "editor" },
 		},
 
@@ -124,11 +125,9 @@ return {
 			terminals = true,
 		},
 
-		fullscreen = {
-			dim = {
-				enabled = true,
-				never_dim_primary = true,
-			},
+		fullscreen_dim = {
+			enabled = true,
+			never_dim_primary = true,
 		},
 	},
 
