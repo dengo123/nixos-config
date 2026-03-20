@@ -74,7 +74,9 @@ local function build_actions()
 			clients = {
 				move_client_dir = windowing_actions.move_client_dir,
 				move_client_to_screen = windowing_actions.move_client_to_screen,
-				toggle_pseudo_maximize = windowing_actions.toggle_pseudo_maximize,
+				layout_state_mode = windowing_actions.layout_state_mode,
+				is_layout_state_active = windowing_actions.is_layout_state_active,
+				toggle_layout_state = windowing_actions.toggle_layout_state,
 			},
 		},
 		workspaces = {

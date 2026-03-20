@@ -83,18 +83,6 @@ local function resolve_label(dynamic_labels, cmd, fallback)
 	return fallback
 end
 
-local function resolve_asset(path)
-	if type(path) ~= "string" or path == "" then
-		return nil
-	end
-
-	if path:match("^/") then
-		return path
-	end
-
-	return gears.filesystem.get_configuration_dir() .. path
-end
-
 local function app_icon_name(kind, cmd)
 	local exe = first_token(cmd)
 
@@ -119,6 +107,37 @@ end
 
 local function mk_item(label, fn, icon)
 	return { label, fn, icon }
+end
+
+local function client_actions(cfg)
+	return ((((cfg or {}).actions or {}).windowing or {}).clients or {})
+end
+
+local function layout_state_label(cfg)
+	local actions = client_actions(cfg)
+
+	if type(actions.layout_state_mode) == "function" and actions.layout_state_mode(cfg) == "maximized" then
+		return "Maximize / Restore"
+	end
+
+	return "Floating / Tiling"
+end
+
+local function toggle_layout_state(c, cfg)
+	local actions = client_actions(cfg)
+
+	if type(actions.toggle_layout_state) == "function" then
+		actions.toggle_layout_state(c, cfg)
+		return
+	end
+
+	awful.client.floating.toggle(c)
+
+	if not c.floating then
+		awful.client.setslave(c)
+	end
+
+	c:raise()
 end
 
 -- =========================================================================
@@ -175,8 +194,8 @@ function Items.build_start(ctx)
 		end, app_icon_name("browser", browser_cmd)),
 
 		mk_item("Run", function()
-			local Launchers = require("shell.launchers")
-			Launchers.open.run()
+			local launchers = require("shell.launchers")
+			launchers.open.run()
 		end, "system-run"),
 
 		mk_item("Screensaver", function()
@@ -192,18 +211,19 @@ function Items.build_start(ctx)
 		end, "preferences-desktop-keyboard-shortcuts"),
 
 		mk_item("Log Off", function()
-			local Launchers = require("shell.launchers")
-			Launchers.open.logoff()
+			local launchers = require("shell.launchers")
+			launchers.open.logoff()
 		end, nil),
 
 		mk_item("Shut Down", function()
-			local Launchers = require("shell.launchers")
-			Launchers.open.power()
+			local launchers = require("shell.launchers")
+			launchers.open.power()
 		end, nil),
 	}
 end
 
-function Items.build_clients(clients, _ctx)
+function Items.build_clients(clients, ctx)
+	local cfg = (ctx and ctx.cfg) or {}
 	local c = nil
 
 	for _, cc in ipairs(clients or {}) do
@@ -224,16 +244,12 @@ function Items.build_clients(clients, _ctx)
 			end
 		end, "window-close"),
 
-		mk_item("Floating / Tiling", function()
+		mk_item(layout_state_label(cfg), function()
 			if not c.valid then
 				return
 			end
 
-			c.floating = not c.floating
-
-			if not c.floating then
-				awful.client.setslave(c)
-			end
+			toggle_layout_state(c, cfg)
 		end, "window-restore"),
 
 		mk_item("Fullscreen", function()

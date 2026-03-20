@@ -9,10 +9,15 @@ local function safe_require(path)
 end
 
 local Behavior = {
-	signals = safe_require("shell.windowing.behavior.signals"),
-	rules = safe_require("shell.windowing.behavior.rules"),
 	focus = safe_require("shell.windowing.behavior.focus"),
 	fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
+	titlebars = safe_require("shell.windowing.behavior.titlebars"),
+}
+
+local Runtime = {
+	actions = require("shell.windowing.runtime.actions"),
+	state = require("shell.windowing.runtime.state"),
+	signals = safe_require("shell.windowing.runtime.signals"),
 }
 
 local UI = {
@@ -21,13 +26,29 @@ local UI = {
 	titlebar = require("shell.windowing.ui.titlebar"),
 }
 
-local Runtime = {
-	actions = require("shell.windowing.runtime.actions"),
+local Modules = {
+	clients = require("shell.windowing.clients"),
+	floating = require("shell.windowing.floating"),
+	rules = safe_require("shell.windowing.rules"),
 }
 
 local M = {
 	actions = Runtime.actions,
 }
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function build_api()
+	return {
+		clients = Modules.clients,
+		floating = Modules.floating,
+		actions = Runtime.actions,
+		state = Runtime.state,
+		titlebars = Behavior.titlebars,
+	}
+end
 
 -- =========================================================================
 -- Public API
@@ -49,6 +70,8 @@ function M.init(args)
 	local modkey = args.modkey
 	local mouse = args.mouse
 
+	local api = build_api()
+
 	-- ---------------------------------------------------------------------
 	-- Theme
 	-- ---------------------------------------------------------------------
@@ -62,11 +85,12 @@ function M.init(args)
 	-- Rules
 	-- ---------------------------------------------------------------------
 
-	if Behavior.rules and Behavior.rules.apply then
-		Behavior.rules.apply({
+	if Modules.rules and Modules.rules.apply then
+		Modules.rules.apply({
 			modkey = modkey,
 			mouse = mouse,
 			cfg = cfg,
+			api = api,
 		})
 	end
 
@@ -91,10 +115,12 @@ function M.init(args)
 	-- Signals
 	-- ---------------------------------------------------------------------
 
-	if Behavior.signals and Behavior.signals.apply then
-		Behavior.signals.apply({
+	if Runtime.signals and Runtime.signals.apply then
+		Runtime.signals.apply({
+			cfg = cfg,
+			api = api,
 			attach_titlebar = function(c)
-				UI.titlebar.attach_titlebar(c, button_style)
+				UI.titlebar.attach_titlebar(c, button_style, Runtime.actions, cfg)
 			end,
 			focus = Behavior.focus,
 			container = UI.container,

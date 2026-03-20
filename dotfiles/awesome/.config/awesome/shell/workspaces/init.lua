@@ -52,11 +52,12 @@ function M.init(cfg)
 	cfg = cfg or {}
 
 	local tags_cfg = cfg.tags or {}
+	local layouts_cfg = tags_cfg.layouts or {}
 
 	Runtime.base.set_config({
 		tags_mode = tags_cfg.mode,
 		tags_fixed_count = tags_cfg.fixed_count,
-		default_layout = tags_cfg.default_layout,
+		default_layout = layouts_cfg.default or "max",
 	})
 
 	local opts = {
@@ -71,11 +72,11 @@ function M.init(cfg)
 	local impl = use_sync and require("shell.workspaces.runtime.sync") or Runtime.base
 
 	if Runtime.layouts and Runtime.layouts.apply then
-		Runtime.layouts.apply()
+		Runtime.layouts.apply(cfg)
 	end
 
 	if Policies.layout and Policies.layout.init_enforcement then
-		Policies.layout.init_enforcement()
+		Policies.layout.init_enforcement(cfg)
 	end
 
 	if Policies.client and Policies.client.init then

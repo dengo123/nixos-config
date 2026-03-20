@@ -39,8 +39,8 @@ return function(modkey)
 	return awful.util.table.join(
 		-- promote to master
 		awful.key(
-			{ modkey, "Shift" },
-			"Return",
+			{ modkey, "Control" },
+			"Tab",
 			promote_focused_to_master,
 			{ description = "promote focused window to master", group = "layout" }
 		),

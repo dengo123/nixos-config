@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/titlebar.lua
+-- ~/.config/awesome/shell/windowing/ui/titlebar.lua
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
@@ -102,6 +102,32 @@ local function recolor_imagebox(ib, img, color)
 	end
 end
 
+local function layout_state_mode(actions, cfg)
+	if actions and type(actions.layout_state_mode) == "function" then
+		return actions.layout_state_mode(cfg)
+	end
+
+	return "floating"
+end
+
+local function is_layout_state_active(actions, c, cfg)
+	if actions and type(actions.is_layout_state_active) == "function" then
+		return actions.is_layout_state_active(c, cfg)
+	end
+
+	return c.floating == true
+end
+
+local function toggle_layout_state(actions, c, cfg)
+	if actions and type(actions.toggle_layout_state) == "function" then
+		actions.toggle_layout_state(c, cfg)
+		return
+	end
+
+	awful.client.floating.toggle(c)
+	c:raise()
+end
+
 -- =========================================================================
 -- Image Button
 -- =========================================================================
@@ -157,7 +183,7 @@ end
 -- Buttons
 -- =========================================================================
 
-function B.build_buttons(c, style)
+function B.build_buttons(c, style, actions, cfg)
 	ensure_titlebar_assets()
 
 	-- ---------------------------------------------------------------------
@@ -175,9 +201,9 @@ function B.build_buttons(c, style)
 
 	local img_close = beautiful.titlebar_close_button_normal
 	local img_minimize = beautiful.titlebar_minimize_button_normal
-	local img_float_on = beautiful.titlebar_floating_button_normal_active
+	local img_middle_on = beautiful.titlebar_floating_button_normal_active
 		or beautiful.titlebar_floating_button_focus_active
-	local img_float_off = beautiful.titlebar_floating_button_normal_inactive
+	local img_middle_off = beautiful.titlebar_floating_button_normal_inactive
 		or beautiful.titlebar_floating_button_focus_inactive
 		or beautiful.titlebar_floating_button_normal
 
@@ -216,31 +242,39 @@ function B.build_buttons(c, style)
 	})
 
 	-- ---------------------------------------------------------------------
-	-- Floating
+	-- Middle State Button
 	-- ---------------------------------------------------------------------
 
-	local function update_float_icon(ib, recolor)
-		local img = c.floating and (img_float_on or img_float_off) or img_float_off
+	local function update_middle_icon(ib, recolor)
+		local active = is_layout_state_active(actions, c, cfg)
+		local img = active and (img_middle_on or img_middle_off) or img_middle_off
+
 		ib._current_img = img
 		recolor(ib, img, fg)
 	end
 
-	local btn_float, ib_float = make_img_button({
-		img_active = img_float_on or img_float_off,
-		img_inactive = img_float_off,
+	local middle_desc = layout_state_mode(actions, cfg)
+
+	local btn_middle, ib_middle = make_img_button({
+		img_active = img_middle_on or img_middle_off,
+		img_inactive = img_middle_off,
 		color = fg,
 		color_hover = fg_hover,
 		size = size,
 		on_click = function(ib, recolor)
-			activate_client(c, "titlebar_float_toggle", true)
-			awful.client.floating.toggle(c)
-			update_float_icon(ib, recolor)
+			activate_client(c, "titlebar_" .. middle_desc .. "_toggle", true)
+			toggle_layout_state(actions, c, cfg)
+			update_middle_icon(ib, recolor)
 		end,
-		on_update = update_float_icon,
+		on_update = update_middle_icon,
 	})
 
 	c:connect_signal("property::floating", function()
-		update_float_icon(ib_float, recolor_imagebox)
+		update_middle_icon(ib_middle, recolor_imagebox)
+	end)
+
+	c:connect_signal("property::maximized", function()
+		update_middle_icon(ib_middle, recolor_imagebox)
 	end)
 
 	-- ---------------------------------------------------------------------
@@ -266,7 +300,7 @@ function B.build_buttons(c, style)
 		layout = wibox.layout.fixed.horizontal,
 		spacing = spacing,
 		btn_min,
-		btn_float,
+		btn_middle,
 		btn_close,
 	}
 end
@@ -275,7 +309,7 @@ end
 -- Public API
 -- =========================================================================
 
-function B.attach_titlebar(c, style)
+function B.attach_titlebar(c, style, actions, cfg)
 	if not (c and c.valid) then
 		return
 	end
@@ -331,7 +365,7 @@ function B.attach_titlebar(c, style)
 				buttons = buttons,
 				layout = wibox.layout.align.horizontal,
 			},
-			B.build_buttons(c, style),
+			B.build_buttons(c, style, actions, cfg),
 			layout = wibox.layout.align.horizontal,
 		})
 end

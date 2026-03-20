@@ -73,7 +73,19 @@ return {
 		selection = "sync",
 		mode = "fixed",
 		fixed_count = 2,
-		default_layout = "max",
+
+		layouts = {
+			mode = "tiling",
+			default = "max",
+			include = {
+				"max",
+				"fair",
+				"tile_main",
+				"tile_cross",
+			},
+
+			use_max_fullscreen_for_portrait = false,
+		},
 
 		gap = 4,
 		max_padding = true,
@@ -89,15 +101,19 @@ return {
 	-- =========================================================================
 
 	windowing = {
+		titlebars = {
+			mode = "on",
+			exclude = { "terminal" },
+		},
+
 		rounded_corners = true,
-		titlebars = true,
 
 		focus = {
 			raise_on_mouse = false,
 			block_ms = 150,
 
 			center_mouse = {
-				enable = false,
+				enable = true,
 				exclude_layouts = { "max" },
 				exclude_states = { "fullscreen" },
 			},

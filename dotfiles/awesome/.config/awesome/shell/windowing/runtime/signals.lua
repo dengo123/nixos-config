@@ -1,4 +1,5 @@
--- ~/.config/awesome/shell/windowing/policies/signals.lua
+-- ~/.config/awesome/shell/windowing/runtime/signals.lua
+local awful = require("awful")
 local gears = require("gears")
 
 local M = {}
@@ -14,9 +15,17 @@ function M.apply(o)
 	-- Config
 	-- ---------------------------------------------------------------------
 
+	local cfg = o.cfg or {}
+	local api = o.api or {}
+
 	local focus = o.focus
 	local container = o.container
 	local attach_titlebar = o.attach_titlebar
+
+	local titlebars = api.titlebars
+	if titlebars and type(titlebars.init) == "function" then
+		titlebars.init(cfg)
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Helpers
@@ -28,15 +37,62 @@ function M.apply(o)
 		end
 	end
 
+	local function titlebars_enabled_for(c)
+		if titlebars and type(titlebars.enabled_for) == "function" then
+			return titlebars.enabled_for(c, api)
+		end
+
+		return true
+	end
+
+	local function sync_titlebar(c)
+		if not (c and c.valid) then
+			return
+		end
+
+		local enabled = titlebars_enabled_for(c)
+
+		if enabled then
+			c.titlebars_enabled = true
+
+			if type(attach_titlebar) == "function" then
+				attach_titlebar(c)
+			end
+
+			return
+		end
+
+		c.titlebars_enabled = false
+		awful.titlebar.hide(c)
+	end
+
 	-- ---------------------------------------------------------------------
 	-- Titlebars
 	-- ---------------------------------------------------------------------
 
 	client.connect_signal("request::titlebars", function(c)
-		if type(attach_titlebar) == "function" then
+		if titlebars_enabled_for(c) and type(attach_titlebar) == "function" then
 			attach_titlebar(c)
 		end
 	end)
+
+	client.connect_signal("manage", function(c)
+		gears.timer.delayed_call(function()
+			sync_titlebar(c)
+		end)
+	end)
+
+	for _, prop in ipairs({
+		"floating",
+		"fullscreen",
+		"maximized",
+		"maximized_vertical",
+		"maximized_horizontal",
+	}) do
+		client.connect_signal("property::" .. prop, function(c)
+			sync_titlebar(c)
+		end)
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Focus

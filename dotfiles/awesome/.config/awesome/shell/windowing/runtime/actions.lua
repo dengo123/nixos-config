@@ -1,6 +1,5 @@
--- ~/.config/awesome/shell/windowing/actions.lua
+-- ~/.config/awesome/shell/windowing/runtime/actions.lua
 local awful = require("awful")
-local gtable = require("gears.table")
 
 local M = {}
 
@@ -52,103 +51,50 @@ function M.move_client_to_screen(dir)
 end
 
 -- =========================================================================
--- Pseudo Maximize
+-- Layout State
 -- =========================================================================
 
-local function save_prev_geom(c)
-	if not (c and c.valid) then
-		return
+function M.layout_state_mode(cfg)
+	local tags_cfg = (cfg and cfg.tags) or {}
+	local layouts_cfg = tags_cfg.layouts or {}
+	local mode = tostring(layouts_cfg.mode or "tiling"):lower()
+
+	if mode == "floating" then
+		return "maximized"
 	end
 
-	local key = "_prev_geom_s" .. tostring(c.screen.index or 0)
-
-	if not c[key] then
-		c[key] = c:geometry()
-	end
+	return "floating"
 end
 
-local function pop_prev_geom(c)
+function M.is_layout_state_active(c, cfg)
 	if not (c and c.valid) then
-		return
+		return false
 	end
 
-	local key = "_prev_geom_s" .. tostring(c.screen.index or 0)
-	local g = c[key]
+	local mode = M.layout_state_mode(cfg)
 
-	c[key] = nil
+	if mode == "maximized" then
+		return c.maximized == true
+	end
 
-	return g
+	return c.floating == true
 end
 
-function M.pseudo_maximize(c, opts)
+function M.toggle_layout_state(c, cfg)
 	if not (c and c.valid) then
 		return
 	end
 
-	local defaults = {
-		honor_workarea = true,
-		margins = 0,
-	}
+	local mode = M.layout_state_mode(cfg)
 
-	local merged = gtable.crush({}, defaults, true)
-
-	if opts then
-		gtable.crush(merged, opts, true)
+	if mode == "maximized" then
+		c.maximized = not c.maximized
+		c:raise()
+		return
 	end
 
-	save_prev_geom(c)
-
-	c.floating = true
-	c.maximized = false
-	c.maximized_horizontal = false
-	c.maximized_vertical = false
-
-	awful.placement.maximize(c, merged)
-
-	c.maximized_fake = true
+	awful.client.floating.toggle(c)
 	c:raise()
-
-	return c
-end
-
-function M.unpseudo_maximize(c)
-	if not (c and c.valid) then
-		return
-	end
-
-	local g = pop_prev_geom(c)
-
-	c.maximized_fake = false
-
-	if g then
-		c:geometry(g)
-	end
-
-	c:raise()
-
-	return c
-end
-
-function M.toggle_pseudo_maximize(c, opts)
-	if not (c and c.valid) then
-		return
-	end
-
-	if c.maximized_fake then
-		return M.unpseudo_maximize(c)
-	end
-
-	return M.pseudo_maximize(c, opts)
-end
-
-function M.clear_prev_geom_for_screen_change(c)
-	if not (c and c.valid) then
-		return
-	end
-
-	for i = 1, 16 do
-		c["_prev_geom_s" .. i] = nil
-	end
 end
 
 return M
