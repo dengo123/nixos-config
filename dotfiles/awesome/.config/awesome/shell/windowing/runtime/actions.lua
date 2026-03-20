@@ -3,6 +3,25 @@ local awful = require("awful")
 
 local M = {}
 
+local runtime_api = {}
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function state_api()
+	return runtime_api.state
+end
+
+-- =========================================================================
+-- Init
+-- =========================================================================
+
+function M.init(o)
+	o = o or {}
+	runtime_api = o.api or {}
+end
+
 -- =========================================================================
 -- Screen
 -- =========================================================================
@@ -55,6 +74,12 @@ end
 -- =========================================================================
 
 function M.layout_state_mode(cfg)
+	local State = state_api()
+
+	if State and type(State.layout_state_mode) == "function" then
+		return State.layout_state_mode(cfg)
+	end
+
 	local tags_cfg = (cfg and cfg.tags) or {}
 	local layouts_cfg = tags_cfg.layouts or {}
 	local mode = tostring(layouts_cfg.mode or "tiling"):lower()
@@ -67,6 +92,12 @@ function M.layout_state_mode(cfg)
 end
 
 function M.is_layout_state_active(c, cfg)
+	local State = state_api()
+
+	if State and type(State.is_layout_state_active) == "function" then
+		return State.is_layout_state_active(c, cfg)
+	end
+
 	if not (c and c.valid) then
 		return false
 	end

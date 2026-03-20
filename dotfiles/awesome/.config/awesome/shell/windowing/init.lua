@@ -16,14 +16,14 @@ local Behavior = {
 
 local Runtime = {
 	actions = require("shell.windowing.runtime.actions"),
-	state = require("shell.windowing.runtime.state"),
 	signals = safe_require("shell.windowing.runtime.signals"),
+	state = require("shell.windowing.runtime.state"),
 }
 
 local UI = {
 	container = require("shell.windowing.ui.container"),
 	theme = require("shell.windowing.ui.theme"),
-	titlebar = require("shell.windowing.ui.titlebar"),
+	titlebar_buttons = require("shell.windowing.ui.titlebar_buttons"),
 }
 
 local Modules = {
@@ -33,21 +33,43 @@ local Modules = {
 }
 
 local M = {
-	actions = Runtime.actions,
+	actions = nil,
+	api = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function build_api()
+local function build_api(cfg)
 	return {
+		cfg = cfg,
+
+		behavior = Behavior,
+		runtime = Runtime,
+		ui = UI,
+
 		clients = Modules.clients,
 		floating = Modules.floating,
+		rules = Modules.rules,
+
 		actions = Runtime.actions,
 		state = Runtime.state,
 		titlebars = Behavior.titlebars,
+		titlebar_buttons = UI.titlebar_buttons,
 	}
+end
+
+local function init_module(mod, args)
+	if mod and type(mod.init) == "function" then
+		mod.init(args)
+	end
+end
+
+local function apply_module(mod, args)
+	if mod and type(mod.apply) == "function" then
+		mod.apply(args)
+	end
 end
 
 -- =========================================================================
@@ -62,7 +84,6 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	local cfg = args.cfg or {}
-
 	local windowing_cfg = cfg.windowing or {}
 	local focus_cfg = windowing_cfg.focus or {}
 	local fullscreen_cfg = windowing_cfg.fullscreen or {}
@@ -70,68 +91,101 @@ function M.init(args)
 	local modkey = args.modkey
 	local mouse = args.mouse
 
-	local api = build_api()
+	local api = build_api(cfg)
+
+	M.api = api
+	M.actions = api.actions
+
+	-- ---------------------------------------------------------------------
+	-- Runtime
+	-- ---------------------------------------------------------------------
+
+	init_module(api.actions, {
+		cfg = cfg,
+		api = api,
+	})
+
+	init_module(api.state, {
+		cfg = cfg,
+		api = api,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	UI.theme.init(cfg)
+	init_module(api.ui.theme, {
+		cfg = cfg,
+		api = api,
+	})
 
-	local shape_fn = UI.theme.shape_fn and UI.theme.shape_fn() or nil
-	local button_style = UI.theme.button_style and UI.theme.button_style(cfg) or {}
+	local shape_fn = api.ui.theme and api.ui.theme.shape_fn and api.ui.theme.shape_fn() or nil
+	local button_style = api.ui.theme and api.ui.theme.button_style and api.ui.theme.button_style(cfg) or {}
 
 	-- ---------------------------------------------------------------------
 	-- Rules
 	-- ---------------------------------------------------------------------
 
-	if Modules.rules and Modules.rules.apply then
-		Modules.rules.apply({
-			modkey = modkey,
-			mouse = mouse,
-			cfg = cfg,
-			api = api,
-		})
-	end
+	apply_module(api.rules, {
+		cfg = cfg,
+		api = api,
+		modkey = modkey,
+		mouse = mouse,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- Focus
 	-- ---------------------------------------------------------------------
 
-	if Behavior.focus and Behavior.focus.init then
-		Behavior.focus.init(focus_cfg)
-	end
+	init_module(api.behavior.focus, {
+		cfg = cfg,
+		api = api,
+		raise_on_mouse = focus_cfg.raise_on_mouse,
+		block_ms = focus_cfg.block_ms,
+		center_mouse = focus_cfg.center_mouse,
+	})
+
+	-- ---------------------------------------------------------------------
+	-- Titlebars
+	-- ---------------------------------------------------------------------
+
+	init_module(api.titlebars, {
+		cfg = cfg,
+		api = api,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- Container
 	-- ---------------------------------------------------------------------
 
-	UI.container.init({
+	init_module(api.ui.container, {
+		cfg = cfg,
+		api = api,
 		shape_fn = shape_fn,
 		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
 
 	-- ---------------------------------------------------------------------
-	-- Signals
+	-- Runtime Signals
 	-- ---------------------------------------------------------------------
 
-	if Runtime.signals and Runtime.signals.apply then
-		Runtime.signals.apply({
-			cfg = cfg,
-			api = api,
-			attach_titlebar = function(c)
-				UI.titlebar.attach_titlebar(c, button_style, Runtime.actions, cfg)
-			end,
-			focus = Behavior.focus,
-			container = UI.container,
-		})
-	end
+	apply_module(api.runtime.signals, {
+		cfg = cfg,
+		api = api,
+		focus = api.behavior.focus,
+		container = api.ui.container,
+		attach_titlebar = function(c)
+			api.ui.container.attach_titlebar(c, button_style, api.actions, cfg, {
+				api = api,
+			})
+		end,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- Fullscreen Dim
 	-- ---------------------------------------------------------------------
 
-	if Behavior.fullscreen_dim and Behavior.fullscreen_dim.init then
+	if api.behavior.fullscreen_dim and type(api.behavior.fullscreen_dim.init) == "function" then
 		local dim_cfg = fullscreen_cfg.dim
 
 		if dim_cfg ~= false then
@@ -139,9 +193,20 @@ function M.init(args)
 				dim_cfg = { enabled = true }
 			end
 
-			Behavior.fullscreen_dim.init(dim_cfg)
+			api.behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
+
+	-- ---------------------------------------------------------------------
+	-- Fullscreen Portrait
+	-- ---------------------------------------------------------------------
+
+	init_module(api.behavior.fullscreen_portrait, {
+		cfg = cfg,
+		api = api,
+	})
+
+	return M
 end
 
 return M

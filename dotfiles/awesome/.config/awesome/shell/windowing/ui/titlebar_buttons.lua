@@ -1,10 +1,10 @@
--- ~/.config/awesome/shell/windowing/ui/titlebar.lua
+-- ~/.config/awesome/shell/windowing/ui/titlebar_buttons.lua
 local gears = require("gears")
 local awful = require("awful")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 
-local B = {}
+local M = {}
 
 -- =========================================================================
 -- Theme Assets
@@ -102,25 +102,35 @@ local function recolor_imagebox(ib, img, color)
 	end
 end
 
+local function actions_api(actions)
+	return actions or {}
+end
+
 local function layout_state_mode(actions, cfg)
-	if actions and type(actions.layout_state_mode) == "function" then
-		return actions.layout_state_mode(cfg)
+	local api = actions_api(actions)
+
+	if type(api.layout_state_mode) == "function" then
+		return api.layout_state_mode(cfg)
 	end
 
 	return "floating"
 end
 
 local function is_layout_state_active(actions, c, cfg)
-	if actions and type(actions.is_layout_state_active) == "function" then
-		return actions.is_layout_state_active(c, cfg)
+	local api = actions_api(actions)
+
+	if type(api.is_layout_state_active) == "function" then
+		return api.is_layout_state_active(c, cfg)
 	end
 
 	return c.floating == true
 end
 
 local function toggle_layout_state(actions, c, cfg)
-	if actions and type(actions.toggle_layout_state) == "function" then
-		actions.toggle_layout_state(c, cfg)
+	local api = actions_api(actions)
+
+	if type(api.toggle_layout_state) == "function" then
+		api.toggle_layout_state(c, cfg)
 		return
 	end
 
@@ -133,7 +143,7 @@ end
 -- =========================================================================
 
 local function make_img_button(opts)
-	local bar_h = assert(tonumber(opts.size), "titlebar: button size fehlt/ungültig")
+	local bar_h = assert(tonumber(opts.size), "titlebar_buttons: button size fehlt/ungültig")
 	local inner = math.floor(bar_h * 0.90)
 	local pad = math.floor((bar_h - inner) / 2)
 	local active = opts.img_active or opts.img
@@ -180,24 +190,20 @@ local function make_img_button(opts)
 end
 
 -- =========================================================================
--- Buttons
+-- Public API
 -- =========================================================================
 
-function B.build_buttons(c, style, actions, cfg)
+function M.build(c, style, actions, cfg)
 	ensure_titlebar_assets()
-
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
 
 	style = style or {}
 
-	local size = assert(tonumber(style.size), "titlebar: style.size fehlt/ungültig")
-	local spacing = assert(tonumber(style.spacing), "titlebar: style.spacing fehlt/ungültig")
-	local fg = assert(style.fg, "titlebar: style.fg fehlt")
-	local fg_hover = assert(style.fg_hover, "titlebar: style.fg_hover fehlt")
-	local close_fg = assert(style.close, "titlebar: style.close fehlt")
-	local close_hover = assert(style.close_hover, "titlebar: style.close_hover fehlt")
+	local size = assert(tonumber(style.size), "titlebar_buttons: style.size fehlt/ungültig")
+	local spacing = assert(tonumber(style.spacing), "titlebar_buttons: style.spacing fehlt/ungültig")
+	local fg = assert(style.fg, "titlebar_buttons: style.fg fehlt")
+	local fg_hover = assert(style.fg_hover, "titlebar_buttons: style.fg_hover fehlt")
+	local close_fg = assert(style.close, "titlebar_buttons: style.close fehlt")
+	local close_hover = assert(style.close_hover, "titlebar_buttons: style.close_hover fehlt")
 
 	local img_close = beautiful.titlebar_close_button_normal
 	local img_minimize = beautiful.titlebar_minimize_button_normal
@@ -292,10 +298,6 @@ function B.build_buttons(c, style, actions, cfg)
 		end,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Layout
-	-- ---------------------------------------------------------------------
-
 	return {
 		layout = wibox.layout.fixed.horizontal,
 		spacing = spacing,
@@ -305,69 +307,4 @@ function B.build_buttons(c, style, actions, cfg)
 	}
 end
 
--- =========================================================================
--- Public API
--- =========================================================================
-
-function B.attach_titlebar(c, style, actions, cfg)
-	if not (c and c.valid) then
-		return
-	end
-
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
-	local pos = assert(beautiful.titlebar_position, "titlebar: beautiful.titlebar_position fehlt")
-	local size = assert(tonumber(beautiful.titlebar_height), "titlebar: beautiful.titlebar_height fehlt/ungültig")
-
-	-- ---------------------------------------------------------------------
-	-- Controls
-	-- ---------------------------------------------------------------------
-
-	local buttons = gears.table.join(
-		awful.button({}, 1, function()
-			activate_client(c, "titlebar_drag", true)
-			awful.mouse.client.move(c)
-		end),
-		awful.button({}, 3, function()
-			activate_client(c, "titlebar_resize", true)
-			awful.mouse.client.resize(c)
-		end)
-	)
-
-	local title = awful.titlebar.widget.titlewidget(c)
-	if title.set_align then
-		title:set_align("left")
-	end
-
-	-- ---------------------------------------------------------------------
-	-- Build
-	-- ---------------------------------------------------------------------
-
-	awful
-		.titlebar(c, {
-			position = pos,
-			size = size,
-		})
-		:setup({
-			{
-				awful.titlebar.widget.iconwidget(c),
-				title,
-				buttons = buttons,
-				spacing = 6,
-				layout = wibox.layout.fixed.horizontal,
-			},
-			{
-				nil,
-				nil,
-				nil,
-				buttons = buttons,
-				layout = wibox.layout.align.horizontal,
-			},
-			B.build_buttons(c, style, actions, cfg),
-			layout = wibox.layout.align.horizontal,
-		})
-end
-
-return B
+return M

@@ -47,6 +47,7 @@ local function titlebar_exclude()
 	if type(list) ~= "table" then
 		return {}
 	end
+
 	return list
 end
 
@@ -97,7 +98,8 @@ local function token_matches_client(token, c, api)
 		local editor = tostring((apps_cfg.editor or "")):lower()
 		local exe = editor:match("^%s*([^%s]+)")
 		exe = exe and (exe:match("([^/]+)$") or exe):lower() or nil
-		return exe ~= nil and (class == exe or instance == exe)
+
+		return (exe ~= nil and (class == exe or instance == exe)) or class == "emacs" or instance == "emacs"
 	end
 
 	return token == class or token == instance or token == name
@@ -117,8 +119,9 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	runtime_cfg = cfg or {}
+function M.init(o)
+	o = o or {}
+	runtime_cfg = o.cfg or o or {}
 end
 
 function M.mode()

@@ -53,7 +53,6 @@ function M.setup(s, args)
 	local bar_position = bar_cfg.position
 	local bar_notify_mode = tostring(bar_cfg.show_notify or "primary"):lower()
 
-	local reveal_on_fullscreen_edge = (bar_cfg.reveal_on_fullscreen_edge == true)
 	local reveal_trigger_px = tonumber(bar_cfg.reveal_trigger_px) or 2
 	local reveal_hide_delay = tonumber(bar_cfg.reveal_hide_delay) or 0.20
 
@@ -115,7 +114,7 @@ function M.setup(s, args)
 				return menu_api.is_open()
 			end,
 			hide = function()
-				menu_api.hide()
+				return menu_api.hide()
 			end,
 		} or nil,
 	})
@@ -211,18 +210,16 @@ function M.setup(s, args)
 		awesome.emit_signal("ui::tray_ready", s)
 	end
 
-	if reveal_on_fullscreen_edge then
-		if not reveal_signals_ready then
-			Bar.reveal.init_signals()
-			reveal_signals_ready = true
-		end
-
-		Bar.reveal.attach(s, s.mywibar, {
-			edge = props.position,
-			trigger_px = reveal_trigger_px,
-			hide_delay = reveal_hide_delay,
-		})
+	if not reveal_signals_ready then
+		Bar.reveal.init_signals()
+		reveal_signals_ready = true
 	end
+
+	Bar.reveal.attach(s, s.mywibar, {
+		edge = props.position,
+		trigger_px = reveal_trigger_px,
+		hide_delay = reveal_hide_delay,
+	})
 
 	return s.mywibar
 end

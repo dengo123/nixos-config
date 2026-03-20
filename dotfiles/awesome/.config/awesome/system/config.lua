@@ -84,7 +84,7 @@ return {
 				"tile_cross",
 			},
 
-			use_max_fullscreen_for_portrait = false,
+			use_max_fullscreen_for_portrait = true,
 		},
 
 		gap = 4,
@@ -103,7 +103,7 @@ return {
 	windowing = {
 		titlebars = {
 			mode = "on",
-			exclude = { "terminal" },
+			exclude = { "terminal", "editor" },
 		},
 
 		rounded_corners = true,

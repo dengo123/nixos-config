@@ -1,8 +1,10 @@
 -- ~/.config/awesome/shell/windowing/runtime/state.lua
+local awful = require("awful")
+
 local M = {}
 
 -- =========================================================================
--- Layout State
+-- Layout Mode
 -- =========================================================================
 
 function M.layout_mode(cfg)
@@ -25,19 +27,9 @@ function M.layout_state_mode(cfg)
 	return "floating"
 end
 
-function M.is_layout_state_active(c, cfg)
-	if not (c and c.valid) then
-		return false
-	end
-
-	local mode = M.layout_state_mode(cfg)
-
-	if mode == "maximized" then
-		return c.maximized == true
-	end
-
-	return c.floating == true
-end
+-- =========================================================================
+-- Labels
+-- =========================================================================
 
 function M.layout_state_label(cfg)
 	local mode = M.layout_state_mode(cfg)
@@ -57,6 +49,24 @@ function M.layout_state_menu_label(cfg)
 	end
 
 	return "Floating / Tiling"
+end
+
+-- =========================================================================
+-- Layout State
+-- =========================================================================
+
+function M.is_layout_state_active(c, cfg)
+	if not (c and c.valid) then
+		return false
+	end
+
+	local mode = M.layout_state_mode(cfg)
+
+	if mode == "maximized" then
+		return c.maximized == true
+	end
+
+	return c.floating == true
 end
 
 return M

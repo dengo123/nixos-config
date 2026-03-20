@@ -15,17 +15,12 @@ function M.apply(o)
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local cfg = o.cfg or {}
 	local api = o.api or {}
-
 	local focus = o.focus
 	local container = o.container
 	local attach_titlebar = o.attach_titlebar
 
 	local titlebars = api.titlebars
-	if titlebars and type(titlebars.init) == "function" then
-		titlebars.init(cfg)
-	end
 
 	-- ---------------------------------------------------------------------
 	-- Helpers
@@ -33,7 +28,9 @@ function M.apply(o)
 
 	local function restyle(c)
 		if container and container.apply then
-			container.apply(c)
+			container.apply(c, {
+				api = api,
+			})
 		end
 	end
 

@@ -1,6 +1,7 @@
 -- ~/.config/awesome/shell/workspaces/policies/spacing_policy.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
+local gears = require("gears")
 
 local M = {}
 
@@ -20,7 +21,15 @@ local function resolve_gap()
 	return gap
 end
 
-local function apply_beautiful_spacing()
+local function is_max_layout(layout)
+	return layout == awful.layout.suit.max or layout == awful.layout.suit.max.fullscreen
+end
+
+local function is_max_fullscreen_layout(layout)
+	return layout == awful.layout.suit.max.fullscreen
+end
+
+local function apply_beautiful_spacing(layout)
 	local gap = resolve_gap()
 
 	beautiful.useless_gap = gap
@@ -28,6 +37,8 @@ local function apply_beautiful_spacing()
 	beautiful.max_pad_on = true
 	beautiful.max_pad_same_as_gap = true
 end
+
+-- debug
 
 -- =========================================================================
 -- Apply
@@ -38,12 +49,15 @@ local function apply(s)
 		return
 	end
 
-	if not s.selected_tag then
+	local t = s.selected_tag
+	if not t then
 		awful.screen.padding(s, nil)
 		return
 	end
 
-	if s.selected_tag.layout == awful.layout.suit.max then
+	apply_beautiful_spacing(t.layout)
+
+	if is_max_layout(t.layout) then
 		local gap = resolve_gap()
 
 		awful.screen.padding(s, {
@@ -65,8 +79,6 @@ end
 
 function M.init(cfg)
 	runtime_cfg = cfg or {}
-
-	apply_beautiful_spacing()
 
 	awful.screen.connect_for_each_screen(function(s)
 		apply(s)

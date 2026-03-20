@@ -54,8 +54,8 @@ local function edge_geom(s, edge, trigger_px)
 	}
 end
 
-local function screen_has_visible_fullscreen(s)
-	local selected = s.selected_tag
+local function screen_has_visible_fullscreen_client(s)
+	local selected = s and s.selected_tag
 	if not selected then
 		return false
 	end
@@ -67,6 +67,19 @@ local function screen_has_visible_fullscreen(s)
 	end
 
 	return false
+end
+
+local function selected_tag_uses_reveal_layout(s)
+	local t = s and s.selected_tag
+	if not t then
+		return false
+	end
+
+	return t.layout == awful.layout.suit.max.fullscreen
+end
+
+local function reveal_active_for_screen(s)
+	return screen_has_visible_fullscreen_client(s) or selected_tag_uses_reveal_layout(s)
 end
 
 local function cancel_hide_timer(s)
@@ -96,7 +109,7 @@ local function hide_bar_now(s)
 
 	cancel_hide_timer(s)
 
-	if screen_has_visible_fullscreen(s) then
+	if reveal_active_for_screen(s) then
 		bar.visible = false
 	else
 		bar.visible = true
@@ -111,7 +124,7 @@ local function hide_bar_later(s)
 		return
 	end
 
-	if not screen_has_visible_fullscreen(s) then
+	if not reveal_active_for_screen(s) then
 		return
 	end
 
@@ -130,7 +143,6 @@ end
 
 local function ensure_trigger(s)
 	local bar = bars[s]
-	local opts = opts_by_screen[s] or {}
 
 	if not (bar and bar.valid) then
 		return nil
@@ -198,11 +210,11 @@ local function sync_screen(s)
 
 	update_trigger_geom(s)
 
-	local fullscreen_visible = screen_has_visible_fullscreen(s)
+	local reveal_active = reveal_active_for_screen(s)
 
-	trigger.visible = fullscreen_visible
+	trigger.visible = reveal_active
 
-	if fullscreen_visible then
+	if reveal_active then
 		bar.ontop = true
 		bar.visible = false
 		pcall(function()
@@ -246,20 +258,12 @@ end
 function M.attach(s, bar, opts)
 	opts = opts or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	bars[s] = bar
 	opts_by_screen[s] = {
 		edge = opts.edge or "bottom",
 		trigger_px = tonumber(opts.trigger_px) or 2,
 		hide_delay = tonumber(opts.hide_delay) or 0.20,
 	}
-
-	-- ---------------------------------------------------------------------
-	-- Setup
-	-- ---------------------------------------------------------------------
 
 	ensure_trigger(s)
 	update_trigger_geom(s)
@@ -284,6 +288,12 @@ function M.init_signals()
 	-- ---------------------------------------------------------------------
 	-- Tag Signals
 	-- ---------------------------------------------------------------------
+
+	tag.connect_signal("property::layout", function(t)
+		if t and t.screen then
+			schedule_update()
+		end
+	end)
 
 	tag.connect_signal("property::selected", schedule_update)
 

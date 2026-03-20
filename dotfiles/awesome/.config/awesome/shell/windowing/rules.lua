@@ -1,211 +1,8 @@
 -- ~/.config/awesome/shell/windowing/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
-local gears = require("gears")
-
-local Clients = require("shell.windowing.clients")
 
 local M = {}
-
-local portrait_autosize_ready = false
-local centered_autosize_ready = false
-local tall_centered_reinforce_ready = false
-
--- =========================================================================
--- Helpers
--- =========================================================================
-
-local function portrait_autosize_apply(c)
-	if not (c and c.valid) then
-		return
-	end
-
-	if not c.portrait_autosize then
-		return
-	end
-
-	if not c.floating or c.fullscreen or c.maximized then
-		return
-	end
-
-	local s = c.screen
-	if not s then
-		return
-	end
-
-	local wa = s.workarea
-	if wa.height <= wa.width then
-		return
-	end
-
-	local w = math.floor(wa.width * 0.92)
-	local h = math.floor(wa.height / 3)
-	local x = wa.x + math.floor((wa.width - w) / 2)
-	local y = wa.y + math.floor((wa.height - h) / 2)
-
-	c:geometry({
-		x = x,
-		y = y,
-		width = w,
-		height = h,
-	})
-end
-
-local function centered_autosize_apply(c)
-	if not (c and c.valid) then
-		return
-	end
-
-	if not c.centered_autosize then
-		return
-	end
-
-	if not c.floating or c.fullscreen then
-		return
-	end
-
-	local s = c.screen
-	if not s then
-		return
-	end
-
-	local wa = s.workarea
-	local width = math.floor(math.min(wa.width * 0.36, 620))
-
-	width = math.max(width, 420)
-
-	local height = math.floor(width * 1.60)
-	local max_height = math.floor(wa.height * 0.90)
-
-	if height > max_height then
-		height = max_height
-		width = math.floor(height / 1.60)
-	end
-
-	local x = wa.x + math.floor((wa.width - width) / 2)
-	local y = wa.y + math.floor((wa.height - height) / 2)
-
-	c.maximized = false
-	c.maximized_horizontal = false
-	c.maximized_vertical = false
-
-	c:geometry({
-		x = x,
-		y = y,
-		width = width,
-		height = height,
-	})
-end
-
-local function normalize_tall_centered_client(c)
-	if not (c and c.valid) then
-		return
-	end
-
-	c.floating = true
-	c.fullscreen = false
-	c.maximized = false
-	c.maximized_horizontal = false
-	c.maximized_vertical = false
-	c.centered_autosize = true
-	c.portrait_autosize = false
-
-	centered_autosize_apply(c)
-end
-
-local function reinforce_tall_centered_client(c)
-	if not Clients.is_tall_centered_client(c) then
-		return
-	end
-
-	normalize_tall_centered_client(c)
-
-	gears.timer.delayed_call(function()
-		normalize_tall_centered_client(c)
-	end)
-
-	gears.timer.start_new(0.15, function()
-		normalize_tall_centered_client(c)
-		return false
-	end)
-
-	gears.timer.start_new(0.50, function()
-		normalize_tall_centered_client(c)
-		return false
-	end)
-end
-
-local function hook_portrait_autosize()
-	if portrait_autosize_ready then
-		return
-	end
-
-	client.connect_signal("manage", function(c)
-		gears.timer.delayed_call(function()
-			portrait_autosize_apply(c)
-		end)
-	end)
-
-	client.connect_signal("property::floating", function(c)
-		portrait_autosize_apply(c)
-	end)
-
-	screen.connect_signal("property::geometry", function(s)
-		for _, c in ipairs(s.clients) do
-			portrait_autosize_apply(c)
-		end
-	end)
-
-	portrait_autosize_ready = true
-end
-
-local function hook_centered_autosize()
-	if centered_autosize_ready then
-		return
-	end
-
-	client.connect_signal("manage", function(c)
-		gears.timer.delayed_call(function()
-			centered_autosize_apply(c)
-		end)
-	end)
-
-	client.connect_signal("property::floating", function(c)
-		centered_autosize_apply(c)
-	end)
-
-	screen.connect_signal("property::geometry", function(s)
-		for _, c in ipairs(s.clients) do
-			centered_autosize_apply(c)
-		end
-	end)
-
-	centered_autosize_ready = true
-end
-
-local function hook_tall_centered_reinforce()
-	if tall_centered_reinforce_ready then
-		return
-	end
-
-	client.connect_signal("property::maximized", function(c)
-		if Clients.is_tall_centered_client(c) and c.floating then
-			gears.timer.delayed_call(function()
-				normalize_tall_centered_client(c)
-			end)
-		end
-	end)
-
-	client.connect_signal("property::fullscreen", function(c)
-		if Clients.is_tall_centered_client(c) and c.floating then
-			gears.timer.delayed_call(function()
-				normalize_tall_centered_client(c)
-			end)
-		end
-	end)
-
-	tall_centered_reinforce_ready = true
-end
 
 -- =========================================================================
 -- Public API
@@ -218,9 +15,13 @@ function M.apply(o)
 	-- Config
 	-- ---------------------------------------------------------------------
 
+	local cfg = o.cfg or {}
+	local api = o.api or {}
 	local modkey = o.modkey
 	local mouse = o.mouse
-	local cfg = o.cfg or {}
+
+	local Clients = api.clients
+	local Floating = api.floating
 
 	local apps_cfg = cfg.apps or {}
 	local windowing_cfg = cfg.windowing or {}
@@ -231,11 +32,10 @@ function M.apply(o)
 
 	local files_floating = (floating_cfg.files ~= false)
 	local terminals_floating = (floating_cfg.terminals == true)
-	local titlebars_cfg = windowing_cfg.titlebars
-	local titlebars_enabled = titlebars_cfg ~= false
 
-	local fm_match = Clients.build_file_manager_match(file_manager)
-	local term_match = Clients.build_terminal_match(terminal)
+	local fm_match = Clients and Clients.build_file_manager_match and Clients.build_file_manager_match(file_manager)
+		or nil
+	local term_match = Clients and Clients.build_terminal_match and Clients.build_terminal_match(terminal) or nil
 
 	-- ---------------------------------------------------------------------
 	-- Rules
@@ -260,49 +60,47 @@ function M.apply(o)
 	-- File Manager
 	-- ---------------------------------------------------------------------
 
-	if
-		files_floating
-		and fm_match
-		and (Clients.has_entries(fm_match.class) or Clients.has_entries(fm_match.instance))
-	then
-		table.insert(rules, {
-			rule_any = {
-				class = Clients.has_entries(fm_match.class) and fm_match.class or nil,
-				instance = Clients.has_entries(fm_match.instance) and fm_match.instance or nil,
-			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = true,
-				centered_autosize = false,
-			},
-		})
+	if files_floating and fm_match and Clients and Clients.has_entries then
+		if Clients.has_entries(fm_match.class) or Clients.has_entries(fm_match.instance) then
+			table.insert(rules, {
+				rule_any = {
+					class = Clients.has_entries(fm_match.class) and fm_match.class or nil,
+					instance = Clients.has_entries(fm_match.instance) and fm_match.instance or nil,
+				},
+				properties = {
+					floating = true,
+					placement = awful.placement.centered,
+					portrait_autosize = true,
+					centered_autosize = false,
+				},
+			})
+		end
 	end
 
 	-- ---------------------------------------------------------------------
 	-- Terminal
 	-- ---------------------------------------------------------------------
 
-	if
-		terminals_floating
-		and term_match
-		and (Clients.has_entries(term_match.class) or Clients.has_entries(term_match.instance))
-	then
-		table.insert(rules, {
-			rule_any = {
-				class = Clients.has_entries(term_match.class) and term_match.class or nil,
-				instance = Clients.has_entries(term_match.instance) and term_match.instance or nil,
-			},
-			properties = {
-				floating = true,
-				placement = awful.placement.centered,
-				portrait_autosize = false,
-				centered_autosize = true,
-			},
-			callback = function(c)
-				reinforce_tall_centered_client(c)
-			end,
-		})
+	if terminals_floating and term_match and Clients and Clients.has_entries then
+		if Clients.has_entries(term_match.class) or Clients.has_entries(term_match.instance) then
+			table.insert(rules, {
+				rule_any = {
+					class = Clients.has_entries(term_match.class) and term_match.class or nil,
+					instance = Clients.has_entries(term_match.instance) and term_match.instance or nil,
+				},
+				properties = {
+					floating = true,
+					placement = awful.placement.centered,
+					portrait_autosize = false,
+					centered_autosize = true,
+				},
+				callback = function(c)
+					if Floating and type(Floating.reinforce_tall_centered_client) == "function" then
+						Floating.reinforce_tall_centered_client(c)
+					end
+				end,
+			})
+		end
 	end
 
 	-- ---------------------------------------------------------------------
@@ -321,7 +119,9 @@ function M.apply(o)
 			centered_autosize = true,
 		},
 		callback = function(c)
-			reinforce_tall_centered_client(c)
+			if Floating and type(Floating.reinforce_tall_centered_client) == "function" then
+				Floating.reinforce_tall_centered_client(c)
+			end
 		end,
 	})
 
@@ -347,7 +147,9 @@ function M.apply(o)
 			centered_autosize = false,
 		},
 		callback = function(c)
-			portrait_autosize_apply(c)
+			if Floating and type(Floating.portrait_autosize_apply) == "function" then
+				Floating.portrait_autosize_apply(c)
+			end
 		end,
 	})
 
@@ -415,10 +217,15 @@ function M.apply(o)
 	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
-		rule_any = { type = { "normal", "dialog" } },
-		properties = {
-			titlebars_enabled = titlebars_enabled,
+		rule_any = {
+			type = { "normal", "dialog" },
 		},
+		properties = {},
+		callback = function(c)
+			if api.titlebars and type(api.titlebars.enabled_for) == "function" then
+				c.titlebars_enabled = api.titlebars.enabled_for(c, api)
+			end
+		end,
 	})
 
 	-- ---------------------------------------------------------------------
@@ -437,9 +244,13 @@ function M.apply(o)
 	})
 
 	awful.rules.rules = rules
-	hook_portrait_autosize()
-	hook_centered_autosize()
-	hook_tall_centered_reinforce()
+
+	if Floating and type(Floating.init) == "function" then
+		Floating.init({
+			cfg = cfg,
+			api = api,
+		})
+	end
 end
 
 return M

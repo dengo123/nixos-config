@@ -1,86 +1,76 @@
--- ~/.config/awesome/shell/windowing/policies/fullscreen_portrait.lua
+-- ~/.config/awesome/shell/windowing/behavior/fullscreen_portrait.lua
+local awful = require("awful")
 local gears = require("gears")
 
 local M = {}
 
-local ENABLED = true
+local runtime_cfg = {}
 local signals_ready = false
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function is_portrait_screen(s)
-	if not s then
-		return false
-	end
-
-	local wa = s.workarea or s.geometry
-	if not wa then
-		return false
-	end
-
-	return wa.height > wa.width
+local function layouts_cfg()
+	local tags_cfg = runtime_cfg.tags or {}
+	return tags_cfg.layouts or {}
 end
 
-local function is_tiled_client(c)
+local function is_enabled()
+	return layouts_cfg().use_max_fullscreen_for_portrait == true
+end
+
+local function has_tag(c, t)
+	if not (c and c.valid and t) then
+		return false
+	end
+
+	for _, ct in ipairs(c:tags() or {}) do
+		if ct == t then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function selected_tag_uses_max_fullscreen_layout(s)
+	local t = s and s.selected_tag
+	return t and t.layout == awful.layout.suit.max.fullscreen or false
+end
+
+local function client_should_auto_fullscreen(c)
 	if not (c and c.valid) then
 		return false
 	end
 
-	if c.floating then
-		return false
-	end
-
-	if c.minimized then
-		return false
-	end
-
-	if c.type ~= "normal" then
-		return false
-	end
-
-	return true
-end
-
-local function should_force(c)
-	if not ENABLED then
-		return false
-	end
-
-	if not (c and c.valid and c.screen) then
-		return false
-	end
-
-	if not is_portrait_screen(c.screen) then
-		return false
-	end
-
-	if not is_tiled_client(c) then
-		return false
-	end
-
-	if c.fullscreen then
-		return false
-	end
-
-	return true
-end
-
-local function should_release(c)
-	if not (c and c.valid and c.screen) then
-		return false
-	end
-
-	if c._portrait_forced_fullscreen ~= true then
+	if not is_enabled() then
 		return false
 	end
 
 	if c.floating then
-		return true
+		return false
 	end
 
-	return not is_portrait_screen(c.screen)
+	local s = c.screen
+	if not s then
+		return false
+	end
+
+	local selected = s.selected_tag
+	if not selected then
+		return false
+	end
+
+	if not selected_tag_uses_max_fullscreen_layout(s) then
+		return false
+	end
+
+	if not has_tag(c, selected) then
+		return false
+	end
+
+	return true
 end
 
 local function apply_client(c)
@@ -88,44 +78,48 @@ local function apply_client(c)
 		return
 	end
 
-	if c._portrait_fullscreen_busy then
+	local should_fullscreen = client_should_auto_fullscreen(c)
+
+	if should_fullscreen then
+		if c.fullscreen ~= true then
+			c._auto_portrait_fullscreen = true
+			c.fullscreen = true
+			c:raise()
+		else
+			c._auto_portrait_fullscreen = true
+		end
+
 		return
 	end
 
-	c._portrait_fullscreen_busy = true
+	if c._auto_portrait_fullscreen == true then
+		c._auto_portrait_fullscreen = nil
 
-	if should_force(c) then
-		c._portrait_forced_fullscreen = true
-		c.fullscreen = true
-	elseif should_release(c) then
-		c._portrait_forced_fullscreen = nil
-		c.fullscreen = false
+		if c.valid then
+			c.fullscreen = false
+		end
 	end
-
-	c._portrait_fullscreen_busy = nil
 end
 
 local function apply_screen(s)
-	if not s then
+	if not (s and s.valid) then
 		return
 	end
 
-	for _, c in ipairs(s.clients) do
+	for _, c in ipairs(s.clients or {}) do
 		apply_client(c)
 	end
 end
 
-local function delayed_apply_client(c, sec)
-	gears.timer.start_new(sec or 0.20, function()
+local function delayed_apply_client(c)
+	gears.timer.delayed_call(function()
 		apply_client(c)
-		return false
 	end)
 end
 
-local function delayed_apply_screen(s, sec)
-	gears.timer.start_new(sec or 0.20, function()
+local function delayed_apply_screen(s)
+	gears.timer.delayed_call(function()
 		apply_screen(s)
-		return false
 	end)
 end
 
@@ -134,48 +128,60 @@ local function setup_signals()
 		return
 	end
 
+	-- ---------------------------------------------------------------------
+	-- Client Signals
+	-- ---------------------------------------------------------------------
+
 	client.connect_signal("manage", function(c)
-		delayed_apply_client(c, 0.20)
-		if c and c.screen then
-			delayed_apply_screen(c.screen, 0.25)
-		end
+		delayed_apply_client(c)
 	end)
 
 	client.connect_signal("property::floating", function(c)
-		delayed_apply_client(c, 0.05)
-		if c and c.screen then
-			delayed_apply_screen(c.screen, 0.05)
+		delayed_apply_client(c)
+	end)
+
+	client.connect_signal("property::fullscreen", function(c)
+		if c and c.valid and c._auto_portrait_fullscreen == true then
+			delayed_apply_client(c)
 		end
 	end)
 
-	client.connect_signal("property::screen", function(c)
-		delayed_apply_client(c, 0.05)
-		if c and c.screen then
-			delayed_apply_screen(c.screen, 0.05)
-		end
+	client.connect_signal("tagged", function(c)
+		delayed_apply_client(c)
+	end)
+
+	client.connect_signal("untagged", function(c)
+		delayed_apply_client(c)
 	end)
 
 	client.connect_signal("unmanage", function(c)
-		local s = c and c.screen or nil
-
 		if c then
-			c._portrait_forced_fullscreen = nil
-			c._portrait_fullscreen_busy = nil
-		end
-
-		if s then
-			delayed_apply_screen(s, 0.05)
+			c._auto_portrait_fullscreen = nil
 		end
 	end)
 
-	screen.connect_signal("property::geometry", function(s)
-		delayed_apply_screen(s, 0.05)
+	-- ---------------------------------------------------------------------
+	-- Tag Signals
+	-- ---------------------------------------------------------------------
+
+	tag.connect_signal("property::layout", function(t)
+		if t and t.screen then
+			delayed_apply_screen(t.screen)
+		end
 	end)
 
 	tag.connect_signal("property::selected", function(t)
 		if t and t.screen then
-			delayed_apply_screen(t.screen, 0.05)
+			delayed_apply_screen(t.screen)
 		end
+	end)
+
+	-- ---------------------------------------------------------------------
+	-- Screen Signals
+	-- ---------------------------------------------------------------------
+
+	screen.connect_signal("property::geometry", function(s)
+		delayed_apply_screen(s)
 	end)
 
 	signals_ready = true
@@ -185,43 +191,17 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(opts)
-	opts = opts or {}
-
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
-	if opts.enabled ~= nil then
-		ENABLED = (opts.enabled == true)
-	end
-
-	-- ---------------------------------------------------------------------
-	-- Setup
-	-- ---------------------------------------------------------------------
+function M.init(o)
+	o = o or {}
+	runtime_cfg = o.cfg or o or {}
 
 	setup_signals()
 
-	if not ENABLED then
+	gears.timer.delayed_call(function()
 		for s in screen do
-			for _, c in ipairs(s.clients) do
-				if c._portrait_forced_fullscreen == true then
-					c._portrait_forced_fullscreen = nil
-					c.fullscreen = false
-					c:emit_signal("request::titlebars")
-				end
-			end
+			apply_screen(s)
 		end
-		return
-	end
-
-	-- ---------------------------------------------------------------------
-	-- Initial
-	-- ---------------------------------------------------------------------
-
-	for s in screen do
-		delayed_apply_screen(s, 0.10)
-	end
+	end)
 end
 
 return M
