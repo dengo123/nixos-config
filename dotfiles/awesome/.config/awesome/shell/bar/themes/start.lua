@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/start.lua
+-- ~/.config/awesome/shell/bar/themes/start.lua
 local beautiful = require("beautiful")
 local gfs = require("gears.filesystem")
 local xr = require("beautiful.xresources")
@@ -111,16 +111,8 @@ function S.init(cfg)
 end
 
 function S.get()
-	-- ---------------------------------------------------------------------
-	-- Theme State
-	-- ---------------------------------------------------------------------
-
 	local ST = beautiful.start or {}
 	local C = beautiful.start_colors or {}
-
-	-- ---------------------------------------------------------------------
-	-- Theme Object
-	-- ---------------------------------------------------------------------
 
 	return {
 		label = ST.label,

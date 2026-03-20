@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/notify.lua
+-- ~/.config/awesome/shell/notify/theme.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
 
@@ -34,7 +34,7 @@ function M.init(cfg)
 		icon_size = dpi(28),
 		margin = dpi(8),
 		border_w = dpi(1),
-		width = dpi(420),
+		width = dpi(360),
 	}
 
 	-- ---------------------------------------------------------------------
@@ -44,7 +44,7 @@ function M.init(cfg)
 	beautiful.notify.center = {
 		width_factor = 0.30,
 		min_width = dpi(320),
-		max_width = dpi(420),
+		max_width = dpi(360),
 
 		min_height = dpi(80),
 		max_height = dpi(720),

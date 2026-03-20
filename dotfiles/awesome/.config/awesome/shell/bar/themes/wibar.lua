@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/wibar.lua
+-- ~/.config/awesome/shell/bar/themes/wibar.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
 

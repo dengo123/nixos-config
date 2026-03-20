@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/theme/tabs.lua
+-- ~/.config/awesome/shell/bar/themes/tabs.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
 
@@ -64,16 +64,8 @@ function T.init(cfg)
 end
 
 function T.get()
-	-- ---------------------------------------------------------------------
-	-- Theme State
-	-- ---------------------------------------------------------------------
-
 	local S = beautiful.tabs or {}
 	local C = beautiful.tabs_colors or {}
-
-	-- ---------------------------------------------------------------------
-	-- Theme Object
-	-- ---------------------------------------------------------------------
 
 	return {
 		spacing = S.spacing,

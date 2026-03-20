@@ -4,6 +4,7 @@ local gears = require("gears")
 local naughty = require("naughty")
 local wibox = require("wibox")
 
+local Theme = require("shell.notify.theme")
 local Center = require("shell.notify.center")
 local History = require("shell.notify.history")
 local Rules = require("shell.notify.rules")
@@ -49,10 +50,6 @@ end
 
 local function center_cfg(cfg)
 	return require_table(notify_cfg(cfg).center, "cfg.notify.center")
-end
-
-local function actions_cfg(cfg)
-	return require_table(notify_cfg(cfg).actions, "cfg.notify.actions")
 end
 
 local function filter_cfg(cfg)
@@ -183,6 +180,10 @@ local function is_ignored_app(cfg, args)
 end
 
 local function should_store_notification(cfg, args)
+	if args.skip_history == true then
+		return false
+	end
+
 	local fcfg = filter_cfg(cfg)
 
 	if fcfg.ignore_resident == true and args.resident == true then
@@ -268,6 +269,8 @@ function M.init(cfg)
 	if initialized then
 		return
 	end
+
+	Theme.init(cfg)
 
 	local notify_theme = require_notify_theme()
 	local shape_fn = resolve_shape(cfg, notify_theme)

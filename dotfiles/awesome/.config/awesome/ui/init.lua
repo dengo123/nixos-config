@@ -8,11 +8,8 @@ local M = {
 }
 
 local THEME_PARTS = {
-	"start",
-	"notify",
 	"tabs",
 	"windows",
-	"wibar",
 }
 
 -- =========================================================================
@@ -51,15 +48,9 @@ end
 
 local function lock_theme_prefixes()
 	Helpers.lock_beautiful_by_prefix({
-		"wibar_",
-		"systray_",
-		"clock_",
-		"layoutbox_",
 		"border_",
 		"titlebar_",
-		"notify_",
 		"tabs_",
-		"start_",
 	}, "error")
 end
 

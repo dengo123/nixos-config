@@ -3,7 +3,6 @@ local awful = require("awful")
 local gears = require("gears")
 local naughty = require("naughty")
 
--- -------- Befehle (PipeWire bevorzugt, sonst Pulse) --------
 local function cmd_volume(step)
 	return "sh -c 'command -v wpctl >/dev/null && wpctl set-volume @DEFAULT_AUDIO_SINK@ "
 		.. step
@@ -20,9 +19,6 @@ local function cmd_mic_toggle()
 	return "sh -c 'command -v wpctl >/dev/null && wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle || pactl set-source-mute @DEFAULT_SOURCE@ toggle'"
 end
 
--- Liefert: "<percent> <mutestate>"
---  PipeWire: percent aus 0.00..1.00, mutestate true/false
---  Pulse:    percent mit %, mutestate yes/no
 local QUERY_SINK = [[
 sh -c '
 if command -v wpctl >/dev/null; then
@@ -31,8 +27,8 @@ if command -v wpctl >/dev/null; then
   p=$(awk -v x="$v" "BEGIN{printf(\"%d\", (x*100)+0.5)}")
   [ "$m" = "true" ] && echo "$p on" || echo "$p off"
 else
-  v=$(pactl get-sink-volume @DEFAULT_SINK@  | awk "NR==1{print \$5}")  # e.g. 57%
-  m=$(pactl get-sink-mute   @DEFAULT_SINK@  | awk "{print \$2}")       # yes/no
+  v=$(pactl get-sink-volume @DEFAULT_SINK@  | awk "NR==1{print \$5}")
+  m=$(pactl get-sink-mute   @DEFAULT_SINK@  | awk "{print \$2}")
   p=${v%%%}
   [ "$m" = "yes" ] && echo "$p on" || echo "$p off"
 fi
@@ -49,64 +45,100 @@ else
 fi
 ']]
 
--- -------- OSD (nur Text, keine Emojis, nutzt dein notify-Theme) --------
 local vol_notif_id
 
-local function show_volume_osd()
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function media_cfg(cfg)
+	local input_cfg = (cfg and cfg.input) or {}
+	return input_cfg.media or {}
+end
+
+local function volume_step(cfg)
+	local step = tonumber(media_cfg(cfg).volume_step)
+	if not step or step <= 0 then
+		return 3
+	end
+	return math.floor(step)
+end
+
+local function osd_timeout(cfg)
+	local timeout = tonumber(media_cfg(cfg).osd_timeout)
+	if not timeout or timeout <= 0 then
+		return 1.2
+	end
+	return timeout
+end
+
+local function show_volume_osd(timeout)
 	awful.spawn.easy_async_with_shell(QUERY_SINK, function(out)
 		local p, mute = out:match("^(%d+)%s+(%S+)")
 		local pct = tonumber(p or 0) or 0
 		local muted = (mute == "on")
 		local txt = ("%d%%/"):format(pct)
+
 		if muted then
 			txt = txt .. " (stumm)"
 		end
 
 		local n = naughty.notify({
-			-- kein Titel, nur Text -> nutzt dein zentrisches Template
 			text = txt,
-			timeout = 1.2,
-			replaces_id = vol_notif_id, -- ersetzt laufendes Popup
-			-- keine Styles hier setzen -> alles kommt aus ui/theme/notify.lua
+			timeout = timeout,
+			replaces_id = vol_notif_id,
+			skip_history = true,
 		})
+
 		vol_notif_id = n and n.id or vol_notif_id
 	end)
 end
 
-local function show_mic_osd()
+local function show_mic_osd(timeout)
 	awful.spawn.easy_async_with_shell(QUERY_SRC, function(out)
 		local muted = (out:match("%S+") == "on")
 		local txt = muted and "Mic: stumm" or "Mic: aktiv"
+
 		local n = naughty.notify({
 			text = txt,
-			timeout = 1.2,
+			timeout = timeout,
 			replaces_id = vol_notif_id,
+			skip_history = true,
 		})
+
 		vol_notif_id = n and n.id or vol_notif_id
 	end)
 end
 
--- -------- Export: Keymap --------
-return function(_modkey, _cfg)
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+return function(_modkey, cfg)
+	local step = volume_step(cfg)
+	local timeout = osd_timeout(cfg)
+	local step_up = tostring(step) .. "%+"
+	local step_down = tostring(step) .. "%-"
+
 	return gears.table.join(
 		awful.key({}, "XF86AudioRaiseVolume", function()
-			awful.spawn(cmd_volume("3%+"), false)
-			show_volume_osd()
-		end, { description = "Volume +3% + OSD", group = "media" }),
+			awful.spawn(cmd_volume(step_up), false)
+			show_volume_osd(timeout)
+		end, { description = "Volume +" .. tostring(step) .. "% + OSD", group = "media" }),
 
 		awful.key({}, "XF86AudioLowerVolume", function()
-			awful.spawn(cmd_volume("3%-"), false)
-			show_volume_osd()
-		end, { description = "Volume -3% + OSD", group = "media" }),
+			awful.spawn(cmd_volume(step_down), false)
+			show_volume_osd(timeout)
+		end, { description = "Volume -" .. tostring(step) .. "% + OSD", group = "media" }),
 
 		awful.key({}, "XF86AudioMute", function()
 			awful.spawn(cmd_mute_toggle(), false)
-			show_volume_osd()
+			show_volume_osd(timeout)
 		end, { description = "Mute toggle + OSD", group = "media" }),
 
 		awful.key({}, "XF86AudioMicMute", function()
 			awful.spawn(cmd_mic_toggle(), false)
-			show_mic_osd()
+			show_mic_osd(timeout)
 		end, { description = "Mic mute toggle + OSD", group = "media" })
 	)
 end

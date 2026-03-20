@@ -1,83 +1,25 @@
 -- ~/.config/awesome/shell/bar/init.lua
 local awful = require("awful")
-local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local Clock = require("shell.bar.widgets.clock")
 local Reveal = require("shell.bar.reveal")
+local Sections = require("shell.bar.sections")
+local Clock = require("shell.bar.widgets.clock")
+local Layoutbox = require("shell.bar.widgets.layoutbox")
+local Notify = require("shell.bar.widgets.notify")
 local Start = require("shell.bar.widgets.start")
 local Systray = require("shell.bar.widgets.systray")
 local Tabs = require("shell.bar.widgets.tabs")
 local Tags = require("shell.bar.widgets.tags")
-local Notify = require("shell.bar.widgets.notify")
+
+local StartTheme = require("shell.bar.themes.start")
+local TabsTheme = require("shell.bar.themes.tabs")
+local WibarTheme = require("shell.bar.themes.wibar")
 
 local M = {}
 
 local reveal_signals_ready = false
-
--- =========================================================================
--- Helpers
--- =========================================================================
-
-local function empty_widget()
-	return wibox.widget({
-		widget = wibox.widget.separator,
-		forced_width = 0,
-		opacity = 0,
-	})
-end
-
-local function hspace(px)
-	return wibox.widget({
-		widget = wibox.widget.separator,
-		forced_width = px or 0,
-		opacity = 0,
-	})
-end
-
-local function compute_tabs_leading_gap(show_start, show_tags)
-	local gap = 0
-
-	if not show_start then
-		gap = gap + 8
-	end
-
-	if not show_tags then
-		gap = gap + 6
-	end
-
-	return gap
-end
-
-local function ensure_layoutbox(s)
-	if not s.mylayoutbox or not s.mylayoutbox.valid then
-		s.mylayoutbox = awful.widget.layoutbox(s)
-		s.mylayoutbox:buttons(gears.table.join(
-			awful.button({}, 1, function()
-				awful.layout.inc(1)
-			end),
-			awful.button({}, 3, function()
-				awful.layout.inc(-1)
-			end),
-			awful.button({}, 4, function()
-				awful.layout.inc(1)
-			end),
-			awful.button({}, 5, function()
-				awful.layout.inc(-1)
-			end)
-		))
-	end
-
-	return wibox.widget({
-		s.mylayoutbox,
-		left = beautiful.layoutbox_pad_h or 0,
-		right = beautiful.layoutbox_pad_h or 0,
-		top = beautiful.layoutbox_pad_v or 0,
-		bottom = beautiful.layoutbox_pad_v or 0,
-		widget = wibox.container.margin,
-	})
-end
 
 -- =========================================================================
 -- Public API
@@ -91,10 +33,9 @@ function M.setup(s, args)
 	-- ---------------------------------------------------------------------
 
 	local cfg = args.cfg or {}
-	local ui = args.ui
 	local menu_api = args.menu_api
 
-	local input_cfg = cfg.system or {}
+	local input_cfg = cfg.input or {}
 	local tags_cfg = cfg.tags or {}
 	local bar_cfg = cfg.bar or {}
 	local clock_cfg = bar_cfg.clock or {}
@@ -120,21 +61,18 @@ function M.setup(s, args)
 	local show_tags = (not tags_on_primary_only) or is_primary
 	local show_notify = (bar_notify_mode ~= "primary") or is_primary
 
-	local empty = empty_widget()
-
 	-- ---------------------------------------------------------------------
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	local theme = ui and ui.theme or nil
-	local wibar_theme = theme and theme.wibar or require("theme.wibar")
-	local tabs_theme = (theme and theme.tabs and theme.tabs.get) and theme.tabs.get(cfg.tabs or {}) or nil
-	local start_theme = (theme and theme.start and theme.start.get) and theme.start.get(cfg.start or {}) or nil
-	local menu_theme = cfg.menus
+	pcall(WibarTheme.init, cfg)
+	pcall(StartTheme.init, cfg)
+	pcall(TabsTheme.init, cfg)
 
-	if wibar_theme and wibar_theme.init then
-		pcall(wibar_theme.init, cfg)
-	end
+	local wibar_theme = WibarTheme
+	local start_theme = StartTheme.get()
+	local tabs_theme = TabsTheme.get()
+	local menu_theme = cfg.menus
 
 	-- ---------------------------------------------------------------------
 	-- Props
@@ -176,7 +114,7 @@ function M.setup(s, args)
 		} or nil,
 	})
 
-	local tags = show_tags and Tags.build(s, {}) or { indicator = empty }
+	local tags = show_tags and Tags.build(s, {}) or nil
 
 	local tray = showtray and Systray.build({
 		menu_theme = menu_theme,
@@ -190,7 +128,7 @@ function M.setup(s, args)
 		bar_position = props.position,
 	})
 
-	local layoutbox = ensure_layoutbox(s)
+	local layoutbox = Layoutbox.build(s)
 
 	local start_btn = show_start
 			and Start.build({
@@ -213,17 +151,24 @@ function M.setup(s, args)
 					end,
 				} or nil,
 			})
-		or empty
+		or nil
 
-	local notify = show_notify and Notify.build(s, {}) or empty
+	local notify = show_notify and Notify.build(s, {}) or nil
 
 	-- ---------------------------------------------------------------------
 	-- Sections
 	-- ---------------------------------------------------------------------
 
-	local tabs_leading_spacer = hspace(compute_tabs_leading_gap(show_start, show_tags))
+	local empty = wibox.widget({
+		widget = wibox.widget.separator,
+		forced_width = 0,
+		opacity = 0,
+	})
 
-	local parts = {
+	local sections = Sections.build({
+		show_start = show_start,
+		show_tags = show_tags,
+		show_notify = show_notify,
 		start_btn = start_btn or empty,
 		tags = tags or { indicator = empty },
 		tabs = tabs or { tasklist = empty },
@@ -231,70 +176,7 @@ function M.setup(s, args)
 		notify = notify or empty,
 		clock = clock or empty,
 		layoutbox = layoutbox or empty,
-		tabs_leading_spacer = tabs_leading_spacer,
-		spacing_l = 8,
-		spacing_r = 0,
-	}
-
-	local notify_gap_left = beautiful.notify_button_gap_left
-	local notify_zone_width = beautiful.notify_button_zone_width
-	local notify_seam_offset = beautiful.notify_button_seam_offset
-	local systray_bg = beautiful.systray_bg or beautiful.bg_systray or beautiful.wibar_bg
-	local bar_height = beautiful.wibar_height
-
-	local notify_zone = wibox.widget({
-		{
-			forced_width = show_notify and notify_zone_width or 0,
-			forced_height = bar_height,
-			bg = show_notify and systray_bg or "#00000000",
-			widget = wibox.container.background,
-		},
-		{
-			{
-				parts.notify,
-				halign = "left",
-				valign = "center",
-				widget = wibox.container.place,
-			},
-			left = show_notify and -notify_seam_offset or 0,
-			widget = wibox.container.margin,
-		},
-		layout = wibox.layout.stack,
 	})
-
-	local tray_cluster = wibox.widget({
-		{
-			notify_zone,
-			parts.tray,
-			layout = wibox.layout.fixed.horizontal,
-		},
-		bg = systray_bg,
-		widget = wibox.container.background,
-	})
-
-	local notify_with_gap = wibox.widget({
-		tray_cluster,
-		left = show_notify and notify_gap_left or 0,
-		widget = wibox.container.margin,
-	})
-
-	local sections = (wibar_theme.layout and wibar_theme.layout(s, parts))
-		or {
-			left = {
-				layout = wibox.layout.fixed.horizontal,
-				parts.start_btn,
-				parts.tags.indicator,
-				parts.tabs_leading_spacer,
-				parts.tabs.tasklist,
-			},
-			center = nil,
-			right = {
-				layout = wibox.layout.fixed.horizontal,
-				parts.layoutbox,
-				notify_with_gap,
-				parts.clock,
-			},
-		}
 
 	-- ---------------------------------------------------------------------
 	-- Wibar

@@ -11,6 +11,11 @@ return {
 	input = {
 		modkey = "Mod4",
 		return_app = "editor",
+
+		media = {
+			volume_step = 3,
+			osd_timeout = 1.2,
+		},
 	},
 
 	system = {
