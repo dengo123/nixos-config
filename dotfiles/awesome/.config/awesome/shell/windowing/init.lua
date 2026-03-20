@@ -15,12 +15,18 @@ local Behavior = {
 	fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
 }
 
-local Container = require("shell.windowing.ui.container")
-local Theme = require("shell.windowing.ui.theme")
-local Titlebar = require("shell.windowing.ui.titlebar")
+local UI = {
+	container = require("shell.windowing.ui.container"),
+	theme = require("shell.windowing.ui.theme"),
+	titlebar = require("shell.windowing.ui.titlebar"),
+}
+
+local Runtime = {
+	actions = require("shell.windowing.runtime.actions"),
+}
 
 local M = {
-	actions = require("shell.windowing.runtime.actions"),
+	actions = Runtime.actions,
 }
 
 -- =========================================================================
@@ -47,10 +53,10 @@ function M.init(args)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	pcall(Theme.init, cfg)
+	UI.theme.init(cfg)
 
-	local shape_fn = Theme.shape_fn and Theme.shape_fn() or nil
-	local button_style = Theme.button_style and Theme.button_style(cfg) or {}
+	local shape_fn = UI.theme.shape_fn and UI.theme.shape_fn() or nil
+	local button_style = UI.theme.button_style and UI.theme.button_style(cfg) or {}
 
 	-- ---------------------------------------------------------------------
 	-- Rules
@@ -76,7 +82,7 @@ function M.init(args)
 	-- Container
 	-- ---------------------------------------------------------------------
 
-	Container.init({
+	UI.container.init({
 		shape_fn = shape_fn,
 		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
@@ -88,10 +94,10 @@ function M.init(args)
 	if Behavior.signals and Behavior.signals.apply then
 		Behavior.signals.apply({
 			attach_titlebar = function(c)
-				Titlebar.attach_titlebar(c, button_style)
+				UI.titlebar.attach_titlebar(c, button_style)
 			end,
 			focus = Behavior.focus,
-			container = Container,
+			container = UI.container,
 		})
 	end
 

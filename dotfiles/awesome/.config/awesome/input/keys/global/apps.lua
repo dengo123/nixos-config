@@ -7,7 +7,6 @@ return function(modkey, cfg)
 
 	local terminal = apps.terminal
 	local editor = apps.editor
-	local launcher = apps.launcher
 	local browser = apps.browser
 	local files = apps.files
 	local return_app = input.return_app or "terminal"
@@ -43,26 +42,18 @@ return function(modkey, cfg)
 	return awful.util.table.join(
 		awful.key({ modkey }, "Return", function()
 			spawn_cmd(primary_cmd())
-		end, { description = "open primary app", group = "launcher" }),
+		end, { description = "open primary app", group = "App" }),
 
 		awful.key({ modkey, "Shift" }, "Return", function()
 			spawn_cmd(secondary_cmd())
-		end, { description = "open secondary app", group = "launcher" }),
-
-		awful.key({ modkey }, "space", function()
-			spawn_cmd(launcher)
-		end, { description = "launcher/menu", group = "launcher" }),
+		end, { description = "open secondary app", group = "App" }),
 
 		awful.key({ modkey }, "b", function()
 			spawn_cmd(browser)
-		end, { description = "browser", group = "launcher" }),
+		end, { description = "Browser", group = "App" }),
 
 		awful.key({ modkey }, "e", function()
 			spawn_cmd(files)
-		end, { description = "file manager", group = "launcher" }),
-
-		awful.key({ modkey }, "Print", function()
-			spawn_cmd("screenshot")
-		end, { description = "screenshot", group = "launcher" })
+		end, { description = "File Manager", group = "App" })
 	)
 end

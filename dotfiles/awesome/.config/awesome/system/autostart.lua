@@ -3,7 +3,8 @@ local awful = require("awful")
 
 local M = {}
 
-local started = false
+local signals_ready = false
+local copyq_started = false
 
 -- =========================================================================
 -- Helpers
@@ -14,33 +15,26 @@ local function shquote(s)
 	return "'" .. s:gsub("'", "'\"'\"'") .. "'"
 end
 
-local function restart_later(cmd, kill_pattern, delay)
+local function spawn_once_later(cmd, match_pattern, delay)
 	delay = tonumber(delay) or 1.5
 
 	awful.spawn.with_shell(
-		"pkill -f "
-			.. shquote(kill_pattern)
-			.. " >/dev/null 2>&1; "
-			.. "(sleep "
+		"(sleep "
 			.. tostring(delay)
-			.. "; "
+			.. "; pgrep -af "
+			.. shquote(match_pattern)
+			.. " >/dev/null 2>&1 || "
 			.. cmd
-			.. " >/dev/null 2>&1) &"
+			.. ") &"
 	)
 end
 
--- =========================================================================
--- Public API
--- =========================================================================
-
-function M.init(cfg)
-	cfg = cfg or {}
-
-	if started then
+local function start_copyq(cfg)
+	if copyq_started then
 		return
 	end
 
-	started = true
+	copyq_started = true
 
 	local system_cfg = cfg.system or {}
 	local autostart_cfg = system_cfg.autostart or {}
@@ -50,11 +44,27 @@ function M.init(cfg)
 		return
 	end
 
-	restart_later(
-		"copyq config showTray true >/dev/null 2>&1; copyq >/tmp/awesome-copyq.log 2>&1",
-		"copyq",
-		copyq_cfg.delay or 1.5
-	)
+	local delay = copyq_cfg.delay or 1.5
+
+	spawn_once_later("copyq config showTray true >/dev/null 2>&1; copyq >/tmp/awesome-copyq.log 2>&1", "[c]opyq", delay)
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.init(cfg)
+	cfg = cfg or {}
+
+	if signals_ready then
+		return
+	end
+
+	signals_ready = true
+
+	awesome.connect_signal("ui::tray_ready", function()
+		start_copyq(cfg)
+	end)
 end
 
 return M
