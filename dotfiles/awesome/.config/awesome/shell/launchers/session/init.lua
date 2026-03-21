@@ -1,12 +1,17 @@
 -- ~/.config/awesome/shell/launchers/session/init.lua
 local awful = require("awful")
 
-local Container = require("shell.launchers.session.container")
-local Layout = require("shell.launchers.session.layout")
-local Icons = require("shell.launchers.session.icons")
-local Theme = require("shell.launchers.session.theme")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
+
+	return nil
+end
 
 local M = {
+	api = {},
 	_handle = nil,
 }
 
@@ -14,11 +19,42 @@ local M = {
 -- Helpers
 -- =========================================================================
 
-local function resolve_theme(cfg, overrides)
-	Theme.init(cfg or {})
+local function api()
+	return M.api or {}
+end
 
-	local theme = Theme.get()
-	assert(type(theme) == "table", "session: theme.get() lieferte kein table")
+local function mod(name)
+	return api()[name]
+end
+
+local function button_label(spec, fallback)
+	if type(spec) == "table" then
+		return spec.label or fallback
+	end
+
+	if type(spec) == "string" and spec ~= "" then
+		return spec
+	end
+
+	return fallback
+end
+
+local function button_id(spec, fallback)
+	if type(spec) == "table" then
+		return spec.id or fallback
+	end
+
+	return fallback
+end
+
+local function resolve_theme(cfg, overrides)
+	local Theme = mod("theme")
+
+	if Theme and type(Theme.init) == "function" then
+		Theme.init(cfg or {})
+	end
+
+	local theme = (Theme and Theme.get and Theme.get()) or {}
 
 	if type(overrides) ~= "table" or next(overrides) == nil then
 		return theme
@@ -36,7 +72,7 @@ local function resolve_theme(cfg, overrides)
 end
 
 local function resolve_dims(th)
-	local h = assert(tonumber(th.dialog_h), "session: dialog_h fehlt/ungültig")
+	local h = tonumber(th.dialog_h)
 
 	local header_h = tonumber(th.header_h)
 	local footer_h = tonumber(th.footer_h)
@@ -46,14 +82,13 @@ local function resolve_dims(th)
 		footer_h = footer_h or math.floor(h * tonumber(th.footer_ratio))
 	end
 
-	header_h = assert(tonumber(header_h), "session: header_h fehlt/ungültig")
-	footer_h = assert(tonumber(footer_h), "session: footer_h fehlt/ungültig")
+	header_h = tonumber(header_h)
+	footer_h = tonumber(footer_h)
 
-	local pad_h = assert(tonumber(th.pad_h), "session: pad_h fehlt/ungültig")
-	local pad_v = assert(tonumber(th.pad_v), "session: pad_v fehlt/ungültig")
+	local pad_h = tonumber(th.pad_h)
+	local pad_v = tonumber(th.pad_v)
+
 	local body_h = h - header_h - footer_h
-
-	assert(body_h >= 0, "session: body_h negativ – prüfe dialog_h/header_h/footer_h")
 
 	return {
 		w = tonumber(th.dialog_w) or 0,
@@ -95,16 +130,36 @@ local function resolve_variant(opts)
 end
 
 local function resolve_module(variant)
+	local variants = api().variants or {}
+
 	if variant == "logoff" then
-		return require("shell.launchers.session.logoff")
+		return variants.logoff
 	end
 
-	return require("shell.launchers.session.power")
+	return variants.power
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function M.init(args)
+	args = args or {}
+
+	M.api = {
+		ui = args.ui or {},
+		container = safe_require("shell.launchers.session.container"),
+		layout = safe_require("shell.launchers.session.layout"),
+		icons = safe_require("shell.launchers.session.icons"),
+		theme = safe_require("shell.launchers.session.theme"),
+		variants = {
+			logoff = safe_require("shell.launchers.session.logoff"),
+			power = safe_require("shell.launchers.session.power"),
+		},
+	}
+
+	return M
+end
 
 function M.is_open()
 	clear_handle_if_closed()
@@ -123,24 +178,21 @@ end
 
 function M.open(opts, Lib)
 	opts = opts or {}
-	Lib = Lib or require("shell.launchers")
-
-	-- ---------------------------------------------------------------------
-	-- Toggle existing
-	-- ---------------------------------------------------------------------
+	Lib = Lib or {}
 
 	if M.is_open() then
 		M.close()
 		return nil
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
+	local Container = mod("container")
+	local Layout = mod("layout")
+	local Icons = mod("icons")
 
-	assert(Lib and Lib.popup, "session: Lib.popup fehlt")
-	assert(Lib and Lib.button, "session: Lib.button fehlt")
-	assert(Lib and Lib.actions, "session: Lib.actions fehlt")
+	local lib = (Lib.api and Lib.api.lib) or {}
+	local Popup = lib.popup
+	local Button = lib.button
+	local Actions = lib.actions
 
 	local cfg = opts.cfg or {}
 	local th = resolve_theme(cfg, opts.theme)
@@ -149,25 +201,24 @@ function M.open(opts, Lib)
 	local variant = resolve_variant(opts)
 	local Variant = resolve_module(variant)
 
-	-- ---------------------------------------------------------------------
-	-- Layout
-	-- ---------------------------------------------------------------------
-
 	local handle = nil
-	local spec = assert(Variant.build(th, cfg), "session: variant.build() lieferte kein table")
-	local actions = assert(spec.actions, "session: spec.actions fehlt")
-	local header_title = assert(spec.header_title, "session: spec.header_title fehlt")
-	local cancel_label = spec.cancel_label or th.cancel_label
+	local spec = Variant and Variant.build and Variant.build(th, cfg) or nil
+	local actions = spec and spec.actions or nil
+	local header_title = spec and spec.header_title or nil
+	local cancel_spec = (spec and spec.cancel_label) or th.cancel_label
+
+	local cancel_label = button_label(cancel_spec, "Cancel")
+	local cancel_id = button_id(cancel_spec, "cancel")
 
 	local row, _, required_w = Layout.build_row(actions, th, d, {
-		mk_icon_button = assert(Icons and Icons.mk_icon_button, "session.icons.mk_icon_button fehlt"),
+		mk_icon_button = Icons and Icons.mk_icon_button,
 	}, function()
 		return handle and handle.close
 	end)
 
 	local act_cancel = function() end
 
-	local cancel_btn = Lib.button.mk_button(cancel_label, function()
+	local cancel_btn = Button and Button.mk_button and Button.mk_button(cancel_label, function()
 		act_cancel()
 	end)
 
@@ -177,15 +228,11 @@ function M.open(opts, Lib)
 		cancel_btn = cancel_btn,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Open
-	-- ---------------------------------------------------------------------
-
 	local launchers_cfg = cfg.launchers or {}
 	local session_cfg = launchers_cfg.session or {}
 	local variant_cfg = session_cfg[variant] or {}
 
-	handle = Lib.popup.show(stack, th, {
+	handle = Popup.show(stack, th, {
 		width = resolve_popup_width(th, required_w),
 		height = d.h,
 		placement = awful.placement.centered,
@@ -196,16 +243,12 @@ function M.open(opts, Lib)
 
 	M._handle = handle
 
-	-- ---------------------------------------------------------------------
-	-- Bind Actions
-	-- ---------------------------------------------------------------------
-
-	local bound = Lib.actions.bind({
+	local bound = Actions.bind({
 		handle = handle,
 		actions = actions,
 	})
 
-	act_cancel = bound[cancel_label] or act_cancel
+	act_cancel = bound[cancel_id] or act_cancel
 
 	return handle
 end

@@ -4,56 +4,53 @@ local gears = require("gears")
 local naughty = require("naughty")
 local wibox = require("wibox")
 
-local Theme = require("shell.notify.theme")
-local Center = require("shell.notify.center")
-local History = require("shell.notify.history")
-local Rules = require("shell.notify.rules")
-local Shape = require("shell.notify.shape")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
 
-local M = {}
+	return nil
+end
+
+local M = {
+	api = {},
+}
 
 local initialized = false
 local center_open = false
 local notify_callback_ready = false
 
 -- =========================================================================
--- Internal
+-- Helpers
 -- =========================================================================
 
-local function require_table(value, name)
-	assert(type(value) == "table", "shell.notify: " .. name .. " fehlt/ungueltig")
-	return value
+local function api()
+	return M.api or {}
 end
 
-local function require_notify_theme()
-	local notify = beautiful.notify
-
-	assert(type(notify) == "table", "shell.notify: beautiful.notify fehlt/ungueltig")
-	assert(notify.bg, "shell.notify: beautiful.notify.bg fehlt")
-	assert(notify.fg, "shell.notify: beautiful.notify.fg fehlt")
-	assert(notify.border, "shell.notify: beautiful.notify.border fehlt")
-	assert(notify.radius, "shell.notify: beautiful.notify.radius fehlt")
-	assert(notify.icon_size, "shell.notify: beautiful.notify.icon_size fehlt")
-	assert(notify.margin, "shell.notify: beautiful.notify.margin fehlt")
-	assert(notify.border_w, "shell.notify: beautiful.notify.border_w fehlt")
-
-	return notify
+local function mod(name)
+	return api()[name]
 end
 
 local function notify_cfg(cfg)
-	return require_table(cfg.notify, "cfg.notify")
+	return (cfg and cfg.notify) or {}
 end
 
 local function history_cfg(cfg)
-	return require_table(notify_cfg(cfg).history, "cfg.notify.history")
+	return notify_cfg(cfg).history or {}
 end
 
 local function center_cfg(cfg)
-	return require_table(notify_cfg(cfg).center, "cfg.notify.center")
+	return notify_cfg(cfg).center or {}
 end
 
 local function filter_cfg(cfg)
-	return require_table(notify_cfg(cfg).filter, "cfg.notify.filter")
+	return notify_cfg(cfg).filter or {}
+end
+
+local function require_notify_theme()
+	return beautiful.notify or {}
 end
 
 local function resolve_position(cfg)
@@ -78,11 +75,13 @@ local function resolve_timeout(cfg)
 end
 
 local function resolve_shape(cfg, notify_theme)
+	local Shape = mod("shape")
+
 	if notify_cfg(cfg).speech == false then
-		return Shape.rounded(notify_theme.radius)
+		return Shape and Shape.rounded and Shape.rounded(notify_theme.radius) or nil
 	end
 
-	return Shape.speech(notify_theme.radius)
+	return Shape and Shape.speech and Shape.speech(notify_theme.radius) or nil
 end
 
 local function apply_defaults(cfg, notify_theme, shape_fn)
@@ -242,6 +241,7 @@ local function register_notify_callback(cfg)
 
 	notify_callback_ready = true
 
+	local History = mod("history")
 	local prev_callback = naughty.config.notify_callback
 
 	naughty.config.notify_callback = function(args)
@@ -251,7 +251,7 @@ local function register_notify_callback(cfg)
 
 		args = sanitize_notify_args(args or {})
 
-		if should_store_notification(cfg, args) then
+		if should_store_notification(cfg, args) and History and type(History.add) == "function" then
 			History.add(args)
 		end
 
@@ -263,14 +263,33 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	cfg = cfg or {}
+function M.init(args)
+	args = args or {}
+
+	local cfg = args.cfg or args or {}
+	local _ui = args.ui or {}
 
 	if initialized then
-		return
+		return M
 	end
 
-	Theme.init(cfg)
+	M.api = {
+		ui = _ui,
+		theme = safe_require("shell.notify.theme"),
+		center = safe_require("shell.notify.center"),
+		history = safe_require("shell.notify.history"),
+		rules = safe_require("shell.notify.rules"),
+		shape = safe_require("shell.notify.shape"),
+	}
+
+	local Theme = mod("theme")
+	local Center = mod("center")
+	local History = mod("history")
+	local Rules = mod("rules")
+
+	if Theme and type(Theme.init) == "function" then
+		Theme.init(cfg)
+	end
 
 	local notify_theme = require_notify_theme()
 	local shape_fn = resolve_shape(cfg, notify_theme)
@@ -279,15 +298,24 @@ function M.init(cfg)
 	apply_widget_template(notify_theme, shape_fn)
 	apply_presets(cfg, notify_theme, shape_fn)
 
-	History.init(history_cfg(cfg))
-	Rules.apply()
-	Center.init(cfg)
+	if History and type(History.init) == "function" then
+		History.init(history_cfg(cfg))
+	end
+
+	if Rules and type(Rules.apply) == "function" then
+		Rules.apply()
+	end
+
+	if Center and type(Center.init) == "function" then
+		Center.init(cfg)
+	end
 
 	register_center_signals()
 	register_notify_callback(cfg)
 	emit_center_state()
 
 	initialized = true
+	return M
 end
 
 function M.is_center_open()

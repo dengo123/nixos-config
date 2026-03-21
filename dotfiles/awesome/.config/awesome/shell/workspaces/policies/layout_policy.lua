@@ -1,22 +1,30 @@
 -- ~/.config/awesome/shell/workspaces/policies/layout_policy.lua
 local awful = require("awful")
 
-local Layouts = require("shell.workspaces.runtime.layouts")
-
 local M = {}
 
 local runtime_cfg = {}
+local runtime_api = {}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function current_api()
+	return runtime_api or {}
+end
+
+local function layouts_api()
+	return current_api().runtime and current_api().runtime.layouts or nil
+end
 
 local function tags_cfg()
 	return runtime_cfg.tags or {}
 end
 
 local function mode()
-	return Layouts.mode(runtime_cfg)
+	local Layouts = layouts_api()
+	return Layouts and Layouts.mode and Layouts.mode(runtime_cfg) or "tiling"
 end
 
 local function is_horizontal_screen(s)
@@ -24,6 +32,7 @@ local function is_horizontal_screen(s)
 end
 
 local function expand_entry(entry, s)
+	local Layouts = layouts_api()
 	local horizontal = is_horizontal_screen(s)
 
 	if type(entry) ~= "string" then
@@ -39,18 +48,20 @@ local function expand_entry(entry, s)
 	end
 
 	if entry == "tile_cross" then
-		return horizontal and awful.layout.suit.tile.right or awful.layout.suit.tile.bottom
+		return horizontal and awful.layout.suit.tile.left or awful.layout.suit.tile.bottom
 	end
 
-	return Layouts.resolve(entry)
+	return Layouts and Layouts.resolve and Layouts.resolve(entry) or entry
 end
 
 local function allowed_for(s)
+	local Layouts = layouts_api()
+
 	if mode() == "floating" then
 		return { awful.layout.suit.floating }
 	end
 
-	local include = Layouts.resolve_include(runtime_cfg)
+	local include = (Layouts and Layouts.resolve_include and Layouts.resolve_include(runtime_cfg)) or {}
 	local out = {}
 
 	for _, entry in ipairs(include) do
@@ -113,23 +124,25 @@ local function normalize_for_screen(layout, s)
 		return awful.layout.suit.tile
 	end
 
-	if layout == awful.layout.suit.tile.right and not horizontal then
+	if layout == awful.layout.suit.tile.left and not horizontal then
 		return awful.layout.suit.tile.bottom
 	end
 
 	if layout == awful.layout.suit.tile.bottom and horizontal then
-		return awful.layout.suit.tile.right
+		return awful.layout.suit.tile.left
 	end
 
 	return layout
 end
 
 local function fallback_layout(s)
+	local Layouts = layouts_api()
+
 	if mode() == "floating" then
 		return awful.layout.suit.floating
 	end
 
-	return expand_entry(Layouts.default_name(runtime_cfg), s)
+	return expand_entry((Layouts and Layouts.default_name and Layouts.default_name(runtime_cfg)) or "max", s)
 end
 
 -- =========================================================================
@@ -204,8 +217,11 @@ function M.on_screen_rotation()
 	end)
 end
 
-function M.init_enforcement(cfg)
-	runtime_cfg = cfg or {}
+function M.init_enforcement(args)
+	args = args or {}
+
+	runtime_cfg = args.cfg or args or {}
+	runtime_api = args.api or {}
 
 	tag.disconnect_signal("property::layout", enforce_on_tag)
 	tag.connect_signal("property::layout", enforce_on_tag)

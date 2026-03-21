@@ -53,10 +53,15 @@ return {
 
 		reveal_trigger_px = 2,
 		reveal_hide_delay = 0.20,
+		layout_peek_duration = 0.7,
 
 		start = {
-			show = "all", -- all | primary_only | landscape_only | off
+			show = "on", -- on | visible_bar_only | off
 			action = "menu", -- menu | rofi | terminal | editor
+		},
+
+		notify = {
+			show = "visible_bar_only", -- on | visible_bar_only | off
 		},
 
 		clock = {
@@ -64,8 +69,6 @@ return {
 			calendar_enable = true,
 			calendar_use_menu_theme = false,
 		},
-
-		show_notify = "primary", -- primary | all
 	},
 
 	-- =========================================================================

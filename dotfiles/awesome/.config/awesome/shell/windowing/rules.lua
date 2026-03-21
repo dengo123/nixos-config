@@ -18,10 +18,13 @@ function M.apply(o)
 	local cfg = o.cfg or {}
 	local api = o.api or {}
 	local modkey = o.modkey
-	local mouse = o.mouse
 
 	local Clients = api.clients
 	local Floating = api.floating
+
+	local input_api = cfg.api and cfg.api.input or {}
+	local client_input = input_api.client or {}
+	local client_mouse = client_input.mouse or {}
 
 	local apps_cfg = cfg.apps or {}
 	local windowing_cfg = cfg.windowing or {}
@@ -49,7 +52,7 @@ function M.apply(o)
 				border_color = beautiful.border_normal,
 				focus = awful.client.focus.filter,
 				raise = true,
-				buttons = mouse and mouse.client_buttons and mouse.client_buttons(modkey) or nil,
+				buttons = client_mouse.client_buttons and client_mouse.client_buttons(modkey) or nil,
 				screen = awful.screen.preferred,
 				placement = awful.placement.no_overlap + awful.placement.no_offscreen,
 			},

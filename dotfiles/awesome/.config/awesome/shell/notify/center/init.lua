@@ -2,13 +2,18 @@
 local awful = require("awful")
 local beautiful = require("beautiful")
 
-local Geometry = require("shell.notify.center.geometry")
-local Popup = require("shell.notify.center.popup")
-local Signals = require("shell.notify.center.signals")
-local Widget = require("shell.notify.center.widget")
-local History = require("shell.notify.history")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
 
-local M = {}
+	return nil
+end
+
+local M = {
+	api = {},
+}
 
 local popups = {}
 local signals_ready = false
@@ -18,46 +23,37 @@ local runtime_cfg = {}
 -- Helpers
 -- =========================================================================
 
-local function require_table(value, name)
-	assert(type(value) == "table", "notify.center: " .. name .. " fehlt/ungültig")
-	return value
+local function api()
+	return M.api or {}
 end
 
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "notify.center: " .. name .. " fehlt/ungültig")
-	return n
-end
-
-local function require_string(value, name)
-	assert(type(value) == "string" and value ~= "", "notify.center: " .. name .. " fehlt/ungültig")
-	return value
+local function mod(name)
+	return api()[name]
 end
 
 local function notify_cfg()
-	return require_table(runtime_cfg.notify, "cfg.notify")
+	return runtime_cfg.notify or {}
 end
 
 local function center_cfg()
-	return require_table(notify_cfg().center, "cfg.notify.center")
+	return notify_cfg().center or {}
 end
 
 local function notify_theme()
-	local notify = require_table(beautiful.notify, "beautiful.notify")
-	return notify
+	return beautiful.notify or {}
 end
 
 local function center_theme()
 	local notify = notify_theme()
-	return require_table(notify.center, "beautiful.notify.center")
+	return notify.center or {}
 end
 
 local function bar_cfg()
-	return require_table(runtime_cfg.bar, "cfg.bar")
+	return runtime_cfg.bar or {}
 end
 
 local function screen_mode()
-	return string.lower(require_string(bar_cfg().show_notify, "cfg.bar.show_notify"))
+	return string.lower(tostring(bar_cfg().show_notify or "primary"))
 end
 
 local function target_screens()
@@ -72,30 +68,25 @@ local function target_screens()
 	end
 
 	local primary = screen.primary or awful.screen.focused()
-	assert(primary ~= nil, "notify.center: kein Zielscreen verfügbar")
-
-	return { primary }
+	return primary and { primary } or {}
 end
 
 local function key_for_screen(s)
-	local index = tonumber(s.index)
-	assert(index ~= nil, "notify.center: screen.index fehlt/ungültig")
-	return tostring(index)
+	return tostring(tonumber(s.index) or 0)
 end
 
 local function list_pad_top()
-	return require_number(center_theme().list_pad_top, "beautiful.notify.center.list_pad_top")
+	return tonumber(center_theme().list_pad_top) or 0
 end
 
 local function list_pad_bottom()
-	return require_number(center_theme().list_pad_bottom, "beautiful.notify.center.list_pad_bottom")
+	return tonumber(center_theme().list_pad_bottom) or 0
 end
 
 local function entry_height(entry)
 	local theme = center_theme()
-	local base = require_number(theme.entry_height, "beautiful.notify.center.entry_height")
-	local with_actions =
-		require_number(theme.entry_height_with_actions, "beautiful.notify.center.entry_height_with_actions")
+	local base = tonumber(theme.entry_height) or 0
+	local with_actions = tonumber(theme.entry_height_with_actions) or base
 
 	if type(entry.actions) == "table" and #entry.actions > 0 then
 		return with_actions
@@ -105,11 +96,12 @@ local function entry_height(entry)
 end
 
 local function entry_spacing()
-	return require_number(center_theme().entry_spacing, "beautiful.notify.center.entry_spacing")
+	return tonumber(center_theme().entry_spacing) or 0
 end
 
 local function resolve_content_height()
-	local entries = History.list()
+	local History = mod("history")
+	local entries = (History and History.list and History.list()) or {}
 	local count = #entries
 
 	if count <= 0 then
@@ -130,20 +122,30 @@ local function resolve_content_height()
 end
 
 local function build_panel(max_height)
-	return Widget.build(History.list(), max_height, runtime_cfg)
+	local Widget = mod("widget")
+	local History = mod("history")
+	local entries = (History and History.list and History.list()) or {}
+
+	if Widget and type(Widget.build) == "function" then
+		return Widget.build(entries, max_height, runtime_cfg)
+	end
+
+	return nil
 end
 
 local function resolve_popup_geometry(popup)
-	if not popup or not popup.screen then
+	local Geometry = mod("geometry")
+
+	if not (popup and popup.screen and Geometry) then
 		return nil
 	end
 
-	local theme = Geometry.build_theme()
-	local width = Geometry.resolve_width(theme, popup.screen)
-	local max_height = Geometry.resolve_max_height(theme, popup.screen)
+	local theme = Geometry.build_theme and Geometry.build_theme() or {}
+	local width = Geometry.resolve_width and Geometry.resolve_width(theme, popup.screen) or 0
+	local max_height = Geometry.resolve_max_height and Geometry.resolve_max_height(theme, popup.screen) or 0
 	local content_height = resolve_content_height()
 	local final_height = math.min(max_height, content_height)
-	local bar_position = require_string(bar_cfg().position, "cfg.bar.position")
+	local bar_position = tostring(bar_cfg().position or "bottom")
 
 	if final_height <= 0 then
 		return {
@@ -154,7 +156,11 @@ local function resolve_popup_geometry(popup)
 		}
 	end
 
-	return Geometry.resolve_position(theme, popup.screen, bar_position, width, final_height)
+	if Geometry.resolve_position then
+		return Geometry.resolve_position(theme, popup.screen, bar_position, width, final_height)
+	end
+
+	return nil
 end
 
 -- =========================================================================
@@ -162,13 +168,19 @@ end
 -- =========================================================================
 
 local function ensure_popup(s)
-	return Popup.ensure(popups, key_for_screen, s)
+	local Popup = mod("popup")
+	if Popup and type(Popup.ensure) == "function" then
+		return Popup.ensure(popups, key_for_screen, s)
+	end
+
+	return nil
 end
 
 local function apply_geometry(popup)
+	local Popup = mod("popup")
 	local geo = resolve_popup_geometry(popup)
 
-	if not geo then
+	if not (Popup and geo) then
 		return
 	end
 
@@ -176,7 +188,12 @@ local function apply_geometry(popup)
 end
 
 local function rebuild_popup(popup)
+	local Popup = mod("popup")
 	local geo = resolve_popup_geometry(popup)
+
+	if not Popup then
+		return nil
+	end
 
 	if not geo or geo.height <= 0 then
 		return Popup.rebuild(popup, function()
@@ -190,6 +207,11 @@ local function rebuild_popup(popup)
 end
 
 local function sync_popups()
+	local Popup = mod("popup")
+	if not (Popup and type(Popup.sync) == "function") then
+		return
+	end
+
 	Popup.sync({
 		popups = popups,
 		screens = target_screens(),
@@ -201,6 +223,11 @@ local function sync_popups()
 end
 
 local function set_visible(open)
+	local Popup = mod("popup")
+	if not (Popup and type(Popup.set_visible) == "function") then
+		return
+	end
+
 	Popup.set_visible({
 		popups = popups,
 		screens = target_screens(),
@@ -240,6 +267,11 @@ local function set_signals_ready(value)
 end
 
 local function register_signals()
+	local Signals = mod("signals")
+	if not (Signals and type(Signals.register) == "function") then
+		return
+	end
+
 	Signals.register({
 		cfg = runtime_cfg,
 		is_ready = is_signals_ready,
@@ -256,11 +288,25 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	runtime_cfg = require_table(cfg, "cfg")
+function M.init(args)
+	args = args or {}
+
+	runtime_cfg = args.cfg or args or {}
+
+	M.api = {
+		ui = args.ui or {},
+		geometry = safe_require("shell.notify.center.geometry"),
+		popup = safe_require("shell.notify.center.popup"),
+		signals = safe_require("shell.notify.center.signals"),
+		widget = safe_require("shell.notify.center.widget"),
+		history = safe_require("shell.notify.history"),
+	}
+
 	sync_popups()
 	register_escape_signal()
 	register_signals()
+
+	return M
 end
 
 return M

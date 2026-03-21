@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/bar/policy.lua
 local awful = require("awful")
 
 local M = {}
@@ -12,6 +13,10 @@ end
 
 local function normalize_screen_policy(value, default)
 	return tostring(value or default or "all"):lower()
+end
+
+local function normalize_start_show(value, default)
+	return tostring(value or default or "on"):lower()
 end
 
 -- =========================================================================
@@ -49,14 +54,14 @@ function M.start_enabled_on_screen(s, bar_cfg)
 	bar_cfg = bar_cfg or {}
 
 	local start_cfg = bar_cfg.start or {}
+	local show = normalize_start_show(start_cfg.show, "on")
 
-	if start_cfg.show ~= nil then
-		return M.matches_screen_policy(s, start_cfg.show)
+	if show == "off" then
+		return false
 	end
 
-	-- Backward compatibility
-	if bar_cfg.start_on_primary_only == true then
-		return M.matches_screen_policy(s, "primary_only")
+	if show == "visible_bar_only" then
+		return M.bar_enabled_on_screen(s, bar_cfg)
 	end
 
 	return true
@@ -71,12 +76,40 @@ function M.start_action(bar_cfg)
 		return tostring(start_cfg.action):lower()
 	end
 
-	-- Backward compatibility
 	return tostring(bar_cfg.start_action or "menu"):lower()
 end
 
 function M.normalize_screen_policy(value, default)
 	return normalize_screen_policy(value, default)
+end
+
+function M.normalize_start_show(value, default)
+	return normalize_start_show(value, default)
+end
+
+local function normalize_notify_show(value, default)
+	return tostring(value or default or "visible_bar_only"):lower()
+end
+
+function M.notify_enabled_on_screen(s, bar_cfg)
+	bar_cfg = bar_cfg or {}
+
+	local notify_cfg = bar_cfg.notify or {}
+	local show = normalize_notify_show(notify_cfg.show, "visible_bar_only")
+
+	if show == "off" then
+		return false
+	end
+
+	if show == "visible_bar_only" then
+		return M.bar_enabled_on_screen(s, bar_cfg)
+	end
+
+	return true
+end
+
+function M.normalize_notify_show(value, default)
+	return normalize_notify_show(value, default)
 end
 
 return M

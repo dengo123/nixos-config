@@ -5,20 +5,23 @@ local wibox = require("wibox")
 
 local B = {}
 
+local runtime_api = {}
+
 local STYLE = {
 	height = 24,
 	width = 96,
 	radius = 4,
 	pad_h = 14,
 	font = "Sans 11",
-	fg = "#111111",
 
-	base_bg = "#FFFFFF",
+	fg = "black",
+	base_bg = "white",
+	transparent = "transparent",
 
 	outer_bw = 1,
-	outer_col = "#000000",
+	outer_col = "black",
 
-	hover_col = "#2B77FF",
+	hover_col = "blue_luna",
 	hover_bw = 1,
 	hover_inset = 2,
 }
@@ -27,20 +30,64 @@ local STYLE = {
 -- Helpers
 -- =========================================================================
 
-local function hex_rgb(hex)
-	hex = (hex or "#000000"):gsub("#", "")
-	local r = tonumber(hex:sub(1, 2), 16) / 255
-	local g = tonumber(hex:sub(3, 4), 16) / 255
-	local b = tonumber(hex:sub(5, 6), 16) / 255
-	return r, g, b
+local function ui_api()
+	return runtime_api.ui or {}
+end
+
+local function ui_colors()
+	return ui_api().colors or {}
+end
+
+local function ui_helpers()
+	return ui_api().helpers or {}
+end
+
+local function resolve_color(value)
+	local colors = ui_colors()
+
+	if type(value) == "string" and colors[value] then
+		return colors[value]
+	end
+
+	return value
+end
+
+local function resolved_style(style_override)
+	local S = setmetatable(style_override or {}, { __index = STYLE })
+
+	return {
+		height = S.height,
+		width = S.width,
+		radius = S.radius,
+		pad_h = S.pad_h,
+		font = S.font,
+
+		fg = resolve_color(S.fg),
+		base_bg = resolve_color(S.base_bg),
+		transparent = resolve_color(S.transparent),
+
+		outer_bw = S.outer_bw,
+		outer_col = resolve_color(S.outer_col),
+
+		hover_col = resolve_color(S.hover_col),
+		hover_bw = S.hover_bw,
+		hover_inset = S.hover_inset,
+	}
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
+function B.init(args)
+	args = args or {}
+	runtime_api = args.api or args or {}
+	return B
+end
+
 function B.mk_button(label, on_click, style_override)
-	local S = setmetatable(style_override or {}, { __index = STYLE })
+	local S = resolved_style(style_override)
+	local Helpers = ui_helpers()
 
 	-- ---------------------------------------------------------------------
 	-- Content
@@ -107,7 +154,7 @@ function B.mk_button(label, on_click, style_override)
 		local r = math.max(0, inner_r - (S.hover_inset or 0))
 		gears.shape.rounded_rect(cr, ww, hh, r)
 
-		local rr, gg, bb = hex_rgb(S.hover_col)
+		local rr, gg, bb = Helpers.hex_to_rgb01(S.hover_col)
 		cr:set_source_rgb(rr, gg, bb)
 		cr:set_line_width(S.hover_bw or 1)
 		cr:stroke()
@@ -138,8 +185,8 @@ function B.mk_button(label, on_click, style_override)
 		end,
 		shape_clip = true,
 		shape_border_width = S.outer_bw or 1,
-		shape_border_color = S.outer_col or "#000000",
-		bg = "#00000000",
+		shape_border_color = S.outer_col,
+		bg = S.transparent,
 		widget = wibox.container.background,
 	})
 
@@ -159,7 +206,7 @@ function B.mk_button(label, on_click, style_override)
 
 	local root = wibox.widget({
 		fixed_size,
-		bg = "#00000000",
+		bg = S.transparent,
 		widget = wibox.container.background,
 	})
 

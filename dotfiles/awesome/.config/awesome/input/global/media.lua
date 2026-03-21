@@ -1,7 +1,15 @@
--- ~/.config/awesome/input/keys/global/media.lua
+-- ~/.config/awesome/input/global/media.lua
 local awful = require("awful")
 local gears = require("gears")
 local naughty = require("naughty")
+
+local M = {}
+
+local vol_notif_id
+
+-- =========================================================================
+-- Commands
+-- =========================================================================
 
 local function cmd_volume(step)
 	return "sh -c 'command -v wpctl >/dev/null && wpctl set-volume @DEFAULT_AUDIO_SINK@ "
@@ -45,8 +53,6 @@ else
 fi
 ']]
 
-local vol_notif_id
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
@@ -61,6 +67,7 @@ local function volume_step(cfg)
 	if not step or step <= 0 then
 		return 3
 	end
+
 	return math.floor(step)
 end
 
@@ -69,6 +76,7 @@ local function osd_timeout(cfg)
 	if not timeout or timeout <= 0 then
 		return 1.2
 	end
+
 	return timeout
 end
 
@@ -77,10 +85,10 @@ local function show_volume_osd(timeout)
 		local p, mute = out:match("^(%d+)%s+(%S+)")
 		local pct = tonumber(p or 0) or 0
 		local muted = (mute == "on")
-		local txt = ("%d%%/"):format(pct)
+		local txt = ("%d%%"):format(pct)
 
 		if muted then
-			txt = txt .. " (stumm)"
+			txt = txt .. " (Stumm)"
 		end
 
 		local n = naughty.notify({
@@ -97,7 +105,7 @@ end
 local function show_mic_osd(timeout)
 	awful.spawn.easy_async_with_shell(QUERY_SRC, function(out)
 		local muted = (out:match("%S+") == "on")
-		local txt = muted and "Mic: stumm" or "Mic: aktiv"
+		local txt = muted and "Mic: Stumm" or "Mic: Aktiv"
 
 		local n = naughty.notify({
 			text = txt,
@@ -114,7 +122,7 @@ end
 -- Public API
 -- =========================================================================
 
-return function(_modkey, cfg)
+function M.build(_modkey, cfg)
 	local step = volume_step(cfg)
 	local timeout = osd_timeout(cfg)
 	local step_up = tostring(step) .. "%+"
@@ -124,21 +132,37 @@ return function(_modkey, cfg)
 		awful.key({}, "XF86AudioRaiseVolume", function()
 			awful.spawn(cmd_volume(step_up), false)
 			show_volume_osd(timeout)
-		end, { description = "Volume +" .. tostring(step) .. "% + OSD", group = "media" }),
+		end, {
+			description = "Raise Volume +" .. tostring(step) .. "% + OSD",
+			group = "Media",
+		}),
 
 		awful.key({}, "XF86AudioLowerVolume", function()
 			awful.spawn(cmd_volume(step_down), false)
 			show_volume_osd(timeout)
-		end, { description = "Volume -" .. tostring(step) .. "% + OSD", group = "media" }),
+		end, {
+			description = "Lower Volume -" .. tostring(step) .. "% + OSD",
+			group = "Media",
+		}),
 
 		awful.key({}, "XF86AudioMute", function()
 			awful.spawn(cmd_mute_toggle(), false)
 			show_volume_osd(timeout)
-		end, { description = "Mute toggle + OSD", group = "media" }),
+		end, {
+			description = "Toggle Mute + OSD",
+			group = "Media",
+		}),
 
 		awful.key({}, "XF86AudioMicMute", function()
 			awful.spawn(cmd_mic_toggle(), false)
 			show_mic_osd(timeout)
-		end, { description = "Mic mute toggle + OSD", group = "media" })
+		end, {
+			description = "Toggle Mic Mute + OSD",
+			group = "Media",
+		})
 	)
+end
+
+return function(modkey, cfg)
+	return M.build(modkey, cfg)
 end

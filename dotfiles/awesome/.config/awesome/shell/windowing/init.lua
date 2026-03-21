@@ -8,45 +8,57 @@ local function safe_require(path)
 	return nil
 end
 
-local Behavior = {
-	focus = safe_require("shell.windowing.behavior.focus"),
-	fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
-	titlebars = safe_require("shell.windowing.behavior.titlebars"),
-}
-
-local Runtime = {
-	actions = safe_require("shell.windowing.runtime.actions"),
-	signals = safe_require("shell.windowing.runtime.signals"),
-	state = safe_require("shell.windowing.runtime.state"),
-}
-
-local UI = {
-	container = safe_require("shell.windowing.ui.container"),
-	theme = safe_require("shell.windowing.ui.theme"),
-	titlebar_buttons = safe_require("shell.windowing.ui.titlebar_buttons"),
-}
-
-local Modules = {
-	clients = safe_require("shell.windowing.clients"),
-	floating = safe_require("shell.windowing.floating"),
-	rules = safe_require("shell.windowing.rules"),
-}
-
-assert(Runtime.actions and type(Runtime.actions) == "table", "windowing.init: runtime.actions fehlt")
-assert(Runtime.state and type(Runtime.state) == "table", "windowing.init: runtime.state fehlt")
-assert(UI.container and type(UI.container) == "table", "windowing.init: ui.container fehlt")
-assert(UI.theme and type(UI.theme) == "table", "windowing.init: ui.theme fehlt")
-
 local M = {
 	actions = nil,
-	api = nil,
+	api = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function build_api(cfg)
+local function api()
+	return M.api or {}
+end
+
+local function group_api(name)
+	return api()[name] or {}
+end
+
+local function behavior_api()
+	return group_api("behavior")
+end
+
+local function runtime_api()
+	return group_api("runtime")
+end
+
+local function ui_api()
+	return group_api("ui")
+end
+
+local function modules_api()
+	return group_api("modules")
+end
+
+local function init_module(mod, args)
+	if mod and type(mod.init) == "function" then
+		mod.init(args)
+	end
+end
+
+local function apply_module(mod, args)
+	if mod and type(mod.apply) == "function" then
+		mod.apply(args)
+	end
+end
+
+local function build_runtime_api(cfg)
+	local Behavior = behavior_api()
+	local Runtime = runtime_api()
+	local UI = ui_api()
+	local Modules = modules_api()
+
 	return {
 		cfg = cfg,
 
@@ -65,18 +77,6 @@ local function build_api(cfg)
 	}
 end
 
-local function init_module(mod, args)
-	if mod and type(mod.init) == "function" then
-		mod.init(args)
-	end
-end
-
-local function apply_module(mod, args)
-	if mod and type(mod.apply) == "function" then
-		mod.apply(args)
-	end
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -92,69 +92,101 @@ function M.init(args)
 	local modkey = args.modkey
 	local mouse = args.mouse
 
-	local api = build_api(cfg)
+	M.api = {
+		behavior = {
+			focus = safe_require("shell.windowing.behavior.focus"),
+			fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
+			titlebars = safe_require("shell.windowing.behavior.titlebars"),
+		},
+		runtime = {
+			actions = safe_require("shell.windowing.runtime.actions"),
+			signals = safe_require("shell.windowing.runtime.signals"),
+			state = safe_require("shell.windowing.runtime.state"),
+		},
+		ui = {
+			container = safe_require("shell.windowing.ui.container"),
+			theme = safe_require("shell.windowing.ui.theme"),
+			titlebar_buttons = safe_require("shell.windowing.ui.titlebar_buttons"),
+		},
+		modules = {
+			clients = safe_require("shell.windowing.clients"),
+			floating = safe_require("shell.windowing.floating"),
+			rules = safe_require("shell.windowing.rules"),
+		},
+	}
 
-	M.api = api
-	M.actions = api.actions
+	local Runtime = runtime_api()
+	local UI = ui_api()
+	local Behavior = behavior_api()
 
-	init_module(api.actions, {
+	assert(Runtime.actions and type(Runtime.actions) == "table", "windowing.init: runtime.actions fehlt")
+	assert(Runtime.state and type(Runtime.state) == "table", "windowing.init: runtime.state fehlt")
+	assert(UI.container and type(UI.container) == "table", "windowing.init: ui.container fehlt")
+	assert(UI.theme and type(UI.theme) == "table", "windowing.init: ui.theme fehlt")
+
+	local runtime = build_runtime_api(cfg)
+
+	M.api.runtime_api = runtime
+	M.actions = runtime.actions
+
+	init_module(runtime.actions, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 	})
 
-	init_module(api.state, {
+	init_module(runtime.state, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 	})
 
-	init_module(api.ui.theme, {
+	init_module(runtime.ui.theme, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 	})
 
-	local shape_fn = api.ui.theme and api.ui.theme.shape_fn and api.ui.theme.shape_fn() or nil
-	local button_style = api.ui.theme and api.ui.theme.button_style and api.ui.theme.button_style(cfg) or {}
+	local shape_fn = runtime.ui.theme and runtime.ui.theme.shape_fn and runtime.ui.theme.shape_fn() or nil
+	local button_style = runtime.ui.theme and runtime.ui.theme.button_style and runtime.ui.theme.button_style(cfg) or {}
 
-	apply_module(api.rules, {
+	apply_module(runtime.rules, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 		modkey = modkey,
 		mouse = mouse,
 	})
 
-	init_module(api.behavior.focus, {
+	init_module(runtime.behavior.focus, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 		raise_on_mouse = focus_cfg.raise_on_mouse,
 		block_ms = focus_cfg.block_ms,
 		center_mouse = focus_cfg.center_mouse,
 	})
 
-	init_module(api.titlebars, {
+	init_module(runtime.titlebars, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 	})
 
-	init_module(api.ui.container, {
+	init_module(runtime.ui.container, {
 		cfg = cfg,
-		api = api,
+		api = runtime,
 		shape_fn = shape_fn,
 		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
 
-	apply_module(api.runtime.signals, {
+	apply_module(runtime.runtime.signals, {
 		cfg = cfg,
-		api = api,
-		focus = api.behavior.focus,
-		container = api.ui.container,
+		api = runtime,
+		focus = runtime.behavior.focus,
+		container = runtime.ui.container,
 		attach_titlebar = function(c)
-			api.ui.container.attach_titlebar(c, button_style, api.actions, cfg, {
-				api = api,
+			runtime.ui.container.attach_titlebar(c, button_style, runtime.actions, cfg, {
+				api = runtime,
 			})
 		end,
 	})
 
-	if api.behavior.fullscreen_dim and type(api.behavior.fullscreen_dim.init) == "function" then
+	if Behavior.fullscreen_dim and type(Behavior.fullscreen_dim.init) == "function" then
 		local dim_cfg = fullscreen_dim_cfg
 
 		if dim_cfg ~= false then
@@ -162,7 +194,7 @@ function M.init(args)
 				dim_cfg = { enabled = true }
 			end
 
-			api.behavior.fullscreen_dim.init(dim_cfg)
+			Behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
 

@@ -11,6 +11,7 @@ local opts_by_screen = {}
 local hide_timers = {}
 local pending_update = nil
 local signals_ready = false
+local peek_until_by_screen = {}
 
 -- =========================================================================
 -- Helpers
@@ -90,6 +91,29 @@ local function cancel_hide_timer(s)
 	end
 end
 
+local function remaining_peek_delay(s)
+	local until_ts = peek_until_by_screen[s]
+	if not until_ts then
+		return 0
+	end
+
+	local now = os.clock()
+	local remaining = until_ts - now
+
+	if remaining <= 0 then
+		peek_until_by_screen[s] = nil
+		return 0
+	end
+
+	return remaining
+end
+
+local function effective_hide_delay(s, delay)
+	local normal_delay = tonumber(delay) or 0
+	local peek_delay = remaining_peek_delay(s)
+	return math.max(normal_delay, peek_delay)
+end
+
 local function show_bar(s)
 	local bar = bars[s]
 	if not (bar and bar.valid) then
@@ -109,14 +133,29 @@ local function hide_bar_now(s)
 
 	cancel_hide_timer(s)
 
+	if remaining_peek_delay(s) > 0 then
+		bar.visible = true
+		hide_timers[s] = gears.timer({
+			timeout = remaining_peek_delay(s),
+			autostart = true,
+			single_shot = true,
+			callback = function()
+				hide_timers[s] = nil
+				peek_until_by_screen[s] = nil
+				hide_bar_now(s)
+			end,
+		})
+		return
+	end
+
 	if reveal_active_for_screen(s) then
 		bar.visible = false
 	else
-		bar.visible = true
+		bar.visible = bar_normally_visible(s)
 	end
 end
 
-local function hide_bar_later(s)
+local function hide_bar_later(s, delay)
 	local bar = bars[s]
 	local opts = opts_by_screen[s] or {}
 
@@ -130,15 +169,33 @@ local function hide_bar_later(s)
 
 	cancel_hide_timer(s)
 
+	local final_delay = effective_hide_delay(s, tonumber(delay) or tonumber(opts.hide_delay) or 0.20)
+
 	hide_timers[s] = gears.timer({
-		timeout = tonumber(opts.hide_delay) or 0.20,
+		timeout = final_delay,
 		autostart = true,
 		single_shot = true,
 		callback = function()
 			hide_timers[s] = nil
+			if remaining_peek_delay(s) <= 0 then
+				peek_until_by_screen[s] = nil
+			end
 			hide_bar_now(s)
 		end,
 	})
+end
+
+local function peek_bar(s, duration)
+	local bar = bars[s]
+	if not (bar and bar.valid) then
+		return
+	end
+
+	local peek_duration = tonumber(duration) or 0.70
+	peek_until_by_screen[s] = os.clock() + peek_duration
+
+	show_bar(s)
+	hide_bar_later(s, peek_duration)
 end
 
 local function ensure_trigger(s)
@@ -214,6 +271,15 @@ local function sync_screen(s)
 
 	trigger.visible = reveal_active
 
+	if remaining_peek_delay(s) > 0 then
+		bar.ontop = true
+		bar.visible = true
+		pcall(function()
+			bar:struts(nil)
+		end)
+		return
+	end
+
 	if reveal_active then
 		bar.ontop = true
 		bar.visible = false
@@ -222,7 +288,7 @@ local function sync_screen(s)
 		end)
 	else
 		cancel_hide_timer(s)
-		bar.visible = true
+		bar.visible = bar_normally_visible(s)
 	end
 end
 
@@ -263,6 +329,7 @@ function M.attach(s, bar, opts)
 		edge = opts.edge or "bottom",
 		trigger_px = tonumber(opts.trigger_px) or 2,
 		hide_delay = tonumber(opts.hide_delay) or 0.20,
+		layout_peek_duration = tonumber(opts.layout_peek_duration) or 0.70,
 	}
 
 	ensure_trigger(s)
@@ -275,25 +342,29 @@ function M.init_signals()
 		return
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Client Signals
-	-- ---------------------------------------------------------------------
-
 	client.connect_signal("property::fullscreen", schedule_update)
 	client.connect_signal("property::minimized", schedule_update)
 	client.connect_signal("property::hidden", schedule_update)
 	client.connect_signal("manage", schedule_update)
 	client.connect_signal("unmanage", schedule_update)
 
-	-- ---------------------------------------------------------------------
-	-- Tag Signals
-	-- ---------------------------------------------------------------------
+	tag.connect_signal("property::layout", function(t)
+		if not (t and t.screen) then
+			return
+		end
+
+		local s = t.screen
+		local opts = opts_by_screen[s] or {}
+
+		schedule_update()
+		gears.timer.delayed_call(function()
+			if s and s.valid and reveal_active_for_screen(s) then
+				peek_bar(s, opts.layout_peek_duration)
+			end
+		end)
+	end)
 
 	tag.connect_signal("property::selected", schedule_update)
-
-	-- ---------------------------------------------------------------------
-	-- Screen Signals
-	-- ---------------------------------------------------------------------
 
 	screen.connect_signal("property::geometry", function(s)
 		if bars[s] then
@@ -316,11 +387,8 @@ function M.init_signals()
 		triggers[s] = nil
 		bars[s] = nil
 		opts_by_screen[s] = nil
+		peek_until_by_screen[s] = nil
 	end)
-
-	-- ---------------------------------------------------------------------
-	-- Initial
-	-- ---------------------------------------------------------------------
 
 	signals_ready = true
 	gears.timer.delayed_call(schedule_update)

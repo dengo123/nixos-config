@@ -1,10 +1,32 @@
 -- ~/.config/awesome/ui/init.lua
-local Colors = require("ui.colors")
-local Helpers = require("ui.helpers")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
+
+	return nil
+end
 
 local M = {
-	wallpaper = require("ui.wallpaper"),
+	api = {},
 }
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function api()
+	return M.api or {}
+end
+
+local function module_api()
+	return api().modules or {}
+end
+
+local function mod(name)
+	return module_api()[name]
+end
 
 -- =========================================================================
 -- Public API
@@ -13,19 +35,27 @@ local M = {
 function M.init(cfg)
 	cfg = cfg or {}
 
-	-- ---------------------------------------------------------------------
-	-- Context
-	-- ---------------------------------------------------------------------
+	M.api = {
+		modules = {
+			colors = safe_require("ui.colors"),
+			helpers = safe_require("ui.helpers"),
+			wallpaper = safe_require("ui.wallpaper"),
+		},
+	}
 
-	cfg.colors = cfg.colors or Colors.get()
+	local Colors = mod("colors")
+	local Helpers = mod("helpers")
+	local Wallpaper = mod("wallpaper")
+
+	cfg.colors = cfg.colors or (Colors and Colors.get and Colors.get()) or {}
 	cfg.helpers = cfg.helpers or Helpers
 
-	-- ---------------------------------------------------------------------
-	-- Wallpaper
-	-- ---------------------------------------------------------------------
+	M.colors = cfg.colors
+	M.helpers = cfg.helpers
+	M.wallpaper = Wallpaper
 
-	if M.wallpaper and type(M.wallpaper.init) == "function" then
-		M.wallpaper.init(cfg)
+	if Wallpaper and type(Wallpaper.init) == "function" then
+		Wallpaper.init(cfg)
 	end
 
 	return M

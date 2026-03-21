@@ -3,32 +3,64 @@ local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local Container = require("shell.launchers.run.container")
-local View = require("shell.launchers.run.view")
-local Providers = require("shell.launchers.run.providers")
-local Complete = require("shell.launchers.run.complete")
-local Controller = require("shell.launchers.run.controller")
-local Theme = require("shell.launchers.run.theme")
+local function safe_require(path)
+	local ok, mod = pcall(require, path)
+	if ok then
+		return mod
+	end
 
-local M = {}
+	return nil
+end
+
+local M = {
+	api = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function api()
+	return M.api or {}
+end
+
+local function mod(name)
+	return api()[name]
+end
+
 local function must(cond, msg)
 	assert(cond, "run/init.lua: " .. msg)
 end
 
+local function button_label(spec, fallback)
+	if type(spec) == "table" then
+		return spec.label or fallback
+	end
+
+	if type(spec) == "string" and spec ~= "" then
+		return spec
+	end
+
+	return fallback
+end
+
+local function button_id(spec, fallback)
+	if type(spec) == "table" then
+		return spec.id or fallback
+	end
+
+	return fallback
+end
+
 local function dims(panel)
-	local h = assert(tonumber(panel.height), "panel.height missing/invalid")
-	local header_h = assert(tonumber(panel.header_h), "panel.header_h missing/invalid")
-	local footer_h = assert(tonumber(panel.footer_h), "panel.footer_h missing/invalid")
-	local pad_h = assert(tonumber(panel.pad_h), "panel.pad_h missing/invalid")
-	local pad_v = assert(tonumber(panel.pad_v), "panel.pad_v missing/invalid")
+	local h = tonumber(panel.height)
+	local header_h = tonumber(panel.header_h)
+	local footer_h = tonumber(panel.footer_h)
+	local pad_h = tonumber(panel.pad_h)
+	local pad_v = tonumber(panel.pad_v)
 
 	return {
-		w = assert(tonumber(panel.width), "panel.width missing/invalid"),
+		w = tonumber(panel.width),
 		h = h,
 		header_h = header_h,
 		footer_h = footer_h,
@@ -39,7 +71,8 @@ local function dims(panel)
 end
 
 local function resolve_theme(cfg, overrides)
-	local theme = Theme.get(cfg or {}, overrides or {})
+	local Theme = mod("theme")
+	local theme = (Theme and Theme.get and Theme.get(cfg or {}, overrides or {})) or {}
 	must(type(theme) == "table", "theme for 'run' invalid")
 	return theme
 end
@@ -59,13 +92,35 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	args = args or {}
+
+	M.api = {
+		ui = args.ui or {},
+		container = safe_require("shell.launchers.run.container"),
+		view = safe_require("shell.launchers.run.view"),
+		providers = safe_require("shell.launchers.run.providers"),
+		complete = safe_require("shell.launchers.run.complete"),
+		controller = safe_require("shell.launchers.run.controller"),
+		theme = safe_require("shell.launchers.run.theme"),
+	}
+
+	return M
+end
+
 function M.open(opts, Lib)
 	opts = opts or {}
-	Lib = Lib or require("shell.launchers")
+	Lib = Lib or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
+	local Container = mod("container")
+	local View = mod("view")
+	local Providers = mod("providers")
+	local Complete = mod("complete")
+	local Controller = mod("controller")
+
+	local lib = (Lib.api and Lib.api.lib) or {}
+	local Button = lib.button
+	local Actions = lib.actions
 
 	local cfg = opts.cfg or {}
 	local web_cfg = resolve_web_cfg(cfg)
@@ -75,19 +130,23 @@ function M.open(opts, Lib)
 
 	local panel = th.panel
 	local search = th.search
-	local buttons = assert(th.buttons, "theme for 'run' must provide buttons")
+	local buttons = th.buttons
 	local d = dims(panel)
 
-	-- ---------------------------------------------------------------------
-	-- Prompt
-	-- ---------------------------------------------------------------------
+	local mode_label = button_label(buttons.mode, "Mode")
+	local ok_label = button_label(buttons.ok, "OK")
+	local cancel_label = button_label(buttons.cancel, "Cancel")
+
+	local mode_id = button_id(buttons.mode, "mode")
+	local ok_id = button_id(buttons.ok, "ok")
+	local cancel_id = button_id(buttons.cancel, "cancel")
 
 	local prompt = awful.widget.prompt()
 	local textbox = prompt.widget
 
 	local ui = {
 		body_width = panel.width - 2 * d.pad_h,
-		height = assert(tonumber(search.sizes.height), "theme.run.search.sizes.height missing/invalid"),
+		height = tonumber(search.sizes.height),
 
 		bg_active = search.colors.bg_active,
 		fg_active = search.colors.fg_active,
@@ -111,17 +170,13 @@ function M.open(opts, Lib)
 
 	local view = View.build(ui, textbox)
 
-	-- ---------------------------------------------------------------------
-	-- Body
-	-- ---------------------------------------------------------------------
-
-	local bar_h = assert(tonumber(search.sizes.height), "theme.run.search.sizes.height missing/invalid")
+	local bar_h = tonumber(search.sizes.height)
 	local hint = search.hint or {}
 	local hint_enabled = (hint.show ~= false) and (hint.text and #tostring(hint.text) > 0)
 
-	local pad_t = assert(tonumber(search.layout.top), "theme.run.search.layout.top missing/invalid")
-	local hint_spacing = assert(tonumber(hint.spacing), "theme.run.search.hint.spacing missing/invalid")
-	local hint_size = assert(tonumber(hint.size), "theme.run.search.hint.size missing/invalid")
+	local pad_t = tonumber(search.layout.top)
+	local hint_spacing = tonumber(hint.spacing)
+	local hint_size = tonumber(hint.size)
 
 	local hint_h = hint_enabled and (pad_t + hint_size + hint_spacing) or 0
 	local offset_in_body = math.max(0, math.floor(d.body_h / 2 - (hint_h + bar_h / 2)))
@@ -132,31 +187,21 @@ function M.open(opts, Lib)
 		widget = wibox.container.margin,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Footer Buttons
-	-- ---------------------------------------------------------------------
-
-	local Button = assert(Lib and Lib.button, "run: Lib.button fehlt")
-
 	local act_mode = function() end
 	local act_ok = function() end
 	local act_cancel = function() end
 
-	local mode_btn = Button.mk_button(buttons.mode, function()
+	local mode_btn = Button.mk_button(mode_label, function()
 		act_mode()
 	end)
 
-	local ok_btn = Button.mk_button(buttons.ok, function()
+	local ok_btn = Button.mk_button(ok_label, function()
 		act_ok()
 	end)
 
-	local cancel_btn = Button.mk_button(buttons.cancel, function()
+	local cancel_btn = Button.mk_button(cancel_label, function()
 		act_cancel()
 	end)
-
-	-- ---------------------------------------------------------------------
-	-- Container
-	-- ---------------------------------------------------------------------
 
 	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
 
@@ -175,14 +220,10 @@ function M.open(opts, Lib)
 		show_root = false,
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
 		shape = function(cr, w, h)
-			local r = assert(tonumber(panel.panel_radius), "theme.run.panel.panel_radius missing/invalid")
+			local r = tonumber(panel.panel_radius)
 			gears.shape.rounded_rect(cr, w, h, r)
 		end,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Controller
-	-- ---------------------------------------------------------------------
 
 	local ctrl = Controller.new({
 		awful = awful,
@@ -228,10 +269,6 @@ function M.open(opts, Lib)
 
 	ctrl.init()
 
-	-- ---------------------------------------------------------------------
-	-- Global API
-	-- ---------------------------------------------------------------------
-
 	rawset(_G, "__run_api", ctrl)
 
 	local start_mode = (opts.mode == "local" or opts.mode == "files") and "local"
@@ -246,24 +283,15 @@ function M.open(opts, Lib)
 		ctrl.focus_run()
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Bind Actions
-	-- ---------------------------------------------------------------------
-
-	local Actions = assert(Lib and Lib.actions, "run: Lib.actions fehlt")
 	local bound = Actions.bind({
 		ctrl = ctrl,
 		handle = handle,
 		gears = gears,
 	})
 
-	act_mode = bound[buttons.mode] or act_mode
-	act_ok = bound[buttons.ok] or act_ok
-	act_cancel = bound[buttons.cancel] or act_cancel
-
-	-- ---------------------------------------------------------------------
-	-- Cleanup
-	-- ---------------------------------------------------------------------
+	act_mode = bound[mode_id] or act_mode
+	act_ok = bound[ok_id] or act_ok
+	act_cancel = bound[cancel_id] or act_cancel
 
 	local function cleanup_api()
 		if rawget(_G, "__run_api") == ctrl then

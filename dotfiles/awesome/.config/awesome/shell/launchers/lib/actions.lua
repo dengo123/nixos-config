@@ -24,24 +24,16 @@ end
 function A.bind(ctx)
 	ctx = ctx or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	local ctrl = ctx.ctrl
 	local handle = ctx.handle
 	local gears = ctx.gears
 
-	-- ---------------------------------------------------------------------
-	-- Actions
-	-- ---------------------------------------------------------------------
-
 	return {
-		["Cancel"] = function()
+		cancel = function()
 			safe_close(ctrl, handle, gears)
 		end,
 
-		["OK"] = function()
+		ok = function()
 			if ctrl and ctrl.submit then
 				ctrl.submit()
 			else
@@ -49,7 +41,7 @@ function A.bind(ctx)
 			end
 		end,
 
-		["Mode"] = function()
+		mode = function()
 			if ctrl and ctrl.rotate_mode then
 				ctrl.rotate_mode()
 			end

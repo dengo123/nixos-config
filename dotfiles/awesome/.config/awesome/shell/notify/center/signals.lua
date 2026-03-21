@@ -27,9 +27,9 @@ function M.register(args)
 
 	awesome.connect_signal("notify::history_changed", function()
 		each_popup(function(popup)
-			if popup.box and popup.box.valid then
-				apply_geometry(popup)
+			if popup.widget and popup.valid then
 				rebuild_popup(popup)
+				apply_geometry(popup)
 			end
 		end)
 	end)

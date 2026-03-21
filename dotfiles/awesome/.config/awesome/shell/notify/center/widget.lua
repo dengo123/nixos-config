@@ -10,29 +10,13 @@ local M = {}
 -- Internal
 -- =========================================================================
 
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "notify.center.widget: " .. name .. " fehlt/ungueltig")
-	return n
-end
-
-local function require_string(value, name)
-	assert(type(value) == "string" and value ~= "", "notify.center.widget: " .. name .. " fehlt/ungueltig")
-	return value
-end
-
-local function require_table(value, name)
-	assert(type(value) == "table", "notify.center.widget: " .. name .. " fehlt/ungueltig")
-	return value
-end
-
 local function notify_theme()
-	return require_table(beautiful.notify, "beautiful.notify")
+	return beautiful.notify or {}
 end
 
 local function center_theme()
 	local notify = notify_theme()
-	return require_table(notify.center, "beautiful.notify.center")
+	return notify.center or {}
 end
 
 local function resolve_theme()
@@ -42,34 +26,31 @@ local function resolve_theme()
 	return {
 		panel_bg = center.panel_bg or "#00000000",
 
-		entry_bg = require_string(center.entry_bg or notify.bg, "beautiful.notify.center.entry_bg"),
-		entry_fg = require_string(center.entry_fg or notify.fg, "beautiful.notify.center.entry_fg"),
-		entry_border = require_string(center.entry_border or notify.border, "beautiful.notify.center.entry_border"),
+		entry_bg = center.entry_bg or notify.bg,
+		entry_fg = center.entry_fg or notify.fg,
+		entry_border = center.entry_border or notify.border,
 
-		entry_radius = require_number(center.entry_radius or notify.radius, "beautiful.notify.center.entry_radius"),
-		entry_border_w = require_number(
-			center.entry_border_w or notify.border_w,
-			"beautiful.notify.center.entry_border_w"
-		),
-		entry_padding = require_number(center.entry_padding or notify.margin, "beautiful.notify.center.entry_padding"),
-		entry_spacing = require_number(center.entry_spacing, "beautiful.notify.center.entry_spacing"),
+		entry_radius = tonumber(center.entry_radius or notify.radius),
+		entry_border_w = tonumber(center.entry_border_w or notify.border_w),
+		entry_padding = tonumber(center.entry_padding or notify.margin),
+		entry_spacing = tonumber(center.entry_spacing),
 
-		text_inset_top = require_number(center.text_inset_top or 2, "beautiful.notify.center.text_inset_top"),
-		text_inset_bottom = require_number(center.text_inset_bottom or 2, "beautiful.notify.center.text_inset_bottom"),
+		text_inset_top = tonumber(center.text_inset_top or 2),
+		text_inset_bottom = tonumber(center.text_inset_bottom or 2),
 
-		list_pad_top = require_number(center.list_pad_top, "beautiful.notify.center.list_pad_top"),
-		list_pad_right = require_number(center.list_pad_right, "beautiful.notify.center.list_pad_right"),
-		list_pad_bottom = require_number(center.list_pad_bottom, "beautiful.notify.center.list_pad_bottom"),
-		list_pad_left = require_number(center.list_pad_left, "beautiful.notify.center.list_pad_left"),
+		list_pad_top = tonumber(center.list_pad_top),
+		list_pad_right = tonumber(center.list_pad_right),
+		list_pad_bottom = tonumber(center.list_pad_bottom),
+		list_pad_left = tonumber(center.list_pad_left),
 
-		action_bg = require_string(center.action_bg, "beautiful.notify.center.action_bg"),
-		action_fg = require_string(center.action_fg, "beautiful.notify.center.action_fg"),
-		action_border = require_string(center.action_border, "beautiful.notify.center.action_border"),
-		action_border_w = require_number(center.action_border_w, "beautiful.notify.center.action_border_w"),
-		action_radius = require_number(center.action_radius, "beautiful.notify.center.action_radius"),
-		action_spacing = require_number(center.action_spacing, "beautiful.notify.center.action_spacing"),
-		action_padding_h = require_number(center.action_padding_h, "beautiful.notify.center.action_padding_h"),
-		action_padding_v = require_number(center.action_padding_v, "beautiful.notify.center.action_padding_v"),
+		action_bg = center.action_bg,
+		action_fg = center.action_fg,
+		action_border = center.action_border,
+		action_border_w = tonumber(center.action_border_w),
+		action_radius = tonumber(center.action_radius),
+		action_spacing = tonumber(center.action_spacing),
+		action_padding_h = tonumber(center.action_padding_h),
+		action_padding_v = tonumber(center.action_padding_v),
 	}
 end
 

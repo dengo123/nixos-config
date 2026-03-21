@@ -1,15 +1,18 @@
--- ~/.config/awesome/shell/menu/lib/placement.lua
-local Layout = require("shell.menu.layout")
-
 local P = {}
+
+local runtime_api = {}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function layout_api()
+	return runtime_api.layout
+end
+
 local function get_layout()
-	local out = Layout.get()
-	assert(type(out) == "table", "shell.menu: layout.get() lieferte kein table")
+	local Layout = layout_api()
+	local out = Layout and Layout.get and Layout.get() or {}
 	return out
 end
 
@@ -47,6 +50,11 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function P.init(args)
+	args = args or {}
+	runtime_api = args.api or args or {}
+end
 
 function P.y_over_bar(s, total_height)
 	local layout = get_layout()
@@ -89,7 +97,8 @@ function P.x_left_on_bar(s)
 end
 
 function P.coords_for_tabs(s, anchor_left_x, item_count)
-	local total_height = Layout.total_height(item_count)
+	local Layout = layout_api()
+	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
 	local x = P.x_left_from_anchor(s, anchor_left_x)
 	local y = P.y_over_bar(s, total_height)
 
@@ -97,7 +106,8 @@ function P.coords_for_tabs(s, anchor_left_x, item_count)
 end
 
 function P.coords_for_start(s, item_count)
-	local total_height = Layout.total_height(item_count)
+	local Layout = layout_api()
+	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
 	local x = P.x_left_on_bar(s)
 	local y = P.y_over_bar(s, total_height)
 

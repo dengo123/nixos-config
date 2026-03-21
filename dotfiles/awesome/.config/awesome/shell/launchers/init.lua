@@ -1,55 +1,71 @@
 -- ~/.config/awesome/shell/launchers/init.lua
 local awful = require("awful")
 
-local L = {}
+local L = {
+	api = {},
+}
 
 local initialized = false
 local runtime_cfg = {}
 
-local function req(path)
+local function safe_require(path)
 	local ok, mod = pcall(require, path)
-	if not ok then
-		error(("launchers/init: require failed: %s\n%s"):format(path, tostring(mod)))
+	if ok then
+		return mod
 	end
-	if not mod then
-		error(("launchers/init: module returned nil: %s"):format(path))
-	end
-	return mod
+
+	return nil
 end
-
-L.actions = req("shell.launchers.lib.actions")
-L.button = req("shell.launchers.lib.button")
-L.popup = req("shell.launchers.lib.popup")
-
-L.session = req("shell.launchers.session")
-L.run = req("shell.launchers.run")
-
-local launcher_modules = {
-	{
-		key = "session",
-		mod = function()
-			return L.session
-		end,
-	},
-	{
-		key = "run",
-		mod = function()
-			return L.run
-		end,
-	},
-}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function api()
+	return L.api or {}
+end
+
+local function lib_api()
+	return api().lib or {}
+end
+
+local function launcher_api()
+	return api().launchers or {}
+end
+
+local function ui_api()
+	return api().ui or {}
+end
+
+local function lib(name)
+	return lib_api()[name]
+end
+
+local function launcher(name)
+	return launcher_api()[name]
+end
+
+local function launcher_modules()
+	return {
+		{
+			key = "session",
+			mod = launcher("session"),
+		},
+		{
+			key = "run",
+			mod = launcher("run"),
+		},
+	}
+end
+
 local function resolve_theme(area, overrides)
 	overrides = overrides or {}
 
-	local ok_ui, ui = pcall(require, "ui")
-	assert(ok_ui and ui and ui.theme and ui.theme[area], ("UI theme '%s' not initialized"):format(tostring(area)))
+	local ui = ui_api()
+	local theme_root = ui.theme or {}
+	local theme = theme_root[area]
 
-	local theme = ui.theme[area]
+	assert(theme, ("launchers.init: ui theme '%s' fehlt"):format(tostring(area)))
 
 	if type(theme.resolve) == "function" then
 		return theme.resolve(overrides)
@@ -59,7 +75,7 @@ local function resolve_theme(area, overrides)
 		return theme.get(overrides)
 	end
 
-	error(("ui.theme.%s has no resolve()/get()"):format(area))
+	error(("launchers.init: ui theme '%s' hat kein resolve()/get()"):format(tostring(area)))
 end
 
 local function resolve_screen(opts)
@@ -74,11 +90,14 @@ local function open_panel(stack_widget, panel_theme, opts)
 	opts = opts or {}
 
 	local s = resolve_screen(opts)
+	local Popup = lib("popup")
 
-	return L.popup.show(stack_widget, panel_theme, {
+	assert(Popup and type(Popup.show) == "function", "launchers.init: popup.show fehlt")
+
+	return Popup.show(stack_widget, panel_theme, {
 		screen = s,
-		width = assert(panel_theme.width, "panel width required"),
-		height = assert(panel_theme.height, "panel height required"),
+		width = panel_theme.width,
+		height = panel_theme.height,
 		use_backdrop = coalesce(opts.use_backdrop, true),
 		close_on_backdrop = coalesce(opts.close_on_backdrop, false),
 		show_root = coalesce(opts.show_root, "with_bars"),
@@ -90,7 +109,7 @@ local function open_panel(stack_widget, panel_theme, opts)
 	})
 end
 
-local function build_ui_api()
+local function build_ui_bridge()
 	return {
 		resolve_theme = resolve_theme,
 		resolve_screen = resolve_screen,
@@ -115,9 +134,8 @@ local function safe_close(mod)
 end
 
 local function each_launcher(fn)
-	for _, entry in ipairs(launcher_modules) do
-		local mod = entry.mod()
-		fn(entry.key, mod)
+	for _, entry in ipairs(launcher_modules()) do
+		fn(entry.key, entry.mod)
 	end
 end
 
@@ -125,16 +143,53 @@ end
 -- Public API
 -- =========================================================================
 
-function L.init(cfg)
+function L.init(args)
 	if initialized then
 		return L
 	end
 
-	runtime_cfg = cfg or {}
-	L.cfg = runtime_cfg
-	L.ui_api = build_ui_api()
+	args = args or {}
 
-	assert(type(L.popup.show) == "function", "launchers.popup.show required")
+	runtime_cfg = args.cfg or args or {}
+	L.cfg = runtime_cfg
+
+	L.api = {
+		lib = {
+			actions = safe_require("shell.launchers.lib.actions"),
+			button = safe_require("shell.launchers.lib.button"),
+			popup = safe_require("shell.launchers.lib.popup"),
+		},
+		launchers = {
+			session = safe_require("shell.launchers.session"),
+			run = safe_require("shell.launchers.run"),
+		},
+		ui = args.ui or (runtime_cfg.api and runtime_cfg.api.ui) or runtime_cfg.ui or {},
+	}
+
+	local Button = lib("button")
+	if Button and type(Button.init) == "function" then
+		Button.init({
+			api = {
+				ui = api().ui or {},
+			},
+		})
+	end
+
+	local Session = launcher("session")
+	if Session and type(Session.init) == "function" then
+		Session.init({
+			ui = api().ui or {},
+		})
+	end
+
+	local Run = launcher("run")
+	if Run and type(Run.init) == "function" then
+		Run.init({
+			ui = api().ui or {},
+		})
+	end
+
+	L.ui_api = build_ui_bridge()
 
 	initialized = true
 	return L
@@ -187,7 +242,11 @@ L.open = {
 		opts = opts or {}
 		opts.cfg = opts.cfg or L.cfg or {}
 		opts.variant = "power"
-		return L.session.open(opts, L)
+
+		local Session = launcher("session")
+		if Session and type(Session.open) == "function" then
+			return Session.open(opts, L)
+		end
 	end,
 
 	logoff = function(opts)
@@ -195,21 +254,33 @@ L.open = {
 		opts = opts or {}
 		opts.cfg = opts.cfg or L.cfg or {}
 		opts.variant = "logoff"
-		return L.session.open(opts, L)
+
+		local Session = launcher("session")
+		if Session and type(Session.open) == "function" then
+			return Session.open(opts, L)
+		end
 	end,
 
 	session = function(opts)
 		ensure_init()
 		opts = opts or {}
 		opts.cfg = opts.cfg or L.cfg or {}
-		return L.session.open(opts, L)
+
+		local Session = launcher("session")
+		if Session and type(Session.open) == "function" then
+			return Session.open(opts, L)
+		end
 	end,
 
 	run = function(opts)
 		ensure_init()
 		opts = opts or {}
 		opts.cfg = opts.cfg or L.cfg or {}
-		return L.run.open(opts, L)
+
+		local Run = launcher("run")
+		if Run and type(Run.open) == "function" then
+			return Run.open(opts, L)
+		end
 	end,
 }
 

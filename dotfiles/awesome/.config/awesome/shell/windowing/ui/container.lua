@@ -1,6 +1,6 @@
 -- ~/.config/awesome/shell/windowing/ui/container.lua
-local gears = require("gears")
 local awful = require("awful")
+local gears = require("gears")
 local wibox = require("wibox")
 local beautiful = require("beautiful")
 
@@ -19,6 +19,18 @@ end
 local function buttons_api(opts)
 	local api = current_api(opts)
 	return api and api.titlebar_buttons or nil
+end
+
+local function input_api(opts)
+	local api = current_api(opts)
+	local cfg = api and api.cfg or {}
+	return cfg.api and cfg.api.input or {}
+end
+
+local function client_mouse_api(opts)
+	local input = input_api(opts)
+	local client = input.client or {}
+	return client.mouse or {}
 end
 
 local function activate_client(c, context, raise)
@@ -82,19 +94,12 @@ function C.attach_titlebar(c, style, actions, cfg, opts)
 	local Buttons = buttons_api(opts)
 	assert(Buttons and type(Buttons.build) == "function", "windowing.container: api.titlebar_buttons.build fehlt")
 
+	local ClientMouse = client_mouse_api(opts)
+
 	local pos = beautiful.titlebar_position
 	local size = tonumber(beautiful.titlebar_height)
 
-	local buttons = gears.table.join(
-		awful.button({}, 1, function()
-			activate_client(c, "titlebar_drag", true)
-			awful.mouse.client.move(c)
-		end),
-		awful.button({}, 3, function()
-			activate_client(c, "titlebar_resize", true)
-			awful.mouse.client.resize(c)
-		end)
-	)
+	local buttons = ClientMouse.titlebar_buttons and ClientMouse.titlebar_buttons(c, activate_client) or nil
 
 	local title = awful.titlebar.widget.titlewidget(c)
 	if title.set_align then

@@ -11,23 +11,20 @@ local function safe_require(path)
 end
 
 local M = {
-	bar = safe_require("shell.bar"),
-	workspaces = safe_require("shell.workspaces"),
-	windowing = safe_require("shell.windowing"),
-	launchers = safe_require("shell.launchers"),
-	menu = safe_require("shell.menu"),
-	notify = safe_require("shell.notify"),
+	api = {},
 }
-
-assert(M.bar and type(M.bar) == "table", "shell.init: shell.bar fehlt")
-assert(M.workspaces and type(M.workspaces) == "table", "shell.init: shell.workspaces fehlt")
-assert(M.windowing and type(M.windowing) == "table", "shell.init: shell.windowing fehlt")
-assert(M.menu and type(M.menu) == "table", "shell.init: shell.menu fehlt")
-assert(M.notify and type(M.notify) == "table", "shell.init: shell.notify fehlt")
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function api()
+	return M.api or {}
+end
+
+local function mod(name)
+	return api()[name]
+end
 
 local function resolve_wallpaper_fn(ui)
 	if not ui or not ui.wallpaper then
@@ -45,14 +42,14 @@ local function resolve_wallpaper_fn(ui)
 	return nil
 end
 
-local function build_overlay_entry(api, is_open_name, close_name)
+local function build_overlay_entry(api_obj, is_open_name, close_name)
 	return {
 		is_open = function()
-			return api and type(api[is_open_name]) == "function" and api[is_open_name]() or false
+			return api_obj and type(api_obj[is_open_name]) == "function" and api_obj[is_open_name]() or false
 		end,
 		close = function()
-			if api and type(api[close_name]) == "function" then
-				api[close_name]()
+			if api_obj and type(api_obj[close_name]) == "function" then
+				api_obj[close_name]()
 			end
 		end,
 	}
@@ -61,14 +58,18 @@ end
 local function build_overlays()
 	local ordered = {}
 
-	if M.launchers and type(M.launchers.build_overlays) == "function" then
-		for _, entry in ipairs(M.launchers.build_overlays()) do
+	local Launchers = mod("launchers")
+	local Menu = mod("menu")
+	local Notify = mod("notify")
+
+	if Launchers and type(Launchers.build_overlays) == "function" then
+		for _, entry in ipairs(Launchers.build_overlays()) do
 			table.insert(ordered, entry)
 		end
 	end
 
-	table.insert(ordered, build_overlay_entry(M.menu, "is_open", "hide"))
-	table.insert(ordered, build_overlay_entry(M.notify, "is_center_open", "close_center"))
+	table.insert(ordered, build_overlay_entry(Menu, "is_open", "hide"))
+	table.insert(ordered, build_overlay_entry(Notify, "is_center_open", "close_center"))
 
 	return {
 		ordered = ordered,
@@ -76,9 +77,11 @@ local function build_overlays()
 end
 
 local function build_actions()
-	local windowing_actions = (M.windowing and M.windowing.actions) or {}
-	local workspace_api = M.workspaces or {}
-	local workspace_actions = workspace_api.actions or {}
+	local Windowing = mod("windowing")
+	local Workspaces = mod("workspaces")
+
+	local windowing_actions = (Windowing and Windowing.actions) or {}
+	local workspace_actions = (Workspaces and Workspaces.actions) or {}
 
 	return {
 		windowing = {
@@ -99,89 +102,153 @@ local function build_actions()
 				view_tag_idx = workspace_actions.view_tag_idx,
 				move_tag_to_screen = workspace_actions.move_tag_to_screen,
 				move_client_to_neighbor_tag = workspace_actions.move_client_to_neighbor_tag,
-				add = workspace_api.add,
-				add_silent = workspace_api.add_silent,
-				delete_current = workspace_api.delete_current,
-				delete_current_force = workspace_api.delete_current_force,
+				add = Workspaces and Workspaces.add or nil,
+				add_silent = Workspaces and Workspaces.add_silent or nil,
+				delete_current = Workspaces and Workspaces.delete_current or nil,
+				delete_current_force = Workspaces and Workspaces.delete_current_force or nil,
 			},
 		},
 	}
 end
 
 -- =========================================================================
--- Init
+-- Public API
 -- =========================================================================
 
 function M.init(args)
 	args = args or {}
 
 	local cfg = args.cfg or {}
-	local ui = args.ui
+	local ui = args.ui or {}
 	local input = args.input or {}
+
+	M.api = {
+		ui = ui,
+		input = input,
+		bar = safe_require("shell.bar"),
+		workspaces = safe_require("shell.workspaces"),
+		windowing = safe_require("shell.windowing"),
+		launchers = safe_require("shell.launchers"),
+		menu = safe_require("shell.menu"),
+		notify = safe_require("shell.notify"),
+	}
+
+	local Bar = mod("bar")
+	local Workspaces = mod("workspaces")
+	local Windowing = mod("windowing")
+	local Launchers = mod("launchers")
+	local Menu = mod("menu")
+	local Notify = mod("notify")
+
+	assert(Bar and type(Bar) == "table", "shell.init: shell.bar fehlt")
+	assert(Workspaces and type(Workspaces) == "table", "shell.init: shell.workspaces fehlt")
+	assert(Windowing and type(Windowing) == "table", "shell.init: shell.windowing fehlt")
+	assert(Menu and type(Menu) == "table", "shell.init: shell.menu fehlt")
+	assert(Notify and type(Notify) == "table", "shell.init: shell.notify fehlt")
+
+	-- ---------------------------------------------------------------------
+	-- Shared API
+	-- ---------------------------------------------------------------------
+
+	cfg.api = cfg.api or {}
+	cfg.api.ui = ui
+	cfg.api.input = input
+
+	local wallpaper_fn = resolve_wallpaper_fn(ui)
+	if wallpaper_fn then
+		cfg.wallpaper_fn = wallpaper_fn
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Workspaces
 	-- ---------------------------------------------------------------------
 
-	do
-		local wallpaper_fn = resolve_wallpaper_fn(ui)
+	assert(type(Workspaces.init) == "function", "shell.init: shell.workspaces.init fehlt")
 
-		if wallpaper_fn then
-			cfg.wallpaper_fn = wallpaper_fn
-		end
+	local workspace_api = Workspaces.init({
+		cfg = cfg,
+		ui = ui,
+	})
 
-		assert(type(M.workspaces.init) == "function", "shell.init: shell.workspaces.init fehlt")
-
-		local workspace_api = M.workspaces.init(cfg)
-
-		if workspace_api then
-			M.workspaces = workspace_api
-		end
+	if workspace_api then
+		M.api.workspaces = workspace_api
+		Workspaces = workspace_api
 	end
+
+	cfg.api.workspaces = Workspaces
 
 	-- ---------------------------------------------------------------------
 	-- Windowing
 	-- ---------------------------------------------------------------------
 
-	assert(type(M.windowing.init) == "function", "shell.init: shell.windowing.init fehlt")
+	assert(type(Windowing.init) == "function", "shell.init: shell.windowing.init fehlt")
 
-	local windowing_api = M.windowing.init({
+	local windowing_api = Windowing.init({
 		modkey = cfg.input and cfg.input.modkey,
-		mouse = input.mouse,
 		ui = ui,
 		cfg = cfg,
 	})
 
 	if windowing_api then
-		M.windowing = windowing_api
+		M.api.windowing = windowing_api
+		Windowing = windowing_api
 	end
+
+	cfg.api.windowing = Windowing
 
 	-- ---------------------------------------------------------------------
 	-- Launchers
 	-- ---------------------------------------------------------------------
 
-	if M.launchers and type(M.launchers.init) == "function" then
-		M.launchers.init(cfg)
+	if Launchers and type(Launchers.init) == "function" then
+		local launchers_api = Launchers.init({
+			cfg = cfg,
+			ui = ui,
+		})
+
+		if launchers_api then
+			M.api.launchers = launchers_api
+			Launchers = launchers_api
+		end
 	end
+
+	cfg.api.launchers = Launchers
 
 	-- ---------------------------------------------------------------------
 	-- Menu
 	-- ---------------------------------------------------------------------
 
-	assert(type(M.menu.init) == "function", "shell.init: shell.menu.init fehlt")
+	assert(type(Menu.init) == "function", "shell.init: shell.menu.init fehlt")
 
-	M.menu.init({
+	local menu_api = Menu.init({
 		ui = ui,
 		cfg = cfg,
 	})
+
+	if menu_api then
+		M.api.menu = menu_api
+		Menu = menu_api
+	end
+
+	cfg.api.menu = Menu
 
 	-- ---------------------------------------------------------------------
 	-- Notifications
 	-- ---------------------------------------------------------------------
 
-	assert(type(M.notify.init) == "function", "shell.init: shell.notify.init fehlt")
+	assert(type(Notify.init) == "function", "shell.init: shell.notify.init fehlt")
 
-	M.notify.init(cfg)
+	local notify_api = Notify.init({
+		ui = ui,
+		cfg = cfg,
+	})
+
+	if notify_api then
+		M.api.notify = notify_api
+		Notify = notify_api
+	end
+
+	cfg.api.notify = Notify
 
 	-- ---------------------------------------------------------------------
 	-- Runtime State
@@ -190,24 +257,30 @@ function M.init(args)
 	cfg.overlays = build_overlays()
 	cfg.actions = build_actions()
 
-	cfg.api = {
-		launchers = M.launchers,
-		menu = M.menu,
-		notify = M.notify,
-		workspaces = M.workspaces,
-		windowing = M.windowing,
-	}
-
 	-- ---------------------------------------------------------------------
 	-- Bars
 	-- ---------------------------------------------------------------------
 
-	assert(type(M.bar.setup) == "function", "shell.init: shell.bar.setup fehlt")
+	assert(type(Bar.init) == "function", "shell.init: shell.bar.init fehlt")
+	assert(type(Bar.setup) == "function", "shell.init: shell.bar.setup fehlt")
+
+	local bar_api = Bar.init({
+		ui = ui,
+		cfg = cfg,
+	})
+
+	if bar_api then
+		M.api.bar = bar_api
+		Bar = bar_api
+	end
+
+	cfg.api.bar = Bar
 
 	awful.screen.connect_for_each_screen(function(s)
-		M.bar.setup(s, {
+		Bar.setup(s, {
 			cfg = cfg,
-			menu_api = M.menu,
+			ui = ui,
+			menu_api = Menu,
 		})
 	end)
 
