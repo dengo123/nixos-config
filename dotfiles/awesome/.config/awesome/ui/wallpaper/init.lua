@@ -201,6 +201,7 @@ function M.refresh()
 		return
 	end
 
+	-- Ausnahme: ein Wallpaper über die gesamte Desktopfläche spannen
 	if type(Config.span_across_screens) == "function" and Config.span_across_screens() == true then
 		local spec = resolved_global_spec()
 		if not spec then
@@ -219,6 +220,7 @@ function M.refresh()
 		return
 	end
 
+	-- Default: alle Screens, mit optionalen screen[index]-Overrides
 	for s in screen do
 		local spec = resolved_spec_for_screen(s)
 

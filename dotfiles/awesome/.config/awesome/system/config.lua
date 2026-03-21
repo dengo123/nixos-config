@@ -51,7 +51,7 @@ return {
 
 			screen = {
 				[2] = {
-					source = "~/Pictures/nixos_waves.png",
+					source = "~/Pictures/wallpapers/nixos_waves.png",
 					fit = {
 						enabled = true,
 						style = "gradient",
