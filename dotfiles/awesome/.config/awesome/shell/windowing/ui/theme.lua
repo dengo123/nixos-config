@@ -39,7 +39,7 @@ function M.button_style(cfg)
 		fg = C.white,
 		fg_hover = C.gray,
 		close = C.red,
-		close_hover = C.pink,
+		close_hover = C.red_dark,
 	}
 end
 

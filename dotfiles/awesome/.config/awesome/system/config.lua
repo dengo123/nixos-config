@@ -30,6 +30,38 @@ return {
 	},
 
 	-- =========================================================================
+	-- UI / Wallpaper
+	-- =========================================================================
+
+	ui = {
+		wallpaper = {
+			-- source = "~/Pictures/wallpapers",
+			-- span_across_screens = true,
+
+			fit = {
+				enabled = false,
+				style = "solid",
+			},
+
+			rotation = {
+				enabled = false,
+				interval = 600,
+				random = false,
+			},
+
+			screen = {
+				[2] = {
+					source = "~/Pictures/nixos_waves.png",
+					fit = {
+						enabled = true,
+						style = "gradient",
+					},
+				},
+			},
+		},
+	},
+
+	-- =========================================================================
 	-- System
 	-- =========================================================================
 
@@ -85,9 +117,7 @@ return {
 			default = "max",
 			include = {
 				"max",
-				"fair",
-				"tile_main",
-				"tile_cross",
+				"tile_main", -- tile_cross as alternative tile layouts
 			},
 		},
 
@@ -117,7 +147,7 @@ return {
 			block_ms = 150,
 
 			center_mouse = {
-				enable = true,
+				enable = false,
 				exclude_layouts = { "max" },
 				exclude_states = { "fullscreen" },
 			},

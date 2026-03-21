@@ -30,8 +30,6 @@ in {
       config = {
         systray = {
           enable = true;
-          startUdiskie = false;
-          startCopyQ = false;
         };
       };
 
@@ -74,6 +72,8 @@ in {
     home.packages = with pkgs; [
       copyq
       gnome-calendar
+      gowall
+      imagemagick
     ];
   };
 }

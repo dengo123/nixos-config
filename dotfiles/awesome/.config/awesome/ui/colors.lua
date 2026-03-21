@@ -16,8 +16,8 @@ local PALETTE = {
 	overlay_40 = "#00000066",
 
 	-- Accents
-	red = "#FF6FA3",
-	pink = "#FF8FBA",
+	red = "#DB245E",
+	red_dark = "#B71E4E",
 	green = "#27AE60",
 	green_dark = "#1F8F4A",
 

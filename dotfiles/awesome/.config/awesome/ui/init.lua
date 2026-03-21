@@ -20,12 +20,16 @@ local function api()
 	return M.api or {}
 end
 
-local function module_api()
-	return api().modules or {}
+local function colors_api()
+	return api().colors
 end
 
-local function mod(name)
-	return module_api()[name]
+local function helpers_api()
+	return api().helpers
+end
+
+local function wallpaper_api()
+	return api().wallpaper
 end
 
 -- =========================================================================
@@ -36,26 +40,23 @@ function M.init(cfg)
 	cfg = cfg or {}
 
 	M.api = {
-		modules = {
-			colors = safe_require("ui.colors"),
-			helpers = safe_require("ui.helpers"),
-			wallpaper = safe_require("ui.wallpaper"),
-		},
+		colors = safe_require("ui.colors"),
+		helpers = safe_require("ui.helpers"),
+		wallpaper = safe_require("ui.wallpaper"),
 	}
 
-	local Colors = mod("colors")
-	local Helpers = mod("helpers")
-	local Wallpaper = mod("wallpaper")
+	local Colors = colors_api()
+	local Helpers = helpers_api()
+	local Wallpaper = wallpaper_api()
 
 	cfg.colors = cfg.colors or (Colors and Colors.get and Colors.get()) or {}
 	cfg.helpers = cfg.helpers or Helpers
 
-	M.colors = cfg.colors
-	M.helpers = cfg.helpers
-	M.wallpaper = Wallpaper
-
 	if Wallpaper and type(Wallpaper.init) == "function" then
-		Wallpaper.init(cfg)
+		Wallpaper.init({
+			cfg = cfg,
+			ui = M,
+		})
 	end
 
 	return M
