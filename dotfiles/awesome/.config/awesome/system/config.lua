@@ -42,17 +42,17 @@ return {
 				span_across_screens = true,
 			},
 
-			-- rules = {
-			-- 	{
-			-- 		match = { orientation = "portrait" }, -- index = num, or orientation = "landscape | portrait"
-			-- 		source = "~/Pictures/wallpapers/nixos_waves.png",
-			-- 		display = {
-			-- 			mode = "fit_fill",
-			-- 			fill = "solid",
-			-- 			span_across_screens = false,
-			-- 		},
-			-- 	},
-			-- },
+			rules = {
+				{
+					match = { orientation = "portrait" }, -- index = num, or orientation = "landscape | portrait"
+					source = "~/Pictures/wallpapers/nixos_waves.png",
+					display = {
+						mode = "fit_fill",
+						fill = "solid",
+						span_across_screens = false,
+					},
+				},
+			},
 
 			-- rotation = {
 			-- 	enabled = true,

@@ -55,6 +55,7 @@ local function set_runtime_cfg(cfg)
 
 	local Config = config_api()
 	local Source = source_api()
+	local Scope = scope_api()
 	local Refresh = refresh_api()
 	local Rotation = rotation_api()
 
@@ -64,6 +65,10 @@ local function set_runtime_cfg(cfg)
 
 	if Source and type(Source.set_runtime_cfg) == "function" then
 		Source.set_runtime_cfg(runtime_cfg)
+	end
+
+	if Scope and type(Scope.set_runtime_cfg) == "function" then
+		Scope.set_runtime_cfg(runtime_cfg)
 	end
 
 	if Refresh and type(Refresh.set_runtime_cfg) == "function" then
