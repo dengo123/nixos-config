@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "awesome-master": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1773791708,
+        "narHash": "sha256-u2QoKo4f2kepH8pwl7hcR5svM6e3BZWyO5aJlllQ/pE=",
+        "owner": "awesomeWM",
+        "repo": "awesome",
+        "rev": "f1388f9fc4e071407bfdc59c5964ea1eb79e746c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "awesomeWM",
+        "ref": "master",
+        "repo": "awesome",
+        "type": "github"
+      }
+    },
     "base16": {
       "inputs": {
         "fromYaml": "fromYaml"
@@ -563,6 +580,7 @@
     },
     "root": {
       "inputs": {
+        "awesome-master": "awesome-master",
         "ghostty": "ghostty",
         "home-manager": "home-manager",
         "nix-doom-emacs-unstraightened": "nix-doom-emacs-unstraightened",

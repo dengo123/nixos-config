@@ -150,7 +150,11 @@ function M.resolve_for_screen(s, spec)
 	local st, source = ensure_state_for_spec(s, spec)
 	local resolved = current_file_from_state(st, source)
 
-	return resolved
+	if type(resolved) == "string" and resolved ~= "" then
+		return resolved
+	end
+
+	return spec.source
 end
 
 function M.advance_for_screen(s, spec)
@@ -160,7 +164,7 @@ function M.advance_for_screen(s, spec)
 	local rotation = spec.rotation or {}
 
 	if type(st.files) ~= "table" or #st.files == 0 then
-		return source
+		return source or spec.source
 	end
 
 	if rotation.random == true then
@@ -180,7 +184,7 @@ function M.advance_for_screen(s, spec)
 		st.index = ((tonumber(st.index) or 1) % #st.files) + 1
 	end
 
-	return current_file_from_state(st, source)
+	return current_file_from_state(st, source) or spec.source
 end
 
 function M.reset_for_screen(s)

@@ -1,11 +1,11 @@
 -- ~/.config/awesome/ui/wallpaper/init.lua
-local function safe_require(path)
+local function req(path)
 	local ok, mod = pcall(require, path)
-	if ok then
+	if ok and mod ~= nil then
 		return mod
 	end
 
-	return nil
+	error(("ui.wallpaper.init: require failed: %s\n%s"):format(path, tostring(mod)))
 end
 
 local M = {
@@ -89,54 +89,145 @@ local function resolved_spec_for_screen(s)
 	end
 
 	if Source and type(Source.resolve_for_screen) == "function" then
-		spec.source = Source.resolve_for_screen(s, spec)
+		local resolved = Source.resolve_for_screen(s, spec)
+
+		if type(resolved) == "string" and resolved ~= "" then
+			spec.source = resolved
+		end
 	end
 
 	return spec
 end
 
-local function resolved_global_spec()
+local function desktop_entries()
 	local Config = config_api()
 	local Source = source_api()
+	local out = {}
 
-	if not (Config and type(Config.global_spec) == "function") then
-		return nil
+	if not (Config and type(Config.screens_for_desktop_span) == "function") then
+		return out
 	end
 
-	local spec = Config.global_spec()
-	if not spec then
-		return nil
+	for _, entry in ipairs(Config.screens_for_desktop_span() or {}) do
+		local s = entry.screen
+		local spec = entry.spec
+
+		if s and spec then
+			if Source and type(Source.resolve_for_screen) == "function" then
+				local resolved = Source.resolve_for_screen(s, spec)
+
+				if type(resolved) == "string" and resolved ~= "" then
+					spec.source = resolved
+				end
+			end
+
+			table.insert(out, {
+				screen = s,
+				spec = spec,
+			})
+		end
 	end
 
-	if Source and type(Source.resolve_global) == "function" then
-		spec.source = Source.resolve_global(spec)
-	elseif Source and type(Source.resolve_for_screen) == "function" then
-		spec.source = Source.resolve_for_screen(nil, spec)
-	end
+	return out
+end
 
-	return spec
+local function has_desktop_span()
+	return #(desktop_entries()) > 0
 end
 
 local function sync_rotation()
 	local Rotation = rotation_api()
 	local Config = config_api()
 
-	if not (Rotation and Config and type(Rotation.sync_all) == "function") then
+	if not (Rotation and type(Rotation.sync_all) == "function") then
 		return
 	end
 
-	if type(Config.span_across_screens) == "function" and Config.span_across_screens() == true then
-		Rotation.stop_all()
+	if has_desktop_span() then
+		if type(Rotation.stop_all) == "function" then
+			Rotation.stop_all()
+		end
 		return
 	end
 
 	Rotation.sync_all(function(s)
-		if type(Config.screen_spec) == "function" then
+		if Config and type(Config.screen_spec) == "function" then
 			return Config.screen_spec(s)
 		end
 
 		return nil
 	end)
+end
+
+local function apply_desktop_wallpapers()
+	local Apply = apply_api()
+	local Scope = scope_api()
+	local Colors = colors_api()
+
+	if not (Apply and type(Apply.apply_desktop) == "function") then
+		return
+	end
+
+	for _, entry in ipairs(desktop_entries()) do
+		Apply.apply_desktop(entry.screen, entry.spec, Scope, Colors)
+	end
+end
+
+local function apply_screen_wallpapers()
+	local Apply = apply_api()
+	local Colors = colors_api()
+	local Config = config_api()
+
+	if not (Apply and type(Apply.apply_screen) == "function") then
+		return
+	end
+
+	for s in screen do
+		local spans_desktop = Config
+			and type(Config.screen_spans_desktop) == "function"
+			and Config.screen_spans_desktop(s)
+
+		if not spans_desktop then
+			local spec = resolved_spec_for_screen(s)
+
+			if spec then
+				Apply.apply_screen(s, spec, Colors)
+			end
+		end
+	end
+end
+
+local function init_refresh()
+	local Refresh = refresh_api()
+
+	if Refresh and type(Refresh.init) == "function" then
+		Refresh.init({
+			cfg = runtime_cfg,
+			refresh = M.refresh,
+		})
+	end
+end
+
+local function init_rotation()
+	local Rotation = rotation_api()
+	local Config = config_api()
+
+	if not (Rotation and type(Rotation.init) == "function") then
+		return
+	end
+
+	Rotation.init({
+		cfg = runtime_cfg,
+		refresh = M.refresh,
+		spec_for_screen = function(s)
+			if Config and type(Config.screen_spec) == "function" then
+				return Config.screen_spec(s)
+			end
+
+			return nil
+		end,
+		source_api = source_api(),
+	})
 end
 
 -- =========================================================================
@@ -148,43 +239,24 @@ function M.init(args)
 
 	M.api = {
 		ui = args.ui or {},
-		config = safe_require("ui.wallpaper.config"),
-		source = safe_require("ui.wallpaper.source"),
-		colors = safe_require("ui.wallpaper.colors"),
-		scope = safe_require("ui.wallpaper.scope"),
-		apply = safe_require("ui.wallpaper.apply"),
-		refresh = safe_require("ui.wallpaper.refresh"),
-		rotation = safe_require("ui.wallpaper.rotation"),
+		config = req("ui.wallpaper.config"),
+		source = req("ui.wallpaper.source"),
+		colors = req("ui.wallpaper.colors"),
+		scope = req("ui.wallpaper.scope"),
+		apply = req("ui.wallpaper.apply"),
+		refresh = req("ui.wallpaper.refresh"),
+		rotation = req("ui.wallpaper.rotation"),
 	}
 
-	local cfg = args.cfg or args or {}
-	local Refresh = refresh_api()
-	local Rotation = rotation_api()
+	set_runtime_cfg(args.cfg or args or {})
 
-	set_runtime_cfg(cfg)
-
-	if Refresh and type(Refresh.init) == "function" then
-		Refresh.init({
-			cfg = runtime_cfg,
-			refresh = M.refresh,
-		})
+	local Source = source_api()
+	if Source and type(Source.reset_all) == "function" then
+		Source.reset_all()
 	end
 
-	if Rotation and type(Rotation.init) == "function" then
-		Rotation.init({
-			cfg = runtime_cfg,
-			refresh = M.refresh,
-			spec_for_screen = function(s)
-				local Config = config_api()
-				if not (Config and type(Config.screen_spec) == "function") then
-					return nil
-				end
-
-				return Config.screen_spec(s)
-			end,
-			source_api = source_api(),
-		})
-	end
+	init_refresh()
+	init_rotation()
 
 	M.refresh()
 
@@ -192,43 +264,8 @@ function M.init(args)
 end
 
 function M.refresh()
-	local Config = config_api()
-	local Scope = scope_api()
-	local Apply = apply_api()
-	local Colors = colors_api()
-
-	if not (Config and Apply) then
-		return
-	end
-
-	-- Ausnahme: ein Wallpaper über die gesamte Desktopfläche spannen
-	if type(Config.span_across_screens) == "function" and Config.span_across_screens() == true then
-		local spec = resolved_global_spec()
-		if not spec then
-			return
-		end
-
-		for s in screen do
-			if type(Apply.apply_desktop) == "function" then
-				Apply.apply_desktop(s, spec, Scope, Colors)
-			elseif type(Apply.apply_screen) == "function" then
-				Apply.apply_screen(s, spec, Colors)
-			end
-		end
-
-		sync_rotation()
-		return
-	end
-
-	-- Default: alle Screens, mit optionalen screen[index]-Overrides
-	for s in screen do
-		local spec = resolved_spec_for_screen(s)
-
-		if spec and type(Apply.apply_screen) == "function" then
-			Apply.apply_screen(s, spec, Colors)
-		end
-	end
-
+	apply_desktop_wallpapers()
+	apply_screen_wallpapers()
 	sync_rotation()
 end
 

@@ -1,6 +1,7 @@
 # systems/x86_64-linux/anvil/default.nix
 {
   lib,
+  pkgs,
   namespace,
   ...
 }:
@@ -34,7 +35,7 @@ with lib.${namespace}; {
     };
     desktop.awesome = {
       enable = true;
-      displayManager = "lightdm";
+      package = "git";
       autoLogin = enabled;
     };
     hardware = {

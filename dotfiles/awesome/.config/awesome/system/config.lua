@@ -35,29 +35,30 @@ return {
 
 	ui = {
 		wallpaper = {
-			-- source = "~/Pictures/wallpapers",
-			-- span_across_screens = true,
+			source = "~/Pictures/wallpapers/jenny-xp.jpg",
 
-			fit = {
-				enabled = false,
-				style = "solid",
+			display = {
+				mode = "maximized", -- "maximized | fit_fill | center | strech"
+				span_across_screens = true,
 			},
 
-			rotation = {
-				enabled = false,
-				interval = 600,
-				random = false,
-			},
+			-- rules = {
+			-- 	{
+			-- 		match = { orientation = "portrait" }, -- index = num, or orientation = "landscape | portrait"
+			-- 		source = "~/Pictures/wallpapers/nixos_waves.png",
+			-- 		display = {
+			-- 			mode = "fit_fill",
+			-- 			fill = "solid",
+			-- 			span_across_screens = false,
+			-- 		},
+			-- 	},
+			-- },
 
-			screen = {
-				[2] = {
-					source = "~/Pictures/wallpapers/nixos_waves.png",
-					fit = {
-						enabled = true,
-						style = "gradient",
-					},
-				},
-			},
+			-- rotation = {
+			-- 	enabled = true,
+			-- 	interval = 600,
+			-- 	random = false,
+			-- },
 		},
 	},
 
@@ -136,8 +137,8 @@ return {
 
 	windowing = {
 		titlebars = {
-			show = "on", -- on | floating_only | off
-			exclude = { "terminal", "editor" },
+			show = "floating_only", -- on | floating_only | off
+			exclude = { "terminal" },
 		},
 
 		rounded_corners = true,
