@@ -1,6 +1,7 @@
 -- ~/.config/awesome/ui/wallpaper/config.lua
 local beautiful = require("beautiful")
 local gfs = require("gears.filesystem")
+local Themes = require("ui.themes")
 
 local M = {}
 
@@ -64,10 +65,21 @@ local function expand_source_path(source)
 	return gfs.get_configuration_dir() .. source
 end
 
+local function theme_wallpaper_source()
+	local theme = Themes.resolve(runtime_cfg)
+	local wallpaper = (theme and theme.wallpaper) or {}
+	return wallpaper.source
+end
+
 local function resolve_source(source)
 	local expanded = expand_source_path(source)
 	if expanded and expanded ~= "" then
 		return expanded
+	end
+
+	local theme_source = expand_source_path(theme_wallpaper_source())
+	if theme_source and theme_source ~= "" then
+		return theme_source
 	end
 
 	if type(beautiful.wallpaper) == "string" and beautiful.wallpaper ~= "" then

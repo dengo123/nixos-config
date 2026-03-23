@@ -58,6 +58,51 @@ local function launcher_modules()
 	}
 end
 
+local function merge_shallow(a, b)
+	local out = {}
+
+	for k, v in pairs(a or {}) do
+		out[k] = v
+	end
+
+	for k, v in pairs(b or {}) do
+		out[k] = v
+	end
+
+	return out
+end
+
+local function resolve_ui(args, cfg)
+	local arg_ui = (args and args.ui) or {}
+	local cfg_ui = (cfg and cfg.ui) or {}
+	local api_ui = (cfg and cfg.api and cfg.api.ui) or {}
+
+	local ui = merge_shallow(cfg_ui, api_ui)
+	ui = merge_shallow(ui, arg_ui)
+
+	if not (ui.theme and ui.theme.colors and ui.theme.fonts) then
+		local UI = require("ui")
+		local ui_mod = UI.init({ cfg = cfg or {} })
+		ui = ui_mod.get()
+	end
+
+	if ui.colors == nil then
+		local ok, mod = pcall(require, "ui.colors")
+		if ok and mod then
+			ui.colors = mod
+		end
+	end
+
+	if ui.helpers == nil then
+		local ok, mod = pcall(require, "ui.helpers")
+		if ok and mod then
+			ui.helpers = mod
+		end
+	end
+
+	return ui
+end
+
 local function resolve_theme(area, overrides)
 	overrides = overrides or {}
 
@@ -153,6 +198,8 @@ function L.init(args)
 	runtime_cfg = args.cfg or args or {}
 	L.cfg = runtime_cfg
 
+	local resolved_ui = resolve_ui(args, runtime_cfg)
+
 	L.api = {
 		lib = {
 			actions = safe_require("shell.launchers.lib.actions"),
@@ -163,7 +210,7 @@ function L.init(args)
 			session = safe_require("shell.launchers.session"),
 			run = safe_require("shell.launchers.run"),
 		},
-		ui = args.ui or (runtime_cfg.api and runtime_cfg.api.ui) or runtime_cfg.ui or {},
+		ui = resolved_ui,
 	}
 
 	local Button = lib("button")

@@ -16,12 +16,12 @@ local STYLE = {
 
 	fg = "black",
 	base_bg = "white",
-	transparent = "transparent",
+	transparent = "#00000000",
 
 	outer_bw = 1,
 	outer_col = "black",
 
-	hover_col = "blue_luna",
+	hover_col = "primary",
 	hover_bw = 1,
 	hover_inset = 2,
 }
@@ -34,22 +34,74 @@ local function ui_api()
 	return runtime_api.ui or {}
 end
 
-local function ui_colors()
-	return ui_api().colors or {}
-end
-
 local function ui_helpers()
 	return ui_api().helpers or {}
 end
 
-local function resolve_color(value)
-	local colors = ui_colors()
+local function ui_colors()
+	local colors = ui_api().colors or {}
 
-	if type(value) == "string" and colors[value] then
-		return colors[value]
+	if type(colors.get) == "function" then
+		local ok, palette = pcall(colors.get)
+		if ok and type(palette) == "table" then
+			return colors, palette
+		end
+	end
+
+	return colors, colors
+end
+
+local function resolve_color(value)
+	local colors_mod, palette = ui_colors()
+
+	if type(colors_mod.resolve) == "function" then
+		local ok, resolved = pcall(colors_mod.resolve, value)
+		if ok and resolved ~= nil then
+			return resolved
+		end
+	end
+
+	if type(value) == "string" and palette[value] then
+		return palette[value]
 	end
 
 	return value
+end
+
+local function hex_to_rgb01(hex)
+	local colors_mod, _ = ui_colors()
+	local Helpers = ui_helpers()
+
+	if type(colors_mod.hex_to_rgb01) == "function" then
+		local ok, r, g, b = pcall(colors_mod.hex_to_rgb01, hex)
+		if ok then
+			return r, g, b
+		end
+	end
+
+	if type(Helpers.hex_to_rgb01) == "function" then
+		return Helpers.hex_to_rgb01(hex)
+	end
+
+	hex = tostring(resolve_color(hex) or "#000000"):gsub("^#", "")
+
+	if #hex == 3 then
+		hex = hex:gsub(".", "%1%1")
+	end
+
+	if #hex == 8 then
+		hex = hex:sub(1, 6)
+	end
+
+	if #hex ~= 6 then
+		return 0, 0, 0
+	end
+
+	local r = tonumber(hex:sub(1, 2), 16) or 0
+	local g = tonumber(hex:sub(3, 4), 16) or 0
+	local b = tonumber(hex:sub(5, 6), 16) or 0
+
+	return r / 255, g / 255, b / 255
 end
 
 local function resolved_style(style_override)
@@ -87,7 +139,6 @@ end
 
 function B.mk_button(label, on_click, style_override)
 	local S = resolved_style(style_override)
-	local Helpers = ui_helpers()
 
 	-- ---------------------------------------------------------------------
 	-- Content
@@ -154,7 +205,7 @@ function B.mk_button(label, on_click, style_override)
 		local r = math.max(0, inner_r - (S.hover_inset or 0))
 		gears.shape.rounded_rect(cr, ww, hh, r)
 
-		local rr, gg, bb = Helpers.hex_to_rgb01(S.hover_col)
+		local rr, gg, bb = hex_to_rgb01(S.hover_col)
 		cr:set_source_rgb(rr, gg, bb)
 		cr:set_line_width(S.hover_bw or 1)
 		cr:stroke()

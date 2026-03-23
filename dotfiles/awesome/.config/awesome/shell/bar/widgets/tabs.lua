@@ -95,7 +95,7 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 
 	local title_raw = wibox.widget({
 		widget = wibox.widget.textbox,
-		markup = ellipsize(label or (lead and (lead.class or lead.name) or "App"), title_len),
+		text = ellipsize(label or (lead and (lead.class or lead.name) or "App"), title_len),
 	})
 
 	local title = wibox.widget({

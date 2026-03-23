@@ -74,7 +74,7 @@ function M.build(_th, cfg)
 	end
 
 	return {
-		header_title = "Log Off NixOS",
+		header_title = "Log Off Awesome",
 		cancel_label = "Cancel",
 		actions = actions,
 	}

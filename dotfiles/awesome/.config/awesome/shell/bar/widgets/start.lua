@@ -83,9 +83,8 @@ function M.build(opts)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	assert(theme.bg and theme.bg_hover and theme.fg and theme.shape and theme.margin, "start theme: basis fehlt")
 	assert(theme.icon and theme.icon_size and theme.spacing, "start theme: icon/icon_size/spacing fehlt")
-	assert(theme.font_size_scale and theme.font_weight and theme.font_style, "start theme: font props fehlen")
+	assert(theme.font and type(theme.font) == "string" and theme.font ~= "", "start theme: font fehlt")
 	assert(
 		theme.width_factor and theme.fixed_height ~= nil and theme.label,
 		"start theme: width/fixed_height/label fehlt"
@@ -128,16 +127,9 @@ function M.build(opts)
 	-- Label
 	-- ---------------------------------------------------------------------
 
-	local label_markup = string.format(
-		'<span weight="%s" style="%s" size="%d%%">%s</span>',
-		require_string(theme.font_weight, "theme.font_weight"),
-		require_string(theme.font_style, "theme.font_style"),
-		math.floor(100 * require_number(theme.font_size_scale, "theme.font_size_scale")),
-		require_string(theme.label, "theme.label")
-	)
-
 	local label_widget = wibox.widget({
-		markup = label_markup,
+		text = require_string(theme.label, "theme.label"),
+		font = require_string(theme.font, "theme.font"),
 		widget = wibox.widget.textbox,
 	})
 

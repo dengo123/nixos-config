@@ -30,7 +30,7 @@ function M.get(overrides)
 		title = "Run",
 
 		header_h = d(36),
-		header_bg = C.blue_luna,
+		header_bg = C.primary,
 		header_fg = C.white,
 		header_font = "Sans",
 		header_font_size = d(14),
@@ -38,11 +38,11 @@ function M.get(overrides)
 		header_pad_r = d(12),
 		header_pad_v = d(6),
 
-		body_bg = C.creme,
+		body_bg = C.surface,
 		body_fg = C.black,
 
 		footer_h = d(80),
-		footer_bg = C.creme,
+		footer_bg = C.surface,
 		footer_fg = C.black,
 		footer_spacing = d(8),
 		footer_pad_h = d(14),
@@ -57,8 +57,8 @@ function M.get(overrides)
 		panel_pad_v = d(12),
 
 		panel_radius = d(12),
-		panel_bg = C.blue_luna,
-		panel_border = C.blue_luna,
+		panel_bg = C.primary,
+		panel_border = C.primary,
 		panel_border_width = d(2),
 	}
 
@@ -68,7 +68,7 @@ function M.get(overrides)
 
 	local search_defaults = {
 		sizes = {
-			height = d(24),
+			height = d(64),
 			width_expanded = d(320),
 		},
 
@@ -105,9 +105,9 @@ function M.get(overrides)
 			icon_path = ASSETS .. "Run_2001.png",
 			icon_size = d(36),
 			icon_spacing = d(4),
-			text = "Type the name of a program, folder, document or Internet resource, and NixOS will open it for you.",
+			text = "Type the name of a program, folder, document or Internet resource, and Awesome will open it for you.",
 			fg = C.black,
-			bg = C.creme,
+			bg = C.surface,
 			font = "Sans",
 			size = d(10),
 			spacing = d(24),

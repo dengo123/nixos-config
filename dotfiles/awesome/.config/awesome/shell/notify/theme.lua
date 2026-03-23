@@ -20,14 +20,14 @@ function M.init(cfg)
 	local C = cfg.colors or {}
 	local H = cfg.helpers or {}
 
-	local border = (H and H.adjust_color and C.creme) and H.adjust_color(C.creme, -14) or (C.black or "#000000")
+	local border = (H and H.adjust_color and C.cream) and H.adjust_color(C.cream, -14) or (C.black or "#000000")
 
 	-- ---------------------------------------------------------------------
 	-- Notify
 	-- ---------------------------------------------------------------------
 
 	beautiful.notify = {
-		bg = C.creme,
+		bg = C.cream,
 		fg = C.black,
 		border = C.black,
 		radius = dpi(10),
@@ -58,7 +58,7 @@ function M.init(cfg)
 
 		panel_bg = "#00000000",
 
-		entry_bg = C.creme,
+		entry_bg = C.cream,
 		entry_fg = C.black,
 		entry_border = C.black,
 
@@ -78,7 +78,7 @@ function M.init(cfg)
 		list_pad_bottom = dpi(0),
 		list_pad_left = dpi(0),
 
-		action_bg = C.creme,
+		action_bg = C.cream,
 		action_fg = C.black,
 		action_border = border,
 		action_radius = dpi(8),

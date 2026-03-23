@@ -51,7 +51,10 @@ local function resolve_theme(cfg, overrides)
 	local Theme = mod("theme")
 
 	if Theme and type(Theme.init) == "function" then
-		Theme.init(cfg or {})
+		Theme.init({
+			cfg = cfg or {},
+			ui = api().ui or {},
+		})
 	end
 
 	local theme = (Theme and Theme.get and Theme.get()) or {}

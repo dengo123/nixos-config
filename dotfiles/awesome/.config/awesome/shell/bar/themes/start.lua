@@ -1,6 +1,5 @@
 -- ~/.config/awesome/shell/bar/themes/start.lua
 local beautiful = require("beautiful")
-local gfs = require("gears.filesystem")
 local xr = require("beautiful.xresources")
 
 local dpi = xr.apply_dpi
@@ -10,6 +9,19 @@ local S = {}
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
+end
+
+local function with_size(font, size)
+	assert(type(font) == "string" and font ~= "", "bar.theme.start: font fehlt")
+	assert(tonumber(size) ~= nil, "bar.theme.start: size fehlt")
+
+	local base = font:gsub("%s+%d+%.?%d*$", "")
+	return base .. " " .. tostring(size)
+end
 
 local function right_big_cap_factory(args)
 	local right_radius = args.right_radius
@@ -49,29 +61,28 @@ end
 -- Public API
 -- =========================================================================
 
-function S.init(cfg)
-	cfg = cfg or {}
+function S.init(args)
+	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
+	local F = theme.fonts or {}
+	local I = theme.icons or {}
 
-	local C = cfg.colors or {}
-
-	-- ---------------------------------------------------------------------
-	-- Geometry
-	-- ---------------------------------------------------------------------
+	assert(type(C.start) == "string" and C.start ~= "", "bar.theme.start: theme.colors.start fehlt")
+	assert(type(C.start_focus) == "string" and C.start_focus ~= "", "bar.theme.start: theme.colors.start_focus fehlt")
+	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.start: theme.colors.white fehlt")
+	assert(
+		type(F.ui_bold_italic) == "string" and F.ui_bold_italic ~= "",
+		"bar.theme.start: theme.fonts.ui_bold_italic fehlt"
+	)
+	assert(type(I.system) == "string" and I.system ~= "", "bar.theme.start: theme.icons.system fehlt")
 
 	local wibar_height = tonumber(beautiful.wibar_height) or dpi(28)
-	local default_icon = gfs.get_configuration_dir() .. "ui/assets/flake.png"
-
-	-- ---------------------------------------------------------------------
-	-- Start
-	-- ---------------------------------------------------------------------
 
 	beautiful.start = {
 		label = "Start",
-		icon = default_icon,
+		system_icon = I.system,
 
 		icon_size = math.floor(wibar_height * 1.2),
 		spacing = dpi(4),
@@ -83,9 +94,7 @@ function S.init(cfg)
 			bottom = dpi(0),
 		},
 
-		font_size_scale = 1.75,
-		font_weight = "bold",
-		font_style = "italic",
+		font = with_size(F.ui_bold_italic, 16),
 
 		width_factor = 4,
 		fixed_height = true,
@@ -99,13 +108,9 @@ function S.init(cfg)
 		left_radius = beautiful.start.left_radius,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
-
 	beautiful.start_colors = {
-		bg = C.green,
-		bg_hover = C.green_dark,
+		bg = C.start,
+		bg_hover = C.start_focus,
 		fg = C.white,
 	}
 end
@@ -116,15 +121,14 @@ function S.get()
 
 	return {
 		label = ST.label,
-		icon = ST.icon,
+		system_icon = ST.system_icon,
 
+		icon = ST.system_icon,
 		icon_size = ST.icon_size,
 		spacing = ST.spacing,
 		margin = ST.margin,
 
-		font_size_scale = ST.font_size_scale,
-		font_weight = ST.font_weight,
-		font_style = ST.font_style,
+		font = ST.font,
 
 		width_factor = ST.width_factor,
 		fixed_height = ST.fixed_height,

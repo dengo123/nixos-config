@@ -160,23 +160,38 @@ function M.setup(s, args)
 	local show_tags = bar_normally_visible and ((not tags_on_primary_only) or is_primary)
 	local show_notify = notify_visible_on_screen
 
-	if TWibar and type(TWibar.init) == "function" then
-		pcall(TWibar.init, cfg)
+	local _ui = ui_api()
+
+	if not (_ui and _ui.theme and _ui.theme.colors) then
+		local UI = require("ui")
+		local ui_mod = UI.init({ cfg = cfg })
+		_ui = ui_mod.get()
 	end
 
-	if TStart and type(TStart.init) == "function" then
-		pcall(TStart.init, cfg)
-	end
+	assert(TWibar and type(TWibar.init) == "function", "bar.init: theme 'wibar' fehlt oder init() fehlt")
+	TWibar.init({
+		cfg = cfg,
+		ui = _ui,
+	})
 
-	if TTabs and type(TTabs.init) == "function" then
-		pcall(TTabs.init, cfg)
-	end
+	assert(TStart and type(TStart.init) == "function", "bar.init: theme 'start' fehlt oder init() fehlt")
+	TStart.init({
+		cfg = cfg,
+		ui = _ui,
+	})
+
+	assert(TTabs and type(TTabs.init) == "function", "bar.init: theme 'tabs' fehlt oder init() fehlt")
+	TTabs.init({
+		cfg = cfg,
+		ui = _ui,
+	})
 
 	local wibar_theme = TWibar
 	local start_theme = TStart and TStart.get and TStart.get() or nil
 	local tabs_theme = TTabs and TTabs.get and TTabs.get() or nil
-	local menu_theme = cfg.menus
-	local _ui = ui_api()
+
+	assert(type(start_theme) == "table", "bar.init: start_theme fehlt")
+	assert(type(tabs_theme) == "table", "bar.init: tabs_theme fehlt")
 
 	local props = (wibar_theme and wibar_theme.props and wibar_theme.props())
 		or {
@@ -188,6 +203,8 @@ function M.setup(s, args)
 			shape = beautiful.wibar_shape,
 			margins = beautiful.wibar_margins,
 		}
+
+	assert(tonumber(props.height) ~= nil, "bar.init: wibar props.height fehlt")
 
 	props.position = bar_position or "bottom"
 

@@ -68,9 +68,6 @@ local function build_calendar(s, clock, opts)
 	local fg_normal = use_menu_theme and require_string(beautiful.menu_fg_normal, "beautiful.menu_fg_normal")
 		or require_string(beautiful.clock_calendar_fg, "beautiful.clock_calendar_fg")
 
-	local bg_focus = use_menu_theme and require_string(beautiful.menu_bg_focus, "beautiful.menu_bg_focus")
-		or require_string(beautiful.clock_calendar_focus, "beautiful.clock_calendar_focus")
-
 	local fg_focus = use_menu_theme and require_string(beautiful.menu_fg_focus, "beautiful.menu_fg_focus")
 		or require_string(beautiful.clock_calendar_fg, "beautiful.clock_calendar_fg")
 

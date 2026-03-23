@@ -115,12 +115,26 @@ function Menu.init(args)
 	local Place = placement_api()
 	local _ui = ui_api()
 
+	if not (_ui and _ui.theme and _ui.theme.colors and _ui.theme.fonts) then
+		local UI = require("ui")
+		local ui_mod = UI.init({ cfg = Menu.cfg })
+		_ui = ui_mod.get()
+		Menu.ui = _ui
+		Menu.api.ui = _ui
+	end
+
 	if Theme and type(Theme.init) == "function" then
-		Theme.init(Menu.cfg)
+		Theme.init({
+			cfg = Menu.cfg,
+			ui = _ui,
+		})
 	end
 
 	if Layout and type(Layout.init) == "function" then
-		Layout.init(Menu.cfg)
+		Layout.init({
+			cfg = Menu.cfg,
+			ui = _ui,
+		})
 	end
 
 	if Place and type(Place.init) == "function" then

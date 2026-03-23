@@ -1,23 +1,39 @@
 -- ~/.config/awesome/shell/bar/themes/tabs.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
+local Colors = require("ui.colors")
 
 local dpi = xr.apply_dpi
 
 local T = {}
 
 -- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function resolved_colors(args)
+	local cfg = (args and args.cfg) or {}
+
+	if type(Colors.set_runtime_cfg) == "function" then
+		Colors.set_runtime_cfg(cfg)
+	end
+
+	return Colors.get()
+end
+
+-- =========================================================================
 -- Public API
 -- =========================================================================
 
-function T.init(cfg)
-	cfg = cfg or {}
+function T.init(args)
+	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
+	local C = resolved_colors(args)
 
-	local C = cfg.colors or {}
+	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.tabs: colors.tertiary fehlt")
+	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.tabs: colors.white fehlt")
+	assert(type(C.gray) == "string" and C.gray ~= "", "bar.theme.tabs: colors.gray fehlt")
+	assert(type(C.transparent) == "string" and C.transparent ~= "", "bar.theme.tabs: colors.transparent fehlt")
 
 	-- ---------------------------------------------------------------------
 	-- Geometry
@@ -48,14 +64,14 @@ function T.init(cfg)
 	-- ---------------------------------------------------------------------
 
 	beautiful.tabs_colors = {
-		accent = C.blue_dark,
-		focus_bg = C.blue_dark,
+		accent = C.tertiary,
+		focus_bg = C.tertiary,
 		focus_fg = C.white,
-		focus_border = C.blue_dark,
+		focus_border = C.tertiary,
 
 		normal_bg = C.transparent,
 		normal_fg = C.gray,
-		normal_border = C.blue_dark,
+		normal_border = C.tertiary,
 
 		minimize_bg = C.transparent,
 		minimize_fg = C.gray,

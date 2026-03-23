@@ -15,7 +15,7 @@ function M.init(_cfg)
 	runtime = {
 		item_height = dpi(28),
 		width = dpi(220),
-		gap = dpi(4),
+		gap = dpi(2),
 		x_padding = dpi(0),
 		align = "left",
 		x_offset = 0,

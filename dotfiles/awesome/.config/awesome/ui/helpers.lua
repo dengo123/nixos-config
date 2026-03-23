@@ -54,37 +54,6 @@ function H.dpi(x)
 end
 
 -- =========================================================================
--- Colors
--- =========================================================================
-
-function H.hex_to_rgb(hex)
-	hex = tostring(hex or "#000000")
-	local r, g, b = hex:match("#?(%x%x)(%x%x)(%x%x)")
-
-	return tonumber(r or "00", 16), tonumber(g or "00", 16), tonumber(b or "00", 16)
-end
-
-function H.hex_to_rgb01(hex)
-	local r, g, b = H.hex_to_rgb(hex)
-	return r / 255, g / 255, b / 255
-end
-
-function H.rgb_to_hex(r, g, b)
-	return string.format(
-		"#%02X%02X%02X",
-		H.clamp(math.floor((r or 0) + 0.5), 0, 255),
-		H.clamp(math.floor((g or 0) + 0.5), 0, 255),
-		H.clamp(math.floor((b or 0) + 0.5), 0, 255)
-	)
-end
-
-function H.adjust_color(hex, pct)
-	local r, g, b = H.hex_to_rgb(hex)
-	local factor = 1 + (pct or 0) / 100
-	return H.rgb_to_hex(r * factor, g * factor, b * factor)
-end
-
--- =========================================================================
 -- Locks
 -- =========================================================================
 

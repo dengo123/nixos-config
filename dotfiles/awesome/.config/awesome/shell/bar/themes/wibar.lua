@@ -7,24 +7,37 @@ local dpi = xr.apply_dpi
 local M = {}
 
 -- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
+end
+
+-- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	cfg = cfg or {}
+function M.init(args)
+	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
 
-	local C = cfg.colors or require("ui.colors").get()
+	assert(type(C.primary) == "string" and C.primary ~= "", "bar.theme.wibar: theme.colors.primary fehlt")
+	assert(type(C.secondary) == "string" and C.secondary ~= "", "bar.theme.wibar: theme.colors.secondary fehlt")
+	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.wibar: theme.colors.tertiary fehlt")
+	assert(type(C.surface) == "string" and C.surface ~= "", "bar.theme.wibar: theme.colors.surface fehlt")
+	assert(type(C.black) == "string" and C.black ~= "", "bar.theme.wibar: theme.colors.black fehlt")
+	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.wibar: theme.colors.white fehlt")
 
 	-- ---------------------------------------------------------------------
 	-- Wibar
 	-- ---------------------------------------------------------------------
 
 	beautiful.wibar_height = dpi(32)
-	beautiful.wibar_bg = C.blue_luna
+	beautiful.wibar_bg = C.primary
 	beautiful.wibar_fg = C.white
 	beautiful.wibar_on_top = false
 	beautiful.wibar_opacity = 1.0
@@ -43,7 +56,7 @@ function M.init(cfg)
 	-- Systray
 	-- ---------------------------------------------------------------------
 
-	beautiful.systray_bg = C.blue_light
+	beautiful.systray_bg = C.secondary
 	beautiful.systray_fg = beautiful.wibar_fg
 	beautiful.systray_pad_h = dpi(6)
 	beautiful.systray_pad_v = 0
@@ -63,9 +76,8 @@ function M.init(cfg)
 	-- Calendar
 	-- ---------------------------------------------------------------------
 
-	beautiful.clock_calendar_bg = C.creme
+	beautiful.clock_calendar_bg = C.surface
 	beautiful.clock_calendar_fg = C.black
-	beautiful.clock_calendar_focus = C.creme_focus
 	beautiful.clock_calendar_border_color = C.black
 	beautiful.clock_calendar_border_width = 0
 
@@ -99,10 +111,10 @@ function M.init(cfg)
 	beautiful.notify_button_offset_y = dpi(1)
 
 	beautiful.notify_button_bg = beautiful.systray_bg
-	beautiful.notify_button_bg_hover = C.blue_luna
+	beautiful.notify_button_bg_hover = C.primary
 	beautiful.notify_button_fg = beautiful.wibar_fg
 
-	beautiful.notify_button_border_color = C.blue_dark
+	beautiful.notify_button_border_color = C.tertiary
 	beautiful.notify_button_border_width = dpi(1)
 
 	beautiful.notify_button_font = "Sans Bold 10"

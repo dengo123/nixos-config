@@ -1,39 +1,57 @@
--- ~/.config/awesome/shell/menu/theme.lua
 local beautiful = require("beautiful")
 local gears = require("gears")
 local xr = require("beautiful.xresources")
+local Colors = require("ui.colors")
 
 local dpi = xr.apply_dpi
 
 local M = {}
 
 -- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
+end
+
+local function resolved_colors(args)
+	local cfg = (args and args.cfg) or {}
+
+	if type(Colors.set_runtime_cfg) == "function" then
+		Colors.set_runtime_cfg(cfg)
+	end
+
+	return Colors.get()
+end
+
+-- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	cfg = cfg or {}
+function M.init(args)
+	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
+	local theme = resolved_theme(args)
+	local C = resolved_colors(args)
+	local F = theme.fonts or {}
 
-	local C = cfg.colors or {}
-	local H = cfg.helpers or {}
-
-	local border = (H and H.adjust_color and C.white) and H.adjust_color(C.white, -12) or (C.black or "#000000")
-
-	local bg_focus = C.white_focus or ((H and H.adjust_color and C.white) and H.adjust_color(C.white, -6)) or C.creme
+	assert(type(C.surface) == "string" and C.surface ~= "", "menu.theme: colors.surface fehlt")
+	assert(type(C.surface_focus) == "string" and C.surface_focus ~= "", "menu.theme: colors.surface_focus fehlt")
+	assert(type(C.black) == "string" and C.black ~= "", "menu.theme: colors.black fehlt")
+	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "menu.theme: colors.tertiary fehlt")
+	assert(type(F.ui) == "string" and F.ui ~= "", "menu.theme: theme.fonts.ui fehlt")
 
 	-- ---------------------------------------------------------------------
 	-- Menu
 	-- ---------------------------------------------------------------------
 
-	beautiful.menu_bg_normal = C.white
+	beautiful.menu_bg_normal = C.surface
 	beautiful.menu_fg_normal = C.black
-	beautiful.menu_bg_focus = bg_focus
+	beautiful.menu_bg_focus = C.surface_focus
 	beautiful.menu_fg_focus = C.black
-	beautiful.menu_border_color = border
+	beautiful.menu_border_color = C.surface_focus
 	beautiful.menu_border_width = dpi(1)
 
 	beautiful.menu_height = dpi(28)
@@ -59,8 +77,8 @@ function M.init(cfg)
 	beautiful.hotkeys_label_fg = beautiful.menu_fg_focus
 	beautiful.hotkeys_modifiers_fg = beautiful.menu_fg_focus
 
-	beautiful.hotkeys_font = beautiful.font or "Sans 10"
-	beautiful.hotkeys_description_font = beautiful.font or "Sans 10"
+	beautiful.hotkeys_font = F.ui
+	beautiful.hotkeys_description_font = F.ui
 	beautiful.hotkeys_group_margin = dpi(12)
 end
 
