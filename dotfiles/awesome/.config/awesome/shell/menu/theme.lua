@@ -27,19 +27,14 @@ function M.init(args)
 	local C = theme.colors or {}
 	local F = theme.fonts or {}
 
-	assert(type(C.surface) == "string" and C.surface ~= "", "menu.theme: theme.colors.surface fehlt")
-	assert(type(C.surface_focus) == "string" and C.surface_focus ~= "", "menu.theme: theme.colors.surface_focus fehlt")
-	assert(type(C.black) == "string" and C.black ~= "", "menu.theme: theme.colors.black fehlt")
-	assert(type(F.ui) == "string" and F.ui ~= "", "menu.theme: theme.fonts.ui fehlt")
-
 	-- ---------------------------------------------------------------------
 	-- Menu
 	-- ---------------------------------------------------------------------
 
 	beautiful.menu_bg_normal = C.surface
-	beautiful.menu_fg_normal = C.black
+	beautiful.menu_fg_normal = C.text or C.foreground
 	beautiful.menu_bg_focus = C.surface_focus
-	beautiful.menu_fg_focus = C.black
+	beautiful.menu_fg_focus = C.text or C.foreground
 	beautiful.menu_border_color = C.surface_focus
 	beautiful.menu_border_width = dpi(1)
 

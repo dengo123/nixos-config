@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/notify/theme.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
 
@@ -25,21 +24,13 @@ function M.init(args)
 	local theme = resolved_theme(args)
 	local C = theme.colors or {}
 
-	assert(type(C.surface) == "string" and C.surface ~= "", "notify.theme: theme.colors.surface fehlt")
-	assert(
-		type(C.surface_focus) == "string" and C.surface_focus ~= "",
-		"notify.theme: theme.colors.surface_focus fehlt"
-	)
-	assert(type(C.black) == "string" and C.black ~= "", "notify.theme: theme.colors.black fehlt")
-	assert(type(C.transparent) == "string" and C.transparent ~= "", "notify.theme: theme.colors.transparent fehlt")
-
 	-- ---------------------------------------------------------------------
 	-- Notify
 	-- ---------------------------------------------------------------------
 
 	beautiful.notify = {
 		bg = C.surface,
-		fg = C.black,
+		fg = C.text or C.foreground,
 		border = C.surface_focus,
 		radius = dpi(10),
 		icon_size = dpi(28),
@@ -70,7 +61,7 @@ function M.init(args)
 		panel_bg = C.transparent,
 
 		entry_bg = C.surface,
-		entry_fg = C.black,
+		entry_fg = C.text or C.foreground,
 		entry_border = C.surface_focus,
 
 		entry_radius = dpi(10),
@@ -90,7 +81,7 @@ function M.init(args)
 		list_pad_left = dpi(0),
 
 		action_bg = C.surface,
-		action_fg = C.black,
+		action_fg = C.text or C.foreground,
 		action_border = C.surface_focus,
 		action_radius = dpi(8),
 		action_border_w = dpi(1),

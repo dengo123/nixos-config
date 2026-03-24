@@ -16,8 +16,8 @@ local function resolved_theme(args)
 end
 
 local function with_size(font, size)
-	assert(type(font) == "string" and font ~= "", "launchers.session.theme: font fehlt")
-	assert(tonumber(size) ~= nil, "launchers.session.theme: size fehlt")
+	font = type(font) == "string" and font ~= "" and font or "Sans"
+	size = tonumber(size) or 10
 
 	local base = font:gsub("%s+%d+%.?%d*$", "")
 	return base .. " " .. tostring(size)
@@ -35,30 +35,6 @@ function Theme.init(args)
 	local fonts = theme.fonts or {}
 	local icons = theme.icons or {}
 	local utils = theme.utils or {}
-
-	assert(
-		type(colors.tertiary) == "string" and colors.tertiary ~= "",
-		"launchers.session.theme: theme.colors.tertiary fehlt"
-	)
-	assert(
-		type(colors.secondary) == "string" and colors.secondary ~= "",
-		"launchers.session.theme: theme.colors.secondary fehlt"
-	)
-	assert(type(colors.white) == "string" and colors.white ~= "", "launchers.session.theme: theme.colors.white fehlt")
-	assert(type(colors.black) == "string" and colors.black ~= "", "launchers.session.theme: theme.colors.black fehlt")
-	assert(
-		type(fonts.ui_bold) == "string" and fonts.ui_bold ~= "",
-		"launchers.session.theme: theme.fonts.ui_bold fehlt"
-	)
-	assert(type(fonts.ui) == "string" and fonts.ui ~= "", "launchers.session.theme: theme.fonts.ui fehlt")
-	assert(
-		type(utils.overlay_40) == "string" and utils.overlay_40 ~= "",
-		"launchers.session.theme: theme.utils.overlay_40 fehlt"
-	)
-	assert(
-		type(utils.transparent) == "string" and utils.transparent ~= "",
-		"launchers.session.theme: theme.utils.transparent fehlt"
-	)
 
 	local system_icon = DEFAULT_SYSTEM_ICON
 	if type(icons.system) == "string" and icons.system ~= "" then
@@ -80,11 +56,11 @@ function Theme.init(args)
 		footer_h = 80,
 
 		header_bg = colors.tertiary,
-		header_fg = colors.white,
+		header_fg = colors.text_invert or colors.background,
 		body_bg = colors.secondary,
-		body_fg = colors.black,
+		body_fg = colors.text or colors.foreground,
 		footer_bg = colors.tertiary,
-		footer_fg = colors.white,
+		footer_fg = colors.text_invert or colors.background,
 
 		header_font = with_size(fonts.ui_bold, 18),
 		header_font_size = 18,
@@ -109,19 +85,19 @@ function Theme.init(args)
 		icon_label_size = 12,
 		icon_label_leading = 1.25,
 		icon_label_lines = 1,
-		icon_label_color = colors.white,
+		icon_label_color = colors.text_invert or colors.background,
 		icon_label_pad_top = 0,
 		icon_label_pad_bottom = 0,
 
 		icon_shape = "rounded",
 		icon_rounding = 14,
 
-		icon_hover_bg = colors.white .. "22",
-		icon_hover_border = colors.white,
+		icon_hover_bg = (colors.background or "") .. "22",
+		icon_hover_border = colors.background,
 		icon_hover_bw = 4,
 
-		icon_focus_bg = colors.white .. "22",
-		icon_focus_border = colors.white,
+		icon_focus_bg = (colors.background or "") .. "22",
+		icon_focus_border = colors.background,
 		icon_focus_bw = 4,
 
 		transparent = utils.transparent,

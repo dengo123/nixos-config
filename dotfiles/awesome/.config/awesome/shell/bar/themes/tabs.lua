@@ -25,11 +25,6 @@ function T.init(args)
 	local theme = resolved_theme(args)
 	local C = theme.colors or {}
 
-	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.tabs: theme.colors.tertiary fehlt")
-	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.tabs: theme.colors.white fehlt")
-	assert(type(C.gray) == "string" and C.gray ~= "", "bar.theme.tabs: theme.colors.gray fehlt")
-	assert(type(C.transparent) == "string" and C.transparent ~= "", "bar.theme.tabs: theme.colors.transparent fehlt")
-
 	local wibar_height = tonumber(beautiful.wibar_height) or 28
 	local icon_size = math.floor(wibar_height * 0.8)
 
@@ -41,6 +36,7 @@ function T.init(args)
 
 		icon_size = icon_size,
 		title_len = 18,
+		title_offset_y = dpi(3),
 		width_factor = 6,
 
 		inactive_border_width = dpi(1),
@@ -49,15 +45,15 @@ function T.init(args)
 	beautiful.tabs_colors = {
 		accent = C.tertiary,
 		focus_bg = C.tertiary,
-		focus_fg = C.white,
+		focus_fg = C.text_invert,
 		focus_border = C.tertiary,
 
 		normal_bg = C.transparent,
-		normal_fg = C.gray,
+		normal_fg = C.text_invert,
 		normal_border = C.tertiary,
 
 		minimize_bg = C.transparent,
-		minimize_fg = C.gray,
+		minimize_fg = C.text_invert,
 		minimize_border = C.transparent,
 	}
 end
@@ -74,6 +70,7 @@ function T.get()
 
 		icon_size = S.icon_size,
 		title_len = S.title_len,
+		title_offset_y = S.title_offset_y,
 		width_factor = S.width_factor,
 
 		inactive_border_width = S.inactive_border_width,

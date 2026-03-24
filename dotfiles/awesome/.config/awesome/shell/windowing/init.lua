@@ -53,7 +53,7 @@ local function apply_module(mod, args)
 	end
 end
 
-local function build_runtime_api(cfg, ui_root)
+local function build_runtime_api(cfg, global_ui)
 	local Behavior = behavior_api()
 	local Runtime = runtime_api()
 	local UI = ui_api()
@@ -61,7 +61,7 @@ local function build_runtime_api(cfg, ui_root)
 
 	return {
 		cfg = cfg,
-		ui_root = ui_root or {},
+		ui_root = global_ui or {},
 
 		behavior = Behavior,
 		runtime = Runtime,
@@ -86,7 +86,7 @@ function M.init(args)
 	args = args or {}
 
 	local cfg = args.cfg or {}
-	local ui_root = args.ui or {}
+	local global_ui = args.ui or {}
 
 	local windowing_cfg = cfg.windowing or {}
 	local focus_cfg = windowing_cfg.focus or {}
@@ -118,16 +118,7 @@ function M.init(args)
 		},
 	}
 
-	local Runtime = runtime_api()
-	local UI = ui_api()
-	local Behavior = behavior_api()
-
-	assert(Runtime.actions and type(Runtime.actions) == "table", "windowing.init: runtime.actions fehlt")
-	assert(Runtime.state and type(Runtime.state) == "table", "windowing.init: runtime.state fehlt")
-	assert(UI.container and type(UI.container) == "table", "windowing.init: ui.container fehlt")
-	assert(UI.theme and type(UI.theme) == "table", "windowing.init: ui.theme fehlt")
-
-	local runtime = build_runtime_api(cfg, ui_root)
+	local runtime = build_runtime_api(cfg, global_ui)
 
 	M.api.runtime_api = runtime
 	M.actions = runtime.actions
@@ -205,7 +196,7 @@ function M.init(args)
 		end,
 	})
 
-	if Behavior.fullscreen_dim and type(Behavior.fullscreen_dim.init) == "function" then
+	if runtime.behavior.fullscreen_dim and type(runtime.behavior.fullscreen_dim.init) == "function" then
 		local dim_cfg = fullscreen_dim_cfg
 
 		if dim_cfg ~= false then
@@ -213,7 +204,7 @@ function M.init(args)
 				dim_cfg = { enabled = true }
 			end
 
-			Behavior.fullscreen_dim.init(dim_cfg)
+			runtime.behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
 

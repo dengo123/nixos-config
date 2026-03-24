@@ -48,6 +48,12 @@ function M.get()
 
 			surface = "cream",
 			surface_focus = "cream_dark",
+
+			foreground = "black",
+			background = "white",
+
+			text = "black",
+			text_invert = "white",
 		},
 
 		fonts = {
@@ -59,6 +65,7 @@ function M.get()
 
 		icons = {
 			system = "ui/assets/flake.png",
+			run = "ui/assets/Run_2001.png",
 		},
 
 		wallpaper = {

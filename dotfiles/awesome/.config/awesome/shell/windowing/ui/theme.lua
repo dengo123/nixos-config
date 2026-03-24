@@ -25,11 +25,6 @@ function M.init(args)
 	local theme = resolved_theme(args)
 	local C = theme.colors or {}
 
-	assert(type(C.secondary) == "string" and C.secondary ~= "", "windowing.theme: theme.colors.secondary fehlt")
-	assert(type(C.primary) == "string" and C.primary ~= "", "windowing.theme: theme.colors.primary fehlt")
-	assert(type(C.gray) == "string" and C.gray ~= "", "windowing.theme: theme.colors.gray fehlt")
-	assert(type(C.white) == "string" and C.white ~= "", "windowing.theme: theme.colors.white fehlt")
-
 	beautiful.border_width = dpi(3)
 	beautiful.border_radius = dpi(10)
 	beautiful.border_normal = C.secondary
@@ -40,7 +35,7 @@ function M.init(args)
 	beautiful.titlebar_bg_normal = C.secondary
 	beautiful.titlebar_bg_focus = C.primary
 	beautiful.titlebar_fg_normal = C.gray
-	beautiful.titlebar_fg_focus = C.white
+	beautiful.titlebar_fg_focus = C.text_invert or C.background
 end
 
 -- =========================================================================
@@ -53,15 +48,10 @@ function M.button_style(args)
 	local theme = resolved_theme(args)
 	local C = theme.colors or {}
 
-	assert(type(C.white) == "string" and C.white ~= "", "windowing.theme: theme.colors.white fehlt")
-	assert(type(C.gray) == "string" and C.gray ~= "", "windowing.theme: theme.colors.gray fehlt")
-	assert(type(C.close) == "string" and C.close ~= "", "windowing.theme: theme.colors.close fehlt")
-	assert(type(C.close_focus) == "string" and C.close_focus ~= "", "windowing.theme: theme.colors.close_focus fehlt")
-
 	return {
 		size = beautiful.titlebar_height,
 		spacing = dpi(4),
-		fg = C.white,
+		fg = C.text_invert or C.background,
 		fg_hover = C.gray,
 		close = C.close,
 		close_hover = C.close_focus,

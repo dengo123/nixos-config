@@ -56,6 +56,7 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 	local radius = tonumber(theme.radius)
 	local inactive_border_width = tonumber(theme.inactive_border_width)
 	local title_len = tonumber(theme.title_len)
+	local title_offset_y = tonumber(theme.title_offset_y)
 
 	local lead = pick_lead(clients)
 
@@ -88,7 +89,12 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 	})
 
 	local title = wibox.widget({
-		title_raw,
+		{
+			title_raw,
+			top = math.max(0, title_offset_y),
+			bottom = math.max(0, -title_offset_y),
+			widget = wibox.container.margin,
+		},
 		widget = wibox.container.place,
 		valign = "center",
 	})

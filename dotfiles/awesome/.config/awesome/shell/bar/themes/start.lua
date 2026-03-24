@@ -19,8 +19,8 @@ local function resolved_theme(args)
 end
 
 local function with_size(font, size)
-	assert(type(font) == "string" and font ~= "", "bar.theme.start: font fehlt")
-	assert(tonumber(size) ~= nil, "bar.theme.start: size fehlt")
+	font = type(font) == "string" and font ~= "" and font or "Sans"
+	size = tonumber(size) or 10
 
 	local base = font:gsub("%s+%d+%.?%d*$", "")
 	return base .. " " .. tostring(size)
@@ -72,14 +72,6 @@ function S.init(args)
 	local F = theme.fonts or {}
 	local I = theme.icons or {}
 
-	assert(type(C.start) == "string" and C.start ~= "", "bar.theme.start: theme.colors.start fehlt")
-	assert(type(C.start_focus) == "string" and C.start_focus ~= "", "bar.theme.start: theme.colors.start_focus fehlt")
-	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.start: theme.colors.white fehlt")
-	assert(
-		type(F.ui_bold_italic) == "string" and F.ui_bold_italic ~= "",
-		"bar.theme.start: theme.fonts.ui_bold_italic fehlt"
-	)
-
 	local system_icon = DEFAULT_SYSTEM_ICON
 	if type(I.system) == "string" and I.system ~= "" then
 		system_icon = I.system
@@ -118,7 +110,7 @@ function S.init(args)
 	beautiful.start_colors = {
 		bg = C.start,
 		bg_hover = C.start_focus,
-		fg = C.white,
+		fg = C.text_invert,
 	}
 end
 

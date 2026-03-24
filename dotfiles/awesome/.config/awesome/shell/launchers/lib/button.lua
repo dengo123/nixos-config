@@ -5,23 +5,20 @@ local wibox = require("wibox")
 
 local B = {}
 
-local runtime_api = {}
+local runtime = {
+	ui = {},
+}
 
-local STYLE = {
+local DEFAULTS = {
 	height = 24,
 	width = 96,
 	radius = 4,
 	pad_h = 14,
-	font = "Sans 11",
 
-	fg = "black",
-	base_bg = "white",
+	font = "Sans 10",
 	transparent = "#00000000",
 
 	outer_bw = 1,
-	outer_col = "black",
-
-	hover_col = "primary",
 	hover_bw = 1,
 	hover_inset = 2,
 }
@@ -31,59 +28,63 @@ local STYLE = {
 -- =========================================================================
 
 local function ui_api()
-	return runtime_api.ui or {}
+	return runtime.ui or {}
 end
 
-local function ui_helpers()
-	return ui_api().helpers or {}
+local function merge(a, b)
+	local out = {}
+
+	for k, v in pairs(a or {}) do
+		out[k] = v
+	end
+
+	for k, v in pairs(b or {}) do
+		out[k] = v
+	end
+
+	return out
 end
 
-local function ui_colors()
-	local colors = ui_api().colors or {}
+local function theme_style()
+	local ui = ui_api()
+	local theme = ui.theme or {}
+	local C = theme.colors or {}
+	local F = theme.fonts or {}
 
-	if type(colors.get) == "function" then
-		local ok, palette = pcall(colors.get)
-		if ok and type(palette) == "table" then
-			return colors, palette
-		end
-	end
+	return {
+		height = DEFAULTS.height,
+		width = DEFAULTS.width,
+		radius = DEFAULTS.radius,
+		pad_h = DEFAULTS.pad_h,
 
-	return colors, colors
+		font = F.ui or DEFAULTS.font,
+
+		fg = C.text or C.black,
+		base_bg = C.background or C.white,
+		transparent = DEFAULTS.transparent,
+
+		outer_bw = DEFAULTS.outer_bw,
+		outer_col = C.foreground or C.black,
+
+		hover_col = C.primary,
+		hover_bw = DEFAULTS.hover_bw,
+		hover_inset = DEFAULTS.hover_inset,
+	}
 end
 
-local function resolve_color(value)
-	local colors_mod, palette = ui_colors()
+local function resolved_style(style_override)
+	local out = merge(DEFAULTS, theme_style())
+	out = merge(out, style_override or {})
 
-	if type(colors_mod.resolve) == "function" then
-		local ok, resolved = pcall(colors_mod.resolve, value)
-		if ok and resolved ~= nil then
-			return resolved
-		end
+	if type(out.font) ~= "string" or out.font == "" then
+		out.font = DEFAULTS.font
 	end
 
-	if type(value) == "string" and palette[value] then
-		return palette[value]
-	end
-
-	return value
+	return out
 end
 
 local function hex_to_rgb01(hex)
-	local colors_mod, _ = ui_colors()
-	local Helpers = ui_helpers()
-
-	if type(colors_mod.hex_to_rgb01) == "function" then
-		local ok, r, g, b = pcall(colors_mod.hex_to_rgb01, hex)
-		if ok then
-			return r, g, b
-		end
-	end
-
-	if type(Helpers.hex_to_rgb01) == "function" then
-		return Helpers.hex_to_rgb01(hex)
-	end
-
-	hex = tostring(resolve_color(hex) or "#000000"):gsub("^#", "")
+	hex = tostring(hex or "#000000"):gsub("^#", "")
 
 	if #hex == 3 then
 		hex = hex:gsub(".", "%1%1")
@@ -104,36 +105,13 @@ local function hex_to_rgb01(hex)
 	return r / 255, g / 255, b / 255
 end
 
-local function resolved_style(style_override)
-	local S = setmetatable(style_override or {}, { __index = STYLE })
-
-	return {
-		height = S.height,
-		width = S.width,
-		radius = S.radius,
-		pad_h = S.pad_h,
-		font = S.font,
-
-		fg = resolve_color(S.fg),
-		base_bg = resolve_color(S.base_bg),
-		transparent = resolve_color(S.transparent),
-
-		outer_bw = S.outer_bw,
-		outer_col = resolve_color(S.outer_col),
-
-		hover_col = resolve_color(S.hover_col),
-		hover_bw = S.hover_bw,
-		hover_inset = S.hover_inset,
-	}
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function B.init(args)
 	args = args or {}
-	runtime_api = args.api or args or {}
+	runtime.ui = args.ui or {}
 	return B
 end
 
@@ -187,7 +165,7 @@ function B.mk_button(label, on_click, style_override)
 	end
 
 	function overlay:draw(_, cr, w, h)
-		if not self._hover_on then
+		if not self._hover_on or not S.hover_col then
 			return
 		end
 

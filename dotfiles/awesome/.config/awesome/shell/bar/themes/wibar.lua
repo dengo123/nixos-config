@@ -26,26 +26,13 @@ function M.init(args)
 	local C = theme.colors or {}
 	local F = theme.fonts or {}
 
-	assert(type(C.primary) == "string" and C.primary ~= "", "bar.theme.wibar: theme.colors.primary fehlt")
-	assert(type(C.secondary) == "string" and C.secondary ~= "", "bar.theme.wibar: theme.colors.secondary fehlt")
-	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.wibar: theme.colors.tertiary fehlt")
-	assert(type(C.surface) == "string" and C.surface ~= "", "bar.theme.wibar: theme.colors.surface fehlt")
-	assert(
-		type(C.surface_focus) == "string" and C.surface_focus ~= "",
-		"bar.theme.wibar: theme.colors.surface_focus fehlt"
-	)
-	assert(type(C.black) == "string" and C.black ~= "", "bar.theme.wibar: theme.colors.black fehlt")
-	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.wibar: theme.colors.white fehlt")
-	assert(type(F.ui) == "string" and F.ui ~= "", "bar.theme.wibar: theme.fonts.ui fehlt")
-	assert(type(F.ui_bold) == "string" and F.ui_bold ~= "", "bar.theme.wibar: theme.fonts.ui_bold fehlt")
-
 	-- ---------------------------------------------------------------------
 	-- Wibar
 	-- ---------------------------------------------------------------------
 
 	beautiful.wibar_height = dpi(32)
 	beautiful.wibar_bg = C.primary
-	beautiful.wibar_fg = C.white
+	beautiful.wibar_fg = C.text_invert
 	beautiful.wibar_on_top = false
 	beautiful.wibar_opacity = 1.0
 	beautiful.wibar_shape = nil
@@ -84,9 +71,11 @@ function M.init(args)
 	-- ---------------------------------------------------------------------
 
 	beautiful.clock_calendar_bg = C.surface
-	beautiful.clock_calendar_fg = C.black
+	beautiful.clock_calendar_fg = C.text
 	beautiful.clock_calendar_border_color = C.surface_focus
 	beautiful.clock_calendar_border_width = 0
+
+	-- beautiful.clock_calendar_bg_focus = C.surface_focus
 
 	-- ---------------------------------------------------------------------
 	-- Layoutbox

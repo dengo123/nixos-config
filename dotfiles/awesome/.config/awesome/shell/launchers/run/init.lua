@@ -28,10 +28,6 @@ local function mod(name)
 	return api()[name]
 end
 
-local function must(cond, msg)
-	assert(cond, "run/init.lua: " .. msg)
-end
-
 local function button_label(spec, fallback)
 	if type(spec) == "table" then
 		return spec.label or fallback
@@ -70,11 +66,9 @@ local function dims(panel)
 	}
 end
 
-local function resolve_theme(cfg, overrides)
+local function resolve_theme(overrides)
 	local Theme = mod("theme")
-	local theme = (Theme and Theme.get and Theme.get(cfg or {}, overrides or {})) or {}
-	must(type(theme) == "table", "theme for 'run' invalid")
-	return theme
+	return (Theme and Theme.get and Theme.get(overrides or {})) or {}
 end
 
 local function resolve_web_cfg(cfg)
@@ -117,6 +111,14 @@ function M.open(opts, Lib)
 	local Providers = mod("providers")
 	local Complete = mod("complete")
 	local Controller = mod("controller")
+	local Theme = mod("theme")
+
+	local _ui = api().ui or {}
+	if Theme and type(Theme.init) == "function" then
+		Theme.init({
+			ui = _ui,
+		})
+	end
 
 	local lib = (Lib.api and Lib.api.lib) or {}
 	local Button = lib.button
@@ -125,8 +127,7 @@ function M.open(opts, Lib)
 	local cfg = opts.cfg or {}
 	local web_cfg = resolve_web_cfg(cfg)
 
-	local th = resolve_theme(cfg, opts.theme)
-	must(th and th.panel and th.search, "theme for 'run' must provide {panel, search}")
+	local th = resolve_theme(opts.theme)
 
 	local panel = th.panel
 	local search = th.search
@@ -202,8 +203,6 @@ function M.open(opts, Lib)
 	local cancel_btn = Button.mk_button(cancel_label, function()
 		act_cancel()
 	end)
-
-	must(type(Lib.ui_api.open_panel) == "function", "Lib.ui_api.open_panel missing")
 
 	local stack = Container.build(panel, d, {
 		title = opts.title or panel.title,

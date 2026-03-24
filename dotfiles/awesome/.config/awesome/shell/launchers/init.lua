@@ -216,9 +216,7 @@ function L.init(args)
 	local Button = lib("button")
 	if Button and type(Button.init) == "function" then
 		Button.init({
-			api = {
-				ui = api().ui or {},
-			},
+			ui = api().ui or {},
 		})
 	end
 
