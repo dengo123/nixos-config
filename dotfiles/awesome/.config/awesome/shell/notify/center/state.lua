@@ -30,17 +30,6 @@ local function clamp_index(state, index)
 	return index
 end
 
-function M.reset_view(s, List)
-	local state = M.state_for_screen(s)
-
-	state.scroll_offset = 0
-	state.selected_index = nil
-
-	if List and type(List.clamp_scroll_offset) == "function" then
-		List.clamp_scroll_offset(state)
-	end
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -54,10 +43,24 @@ function M.state_for_screen(s)
 			scroll_offset = 0,
 			last_total = 0,
 			last_visible = 0,
-			popup_width = nil,
-			popup_height = nil,
 		}
 	return popup_state[key]
+end
+
+function M.reset_view(s, List)
+	local state = M.state_for_screen(s)
+
+	M.clear_selection(state)
+
+	state.scroll_offset = 0
+	state.selected_index = nil
+	state.items = {}
+	state.last_total = 0
+	state.last_visible = 0
+
+	if List and type(List.clamp_scroll_offset) == "function" then
+		List.clamp_scroll_offset(state)
+	end
 end
 
 function M.clear_selection(state)
