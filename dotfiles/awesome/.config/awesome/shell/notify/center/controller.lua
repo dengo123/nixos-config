@@ -39,44 +39,8 @@ local function key_for_screen(s)
 	return tostring(tonumber(s.index) or 0)
 end
 
-local function resolve_popup_geometry(Popup, popup, cfg, height_override)
-	if not (popup and popup.screen and Popup) then
-		return nil
-	end
-
-	local theme = Popup.build_theme and Popup.build_theme() or {}
-	local width = Popup.resolve_width and Popup.resolve_width(theme, popup.screen) or 0
-	local max_height = Popup.resolve_max_height and Popup.resolve_max_height(theme, popup.screen) or 0
-	local bar_position = tostring(bar_cfg(cfg).position or "bottom")
-
-	local height = tonumber(height_override) or max_height
-	if max_height > 0 and height > max_height then
-		height = max_height
-	end
-
-	if height <= 0 then
-		return {
-			x = 0,
-			y = 0,
-			width = width,
-			height = 0,
-		}
-	end
-
-	if Popup.resolve_position then
-		return Popup.resolve_position(theme, popup.screen, bar_position, width, height)
-	end
-
-	return nil
-end
-
-local function center_theme()
-	local notify = beautiful.notify or {}
-	return notify.center or {}
-end
-
 local function center_list_theme()
-	local center = center_theme()
+	local center = (beautiful.notify or {}).center or {}
 
 	return {
 		entry_spacing = tonumber(center.entry_spacing) or 0,
@@ -88,31 +52,6 @@ local function center_list_theme()
 	}
 end
 
-local function list_width_for_popup(width)
-	local t = center_theme()
-	local pad_left = tonumber(t.list_pad_left) or 0
-	local pad_right = tonumber(t.list_pad_right) or 0
-	return math.max(1, (tonumber(width) or 1) - pad_left - pad_right)
-end
-
-local function visible_cards_for_screen(cfg, s)
-	local center = center_cfg(cfg)
-	local fallback = tonumber(center.visible_cards) or 5
-
-	if not s or not s.geometry then
-		return fallback
-	end
-
-	local g = s.geometry
-	local is_portrait = tonumber(g.height) > tonumber(g.width)
-
-	if is_portrait then
-		return tonumber(center.visible_cards_portrait) or fallback
-	end
-
-	return tonumber(center.visible_cards_landscape) or fallback
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -120,6 +59,7 @@ end
 function M.new(args)
 	local cfg = args.cfg or {}
 	local Popup = args.popup
+	local Layout = args.layout
 	local Widget = args.widget
 	local View = args.view
 	local Actions = args.actions
@@ -153,7 +93,15 @@ function M.new(args)
 	end
 
 	function controller.resolve_popup_geometry(popup, height_override)
-		return resolve_popup_geometry(Popup, popup, cfg, height_override)
+		if not (Layout and type(Layout.resolve_geometry) == "function") then
+			return nil
+		end
+
+		return Layout.resolve_geometry({
+			popup = popup,
+			cfg = cfg,
+			height_override = height_override,
+		})
 	end
 
 	function controller.apply_geometry(popup)
@@ -190,8 +138,11 @@ function M.new(args)
 			local entries = (History and History.list and History.list()) or {}
 			local state = State.state_for_screen(popup.screen)
 			local theme = center_list_theme()
-			local list_width = list_width_for_popup(base_geo.width)
-			local visible_limit = visible_cards_for_screen(cfg, popup.screen)
+
+			local list_width = base_geo.width
+			if Layout and type(Layout.resolve_list_width) == "function" then
+				list_width = Layout.resolve_list_width(base_geo.width)
+			end
 
 			local built = List.build({
 				theme = theme,
@@ -200,7 +151,6 @@ function M.new(args)
 				state = state,
 				max_height = base_geo.height,
 				list_width = list_width,
-				visible_limit = visible_limit,
 				widget = Widget,
 				deps = {
 					actions = Actions,
@@ -248,7 +198,7 @@ function M.new(args)
 				fitted_h = base_geo.height
 			end
 
-			popup._pending_geo = resolve_popup_geometry(Popup, popup, cfg, fitted_h)
+			popup._pending_geo = controller.resolve_popup_geometry(popup, fitted_h)
 
 			return panel
 		end)
@@ -287,6 +237,45 @@ function M.new(args)
 			controller.rebuild_popup(popup)
 			controller.apply_geometry(popup)
 		end
+	end
+
+	function controller.activate_selected(s)
+		if not State then
+			return
+		end
+
+		s = s or screen.primary or awful.screen.focused()
+		State.activate_selected(s)
+	end
+
+	function controller.dismiss_selected(s)
+		if not State then
+			return
+		end
+
+		s = s or screen.primary or awful.screen.focused()
+		State.dismiss_selected(s)
+
+		local popup = popups[key_for_screen(s)]
+		if popup then
+			controller.rebuild_popup(popup)
+			controller.apply_geometry(popup)
+		end
+	end
+
+	function controller.clear_history()
+		if not Actions or type(Actions.clear_history) ~= "function" then
+			return
+		end
+
+		Actions.clear_history(cfg)
+
+		controller.each_popup(function(popup)
+			if popup then
+				controller.rebuild_popup(popup)
+				controller.apply_geometry(popup)
+			end
+		end)
 	end
 
 	function controller.set_visible(open)

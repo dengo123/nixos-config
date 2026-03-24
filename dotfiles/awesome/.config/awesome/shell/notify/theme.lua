@@ -38,6 +38,8 @@ function M.init(args)
 		radius = dpi(10),
 		icon_size = dpi(28),
 		margin = dpi(8),
+		padding = dpi(8),
+		spacing = dpi(8),
 		border_w = dpi(1),
 	}
 
@@ -55,7 +57,7 @@ function M.init(args)
 
 		margin_top = dpi(8),
 		margin_right = dpi(8),
-		margin_bottom = dpi(0),
+		margin_bottom = dpi(10),
 
 		panel_bg = U.transparent,
 
@@ -65,11 +67,11 @@ function M.init(args)
 
 		entry_bg_hover = C.surface_focus,
 		entry_fg_hover = C.text or C.foreground,
-		entry_border_hover = C.primary,
+		entry_border_hover = C.surface_focus,
 
 		entry_bg_focus = C.surface_focus,
 		entry_fg_focus = C.text or C.foreground,
-		entry_border_focus = C.primary,
+		entry_border_focus = C.surface_focus,
 
 		entry_radius = dpi(10),
 		entry_border_w = dpi(1),
@@ -79,7 +81,7 @@ function M.init(args)
 		text_inset_top = dpi(4),
 		text_inset_bottom = dpi(4),
 
-		list_pad_top = dpi(0),
+		list_pad_top = dpi(8),
 		list_pad_right = dpi(0),
 		list_pad_bottom = dpi(0),
 		list_pad_left = dpi(0),
@@ -88,7 +90,7 @@ function M.init(args)
 		message_font = F.ui,
 
 		action_fg = C.text or C.foreground,
-		action_fg_hover = C.primary,
+		action_fg_hover = C.text_focus,
 		action_spacing = dpi(8),
 		action_row_spacing = dpi(6),
 		action_icon = "▪",

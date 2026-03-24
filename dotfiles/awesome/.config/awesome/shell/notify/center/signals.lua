@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/notify/center/signals.lua
 local M = {}
 
 -- =========================================================================
@@ -15,6 +16,9 @@ function M.register(args)
 	local sync_popups = args.sync_popups
 	local scroll_up = args.scroll_up
 	local scroll_down = args.scroll_down
+	local activate_selected = args.activate_selected
+	local dismiss_selected = args.dismiss_selected
+	local clear_history = args.clear_history
 	local before_history_rebuild = args.before_history_rebuild
 	local after_history_rebuild = args.after_history_rebuild
 
@@ -54,6 +58,24 @@ function M.register(args)
 	awesome.connect_signal("notify::center_scroll_down", function()
 		if type(scroll_down) == "function" then
 			scroll_down()
+		end
+	end)
+
+	awesome.connect_signal("notify::center_activate_selected", function()
+		if type(activate_selected) == "function" then
+			activate_selected()
+		end
+	end)
+
+	awesome.connect_signal("notify::center_dismiss_selected", function()
+		if type(dismiss_selected) == "function" then
+			dismiss_selected()
+		end
+	end)
+
+	awesome.connect_signal("notify::center_clear_history", function()
+		if type(clear_history) == "function" then
+			clear_history()
 		end
 	end)
 

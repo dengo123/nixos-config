@@ -49,6 +49,10 @@ local function set_signals_ready(value)
 	signals_ready = (value == true)
 end
 
+local function current_screen(s)
+	return s or screen.primary or awful.screen.focused()
+end
+
 local function register_escape_signal()
 	if center_cfg().close_on_escape ~= true then
 		return
@@ -74,12 +78,30 @@ local function register_signals()
 		rebuild_popup = controller.rebuild_popup,
 		apply_geometry = controller.apply_geometry,
 		sync_popups = controller.sync_popups,
+
 		scroll_up = function()
-			controller.scroll_up(screen.primary or awful.screen.focused())
+			controller.scroll_up(current_screen())
 		end,
 		scroll_down = function()
-			controller.scroll_down(screen.primary or awful.screen.focused())
+			controller.scroll_down(current_screen())
 		end,
+
+		activate_selected = function()
+			if type(controller.activate_selected) == "function" then
+				controller.activate_selected(current_screen())
+			end
+		end,
+		dismiss_selected = function()
+			if type(controller.dismiss_selected) == "function" then
+				controller.dismiss_selected(current_screen())
+			end
+		end,
+		clear_history = function()
+			if type(controller.clear_history) == "function" then
+				controller.clear_history()
+			end
+		end,
+
 		before_history_rebuild = function(popup)
 			if State and type(State.prepare_history_update) == "function" then
 				State.prepare_history_update(popup, injected.history)
@@ -105,6 +127,7 @@ function M.init(args)
 	M.api = {
 		ui = args.ui or {},
 		popup = safe_require("shell.notify.center.popup"),
+		layout = safe_require("shell.notify.center.layout"),
 		signals = safe_require("shell.notify.center.signals"),
 		widget = safe_require("shell.notify.center.widget"),
 		view = safe_require("shell.notify.center.view"),
@@ -126,6 +149,7 @@ function M.init(args)
 		M.controller = ControllerMod.new({
 			cfg = runtime_cfg,
 			popup = mod("popup"),
+			layout = mod("layout"),
 			widget = mod("widget"),
 			view = mod("view"),
 			actions = mod("actions"),
@@ -151,7 +175,7 @@ function M.selected_index(s)
 		return nil
 	end
 
-	local state = State.state_for_screen(s or screen.primary or awful.screen.focused())
+	local state = State.state_for_screen(current_screen(s))
 	return state.selected_index
 end
 
@@ -161,7 +185,7 @@ function M.select_next(s)
 		return
 	end
 
-	s = s or screen.primary or awful.screen.focused()
+	s = current_screen(s)
 	local state = State.state_for_screen(s)
 	local current = state.selected_index or 0
 	State.set_selected_index(s, current + 1)
@@ -173,41 +197,39 @@ function M.select_prev(s)
 		return
 	end
 
-	s = s or screen.primary or awful.screen.focused()
+	s = current_screen(s)
 	local state = State.state_for_screen(s)
 	local current = state.selected_index or 2
 	State.set_selected_index(s, current - 1)
 end
 
 function M.activate_selected(s)
-	local State = mod("state")
-	if not (State and type(State.activate_selected) == "function") then
-		return
+	if M.controller and type(M.controller.activate_selected) == "function" then
+		M.controller.activate_selected(current_screen(s))
 	end
-
-	s = s or screen.primary or awful.screen.focused()
-	State.activate_selected(s)
 end
 
 function M.dismiss_selected(s)
-	local State = mod("state")
-	if not (State and type(State.dismiss_selected) == "function") then
-		return
+	if M.controller and type(M.controller.dismiss_selected) == "function" then
+		M.controller.dismiss_selected(current_screen(s))
 	end
+end
 
-	s = s or screen.primary or awful.screen.focused()
-	State.dismiss_selected(s)
+function M.clear_history()
+	if M.controller and type(M.controller.clear_history) == "function" then
+		M.controller.clear_history()
+	end
 end
 
 function M.scroll_up(s)
 	if M.controller then
-		M.controller.scroll_up(s)
+		M.controller.scroll_up(current_screen(s))
 	end
 end
 
 function M.scroll_down(s)
 	if M.controller then
-		M.controller.scroll_down(s)
+		M.controller.scroll_down(current_screen(s))
 	end
 end
 

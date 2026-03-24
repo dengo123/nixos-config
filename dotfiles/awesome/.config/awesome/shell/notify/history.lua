@@ -91,6 +91,49 @@ local function normalize_entry(notification)
 	}
 end
 
+local function same_entry(a, b)
+	if not a or not b then
+		return false
+	end
+
+	if a.raw ~= nil and b.raw ~= nil and a.raw == b.raw then
+		return true
+	end
+
+	return a.timestamp == b.timestamp and a.title == b.title and a.message == b.message and a.app_name == b.app_name
+end
+
+local function find_entry_index(target)
+	if type(target) ~= "table" then
+		return nil
+	end
+
+	for i, entry in ipairs(entries) do
+		if same_entry(entry, target) then
+			return i
+		end
+	end
+
+	return nil
+end
+
+local function remove_at(index)
+	index = tonumber(index)
+
+	if not index or index < 1 or index > #entries then
+		return nil
+	end
+
+	local removed = table.remove(entries, index)
+
+	if removed and removed.read ~= true then
+		unread_count = math.max(0, unread_count - 1)
+	end
+
+	emit_changed()
+	return removed
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -170,6 +213,23 @@ function M.mark_read_reverse(index)
 	entry.read = true
 	unread_count = math.max(0, unread_count - 1)
 	emit_changed()
+end
+
+function M.remove(entry)
+	local index = find_entry_index(entry)
+	if not index then
+		return nil
+	end
+
+	return remove_at(index)
+end
+
+function M.delete(entry)
+	return M.remove(entry)
+end
+
+function M.dismiss(entry)
+	return M.remove(entry)
 end
 
 function M.clear()

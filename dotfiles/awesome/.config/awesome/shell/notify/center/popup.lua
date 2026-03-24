@@ -1,6 +1,5 @@
 -- ~/.config/awesome/shell/notify/center/popup.lua
 local awful = require("awful")
-local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
@@ -14,23 +13,6 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function center_theme()
-	local notify = beautiful.notify or {}
-	return notify.center or {}
-end
-
-local function clamp(value, min_v, max_v)
-	if value < min_v then
-		return min_v
-	end
-
-	if max_v ~= nil and value > max_v then
-		return max_v
-	end
-
-	return value
-end
 
 local function disarm_close_guard()
 	if runtime.root_buttons then
@@ -74,69 +56,6 @@ local function arm_close_guard(on_close)
 
 	runtime.client_callback = client_cb
 	client.connect_signal("button::press", client_cb)
-end
-
--- =========================================================================
--- Theme / Geometry
--- =========================================================================
-
-function M.build_theme()
-	local t = center_theme()
-
-	return {
-		width_factor = tonumber(t.width_factor),
-		min_width = tonumber(t.min_width),
-		max_width = tonumber(t.max_width),
-
-		min_height = tonumber(t.min_height),
-		max_height = tonumber(t.max_height),
-
-		offset_x = tonumber(t.offset_x),
-		offset_y = tonumber(t.offset_y),
-
-		margin_top = tonumber(t.margin_top),
-		margin_right = tonumber(t.margin_right),
-		margin_bottom = tonumber(t.margin_bottom),
-	}
-end
-
-function M.resolve_width(theme, s)
-	local wa = s.workarea
-	local width_factor = tonumber(theme.width_factor) or 0.30
-	local min_width = tonumber(theme.min_width) or 320
-	local max_width = tonumber(theme.max_width)
-
-	local width = math.floor(wa.width * width_factor)
-	return clamp(width, min_width, max_width)
-end
-
-function M.resolve_max_height(theme, s)
-	local wa = s.workarea
-	local usable_h = wa.height - (tonumber(theme.margin_top) or 0) - (tonumber(theme.margin_bottom) or 0)
-	local min_height = tonumber(theme.min_height) or 1
-	local max_height = tonumber(theme.max_height)
-
-	return clamp(usable_h, min_height, max_height)
-end
-
-function M.resolve_position(theme, s, bar_position, width, height)
-	local wa = s.workarea
-
-	local x = wa.x + wa.width - width - (tonumber(theme.margin_right) or 0) + (tonumber(theme.offset_x) or 0)
-	local y
-
-	if tostring(bar_position or "bottom") == "top" then
-		y = wa.y + (tonumber(theme.margin_top) or 0) + (tonumber(theme.offset_y) or 0)
-	else
-		y = wa.y + wa.height - height - (tonumber(theme.margin_bottom) or 0) + (tonumber(theme.offset_y) or 0)
-	end
-
-	return {
-		x = x,
-		y = y,
-		width = width,
-		height = height,
-	}
 end
 
 -- =========================================================================
