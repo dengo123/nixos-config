@@ -214,6 +214,9 @@ return {
 			close_on_click_outside = true,
 			close_on_tag_switch = true,
 			close_on_client_focus = false,
+
+			visible_cards = 5,
+			visible_cards_portrait = 7,
 		},
 
 		actions = {

@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/notify/center/list.lua
 local wibox = require("wibox")
 
 local M = {}
@@ -80,10 +81,15 @@ local function max_scroll_offset_for(total, visible)
 	return math.max(0, total - visible)
 end
 
-local function resolve_window(heights, spacing, avail_h, scroll_offset)
+local function resolve_window(heights, spacing, avail_h, scroll_offset, visible_limit)
 	local total = #heights
 	if total == 0 then
 		return nil, nil, 0
+	end
+
+	local limit = tonumber(visible_limit)
+	if limit ~= nil and limit < 1 then
+		limit = 1
 	end
 
 	local bottom_index = total - (scroll_offset or 0)
@@ -99,6 +105,10 @@ local function resolve_window(heights, spacing, avail_h, scroll_offset)
 	local visible = 0
 
 	while top_index >= 1 do
+		if limit and visible >= limit then
+			break
+		end
+
 		local h = heights[top_index] or 0
 		local extra = (top_index < bottom_index) and spacing or 0
 		local needed = used + extra + h
@@ -157,10 +167,10 @@ end
 function M.build(args)
 	local theme = args.theme or {}
 	local entries = args.entries or {}
-	local cfg = args.cfg or {}
 	local state = args.state or {}
 	local max_height = args.max_height
 	local list_width = math.max(1, tonumber(args.list_width) or 1)
+	local visible_limit = tonumber(args.visible_limit)
 
 	if #entries == 0 then
 		return nil
@@ -187,7 +197,8 @@ function M.build(args)
 	local spacing = theme.entry_spacing or 0
 	local heights = measure_all_heights(items_all, list_width)
 
-	local top_index, bottom_index, visible = resolve_window(heights, spacing, avail_h, state.scroll_offset)
+	local top_index, bottom_index, visible =
+		resolve_window(heights, spacing, avail_h, state.scroll_offset, visible_limit)
 
 	if not top_index or not bottom_index then
 		return {
@@ -204,7 +215,7 @@ function M.build(args)
 	local max_offset = max_scroll_offset_for(total, visible)
 	if state.scroll_offset > max_offset then
 		state.scroll_offset = max_offset
-		top_index, bottom_index, visible = resolve_window(heights, spacing, avail_h, state.scroll_offset)
+		top_index, bottom_index, visible = resolve_window(heights, spacing, avail_h, state.scroll_offset, visible_limit)
 	end
 
 	local list = wibox.layout.fixed.vertical()

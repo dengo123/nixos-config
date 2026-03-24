@@ -95,6 +95,24 @@ local function list_width_for_popup(width)
 	return math.max(1, (tonumber(width) or 1) - pad_left - pad_right)
 end
 
+local function visible_cards_for_screen(cfg, s)
+	local center = center_cfg(cfg)
+	local fallback = tonumber(center.visible_cards) or 5
+
+	if not s or not s.geometry then
+		return fallback
+	end
+
+	local g = s.geometry
+	local is_portrait = tonumber(g.height) > tonumber(g.width)
+
+	if is_portrait then
+		return tonumber(center.visible_cards_portrait) or fallback
+	end
+
+	return tonumber(center.visible_cards_landscape) or fallback
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -173,6 +191,7 @@ function M.new(args)
 			local state = State.state_for_screen(popup.screen)
 			local theme = center_list_theme()
 			local list_width = list_width_for_popup(base_geo.width)
+			local visible_limit = visible_cards_for_screen(cfg, popup.screen)
 
 			local built = List.build({
 				theme = theme,
@@ -181,6 +200,7 @@ function M.new(args)
 				state = state,
 				max_height = base_geo.height,
 				list_width = list_width,
+				visible_limit = visible_limit,
 				widget = Widget,
 				deps = {
 					actions = Actions,
