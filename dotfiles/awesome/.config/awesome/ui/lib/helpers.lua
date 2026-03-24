@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/helpers.lua
+-- ~/.config/awesome/ui/lib/helpers.lua
 local xr = require("beautiful.xresources")
 local dpi = xr.apply_dpi
 

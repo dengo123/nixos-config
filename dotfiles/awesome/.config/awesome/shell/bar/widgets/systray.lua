@@ -5,16 +5,6 @@ local wibox = require("wibox")
 local M = {}
 
 -- =========================================================================
--- Helpers
--- =========================================================================
-
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "systray: " .. name .. " fehlt/ungültig")
-	return n
-end
-
--- =========================================================================
 -- Public API
 -- =========================================================================
 
@@ -25,10 +15,10 @@ function M.build(opts)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	local bar_height = require_number(beautiful.wibar_height, "beautiful.wibar_height")
-	local theme_pad_h = require_number(beautiful.systray_pad_h, "beautiful.systray_pad_h")
-	local theme_pad_v = require_number(beautiful.systray_pad_v, "beautiful.systray_pad_v")
-	local theme_base_size = require_number(beautiful.systray_base_size, "beautiful.systray_base_size")
+	local bar_height = tonumber(beautiful.wibar_height)
+	local theme_pad_h = tonumber(beautiful.systray_pad_h)
+	local theme_pad_v = tonumber(beautiful.systray_pad_v)
+	local theme_base_size = tonumber(beautiful.systray_base_size)
 
 	-- ---------------------------------------------------------------------
 	-- Config

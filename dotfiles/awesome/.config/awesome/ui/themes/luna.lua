@@ -5,23 +5,49 @@ function M.get()
 	return {
 		name = "luna",
 
-		colors = {
-			primary = "#235CDB",
-			secondary = "#0B89E7",
-			tertiary = "#1A50B8",
+		palette = {
+			blue = "#235CDB",
+			blue_dark = "#1A50B8",
 
-			start = "#13B12D",
-			start_focus = "#11A229",
+			teal = "#0B89E7",
+			teal_dark = "#086FBA",
 
-			close = "#E5210B",
-			close_focus = "#D21E0A",
+			green = "#13B12D",
+			green_dark = "#11A229",
 
-			surface = "#F0EAD6",
-			surface_focus = "#E6DCBB",
+			red = "#E5210B",
+			red_dark = "#D21E0A",
+
+			cream = "#F0EAD6",
+			cream_dark = "#E6DCBB",
+
+			orange = "#F39C12",
+			orange_dark = "#D68910",
+
+			yellow = "#E4BE26",
+			yellow_dark = "#ECAD1C",
+
+			purple = "#8E44AD",
+			purple_dark = "#6C3483",
 
 			white = "#FFFFFF",
 			black = "#000000",
 			gray = "#DDDDDD",
+		},
+
+		roles = {
+			primary = "blue",
+			secondary = "teal",
+			tertiary = "blue_dark",
+
+			start = "green",
+			start_focus = "green_dark",
+
+			close = "red",
+			close_focus = "red_dark",
+
+			surface = "cream",
+			surface_focus = "cream_dark",
 		},
 
 		fonts = {

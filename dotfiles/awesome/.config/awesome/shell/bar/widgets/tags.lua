@@ -10,15 +10,19 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function require_theme_table(value, name)
-	assert(type(value) == "table", "tags: " .. name .. " fehlt/ungültig")
-	return value
+local function as_table(value, fallback)
+	if type(value) == "table" then
+		return value
+	end
+	return fallback or {}
 end
 
-local function require_number(value, name)
+local function as_number(value, fallback)
 	local n = tonumber(value)
-	assert(n ~= nil, "tags: " .. name .. " fehlt/ungültig")
-	return n
+	if n ~= nil then
+		return n
+	end
+	return fallback
 end
 
 local function first_string(...)
@@ -32,13 +36,20 @@ local function first_string(...)
 end
 
 local function tag_count(s)
-	local tags = s.tags or {}
+	local tags = (s and s.tags) or {}
 	return #tags
 end
 
 local function selected_index(s)
-	local t = s.selected_tag or awful.screen.focused().selected_tag
+	local focused = awful.screen.focused()
+	local t = (s and s.selected_tag) or (focused and focused.selected_tag)
 	return (t and t.index) or 1
+end
+
+local function tags_mode(opts)
+	local cfg = (opts and opts.cfg) or {}
+	local tags_cfg = cfg.tags or {}
+	return string.lower(tostring(tags_cfg.mode or "fixed"))
 end
 
 -- =========================================================================
@@ -48,21 +59,20 @@ end
 function M.build(s, opts)
 	opts = opts or {}
 
+	local mode = tags_mode(opts)
+
 	-- ---------------------------------------------------------------------
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	local theme = require_theme_table(beautiful.tags_indicator, "beautiful.tags_indicator")
+	local theme = as_table(beautiful.tags_indicator, {})
 
-	local pad_h = tonumber(opts.pad_h) or require_number(theme.pad_h, "beautiful.tags_indicator.pad_h")
-	local pad_v = tonumber(opts.pad_v) or require_number(theme.pad_v, "beautiful.tags_indicator.pad_v")
-	local collapsed_pad_h = require_number(theme.collapsed_pad_h, "beautiful.tags_indicator.collapsed_pad_h")
+	local pad_h = as_number(opts.pad_h, as_number(theme.pad_h, 8)) or 8
+	local pad_v = as_number(opts.pad_v, as_number(theme.pad_v, 2)) or 2
+	local collapsed_pad_h = as_number(theme.collapsed_pad_h, pad_h) or pad_h
 
-	local font = first_string(opts.font, theme.font, beautiful.font)
-	assert(font, "tags: font fehlt/ungültig")
-
-	local format = first_string(opts.format, theme.fmt)
-	assert(format, "tags: beautiful.tags_indicator.fmt fehlt/ungültig")
+	local font = first_string(opts.font, theme.font, beautiful.font, "Sans 10")
+	local format = first_string(opts.format, theme.fmt, "%d")
 
 	-- ---------------------------------------------------------------------
 	-- Widgets
@@ -85,7 +95,7 @@ function M.build(s, opts)
 	})
 
 	-- ---------------------------------------------------------------------
-	-- State Helpers
+	-- State
 	-- ---------------------------------------------------------------------
 
 	local function set_normal_margins()
@@ -110,7 +120,7 @@ function M.build(s, opts)
 	end
 
 	local function refresh()
-		if tag_count(s) <= 1 then
+		if mode == "dynamic" and tag_count(s) <= 1 then
 			set_collapsed_spacing()
 			return
 		end

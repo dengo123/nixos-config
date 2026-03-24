@@ -1,5 +1,4 @@
 -- ~/.config/awesome/shell/bar/reveal.lua
-local awful = require("awful")
 local gears = require("gears")
 local wibox = require("wibox")
 
@@ -198,6 +197,17 @@ local function peek_bar(s, duration)
 	hide_bar_later(s, peek_duration)
 end
 
+local function peek_for_screen(s)
+	if not (s and s.valid) then
+		return
+	end
+
+	local opts = opts_by_screen[s] or {}
+	if reveal_active_for_screen(s) then
+		peek_bar(s, opts.layout_peek_duration)
+	end
+end
+
 local function ensure_trigger(s)
 	local bar = bars[s]
 
@@ -348,23 +358,38 @@ function M.init_signals()
 	client.connect_signal("manage", schedule_update)
 	client.connect_signal("unmanage", schedule_update)
 
+	client.connect_signal("focus", function(c)
+		if not (c and c.screen) then
+			return
+		end
+
+		schedule_update()
+		gears.timer.delayed_call(function()
+			peek_for_screen(c.screen)
+		end)
+	end)
+
 	tag.connect_signal("property::layout", function(t)
 		if not (t and t.screen) then
 			return
 		end
 
-		local s = t.screen
-		local opts = opts_by_screen[s] or {}
-
 		schedule_update()
 		gears.timer.delayed_call(function()
-			if s and s.valid and reveal_active_for_screen(s) then
-				peek_bar(s, opts.layout_peek_duration)
-			end
+			peek_for_screen(t.screen)
 		end)
 	end)
 
-	tag.connect_signal("property::selected", schedule_update)
+	tag.connect_signal("property::selected", function(t)
+		if not (t and t.screen and t.selected) then
+			return
+		end
+
+		schedule_update()
+		gears.timer.delayed_call(function()
+			peek_for_screen(t.screen)
+		end)
+	end)
 
 	screen.connect_signal("property::geometry", function(s)
 		if bars[s] then

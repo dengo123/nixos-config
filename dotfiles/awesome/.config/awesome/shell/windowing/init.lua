@@ -53,7 +53,7 @@ local function apply_module(mod, args)
 	end
 end
 
-local function build_runtime_api(cfg)
+local function build_runtime_api(cfg, ui_root)
 	local Behavior = behavior_api()
 	local Runtime = runtime_api()
 	local UI = ui_api()
@@ -61,6 +61,7 @@ local function build_runtime_api(cfg)
 
 	return {
 		cfg = cfg,
+		ui_root = ui_root or {},
 
 		behavior = Behavior,
 		runtime = Runtime,
@@ -85,6 +86,8 @@ function M.init(args)
 	args = args or {}
 
 	local cfg = args.cfg or {}
+	local ui_root = args.ui or {}
+
 	local windowing_cfg = cfg.windowing or {}
 	local focus_cfg = windowing_cfg.focus or {}
 	local fullscreen_dim_cfg = windowing_cfg.fullscreen_dim or {}
@@ -124,7 +127,7 @@ function M.init(args)
 	assert(UI.container and type(UI.container) == "table", "windowing.init: ui.container fehlt")
 	assert(UI.theme and type(UI.theme) == "table", "windowing.init: ui.theme fehlt")
 
-	local runtime = build_runtime_api(cfg)
+	local runtime = build_runtime_api(cfg, ui_root)
 
 	M.api.runtime_api = runtime
 	M.actions = runtime.actions
@@ -132,24 +135,35 @@ function M.init(args)
 	init_module(runtime.actions, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 	})
 
 	init_module(runtime.state, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 	})
 
 	init_module(runtime.ui.theme, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 	})
 
 	local shape_fn = runtime.ui.theme and runtime.ui.theme.shape_fn and runtime.ui.theme.shape_fn() or nil
-	local button_style = runtime.ui.theme and runtime.ui.theme.button_style and runtime.ui.theme.button_style(cfg) or {}
+	local button_style = runtime.ui.theme
+			and runtime.ui.theme.button_style
+			and runtime.ui.theme.button_style({
+				cfg = cfg,
+				api = runtime,
+				ui = runtime.ui_root,
+			})
+		or {}
 
 	apply_module(runtime.rules, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 		modkey = modkey,
 		mouse = mouse,
 	})
@@ -157,6 +171,7 @@ function M.init(args)
 	init_module(runtime.behavior.focus, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 		raise_on_mouse = focus_cfg.raise_on_mouse,
 		block_ms = focus_cfg.block_ms,
 		center_mouse = focus_cfg.center_mouse,
@@ -165,11 +180,13 @@ function M.init(args)
 	init_module(runtime.titlebars, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 	})
 
 	init_module(runtime.ui.container, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 		shape_fn = shape_fn,
 		rounded_corners = (windowing_cfg.rounded_corners ~= false),
 	})
@@ -177,11 +194,13 @@ function M.init(args)
 	apply_module(runtime.runtime.signals, {
 		cfg = cfg,
 		api = runtime,
+		ui = runtime.ui_root,
 		focus = runtime.behavior.focus,
 		container = runtime.ui.container,
 		attach_titlebar = function(c)
 			runtime.ui.container.attach_titlebar(c, button_style, runtime.actions, cfg, {
 				api = runtime,
+				ui = runtime.ui_root,
 			})
 		end,
 	})

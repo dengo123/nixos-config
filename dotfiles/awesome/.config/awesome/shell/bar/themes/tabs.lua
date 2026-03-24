@@ -1,7 +1,6 @@
 -- ~/.config/awesome/shell/bar/themes/tabs.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
-local Colors = require("ui.colors")
 
 local dpi = xr.apply_dpi
 
@@ -11,14 +10,9 @@ local T = {}
 -- Helpers
 -- =========================================================================
 
-local function resolved_colors(args)
-	local cfg = (args and args.cfg) or {}
-
-	if type(Colors.set_runtime_cfg) == "function" then
-		Colors.set_runtime_cfg(cfg)
-	end
-
-	return Colors.get()
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
 end
 
 -- =========================================================================
@@ -28,23 +22,16 @@ end
 function T.init(args)
 	args = args or {}
 
-	local C = resolved_colors(args)
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
 
-	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.tabs: colors.tertiary fehlt")
-	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.tabs: colors.white fehlt")
-	assert(type(C.gray) == "string" and C.gray ~= "", "bar.theme.tabs: colors.gray fehlt")
-	assert(type(C.transparent) == "string" and C.transparent ~= "", "bar.theme.tabs: colors.transparent fehlt")
-
-	-- ---------------------------------------------------------------------
-	-- Geometry
-	-- ---------------------------------------------------------------------
+	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.tabs: theme.colors.tertiary fehlt")
+	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.tabs: theme.colors.white fehlt")
+	assert(type(C.gray) == "string" and C.gray ~= "", "bar.theme.tabs: theme.colors.gray fehlt")
+	assert(type(C.transparent) == "string" and C.transparent ~= "", "bar.theme.tabs: theme.colors.transparent fehlt")
 
 	local wibar_height = tonumber(beautiful.wibar_height) or 28
 	local icon_size = math.floor(wibar_height * 0.8)
-
-	-- ---------------------------------------------------------------------
-	-- Tabs
-	-- ---------------------------------------------------------------------
 
 	beautiful.tabs = {
 		spacing = dpi(2),
@@ -58,10 +45,6 @@ function T.init(args)
 
 		inactive_border_width = dpi(1),
 	}
-
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
 
 	beautiful.tabs_colors = {
 		accent = C.tertiary,

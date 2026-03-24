@@ -288,7 +288,10 @@ function M.init(args)
 	local Rules = mod("rules")
 
 	if Theme and type(Theme.init) == "function" then
-		Theme.init(cfg)
+		Theme.init({
+			cfg = cfg,
+			ui = _ui,
+		})
 	end
 
 	local notify_theme = require_notify_theme()
@@ -307,7 +310,10 @@ function M.init(args)
 	end
 
 	if Center and type(Center.init) == "function" then
-		Center.init(cfg)
+		Center.init({
+			cfg = cfg,
+			ui = _ui,
+		})
 	end
 
 	register_center_signals()

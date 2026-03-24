@@ -10,17 +10,6 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "clock: " .. name .. " fehlt/ungültig")
-	return n
-end
-
-local function require_string(value, name)
-	assert(type(value) == "string" and value ~= "", "clock: " .. name .. " fehlt/ungültig")
-	return value
-end
-
 local function resolve_calendar_attach_pos(bar_position)
 	if bar_position == "top" then
 		return "tr"
@@ -62,19 +51,17 @@ end
 local function build_calendar(s, clock, opts)
 	local use_menu_theme = (opts.calendar_use_menu_theme == true)
 
-	local bg_normal = use_menu_theme and require_string(beautiful.menu_bg_normal, "beautiful.menu_bg_normal")
-		or require_string(beautiful.clock_calendar_bg, "beautiful.clock_calendar_bg")
+	local bg_normal = use_menu_theme and beautiful.menu_bg_normal or beautiful.clock_calendar_bg
 
-	local fg_normal = use_menu_theme and require_string(beautiful.menu_fg_normal, "beautiful.menu_fg_normal")
-		or require_string(beautiful.clock_calendar_fg, "beautiful.clock_calendar_fg")
+	local bg_focus = use_menu_theme and beautiful.menu_bg_focus or beautiful.clock_calendar_bg_focus
 
-	local fg_focus = use_menu_theme and require_string(beautiful.menu_fg_focus, "beautiful.menu_fg_focus")
-		or require_string(beautiful.clock_calendar_fg, "beautiful.clock_calendar_fg")
+	local fg_normal = use_menu_theme and beautiful.menu_fg_normal or beautiful.clock_calendar_fg
 
-	local border_color = use_menu_theme and require_string(beautiful.menu_border_color, "beautiful.menu_border_color")
-		or require_string(beautiful.clock_calendar_border_color, "beautiful.clock_calendar_border_color")
+	local fg_focus = use_menu_theme and beautiful.menu_fg_focus or beautiful.clock_calendar_fg
 
-	local border_width = require_number(beautiful.clock_calendar_border_width, "beautiful.clock_calendar_border_width")
+	local border_color = use_menu_theme and beautiful.menu_border_color or beautiful.clock_calendar_border_color
+
+	local border_width = tonumber(beautiful.clock_calendar_border_width)
 
 	local cal = awful.widget.calendar_popup.month({
 		screen = s,
@@ -140,11 +127,11 @@ function M.build(s, opts)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	local bar_height = require_number(beautiful.wibar_height, "beautiful.wibar_height")
-	local pad_h = require_number(beautiful.clock_pad_h, "beautiful.clock_pad_h")
-	local pad_v = require_number(beautiful.clock_pad_v, "beautiful.clock_pad_v")
-	local bg = require_string(beautiful.clock_bg, "beautiful.clock_bg")
-	local fg = require_string(beautiful.clock_fg, "beautiful.clock_fg")
+	local bar_height = tonumber(beautiful.wibar_height)
+	local pad_h = tonumber(beautiful.clock_pad_h)
+	local pad_v = tonumber(beautiful.clock_pad_v)
+	local bg = beautiful.clock_bg
+	local fg = beautiful.clock_fg
 
 	-- ---------------------------------------------------------------------
 	-- Config

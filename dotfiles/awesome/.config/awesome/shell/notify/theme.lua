@@ -7,29 +7,40 @@ local dpi = xr.apply_dpi
 local M = {}
 
 -- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
+end
+
+-- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init(cfg)
-	cfg = cfg or {}
+function M.init(args)
+	args = args or {}
 
-	-- ---------------------------------------------------------------------
-	-- Colors
-	-- ---------------------------------------------------------------------
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
 
-	local C = cfg.colors or {}
-	local H = cfg.helpers or {}
-
-	local border = (H and H.adjust_color and C.cream) and H.adjust_color(C.cream, -14) or (C.black or "#000000")
+	assert(type(C.surface) == "string" and C.surface ~= "", "notify.theme: theme.colors.surface fehlt")
+	assert(
+		type(C.surface_focus) == "string" and C.surface_focus ~= "",
+		"notify.theme: theme.colors.surface_focus fehlt"
+	)
+	assert(type(C.black) == "string" and C.black ~= "", "notify.theme: theme.colors.black fehlt")
+	assert(type(C.transparent) == "string" and C.transparent ~= "", "notify.theme: theme.colors.transparent fehlt")
 
 	-- ---------------------------------------------------------------------
 	-- Notify
 	-- ---------------------------------------------------------------------
 
 	beautiful.notify = {
-		bg = C.cream,
+		bg = C.surface,
 		fg = C.black,
-		border = C.black,
+		border = C.surface_focus,
 		radius = dpi(10),
 		icon_size = dpi(28),
 		margin = dpi(8),
@@ -56,11 +67,11 @@ function M.init(cfg)
 		margin_right = dpi(8),
 		margin_bottom = dpi(0),
 
-		panel_bg = "#00000000",
+		panel_bg = C.transparent,
 
-		entry_bg = C.cream,
+		entry_bg = C.surface,
 		entry_fg = C.black,
-		entry_border = C.black,
+		entry_border = C.surface_focus,
 
 		entry_radius = dpi(10),
 		entry_border_w = dpi(1),
@@ -78,9 +89,9 @@ function M.init(cfg)
 		list_pad_bottom = dpi(0),
 		list_pad_left = dpi(0),
 
-		action_bg = C.cream,
+		action_bg = C.surface,
 		action_fg = C.black,
-		action_border = border,
+		action_border = C.surface_focus,
 		action_radius = dpi(8),
 		action_border_w = dpi(1),
 		action_spacing = dpi(6),

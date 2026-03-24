@@ -24,13 +24,20 @@ function M.init(args)
 
 	local theme = resolved_theme(args)
 	local C = theme.colors or {}
+	local F = theme.fonts or {}
 
 	assert(type(C.primary) == "string" and C.primary ~= "", "bar.theme.wibar: theme.colors.primary fehlt")
 	assert(type(C.secondary) == "string" and C.secondary ~= "", "bar.theme.wibar: theme.colors.secondary fehlt")
 	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "bar.theme.wibar: theme.colors.tertiary fehlt")
 	assert(type(C.surface) == "string" and C.surface ~= "", "bar.theme.wibar: theme.colors.surface fehlt")
+	assert(
+		type(C.surface_focus) == "string" and C.surface_focus ~= "",
+		"bar.theme.wibar: theme.colors.surface_focus fehlt"
+	)
 	assert(type(C.black) == "string" and C.black ~= "", "bar.theme.wibar: theme.colors.black fehlt")
 	assert(type(C.white) == "string" and C.white ~= "", "bar.theme.wibar: theme.colors.white fehlt")
+	assert(type(F.ui) == "string" and F.ui ~= "", "bar.theme.wibar: theme.fonts.ui fehlt")
+	assert(type(F.ui_bold) == "string" and F.ui_bold ~= "", "bar.theme.wibar: theme.fonts.ui_bold fehlt")
 
 	-- ---------------------------------------------------------------------
 	-- Wibar
@@ -78,7 +85,7 @@ function M.init(args)
 
 	beautiful.clock_calendar_bg = C.surface
 	beautiful.clock_calendar_fg = C.black
-	beautiful.clock_calendar_border_color = C.black
+	beautiful.clock_calendar_border_color = C.surface_focus
 	beautiful.clock_calendar_border_width = 0
 
 	-- ---------------------------------------------------------------------
@@ -97,7 +104,7 @@ function M.init(args)
 		pad_v = dpi(0),
 		collapsed_pad_h = dpi(6),
 		fmt = "%d",
-		font = "Sans 10",
+		font = F.ui,
 	}
 
 	-- ---------------------------------------------------------------------
@@ -117,8 +124,8 @@ function M.init(args)
 	beautiful.notify_button_border_color = C.tertiary
 	beautiful.notify_button_border_width = dpi(1)
 
-	beautiful.notify_button_font = "Sans Bold 10"
-	beautiful.notify_button_badge_font = "Sans Bold 10"
+	beautiful.notify_button_font = F.ui_bold
+	beautiful.notify_button_badge_font = F.ui_bold
 
 	beautiful.notify_button_glyph_closed = "⮜"
 	beautiful.notify_button_glyph_open = "⮝"

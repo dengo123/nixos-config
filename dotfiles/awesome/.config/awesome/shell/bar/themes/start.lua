@@ -1,10 +1,13 @@
 -- ~/.config/awesome/shell/bar/themes/start.lua
 local beautiful = require("beautiful")
+local gfs = require("gears.filesystem")
 local xr = require("beautiful.xresources")
 
 local dpi = xr.apply_dpi
 
 local S = {}
+
+local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
 
 -- =========================================================================
 -- Helpers
@@ -76,13 +79,17 @@ function S.init(args)
 		type(F.ui_bold_italic) == "string" and F.ui_bold_italic ~= "",
 		"bar.theme.start: theme.fonts.ui_bold_italic fehlt"
 	)
-	assert(type(I.system) == "string" and I.system ~= "", "bar.theme.start: theme.icons.system fehlt")
+
+	local system_icon = DEFAULT_SYSTEM_ICON
+	if type(I.system) == "string" and I.system ~= "" then
+		system_icon = I.system
+	end
 
 	local wibar_height = tonumber(beautiful.wibar_height) or dpi(28)
 
 	beautiful.start = {
 		label = "Start",
-		system_icon = I.system,
+		system_icon = system_icon,
 
 		icon_size = math.floor(wibar_height * 1.2),
 		spacing = dpi(4),
@@ -94,7 +101,7 @@ function S.init(args)
 			bottom = dpi(0),
 		},
 
-		font = with_size(F.ui_bold_italic, 16),
+		font = with_size(F.ui_bold_italic, 15),
 
 		width_factor = 4,
 		fixed_height = true,
@@ -121,9 +128,9 @@ function S.get()
 
 	return {
 		label = ST.label,
-		system_icon = ST.system_icon,
 
 		icon = ST.system_icon,
+		system_icon = ST.system_icon,
 		icon_size = ST.icon_size,
 		spacing = ST.spacing,
 		margin = ST.margin,

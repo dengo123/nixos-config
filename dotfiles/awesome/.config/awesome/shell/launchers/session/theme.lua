@@ -1,7 +1,10 @@
+-- ~/.config/awesome/shell/launchers/session/theme.lua
 local beautiful = require("beautiful")
-local Colors = require("ui.colors")
+local gfs = require("gears.filesystem")
 
 local Theme = {}
+
+local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
 
 -- ============================================================================
 -- Helpers
@@ -10,16 +13,6 @@ local Theme = {}
 local function resolved_theme(args)
 	local ui = (args and args.ui) or {}
 	return ui.theme or {}
-end
-
-local function resolved_colors(args)
-	local cfg = (args and args.cfg) or {}
-
-	if type(Colors.set_runtime_cfg) == "function" then
-		Colors.set_runtime_cfg(cfg)
-	end
-
-	return Colors.get()
 end
 
 local function with_size(font, size)
@@ -38,36 +31,39 @@ function Theme.init(args)
 	args = args or {}
 
 	local theme = resolved_theme(args)
-	local colors = resolved_colors(args)
+	local colors = theme.colors or {}
 	local fonts = theme.fonts or {}
 	local icons = theme.icons or {}
+	local utils = theme.utils or {}
 
 	assert(
-		type(colors.overlay_40) == "string" and colors.overlay_40 ~= "",
-		"launchers.session.theme: colors.overlay_40 fehlt"
-	)
-	assert(
-		type(colors.transparent) == "string" and colors.transparent ~= "",
-		"launchers.session.theme: colors.transparent fehlt"
-	)
-	assert(
 		type(colors.tertiary) == "string" and colors.tertiary ~= "",
-		"launchers.session.theme: colors.tertiary fehlt"
+		"launchers.session.theme: theme.colors.tertiary fehlt"
 	)
 	assert(
 		type(colors.secondary) == "string" and colors.secondary ~= "",
-		"launchers.session.theme: colors.secondary fehlt"
+		"launchers.session.theme: theme.colors.secondary fehlt"
 	)
-	assert(type(colors.white) == "string" and colors.white ~= "", "launchers.session.theme: colors.white fehlt")
-	assert(type(colors.black) == "string" and colors.black ~= "", "launchers.session.theme: colors.black fehlt")
-
+	assert(type(colors.white) == "string" and colors.white ~= "", "launchers.session.theme: theme.colors.white fehlt")
+	assert(type(colors.black) == "string" and colors.black ~= "", "launchers.session.theme: theme.colors.black fehlt")
 	assert(
 		type(fonts.ui_bold) == "string" and fonts.ui_bold ~= "",
 		"launchers.session.theme: theme.fonts.ui_bold fehlt"
 	)
 	assert(type(fonts.ui) == "string" and fonts.ui ~= "", "launchers.session.theme: theme.fonts.ui fehlt")
+	assert(
+		type(utils.overlay_40) == "string" and utils.overlay_40 ~= "",
+		"launchers.session.theme: theme.utils.overlay_40 fehlt"
+	)
+	assert(
+		type(utils.transparent) == "string" and utils.transparent ~= "",
+		"launchers.session.theme: theme.utils.transparent fehlt"
+	)
 
-	assert(type(icons.system) == "string" and icons.system ~= "", "launchers.session.theme: theme.icons.system fehlt")
+	local system_icon = DEFAULT_SYSTEM_ICON
+	if type(icons.system) == "string" and icons.system ~= "" then
+		system_icon = icons.system
+	end
 
 	beautiful.session = {
 		dialog_w = 0,
@@ -76,7 +72,7 @@ function Theme.init(args)
 		dialog_border_width = 0,
 		dialog_border = colors.tertiary,
 		dialog_bg = colors.tertiary,
-		backdrop = colors.overlay_40,
+		backdrop = utils.overlay_40,
 
 		header_ratio = 0.22,
 		footer_ratio = 0.22,
@@ -93,7 +89,7 @@ function Theme.init(args)
 		header_font = with_size(fonts.ui_bold, 18),
 		header_font_size = 18,
 		header_icon_text = " XP",
-		header_icon_path = icons.system,
+		header_icon_path = system_icon,
 		header_icon_size = 56,
 		header_pad_l = 18,
 		header_pad_r = 18,
@@ -128,7 +124,7 @@ function Theme.init(args)
 		icon_focus_border = colors.white,
 		icon_focus_bw = 4,
 
-		transparent = colors.transparent,
+		transparent = utils.transparent,
 	}
 end
 

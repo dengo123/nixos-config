@@ -11,22 +11,6 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "start widget: " .. name .. " fehlt/ungueltig")
-	return n
-end
-
-local function require_string(value, name)
-	assert(type(value) == "string" and value ~= "", "start widget: " .. name .. " fehlt/ungueltig")
-	return value
-end
-
-local function require_table(value, name)
-	assert(type(value) == "table", "start widget: " .. name .. " fehlt/ungueltig")
-	return value
-end
-
 local function needs_shell(cmd)
 	if type(cmd) ~= "string" then
 		return false
@@ -70,8 +54,8 @@ function M.build(opts)
 	-- ---------------------------------------------------------------------
 
 	local screen = opts.screen or (mouse and mouse.screen) or nil
-	local theme = assert(opts.theme, "start widget: opts.theme fehlt")
-	local bar_height = require_number(opts.bar_height, "opts.bar_height")
+	local theme = opts.theme
+	local bar_height = tonumber(opts.bar_height)
 	local cfg = opts.cfg or {}
 	local menu_api = opts.menu_api
 
@@ -83,20 +67,13 @@ function M.build(opts)
 	-- Theme
 	-- ---------------------------------------------------------------------
 
-	assert(theme.icon and theme.icon_size and theme.spacing, "start theme: icon/icon_size/spacing fehlt")
-	assert(theme.font and type(theme.font) == "string" and theme.font ~= "", "start theme: font fehlt")
-	assert(
-		theme.width_factor and theme.fixed_height ~= nil and theme.label,
-		"start theme: width/fixed_height/label fehlt"
-	)
-
 	local bg = theme.bg
 	local bg_hover = theme.bg_hover
 	local fg = theme.fg
 	local shape = theme.shape
-	local margin = require_table(theme.margin, "theme.margin")
+	local margin = theme.margin
 
-	local width = math.floor(require_number(theme.width_factor, "theme.width_factor") * bar_height)
+	local width = math.floor(tonumber(theme.width_factor) * bar_height)
 
 	-- ---------------------------------------------------------------------
 	-- Icon
@@ -108,7 +85,6 @@ function M.build(opts)
 	end
 
 	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
-	assert(icon_surface, "start theme: icon konnte nicht geladen werden")
 
 	local inner_height = bar_height - (margin.top + margin.bottom)
 	local icon_px = math.min(theme.icon_size, inner_height)
@@ -128,8 +104,8 @@ function M.build(opts)
 	-- ---------------------------------------------------------------------
 
 	local label_widget = wibox.widget({
-		text = require_string(theme.label, "theme.label"),
-		font = require_string(theme.font, "theme.font"),
+		text = theme.label,
+		font = theme.font,
 		widget = wibox.widget.textbox,
 	})
 
@@ -140,7 +116,7 @@ function M.build(opts)
 	local row_inner = wibox.widget({
 		icon_widget,
 		label_widget,
-		spacing = require_number(theme.spacing, "theme.spacing"),
+		spacing = tonumber(theme.spacing),
 		layout = wibox.layout.fixed.horizontal,
 	})
 

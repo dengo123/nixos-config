@@ -9,37 +9,21 @@ local History = require("shell.notify.history")
 local M = {}
 
 -- =========================================================================
--- Internal
--- =========================================================================
-
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "notify widget: " .. name .. " fehlt/ungültig")
-	return n
-end
-
-local function require_string(value, name)
-	assert(type(value) == "string" and value ~= "", "notify widget: " .. name .. " fehlt/ungültig")
-	return value
-end
-
--- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.build(s, _opts)
-	local size = require_number(beautiful.notify_button_size, "beautiful.notify_button_size")
-	local bg = require_string(beautiful.notify_button_bg, "beautiful.notify_button_bg")
-	local bg_hover = require_string(beautiful.notify_button_bg_hover, "beautiful.notify_button_bg_hover")
-	local fg = require_string(beautiful.notify_button_fg, "beautiful.notify_button_fg")
-	local border_color = require_string(beautiful.notify_button_border_color, "beautiful.notify_button_border_color")
-	local border_width = require_number(beautiful.notify_button_border_width, "beautiful.notify_button_border_width")
-	local font = require_string(beautiful.notify_button_font, "beautiful.notify_button_font")
-	local glyph_closed = require_string(beautiful.notify_button_glyph_closed, "beautiful.notify_button_glyph_closed")
-	local glyph_open = require_string(beautiful.notify_button_glyph_open, "beautiful.notify_button_glyph_open")
-	local glyph_offset_y =
-		require_number(beautiful.notify_button_glyph_offset_y, "beautiful.notify_button_glyph_offset_y")
-	local button_offset_y = require_number(beautiful.notify_button_offset_y, "beautiful.notify_button_offset_y")
+	local size = tonumber(beautiful.notify_button_size)
+	local bg = beautiful.notify_button_bg
+	local bg_hover = beautiful.notify_button_bg_hover
+	local fg = beautiful.notify_button_fg
+	local border_color = beautiful.notify_button_border_color
+	local border_width = tonumber(beautiful.notify_button_border_width)
+	local font = beautiful.notify_button_font
+	local glyph_closed = beautiful.notify_button_glyph_closed
+	local glyph_open = beautiful.notify_button_glyph_open
+	local glyph_offset_y = tonumber(beautiful.notify_button_glyph_offset_y)
+	local button_offset_y = tonumber(beautiful.notify_button_offset_y)
 
 	local is_open = false
 

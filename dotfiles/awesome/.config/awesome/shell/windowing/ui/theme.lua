@@ -10,22 +10,25 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function resolve_colors(cfg)
-	local Colors = require("ui.colors")
-
-	if type(Colors.set_runtime_cfg) == "function" then
-		Colors.set_runtime_cfg(cfg or {})
-	end
-
-	return Colors.get()
+local function resolved_theme(args)
+	local ui = (args and args.ui) or {}
+	return ui.theme or {}
 end
 
 -- =========================================================================
 -- Theme
 -- =========================================================================
 
-function M.init(cfg)
-	local C = resolve_colors(cfg)
+function M.init(args)
+	args = args or {}
+
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
+
+	assert(type(C.secondary) == "string" and C.secondary ~= "", "windowing.theme: theme.colors.secondary fehlt")
+	assert(type(C.primary) == "string" and C.primary ~= "", "windowing.theme: theme.colors.primary fehlt")
+	assert(type(C.gray) == "string" and C.gray ~= "", "windowing.theme: theme.colors.gray fehlt")
+	assert(type(C.white) == "string" and C.white ~= "", "windowing.theme: theme.colors.white fehlt")
 
 	beautiful.border_width = dpi(3)
 	beautiful.border_radius = dpi(10)
@@ -44,8 +47,16 @@ end
 -- Button Style
 -- =========================================================================
 
-function M.button_style(cfg)
-	local C = resolve_colors(cfg)
+function M.button_style(args)
+	args = args or {}
+
+	local theme = resolved_theme(args)
+	local C = theme.colors or {}
+
+	assert(type(C.white) == "string" and C.white ~= "", "windowing.theme: theme.colors.white fehlt")
+	assert(type(C.gray) == "string" and C.gray ~= "", "windowing.theme: theme.colors.gray fehlt")
+	assert(type(C.close) == "string" and C.close ~= "", "windowing.theme: theme.colors.close fehlt")
+	assert(type(C.close_focus) == "string" and C.close_focus ~= "", "windowing.theme: theme.colors.close_focus fehlt")
 
 	return {
 		size = beautiful.titlebar_height,

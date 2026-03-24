@@ -1,7 +1,7 @@
+-- ~/.config/awesome/shell/menu/theme.lua
 local beautiful = require("beautiful")
 local gears = require("gears")
 local xr = require("beautiful.xresources")
-local Colors = require("ui.colors")
 
 local dpi = xr.apply_dpi
 
@@ -16,16 +16,6 @@ local function resolved_theme(args)
 	return ui.theme or {}
 end
 
-local function resolved_colors(args)
-	local cfg = (args and args.cfg) or {}
-
-	if type(Colors.set_runtime_cfg) == "function" then
-		Colors.set_runtime_cfg(cfg)
-	end
-
-	return Colors.get()
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -34,13 +24,12 @@ function M.init(args)
 	args = args or {}
 
 	local theme = resolved_theme(args)
-	local C = resolved_colors(args)
+	local C = theme.colors or {}
 	local F = theme.fonts or {}
 
-	assert(type(C.surface) == "string" and C.surface ~= "", "menu.theme: colors.surface fehlt")
-	assert(type(C.surface_focus) == "string" and C.surface_focus ~= "", "menu.theme: colors.surface_focus fehlt")
-	assert(type(C.black) == "string" and C.black ~= "", "menu.theme: colors.black fehlt")
-	assert(type(C.tertiary) == "string" and C.tertiary ~= "", "menu.theme: colors.tertiary fehlt")
+	assert(type(C.surface) == "string" and C.surface ~= "", "menu.theme: theme.colors.surface fehlt")
+	assert(type(C.surface_focus) == "string" and C.surface_focus ~= "", "menu.theme: theme.colors.surface_focus fehlt")
+	assert(type(C.black) == "string" and C.black ~= "", "menu.theme: theme.colors.black fehlt")
 	assert(type(F.ui) == "string" and F.ui ~= "", "menu.theme: theme.fonts.ui fehlt")
 
 	-- ---------------------------------------------------------------------

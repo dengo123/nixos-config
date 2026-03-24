@@ -102,7 +102,6 @@ function M.setup(s, args)
 	local menu_api = args.menu_api
 
 	local input_cfg = cfg.input or {}
-	local tags_cfg = cfg.tags or {}
 	local bar_cfg = cfg.bar or {}
 	local clock_cfg = bar_cfg.clock or {}
 
@@ -130,6 +129,11 @@ function M.setup(s, args)
 		bar_normally_visible = (Policy.bar_enabled_on_screen(s, bar_cfg) == true)
 	end
 
+	local tags_visible_on_screen = true
+	if Policy and type(Policy.tags_enabled_on_screen) == "function" then
+		tags_visible_on_screen = (Policy.tags_enabled_on_screen(s, bar_cfg) == true)
+	end
+
 	local start_visible_on_screen = true
 	if Policy and type(Policy.start_enabled_on_screen) == "function" then
 		start_visible_on_screen = (Policy.start_enabled_on_screen(s, bar_cfg) == true)
@@ -150,15 +154,9 @@ function M.setup(s, args)
 	local reveal_trigger_px = tonumber(bar_cfg.reveal_trigger_px) or 2
 	local reveal_hide_delay = tonumber(bar_cfg.reveal_hide_delay) or 0.20
 
-	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
-	local tags_on_primary_only = (selection_mode == "sync")
-
-	local primary = screen.primary or awful.screen.focused()
-	local is_primary = (s == primary)
-
 	local show_start = start_visible_on_screen
-	local show_tags = bar_normally_visible and ((not tags_on_primary_only) or is_primary)
 	local show_notify = notify_visible_on_screen
+	local show_tags = tags_visible_on_screen
 
 	local _ui = ui_api()
 
@@ -168,43 +166,52 @@ function M.setup(s, args)
 		_ui = ui_mod.get()
 	end
 
-	assert(TWibar and type(TWibar.init) == "function", "bar.init: theme 'wibar' fehlt oder init() fehlt")
-	TWibar.init({
-		cfg = cfg,
-		ui = _ui,
-	})
+	if TWibar and type(TWibar.init) == "function" then
+		TWibar.init({
+			cfg = cfg,
+			ui = _ui,
+		})
+	end
 
-	assert(TStart and type(TStart.init) == "function", "bar.init: theme 'start' fehlt oder init() fehlt")
-	TStart.init({
-		cfg = cfg,
-		ui = _ui,
-	})
+	if TStart and type(TStart.init) == "function" then
+		TStart.init({
+			cfg = cfg,
+			ui = _ui,
+		})
+	end
 
-	assert(TTabs and type(TTabs.init) == "function", "bar.init: theme 'tabs' fehlt oder init() fehlt")
-	TTabs.init({
-		cfg = cfg,
-		ui = _ui,
-	})
+	if TTabs and type(TTabs.init) == "function" then
+		TTabs.init({
+			cfg = cfg,
+			ui = _ui,
+		})
+	end
 
 	local wibar_theme = TWibar
-	local start_theme = TStart and TStart.get and TStart.get() or nil
-	local tabs_theme = TTabs and TTabs.get and TTabs.get() or nil
+	local start_theme = (TStart and type(TStart.get) == "function" and TStart.get()) or {}
+	local tabs_theme = (TTabs and type(TTabs.get) == "function" and TTabs.get()) or {}
 
-	assert(type(start_theme) == "table", "bar.init: start_theme fehlt")
-	assert(type(tabs_theme) == "table", "bar.init: tabs_theme fehlt")
+	if type(start_theme) ~= "table" then
+		start_theme = {}
+	end
 
-	local props = (wibar_theme and wibar_theme.props and wibar_theme.props())
-		or {
-			height = beautiful.wibar_height,
-			bg = beautiful.wibar_bg,
-			fg = beautiful.wibar_fg,
-			on_top = beautiful.wibar_on_top,
-			opacity = beautiful.wibar_opacity,
-			shape = beautiful.wibar_shape,
-			margins = beautiful.wibar_margins,
-		}
+	if type(tabs_theme) ~= "table" then
+		tabs_theme = {}
+	end
 
-	assert(tonumber(props.height) ~= nil, "bar.init: wibar props.height fehlt")
+	local props = (wibar_theme and type(wibar_theme.props) == "function" and wibar_theme.props()) or {}
+
+	if type(props) ~= "table" then
+		props = {}
+	end
+
+	props.height = tonumber(props.height) or tonumber(beautiful.wibar_height) or 28
+	props.bg = props.bg or beautiful.wibar_bg or beautiful.bg_normal
+	props.fg = props.fg or beautiful.wibar_fg or beautiful.fg_normal
+	props.on_top = (props.on_top ~= nil) and props.on_top or beautiful.wibar_on_top
+	props.opacity = tonumber(props.opacity) or tonumber(beautiful.wibar_opacity) or 1
+	props.shape = props.shape or beautiful.wibar_shape
+	props.margins = props.margins or beautiful.wibar_margins
 
 	props.position = bar_position or "bottom"
 
@@ -215,7 +222,6 @@ function M.setup(s, args)
 				group_by_class = true,
 				theme = tabs_theme,
 				bar_height = props.height,
-				menu_theme = menu_theme,
 				menu_api = menu_api and {
 					show_for_widget_with_clients_at = function(widget_, clients, anchor)
 						menu_api.show_for_tabs_widget_with_clients_at(s, widget_, clients, anchor)
@@ -230,11 +236,11 @@ function M.setup(s, args)
 			})
 		or nil
 
-	local tags = show_tags and WTags and WTags.build and WTags.build(s, {}) or nil
-
-	local tray = showtray and WSystray and WSystray.build and WSystray.build({
-		menu_theme = menu_theme,
+	local tags = show_tags and WTags and WTags.build and WTags.build(s, {
+		cfg = cfg,
 	}) or nil
+
+	local tray = showtray and WSystray and WSystray.build and WSystray.build({}) or nil
 
 	local clock = WClock
 			and WClock.build

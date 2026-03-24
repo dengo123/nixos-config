@@ -43,30 +43,19 @@ local function pick_lead(clients)
 	return clients[1]
 end
 
-local function require_number(value, name)
-	local n = tonumber(value)
-	assert(n ~= nil, "tabs.lua: " .. name .. " fehlt/ungueltig")
-	return n
-end
-
-local function require_table(value, name)
-	assert(type(value) == "table", "tabs.lua: " .. name .. " fehlt/ungueltig")
-	return value
-end
-
 -- =========================================================================
 -- Tab Builder
 -- =========================================================================
 
 local function build_group_tab(label, clients, theme, bar_height, fixed_width, menu_api)
-	local colors = require_table(theme.colors, "theme.colors")
+	local colors = theme.colors
 
-	local icon_size = require_number(theme.icon_size, "theme.icon_size")
-	local pad_h = require_number(theme.pad_h, "theme.pad_h")
-	local pad_v = require_number(theme.pad_v, "theme.pad_v")
-	local radius = require_number(theme.radius, "theme.radius")
-	local inactive_border_width = require_number(theme.inactive_border_width, "theme.inactive_border_width")
-	local title_len = require_number(theme.title_len, "theme.title_len")
+	local icon_size = tonumber(theme.icon_size)
+	local pad_h = tonumber(theme.pad_h)
+	local pad_v = tonumber(theme.pad_v)
+	local radius = tonumber(theme.radius)
+	local inactive_border_width = tonumber(theme.inactive_border_width)
+	local title_len = tonumber(theme.title_len)
 
 	local lead = pick_lead(clients)
 
@@ -260,12 +249,12 @@ function M.build(s, opts)
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local theme = assert(opts.theme, "tabs.lua: opts.theme muss injiziert werden (Theme.tabs.get(...))")
+	local theme = opts.theme
 	local menu_api = opts.menu_api
-	local bar_height = require_number(opts.bar_height, "opts.bar_height")
+	local bar_height = tonumber(opts.bar_height)
 
-	local width_factor = require_number(theme.width_factor, "theme.width_factor")
-	local spacing = require_number(theme.spacing, "theme.spacing")
+	local width_factor = tonumber(theme.width_factor)
+	local spacing = tonumber(theme.spacing)
 
 	local fixed_width = math.floor(width_factor * bar_height)
 

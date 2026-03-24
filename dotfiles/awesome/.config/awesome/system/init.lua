@@ -62,8 +62,11 @@ function M.init(overrides)
 	-- UI
 	-- ---------------------------------------------------------------------
 
-	local ui = require("ui")
-	ui = ui.init(cfg)
+	local UI = require("ui")
+	local ui_mod = UI.init({
+		cfg = cfg,
+	})
+	local ui = ui_mod.get()
 
 	-- ---------------------------------------------------------------------
 	-- Autostart
