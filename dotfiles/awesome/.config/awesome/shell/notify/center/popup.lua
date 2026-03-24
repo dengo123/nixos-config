@@ -1,5 +1,6 @@
 -- ~/.config/awesome/shell/notify/center/popup.lua
 local awful = require("awful")
+local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
@@ -13,6 +14,23 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function center_theme()
+	local notify = beautiful.notify or {}
+	return notify.center or {}
+end
+
+local function clamp(value, min_v, max_v)
+	if value < min_v then
+		return min_v
+	end
+
+	if value > max_v then
+		return max_v
+	end
+
+	return value
+end
 
 local function disarm_close_guard()
 	if runtime.root_buttons then
@@ -58,6 +76,93 @@ local function arm_close_guard(on_close)
 	client.connect_signal("button::press", client_cb)
 end
 
+local function is_portrait(s)
+	local wa = s.workarea
+	return wa.height > wa.width
+end
+
+local function resolve_height_factor(theme, s)
+	if is_portrait(s) then
+		return tonumber(theme.height_factor_portrait) or tonumber(theme.height_factor) or 0.5
+	end
+
+	return tonumber(theme.height_factor_landscape) or tonumber(theme.height_factor) or 0.5
+end
+
+-- =========================================================================
+-- Theme / Geometry
+-- =========================================================================
+
+function M.build_theme()
+	local t = center_theme()
+
+	return {
+		width_factor = tonumber(t.width_factor),
+		min_width = tonumber(t.min_width),
+		max_width = tonumber(t.max_width),
+
+		min_height = tonumber(t.min_height),
+		max_height = tonumber(t.max_height),
+
+		height_factor = tonumber(t.height_factor),
+		height_factor_landscape = tonumber(t.height_factor_landscape),
+		height_factor_portrait = tonumber(t.height_factor_portrait),
+
+		offset_x = tonumber(t.offset_x),
+		offset_y = tonumber(t.offset_y),
+
+		margin_top = tonumber(t.margin_top),
+		margin_right = tonumber(t.margin_right),
+		margin_bottom = tonumber(t.margin_bottom),
+	}
+end
+
+function M.resolve_width(theme, s)
+	local wa = s.workarea
+	return clamp(math.floor(wa.width * theme.width_factor), theme.min_width, theme.max_width)
+end
+
+function M.resolve_max_height(theme, s)
+	local wa = s.workarea
+	local usable_h = wa.height - theme.margin_top - theme.margin_bottom
+	local factor = resolve_height_factor(theme, s)
+
+	local h = math.floor(usable_h * factor)
+
+	local min_h = tonumber(theme.min_height) or 0
+	local max_h = tonumber(theme.max_height)
+
+	if h < min_h then
+		h = min_h
+	end
+
+	if max_h and h > max_h then
+		h = max_h
+	end
+
+	return h
+end
+
+function M.resolve_position(theme, s, bar_position, width, height)
+	local wa = s.workarea
+
+	local x = wa.x + wa.width - width - theme.margin_right + theme.offset_x
+	local y
+
+	if tostring(bar_position or "bottom") == "top" then
+		y = wa.y + theme.margin_top + theme.offset_y
+	else
+		y = wa.y + wa.height - height - theme.margin_bottom + theme.offset_y
+	end
+
+	return {
+		x = x,
+		y = y,
+		width = width,
+		height = height,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -97,10 +202,16 @@ function M.rebuild(popup, build_panel)
 	end
 
 	popup:setup({
-		panel,
-		layout = wibox.layout.fixed.vertical,
+		{
+			panel,
+			halign = "fill",
+			valign = "fill",
+			widget = wibox.container.place,
+		},
+		layout = wibox.layout.align.vertical,
 	})
 
+	popup.widget = panel
 	return true
 end
 

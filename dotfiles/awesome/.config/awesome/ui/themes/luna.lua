@@ -30,9 +30,11 @@ function M.get()
 			purple = "#8E44AD",
 			purple_dark = "#6C3483",
 
-			white = "#FFFFFF",
-			black = "#000000",
-			gray = "#DDDDDD",
+			white = "#F5F5F5",
+			white_dark = "E8E8E8",
+
+			black = "#1F1E1E",
+			black_light = "343232",
 		},
 
 		roles = {
@@ -53,7 +55,10 @@ function M.get()
 			background = "white",
 
 			text = "black",
+			text_focus = "black_light",
+
 			text_invert = "white",
+			text_invert_focus = "white_hover",
 		},
 
 		fonts = {

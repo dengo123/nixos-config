@@ -97,7 +97,7 @@ function M.get(overrides)
 
 		panel_radius = dpi(12),
 		panel_bg = C.surface,
-		panel_border = C.blue,
+		panel_border = C.primary,
 		panel_border_width = dpi(2),
 	}
 
