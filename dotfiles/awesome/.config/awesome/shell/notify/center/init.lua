@@ -17,6 +17,9 @@ local M = {
 
 local signals_ready = false
 local runtime_cfg = {}
+local injected = {
+	history = nil,
+}
 
 -- =========================================================================
 -- Helpers
@@ -78,9 +81,8 @@ local function register_signals()
 			controller.scroll_down(screen.primary or awful.screen.focused())
 		end,
 		before_history_rebuild = function(popup)
-			local History = mod("history")
 			if State and type(State.prepare_history_update) == "function" then
-				State.prepare_history_update(popup, History)
+				State.prepare_history_update(popup, injected.history)
 			end
 		end,
 		after_history_rebuild = function(popup)
@@ -98,6 +100,7 @@ end
 function M.init(args)
 	args = args or {}
 	runtime_cfg = args.cfg or args or {}
+	injected.history = args.history or injected.history
 
 	M.api = {
 		ui = args.ui or {},
@@ -106,11 +109,17 @@ function M.init(args)
 		widget = safe_require("shell.notify.center.widget"),
 		view = safe_require("shell.notify.center.view"),
 		actions = safe_require("shell.notify.center.actions"),
-		history = safe_require("shell.notify.history"),
 		list = safe_require("shell.notify.center.list"),
 		state = safe_require("shell.notify.center.state"),
 		controller = safe_require("shell.notify.center.controller"),
 	}
+
+	local Actions = mod("actions")
+	if Actions and type(Actions.init) == "function" then
+		Actions.init({
+			history = injected.history,
+		})
+	end
 
 	local ControllerMod = mod("controller")
 	if ControllerMod and type(ControllerMod.new) == "function" then
@@ -120,7 +129,7 @@ function M.init(args)
 			widget = mod("widget"),
 			view = mod("view"),
 			actions = mod("actions"),
-			history = mod("history"),
+			history = injected.history,
 			list = mod("list"),
 			state = mod("state"),
 		})

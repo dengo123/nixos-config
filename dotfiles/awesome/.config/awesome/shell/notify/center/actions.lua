@@ -1,11 +1,16 @@
+-- ~/.config/awesome/shell/notify/center/actions.lua
 local M = {}
+
+local runtime = {
+	history = nil,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
 local function history_module()
-	return require("shell.notify.history")
+	return runtime.history
 end
 
 local function should_close_center(cfg)
@@ -26,14 +31,20 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	args = args or {}
+	runtime.history = args.history or nil
+	return M
+end
+
 function M.remove(entry, cfg)
 	local History = history_module()
 
-	if type(History.remove) == "function" then
+	if History and type(History.remove) == "function" then
 		History.remove(entry)
-	elseif type(History.delete) == "function" then
+	elseif History and type(History.delete) == "function" then
 		History.delete(entry)
-	elseif type(History.dismiss) == "function" then
+	elseif History and type(History.dismiss) == "function" then
 		History.dismiss(entry)
 	elseif entry and entry.raw and type(entry.raw.destroy) == "function" then
 		pcall(function()

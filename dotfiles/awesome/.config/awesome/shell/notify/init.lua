@@ -313,6 +313,7 @@ function M.init(args)
 		Center.init({
 			cfg = cfg,
 			ui = _ui,
+			history = History,
 		})
 	end
 
