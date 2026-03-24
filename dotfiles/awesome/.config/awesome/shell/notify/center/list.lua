@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/notify/center/list.lua
 local wibox = require("wibox")
 
 local M = {}
@@ -42,12 +41,30 @@ local function available_height(theme, max_height)
 	return math.max(0, (tonumber(max_height) or 0) - (theme.list_pad_top or 0) - (theme.list_pad_bottom or 0))
 end
 
-local function build_all_cards(theme, entries, cfg, build_card)
-	-- History kommt newest-first, View braucht oldest->newest
+local function build_all_cards(args)
+	local theme = args.theme or {}
+	local entries = args.entries or {}
+	local cfg = args.cfg or {}
+	local Widget = args.widget
+	local deps = args.deps or {}
+	local build_card = args.build_card
+
 	local out = {}
+
 	for i = #entries, 1, -1 do
-		table.insert(out, build_card(theme, entries[i], cfg))
+		local item = nil
+
+		if Widget and type(Widget.build) == "function" then
+			item = Widget.build(entries[i], cfg, deps)
+		elseif type(build_card) == "function" then
+			item = build_card(theme, entries[i], cfg)
+		end
+
+		if item then
+			table.insert(out, item)
+		end
 	end
+
 	return out
 end
 
@@ -69,7 +86,6 @@ local function resolve_window(heights, spacing, avail_h, scroll_offset)
 		return nil, nil, 0
 	end
 
-	-- 0 = ganz unten, neueste Nachricht sichtbar
 	local bottom_index = total - (scroll_offset or 0)
 	if bottom_index < 1 then
 		bottom_index = 1
@@ -145,24 +161,26 @@ function M.build(args)
 	local state = args.state or {}
 	local max_height = args.max_height
 	local list_width = math.max(1, tonumber(args.list_width) or 1)
-	local build_card = args.build_card
 
-	if #entries == 0 or type(build_card) ~= "function" then
+	if #entries == 0 then
 		return nil
 	end
 
 	state.scroll_offset = tonumber(state.scroll_offset) or 0
 
-	local items_all = build_all_cards(theme, entries, cfg, build_card)
+	local items_all = build_all_cards(args)
 	local total = #items_all
 	local avail_h = available_height(theme, max_height)
 
-	if avail_h <= 0 then
+	if total == 0 or avail_h <= 0 then
 		return {
 			widget = nil,
 			items = {},
 			total = total,
 			visible = 0,
+			heights = {},
+			top_index = nil,
+			bottom_index = nil,
 		}
 	end
 
@@ -177,6 +195,9 @@ function M.build(args)
 			items = {},
 			total = total,
 			visible = 0,
+			heights = heights,
+			top_index = nil,
+			bottom_index = nil,
 		}
 	end
 
@@ -202,6 +223,7 @@ function M.build(args)
 		items = items,
 		total = total,
 		visible = visible,
+		heights = heights,
 		top_index = top_index,
 		bottom_index = bottom_index,
 	}

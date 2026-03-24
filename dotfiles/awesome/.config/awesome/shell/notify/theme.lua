@@ -50,13 +50,6 @@ function M.init(args)
 		min_width = dpi(320),
 		max_width = dpi(360),
 
-		min_height = dpi(80),
-		max_height = nil,
-
-		height_factor = 0.50,
-		height_factor_landscape = 0.5,
-		height_factor_portrait = 0.5,
-
 		offset_x = dpi(0),
 		offset_y = dpi(0),
 

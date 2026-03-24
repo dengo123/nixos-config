@@ -25,7 +25,7 @@ local function clamp(value, min_v, max_v)
 		return min_v
 	end
 
-	if value > max_v then
+	if max_v ~= nil and value > max_v then
 		return max_v
 	end
 
@@ -76,19 +76,6 @@ local function arm_close_guard(on_close)
 	client.connect_signal("button::press", client_cb)
 end
 
-local function is_portrait(s)
-	local wa = s.workarea
-	return wa.height > wa.width
-end
-
-local function resolve_height_factor(theme, s)
-	if is_portrait(s) then
-		return tonumber(theme.height_factor_portrait) or tonumber(theme.height_factor) or 0.5
-	end
-
-	return tonumber(theme.height_factor_landscape) or tonumber(theme.height_factor) or 0.5
-end
-
 -- =========================================================================
 -- Theme / Geometry
 -- =========================================================================
@@ -104,10 +91,6 @@ function M.build_theme()
 		min_height = tonumber(t.min_height),
 		max_height = tonumber(t.max_height),
 
-		height_factor = tonumber(t.height_factor),
-		height_factor_landscape = tonumber(t.height_factor_landscape),
-		height_factor_portrait = tonumber(t.height_factor_portrait),
-
 		offset_x = tonumber(t.offset_x),
 		offset_y = tonumber(t.offset_y),
 
@@ -119,40 +102,33 @@ end
 
 function M.resolve_width(theme, s)
 	local wa = s.workarea
-	return clamp(math.floor(wa.width * theme.width_factor), theme.min_width, theme.max_width)
+	local width_factor = tonumber(theme.width_factor) or 0.30
+	local min_width = tonumber(theme.min_width) or 320
+	local max_width = tonumber(theme.max_width)
+
+	local width = math.floor(wa.width * width_factor)
+	return clamp(width, min_width, max_width)
 end
 
 function M.resolve_max_height(theme, s)
 	local wa = s.workarea
-	local usable_h = wa.height - theme.margin_top - theme.margin_bottom
-	local factor = resolve_height_factor(theme, s)
+	local usable_h = wa.height - (tonumber(theme.margin_top) or 0) - (tonumber(theme.margin_bottom) or 0)
+	local min_height = tonumber(theme.min_height) or 1
+	local max_height = tonumber(theme.max_height)
 
-	local h = math.floor(usable_h * factor)
-
-	local min_h = tonumber(theme.min_height) or 0
-	local max_h = tonumber(theme.max_height)
-
-	if h < min_h then
-		h = min_h
-	end
-
-	if max_h and h > max_h then
-		h = max_h
-	end
-
-	return h
+	return clamp(usable_h, min_height, max_height)
 end
 
 function M.resolve_position(theme, s, bar_position, width, height)
 	local wa = s.workarea
 
-	local x = wa.x + wa.width - width - theme.margin_right + theme.offset_x
+	local x = wa.x + wa.width - width - (tonumber(theme.margin_right) or 0) + (tonumber(theme.offset_x) or 0)
 	local y
 
 	if tostring(bar_position or "bottom") == "top" then
-		y = wa.y + theme.margin_top + theme.offset_y
+		y = wa.y + (tonumber(theme.margin_top) or 0) + (tonumber(theme.offset_y) or 0)
 	else
-		y = wa.y + wa.height - height - theme.margin_bottom + theme.offset_y
+		y = wa.y + wa.height - height - (tonumber(theme.margin_bottom) or 0) + (tonumber(theme.offset_y) or 0)
 	end
 
 	return {
@@ -202,13 +178,8 @@ function M.rebuild(popup, build_panel)
 	end
 
 	popup:setup({
-		{
-			panel,
-			halign = "fill",
-			valign = "fill",
-			widget = wibox.container.place,
-		},
-		layout = wibox.layout.align.vertical,
+		panel,
+		layout = wibox.layout.fixed.vertical,
 	})
 
 	popup.widget = panel

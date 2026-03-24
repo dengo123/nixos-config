@@ -7,7 +7,7 @@ local wibox = require("wibox")
 local M = {}
 
 -- =========================================================================
--- Internal
+-- Helpers
 -- =========================================================================
 
 local function notify_theme()
@@ -24,8 +24,6 @@ local function resolve_theme()
 	local center = center_theme()
 
 	return {
-		panel_bg = center.panel_bg or "#00000000",
-
 		entry_bg = center.entry_bg or notify.bg,
 		entry_fg = center.entry_fg or notify.fg,
 		entry_border = center.entry_border or notify.border,
@@ -44,15 +42,9 @@ local function resolve_theme()
 		entry_radius = tonumber(center.entry_radius or notify.radius),
 		entry_border_w = tonumber(center.entry_border_w or notify.border_w),
 		entry_padding = tonumber(center.entry_padding or notify.margin),
-		entry_spacing = tonumber(center.entry_spacing) or 0,
 
 		text_inset_top = tonumber(center.text_inset_top or 2),
 		text_inset_bottom = tonumber(center.text_inset_bottom or 2),
-
-		list_pad_top = tonumber(center.list_pad_top) or 0,
-		list_pad_right = tonumber(center.list_pad_right) or 0,
-		list_pad_bottom = tonumber(center.list_pad_bottom) or 0,
-		list_pad_left = tonumber(center.list_pad_left) or 0,
 
 		title_font = center.title_font,
 		message_font = center.message_font,
@@ -184,8 +176,15 @@ local function build_actions(theme, entry, cfg, deps)
 	return column
 end
 
-local function build_card(theme, entry, cfg, deps)
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.build(entry, cfg, deps)
+	deps = deps or {}
+
 	local Actions = deps.actions
+	local theme = resolve_theme()
 
 	local text_column = wibox.layout.fixed.vertical()
 	text_column.spacing = 4
@@ -205,7 +204,10 @@ local function build_card(theme, entry, cfg, deps)
 		}))
 	end
 
-	local actions = build_actions(theme, entry, cfg, deps)
+	local actions = build_actions(theme, entry, cfg, {
+		actions = Actions,
+	})
+
 	if actions then
 		text_column:add(actions)
 	end
@@ -293,69 +295,6 @@ local function build_card(theme, entry, cfg, deps)
 
 	apply_state()
 	return item
-end
-
--- =========================================================================
--- Public API
--- =========================================================================
-
-function M.build(entries, geo, cfg, state, deps)
-	deps = deps or {}
-
-	local Actions = deps.actions
-	local List = deps.list
-	local View = deps.view
-
-	local theme = resolve_theme()
-
-	local center = center_theme()
-	local popup_width = tonumber(geo and geo.width) or tonumber(center.max_width) or tonumber(center.min_width) or 320
-
-	local popup_height = tonumber(geo and geo.height) or 1
-
-	local list_width = math.max(1, popup_width - (theme.list_pad_left or 0) - (theme.list_pad_right or 0))
-
-	if not (List and type(List.build) == "function") then
-		return nil
-	end
-
-	local built = List.build({
-		theme = theme,
-		entries = entries,
-		cfg = cfg,
-		state = state,
-		max_height = popup_height,
-		list_width = list_width,
-		build_card = function(theme_, entry_, cfg_)
-			return build_card(theme_, entry_, cfg_, {
-				actions = Actions,
-			})
-		end,
-	})
-
-	if not built or not built.widget then
-		return nil
-	end
-
-	if not (View and type(View.build) == "function") then
-		return nil
-	end
-
-	return {
-		widget = View.build({
-			widget = built.widget,
-			popup_width = popup_width,
-			popup_height = popup_height,
-			pad_top = theme.list_pad_top,
-			pad_right = theme.list_pad_right,
-			pad_bottom = theme.list_pad_bottom,
-			pad_left = theme.list_pad_left,
-			bg = theme.panel_bg,
-		}),
-		items = built.items,
-		total = built.total,
-		visible = built.visible,
-	}
 end
 
 return M
