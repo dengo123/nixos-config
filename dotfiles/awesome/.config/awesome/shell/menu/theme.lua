@@ -31,11 +31,11 @@ function M.init(args)
 	-- Menu
 	-- ---------------------------------------------------------------------
 
-	beautiful.menu_bg_normal = C.surface
+	beautiful.menu_bg_normal = C.text_invert
 	beautiful.menu_fg_normal = C.text or C.foreground
-	beautiful.menu_bg_focus = C.surface_focus
+	beautiful.menu_bg_focus = C.text_invert_focus
 	beautiful.menu_fg_focus = C.text or C.foreground
-	beautiful.menu_border_color = C.surface_focus
+	beautiful.menu_border_color = C.text_invert_focus
 	beautiful.menu_border_width = dpi(1)
 
 	beautiful.menu_height = dpi(28)
@@ -45,16 +45,16 @@ function M.init(args)
 		gears.shape.rounded_rect(cr, w, h, beautiful.border_radius or dpi(6))
 	end
 
-	beautiful.menu_submenu = "›"
+	beautiful.menu_submenu = "›     "
 
 	-- ---------------------------------------------------------------------
 	-- Hotkeys
 	-- ---------------------------------------------------------------------
 
-	beautiful.hotkeys_bg = beautiful.menu_bg_normal
+	beautiful.hotkeys_bg = C.surface
 	beautiful.hotkeys_fg = beautiful.menu_fg_normal
 	beautiful.hotkeys_border_width = beautiful.menu_border_width
-	beautiful.hotkeys_border_color = beautiful.menu_border_color
+	beautiful.hotkeys_border_color = C.surface_focus
 	beautiful.hotkeys_shape = beautiful.menu_shape
 
 	beautiful.hotkeys_label_bg = beautiful.menu_bg_focus

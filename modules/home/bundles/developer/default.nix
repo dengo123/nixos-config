@@ -90,9 +90,7 @@ in {
           doomDir = inputs.self + /dotfiles/doom;
         };
 
-        bundles.shell.mode = mkOverride 900 "emacs";
-
-        bundles.terminal.enable = mkOverride 900 false;
+        bundles.shell.mode = mkDefault "emacs";
       };
     })
 

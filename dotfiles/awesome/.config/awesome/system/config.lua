@@ -141,7 +141,7 @@ return {
 			exclude = { "terminal" },
 		},
 
-		rounded_corners = true,
+		rounded_corners = false, -- prefere picom
 
 		focus = {
 			raise_on_mouse = false,
@@ -193,7 +193,7 @@ return {
 	-- =========================================================================
 
 	menu = {
-		dynamic_labels = true,
+		dynamic_labels = false,
 		tabs = true,
 	},
 

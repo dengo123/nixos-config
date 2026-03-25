@@ -1,4 +1,4 @@
--- ~/.config/awesome/input/keys/global/escape.lua
+-- ~/.config/awesome/input/keys/runtime/escape.lua
 local awful = require("awful")
 local gears = require("gears")
 

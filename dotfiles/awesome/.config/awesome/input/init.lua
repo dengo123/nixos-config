@@ -83,6 +83,7 @@ local function build_globalkeys(cfg)
 		call_key_factory(global_mod("layout"), modkey),
 		call_key_factory(global_mod("logoff"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(global_mod("media"), modkey, cfg),
+		call_key_factory(global_mod("menu"), modkey, cfg),
 		call_key_factory(global_mod("power"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(global_mod("run"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(
@@ -137,6 +138,7 @@ function M.init(args)
 			layout = safe_require("input.global.layout"),
 			logoff = safe_require("input.global.logoff"),
 			media = safe_require("input.global.media"),
+			menu = safe_require("input.global.menu"),
 			power = safe_require("input.global.power"),
 			run = safe_require("input.global.run"),
 			screens = safe_require("input.global.screens"),
@@ -145,6 +147,7 @@ function M.init(args)
 		},
 		runtime = {
 			escape = safe_require("input.runtime.escape"),
+			super_release = safe_require("input.runtime.super_release"),
 		},
 		client = {
 			kill = safe_require("input.client.kill"),

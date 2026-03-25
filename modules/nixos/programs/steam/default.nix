@@ -1,3 +1,4 @@
+# modules/nixos/programs/steam/default.nix
 {
   config,
   lib,
@@ -6,11 +7,9 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.steam;
-in
-{
+in {
   options.${namespace}.programs.steam = with types; {
     enable = mkBoolOpt false "Enable steam";
   };

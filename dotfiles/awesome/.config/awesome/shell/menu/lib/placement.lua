@@ -16,9 +16,13 @@ local function get_layout()
 	return out
 end
 
+local function bar_object(s)
+	return s and (s.mywibar or s.mywibox or s.wibar) or nil
+end
+
 local function bar_geometry(s)
-	local wibar = s and (s.mywibar or s.mywibox or s.wibar)
-	if wibar and wibar.valid then
+	local wibar = bar_object(s)
+	if wibar and wibar.valid and wibar._menu_anchor == true then
 		return wibar:geometry()
 	end
 
@@ -39,12 +43,35 @@ local function screen_geometry(s)
 end
 
 local function wibar_position(s)
-	local wibar = s and (s.mywibar or s.mywibox or s.wibar)
-	if wibar and wibar.position then
+	local wibar = bar_object(s)
+	if wibar and wibar.valid and wibar._menu_anchor == true and wibar.position then
 		return wibar.position
 	end
 
 	return "bottom"
+end
+
+local function layout_width()
+	local layout = get_layout()
+	return tonumber(layout.width) or 220
+end
+
+local function screen_workarea(s)
+	if s and s.workarea then
+		return s.workarea
+	end
+
+	return screen_geometry(s)
+end
+
+local function has_bar(s)
+	local wibar = bar_object(s)
+
+	if not (wibar and wibar.valid) then
+		return false
+	end
+
+	return wibar._menu_anchor == true
 end
 
 -- =========================================================================
@@ -112,6 +139,35 @@ function P.coords_for_start(s, item_count)
 	local y = P.y_over_bar(s, total_height)
 
 	return x, y
+end
+
+function P.coords_centered(s, item_count)
+	local Layout = layout_api()
+	local wa = screen_workarea(s)
+
+	local width = layout_width()
+	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
+
+	local x = wa.x + math.floor((wa.width - width) / 2)
+	local y = wa.y + math.floor((wa.height - total_height) / 2)
+
+	if x < wa.x then
+		x = wa.x
+	end
+
+	if y < wa.y then
+		y = wa.y
+	end
+
+	return x, y
+end
+
+function P.coords_for_keybind(s, item_count)
+	if has_bar(s) then
+		return P.coords_for_start(s, item_count)
+	end
+
+	return P.coords_centered(s, item_count)
 end
 
 return P

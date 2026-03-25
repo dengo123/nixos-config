@@ -46,7 +46,10 @@ in {
           enable = true;
           # fade = true;
           # shadow = true;
-          # inactiveOpacity = 0.9;
+          activeOpacity = 0.99;
+          inactiveOpacity = 0.9;
+          roundBorders = 8;
+          # cornerRadius = 8;
         };
 
         redshift = {

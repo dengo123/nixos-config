@@ -82,8 +82,8 @@ local function resolve_label(dynamic_labels, cmd, fallback)
 	return fallback
 end
 
-local function mk_item(label, fn, icon)
-	return { label, fn, icon }
+local function mk_item(label, fn_or_submenu, icon)
+	return { label, fn_or_submenu, icon }
 end
 
 local function client_actions(cfg)
@@ -117,6 +117,36 @@ local function toggle_layout_state(c, cfg)
 	c:raise()
 end
 
+local function applications_submenu(ctx)
+	local Apps = ctx.api and ctx.api.applications
+	if not Apps then
+		return {
+			mk_item("Unavailable", function() end, nil),
+		}
+	end
+
+	local items = (type(Apps.items) == "function" and Apps.items()) or {}
+	local loaded = (type(Apps.is_loaded) == "function" and Apps.is_loaded()) or false
+
+	if #items > 0 then
+		return items
+	end
+
+	if not loaded then
+		return {
+			mk_item("Loading...", function() end, nil),
+		}
+	end
+
+	return {
+		mk_item("No applications found", function() end, nil),
+	}
+end
+
+local function has_items(items)
+	return type(items) == "table" and #items > 0
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -148,8 +178,9 @@ function Items.build_start(ctx)
 	local browser_name = resolve_label(dynamic_labels, browser_cmd, "Browser")
 
 	local browser_available = cmd_exists(browser_cmd)
+	local desktop_items = applications_submenu(ctx)
 
-	return {
+	local out = {
 		mk_item(files_name, function()
 			spawn_cmd(files_cmd)
 		end, nil),
@@ -169,34 +200,56 @@ function Items.build_start(ctx)
 				spawn_cmd({ "xdg-open", "about:blank" })
 			end
 		end, nil),
+	}
 
+	table.insert(
+		out,
 		mk_item("Run", function()
 			local launchers = require("shell.launchers")
 			launchers.open.run()
-		end, nil),
+		end, nil)
+	)
 
+	table.insert(
+		out,
 		mk_item("Screensaver", function()
 			awful.spawn.with_shell("xscreensaver-settings")
-		end, nil),
+		end, nil)
+	)
 
+	table.insert(
+		out,
 		mk_item("Awesome Reload", function()
 			awesome.restart()
-		end, nil),
+		end, nil)
+	)
 
+	table.insert(
+		out,
 		mk_item("Hotkeys", function()
 			hotkeys_popup.show_help(nil, awful.screen.focused())
-		end, nil),
+		end, nil)
+	)
 
+	table.insert(out, mk_item("Applications", desktop_items, nil))
+
+	table.insert(
+		out,
 		mk_item("Log Off", function()
 			local launchers = require("shell.launchers")
 			launchers.open.logoff()
-		end, nil),
+		end, nil)
+	)
 
+	table.insert(
+		out,
 		mk_item("Shut Down", function()
 			local launchers = require("shell.launchers")
 			launchers.open.power()
-		end, nil),
-	}
+		end, nil)
+	)
+
+	return out
 end
 
 function Items.build_clients(clients, ctx)

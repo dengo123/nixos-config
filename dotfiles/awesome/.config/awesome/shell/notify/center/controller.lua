@@ -170,8 +170,6 @@ function M.new(args)
 				List.clamp_scroll_offset(state)
 			end
 
-			State.ensure_selected(popup.screen)
-
 			local panel = built.widget
 
 			if View and type(View.build) == "function" then
@@ -307,8 +305,6 @@ function M.new(args)
 						controller.rebuild_popup(popup)
 						controller.apply_geometry(popup)
 					end
-
-					State.ensure_selected(s)
 				end
 			end,
 			on_close = function()
