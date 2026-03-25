@@ -14,6 +14,8 @@ function M.register(args)
 	local rebuild_popup = args.rebuild_popup
 	local apply_geometry = args.apply_geometry
 	local sync_popups = args.sync_popups
+	local select_prev = args.select_prev
+	local select_next = args.select_next
 	local scroll_up = args.scroll_up
 	local scroll_down = args.scroll_down
 	local activate_selected = args.activate_selected
@@ -58,6 +60,18 @@ function M.register(args)
 	awesome.connect_signal("notify::center_scroll_down", function()
 		if type(scroll_down) == "function" then
 			scroll_down()
+		end
+	end)
+
+	awesome.connect_signal("notify::center_select_prev", function()
+		if type(select_prev) == "function" then
+			select_prev()
+		end
+	end)
+
+	awesome.connect_signal("notify::center_select_next", function()
+		if type(select_next) == "function" then
+			select_next()
 		end
 	end)
 

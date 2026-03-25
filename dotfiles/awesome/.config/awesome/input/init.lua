@@ -46,10 +46,6 @@ local function global_mod(name)
 	return global_api()[name]
 end
 
-local function runtime_mod(name)
-	return runtime_api()[name]
-end
-
 local function client_mod(name)
 	return client_api()[name]
 end
@@ -84,6 +80,7 @@ local function build_globalkeys(cfg)
 		call_key_factory(global_mod("logoff"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(global_mod("media"), modkey, cfg),
 		call_key_factory(global_mod("menu"), modkey, cfg),
+		call_key_factory(global_mod("notify"), modkey, cfg),
 		call_key_factory(global_mod("power"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(global_mod("run"), modkey, cfg.api and cfg.api.launchers),
 		call_key_factory(
@@ -122,6 +119,20 @@ local function build_clientkeys(cfg)
 	)
 end
 
+local function init_runtimekeys(cfg, rootkeys)
+	local Runtime = runtime_api()
+
+	init_module(Runtime.escape, {
+		globalkeys = rootkeys,
+		overlays = cfg.overlays,
+	})
+
+	init_module(Runtime.notify, {
+		globalkeys = rootkeys,
+		overlays = cfg.overlays,
+	})
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -139,6 +150,7 @@ function M.init(args)
 			logoff = safe_require("input.global.logoff"),
 			media = safe_require("input.global.media"),
 			menu = safe_require("input.global.menu"),
+			notify = safe_require("input.global.notify"),
 			power = safe_require("input.global.power"),
 			run = safe_require("input.global.run"),
 			screens = safe_require("input.global.screens"),
@@ -147,7 +159,7 @@ function M.init(args)
 		},
 		runtime = {
 			escape = safe_require("input.runtime.escape"),
-			super_release = safe_require("input.runtime.super_release"),
+			notify = safe_require("input.runtime.notify"),
 		},
 		client = {
 			kill = safe_require("input.client.kill"),
@@ -175,8 +187,6 @@ end
 function M.apply(cfg)
 	cfg = cfg or {}
 
-	local Escape = runtime_mod("escape")
-
 	local globalkeys = build_globalkeys(cfg)
 	local clientkeys = build_clientkeys(cfg)
 	local rootkeys = gears.table.join(globalkeys, clientkeys)
@@ -184,12 +194,7 @@ function M.apply(cfg)
 	M.globalkeys = rootkeys
 	root.keys(rootkeys)
 
-	if Escape and type(Escape.init) == "function" then
-		Escape.init({
-			globalkeys = rootkeys,
-			overlays = cfg.overlays,
-		})
-	end
+	init_runtimekeys(cfg, rootkeys)
 
 	return M
 end

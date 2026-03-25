@@ -42,8 +42,9 @@ local function resolve_wallpaper_fn(ui)
 	return nil
 end
 
-local function build_overlay_entry(api_obj, is_open_name, close_name)
+local function build_overlay_entry(name, api_obj, is_open_name, close_name)
 	return {
+		name = name,
 		is_open = function()
 			return api_obj and type(api_obj[is_open_name]) == "function" and api_obj[is_open_name]() or false
 		end,
@@ -68,8 +69,8 @@ local function build_overlays()
 		end
 	end
 
-	table.insert(ordered, build_overlay_entry(Menu, "is_open", "hide"))
-	table.insert(ordered, build_overlay_entry(Notify, "is_center_open", "close_center"))
+	table.insert(ordered, build_overlay_entry("menu", Menu, "is_open", "hide"))
+	table.insert(ordered, build_overlay_entry("notify_center", Notify, "is_center_open", "close_center"))
 
 	return {
 		ordered = ordered,

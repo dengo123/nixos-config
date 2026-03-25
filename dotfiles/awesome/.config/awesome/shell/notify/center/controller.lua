@@ -329,6 +329,21 @@ function M.new(args)
 		controller.scroll_delta(s, -1)
 	end
 
+	function controller.clear_history()
+		if History and type(History.clear) == "function" then
+			History.clear()
+		end
+
+		for _, s in ipairs(controller.target_screens()) do
+			local state = State and State.state_for_screen and State.state_for_screen(s) or nil
+			if state then
+				State.clear_selection(state)
+			end
+		end
+
+		awesome.emit_signal("notify::close_center")
+	end
+
 	return controller
 end
 

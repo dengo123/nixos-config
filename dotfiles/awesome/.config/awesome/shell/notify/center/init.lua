@@ -86,6 +86,14 @@ local function register_signals()
 			controller.scroll_down(current_screen())
 		end,
 
+		select_prev = function()
+			M.select_prev(current_screen())
+		end,
+
+		select_next = function()
+			M.select_next(current_screen())
+		end,
+
 		activate_selected = function()
 			if type(controller.activate_selected) == "function" then
 				controller.activate_selected(current_screen())
@@ -199,7 +207,12 @@ function M.select_prev(s)
 
 	s = current_screen(s)
 	local state = State.state_for_screen(s)
-	local current = state.selected_index or 2
+	local current = state.selected_index
+
+	if current == nil then
+		current = #(state.items or {}) + 1
+	end
+
 	State.set_selected_index(s, current - 1)
 end
 
