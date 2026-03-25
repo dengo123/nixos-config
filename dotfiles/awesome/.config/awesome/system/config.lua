@@ -5,7 +5,7 @@ return {
 	-- =========================================================================
 
 	apps = {
-		terminal = "xterm",
+		terminal = "kitty",
 		editor = "emacsclient -c -a ''",
 		browser = "firefox",
 		files = "nemo",
@@ -184,7 +184,7 @@ return {
 		},
 
 		run = {
-			web_engine = "https://duckduckgo.com/?q=%s",
+			web_engine = "duckduckgo",
 		},
 	},
 

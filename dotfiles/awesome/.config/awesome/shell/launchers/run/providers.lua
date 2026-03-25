@@ -341,13 +341,34 @@ end
 -- Web
 -- =========================================================================
 
-function P.web_open(query, engine_fmt, browser)
+local WEB_ENGINES = {
+	google = "https://www.google.com/search?q=%s",
+	duckduckgo = "https://duckduckgo.com/?q=%s",
+	bing = "https://www.bing.com/search?q=%s",
+	brave = "https://search.brave.com/search?q=%s",
+	startpage = "https://www.startpage.com/do/search?q=%s",
+	ecosia = "https://www.ecosia.org/search?q=%s",
+	kagi = "https://kagi.com/search?q=%s",
+}
+
+local function resolve_web_engine(engine)
+	if type(engine) ~= "string" or engine == "" then
+		return WEB_ENGINES.google
+	end
+
+	local key = trim(engine):lower()
+	return WEB_ENGINES[key] or WEB_ENGINES.google
+end
+
+function P.web_open(query, engine_name, browser)
 	local q = trim((query or ""):gsub("^%?+", ""))
 	if q == "" then
 		return
 	end
 
-	local url = string.format(engine_fmt or "https://duckduckgo.com/?q=%s", urlencode(q))
+	local engine_fmt = resolve_web_engine(engine_name)
+	local url = string.format(engine_fmt, urlencode(q))
+
 	awful.spawn({ browser or "firefox", url }, false)
 end
 

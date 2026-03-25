@@ -7,8 +7,7 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-{
+with lib.${namespace}; {
   snowfallorg.user.enable = true;
 
   nixforge = {
@@ -16,10 +15,10 @@ with lib.${namespace};
       common = enabled;
       office = enabled;
       developer.editor = "doom";
+      terminal.emulator = "kitty";
 
       desktop = {
         awesome = enabled;
-        # hyprland = enabled;
       };
     };
 

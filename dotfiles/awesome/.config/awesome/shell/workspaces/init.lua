@@ -42,7 +42,6 @@ local function attach_policy_signals(cfg)
 	local Focus = policy_mod("focus")
 	local Layout = policy_mod("layout")
 	local Spacing = policy_mod("spacing")
-	local Autorandr = policy_mod("autorandr")
 
 	if Focus and type(Focus.attach_policy_signals) == "function" then
 		Focus.attach_policy_signals(Layout and Layout.apply_layout_policy or nil)
@@ -50,10 +49,6 @@ local function attach_policy_signals(cfg)
 
 	if Spacing and type(Spacing.init) == "function" then
 		Spacing.init(cfg)
-	end
-
-	if Autorandr and type(Autorandr.attach_policy_signals) == "function" then
-		Autorandr.attach_policy_signals()
 	end
 end
 
@@ -80,7 +75,6 @@ function M.init(args)
 			spacing = safe_require("shell.workspaces.policies.spacing_policy"),
 			focus = safe_require("shell.workspaces.policies.focus_policy"),
 			client = safe_require("shell.workspaces.policies.client_policy"),
-			autorandr = safe_require("shell.workspaces.policies.autorandr_policy"),
 		},
 	}
 
