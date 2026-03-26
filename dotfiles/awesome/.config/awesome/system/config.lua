@@ -1,6 +1,17 @@
 -- ~/.config/awesome/system/config.lua
 return {
 	-- =========================================================================
+	-- System
+	-- =========================================================================
+
+	system = {
+		autostart = {
+			copyq_enable = true,
+			picom_enable = true,
+		},
+	},
+
+	-- =========================================================================
 	-- Apps
 	-- =========================================================================
 
@@ -34,8 +45,9 @@ return {
 	-- =========================================================================
 
 	ui = {
+		-- theme = "luna",
 		wallpaper = {
-			-- source = "~/Pictures/wallpapers/jenny-xp.jpg",
+			-- source = "~/Pictures/wallpapers/TreasurePlanet_collab_done.png",
 
 			display = {
 				mode = "maximized", -- "maximized | fit_fill | center | strech"
@@ -59,19 +71,6 @@ return {
 			-- 	interval = 600,
 			-- 	random = false,
 			-- },
-		},
-	},
-
-	-- =========================================================================
-	-- System
-	-- =========================================================================
-
-	system = {
-		autostart = {
-			copyq = {
-				enable = true,
-				delay = 1.5,
-			},
 		},
 	},
 
@@ -184,7 +183,7 @@ return {
 		},
 
 		run = {
-			web_engine = "duckduckgo",
+			web_engine = "google",
 		},
 	},
 

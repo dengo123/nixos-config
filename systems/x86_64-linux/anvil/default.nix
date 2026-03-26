@@ -35,7 +35,7 @@ with lib.${namespace}; {
     };
     desktop.awesome = {
       enable = true;
-      package = "git";
+      package = "patched";
       autoLogin = enabled;
     };
     hardware = {

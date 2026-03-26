@@ -104,6 +104,7 @@ function M.init(args)
 	beautiful.notify_button_radius = dpi(10)
 	beautiful.notify_button_pad_h = dpi(0)
 	beautiful.notify_button_pad_v = dpi(0)
+	beautiful.notify_button_offset_x = dpi(1)
 	beautiful.notify_button_offset_y = dpi(1)
 
 	beautiful.notify_button_bg = beautiful.systray_bg
@@ -118,7 +119,7 @@ function M.init(args)
 
 	beautiful.notify_button_glyph_closed = "⮜"
 	beautiful.notify_button_glyph_open = "⮝"
-	beautiful.notify_button_glyph_offset_y = 5
+	beautiful.notify_button_glyph_offset_y = 3
 
 	beautiful.notify_button_gap_left = dpi(16)
 	beautiful.notify_button_zone_width = dpi(12)

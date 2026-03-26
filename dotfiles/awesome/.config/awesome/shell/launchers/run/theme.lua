@@ -41,6 +41,16 @@ local function with_size(font, size)
 	return base .. " " .. tostring(size)
 end
 
+local function merge_nested(base, override, keys)
+	local out = merge(base, override)
+
+	for _, key in ipairs(keys or {}) do
+		out[key] = merge(base and base[key] or {}, override and override[key] or {})
+	end
+
+	return out
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -108,10 +118,10 @@ function M.get(overrides)
 		},
 
 		colors = {
-			bg_active = C.background or C.white,
-			fg_active = C.foreground or C.black,
-			cursor_bg = C.foreground or C.black,
-			cursor_fg = C.background or C.white,
+			bg_active = C.text_invert or C.background,
+			fg_active = C.text or C.foreground,
+			cursor_bg = C.text or C.foreground,
+			cursor_fg = C.text_invert or C.background,
 		},
 
 		layout = {
@@ -156,7 +166,13 @@ function M.get(overrides)
 	}
 
 	local panel = merge(panel_defaults, overrides.panel or {})
-	local search = merge(search_defaults, overrides.search or {})
+	local search = merge_nested(search_defaults, overrides.search or {}, {
+		"sizes",
+		"colors",
+		"layout",
+		"prefix",
+		"hint",
+	})
 	local buttons = merge(button_defaults, overrides.buttons or {})
 
 	return {

@@ -72,9 +72,36 @@ local function build_runtime_api(cfg, global_ui)
 		rules = Modules.rules,
 
 		actions = Runtime.actions,
+		minimized = Runtime.minimized,
+		navigation = Runtime.navigation,
+		signals = Runtime.signals,
 		state = Runtime.state,
+
 		titlebars = Behavior.titlebars,
 		titlebar_buttons = UI.titlebar_buttons,
+	}
+end
+
+local function build_actions(runtime)
+	return {
+		scr_in_dir = runtime.actions and runtime.actions.scr_in_dir or nil,
+		move_client_dir = runtime.actions and runtime.actions.move_client_dir or nil,
+		move_client_to_screen = runtime.actions and runtime.actions.move_client_to_screen or nil,
+		layout_state_mode = runtime.actions and runtime.actions.layout_state_mode or nil,
+		is_layout_state_active = runtime.actions and runtime.actions.is_layout_state_active or nil,
+		toggle_layout_state = runtime.actions and runtime.actions.toggle_layout_state or nil,
+
+		focus_client = runtime.navigation and runtime.navigation.focus_client or nil,
+		swap_client = runtime.navigation and runtime.navigation.swap_client or nil,
+		is_max_layout = runtime.navigation and runtime.navigation.is_max_layout or nil,
+		current_screen = runtime.navigation and runtime.navigation.current_screen or nil,
+
+		minimize_focused = runtime.actions and runtime.actions.minimize_focused or nil,
+		minimize_visible_tag_on_screen = runtime.actions and runtime.actions.minimize_visible_tag_on_screen or nil,
+		minimize_all_tags_on_screen = runtime.actions and runtime.actions.minimize_all_tags_on_screen or nil,
+		minimize_visible_tags_on_all_screens = runtime.actions and runtime.actions.minimize_visible_tags_on_all_screens
+			or nil,
+		minimize_all_tags_on_all_screens = runtime.actions and runtime.actions.minimize_all_tags_on_all_screens or nil,
 	}
 end
 
@@ -103,6 +130,8 @@ function M.init(args)
 		},
 		runtime = {
 			actions = safe_require("shell.windowing.runtime.actions"),
+			minimized = safe_require("shell.windowing.runtime.minimized"),
+			navigation = safe_require("shell.windowing.runtime.navigation"),
 			signals = safe_require("shell.windowing.runtime.signals"),
 			state = safe_require("shell.windowing.runtime.state"),
 		},
@@ -121,7 +150,6 @@ function M.init(args)
 	local runtime = build_runtime_api(cfg, global_ui)
 
 	M.api.runtime_api = runtime
-	M.actions = runtime.actions
 
 	init_module(runtime.actions, {
 		cfg = cfg,
@@ -134,6 +162,22 @@ function M.init(args)
 		api = runtime,
 		ui = runtime.ui_root,
 	})
+
+	init_module(runtime.minimized, {
+		cfg = cfg,
+		api = runtime.runtime,
+		ui = runtime.ui_root,
+	})
+
+	init_module(runtime.navigation, {
+		cfg = cfg,
+		api = runtime.runtime,
+		ui = runtime.ui_root,
+	})
+
+	if runtime.minimized and type(runtime.minimized.attach_signals) == "function" then
+		runtime.minimized.attach_signals()
+	end
 
 	init_module(runtime.ui.theme, {
 		cfg = cfg,
@@ -207,6 +251,8 @@ function M.init(args)
 			runtime.behavior.fullscreen_dim.init(dim_cfg)
 		end
 	end
+
+	M.actions = build_actions(runtime)
 
 	return M
 end

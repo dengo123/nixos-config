@@ -20,7 +20,7 @@ local function build_hint_row(ui, pad_l, pad_r, pad_t)
 
 	local gfs = require("gears.filesystem")
 	local icon_w = nil
-	local icon_size = assert(tonumber(hint.icon_size or hint.size), "run.view: ui.hint.icon_size/ui.hint.size required")
+	local icon_size = tonumber(hint.icon_size or hint.size)
 
 	if hint.icon_path and #tostring(hint.icon_path) > 0 then
 		local path = tostring(hint.icon_path)
@@ -62,12 +62,7 @@ local function build_hint_row(ui, pad_l, pad_r, pad_t)
 
 	if not icon_w and hint.icon and #tostring(hint.icon) > 0 then
 		icon_w = wibox.widget({
-			markup = string.format(
-				"<span font='%s %d'>%s</span>",
-				hint.font,
-				assert(tonumber(hint.size), "run.view: ui.hint.size required"),
-				escape(hint.icon)
-			),
+			markup = string.format("<span font='%s %d'>%s</span>", hint.font, tonumber(hint.size), escape(hint.icon)),
 			align = "left",
 			valign = "center",
 			widget = wibox.widget.textbox,
@@ -75,12 +70,7 @@ local function build_hint_row(ui, pad_l, pad_r, pad_t)
 	end
 
 	local txt_w = wibox.widget({
-		markup = string.format(
-			"<span font='%s %d'>%s</span>",
-			hint.font,
-			assert(tonumber(hint.size), "run.view: ui.hint.size required"),
-			escape(hint.text)
-		),
+		markup = string.format("<span font='%s %d'>%s</span>", hint.font, tonumber(hint.size), escape(hint.text)),
 		align = "left",
 		valign = "center",
 		widget = wibox.widget.textbox,
@@ -89,7 +79,7 @@ local function build_hint_row(ui, pad_l, pad_r, pad_t)
 	local inner = wibox.widget({
 		icon_w or wibox.widget({}),
 		txt_w,
-		spacing = assert(tonumber(hint.icon_spacing), "run.view: ui.hint.icon_spacing required"),
+		spacing = tonumber(hint.icon_spacing),
 		layout = wibox.layout.fixed.horizontal,
 	})
 
@@ -113,28 +103,23 @@ end
 -- =========================================================================
 
 function V.build(ui, textbox)
-	assert(textbox, "run.view: textbox required")
-	assert(ui and tonumber(ui.body_width), "run.view: ui.body_width required")
-	assert(tonumber(ui.height), "run.view: ui.height required")
-	assert(ui.padding, "run.view: ui.padding required")
-
 	-- ---------------------------------------------------------------------
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local pad_l = assert(tonumber(ui.padding.left), "run.view: ui.padding.left required")
-	local pad_r = assert(tonumber(ui.padding.right), "run.view: ui.padding.right required")
-	local pad_t = assert(tonumber(ui.padding.top), "run.view: ui.padding.top required")
-	local pad_b = assert(tonumber(ui.padding.bottom), "run.view: ui.padding.bottom required")
+	local pad_l = tonumber(ui.padding.left)
+	local pad_r = tonumber(ui.padding.right)
+	local pad_t = tonumber(ui.padding.top)
+	local pad_b = tonumber(ui.padding.bottom)
 
-	local prefix_width = assert(tonumber(ui.prefix_width), "run.view: ui.prefix_width required")
-	local prefix_font = assert(ui.prefix_font, "run.view: ui.prefix_font required")
-	local prefix_size = assert(tonumber(ui.prefix_size), "run.view: ui.prefix_size required")
+	local prefix_width = tonumber(ui.prefix_width)
+	local prefix_font = ui.prefix_font
+	local prefix_size = tonumber(ui.prefix_size)
 
-	local border_w = assert(tonumber(ui.border_w), "run.view: ui.border_w required")
-	local border_color = assert(ui.border_color, "run.view: ui.border_color required")
-	local bg_active = assert(ui.bg_active, "run.view: ui.bg_active required")
-	local fg_active = assert(ui.fg_active, "run.view: ui.fg_active required")
+	local border_w = tonumber(ui.border_w)
+	local border_color = ui.border_color
+	local bg_active = ui.bg_active
+	local fg_active = ui.fg_active
 
 	-- ---------------------------------------------------------------------
 	-- Hint
@@ -251,9 +236,9 @@ function V.build(ui, textbox)
 	local vertical = wibox.widget({
 		hint_row or nil,
 		main_row_centered,
-		spacing = (ui.hint and ui.hint.show ~= false and ui.hint.text and #ui.hint.text > 0)
-				and assert(tonumber(ui.hint.spacing), "run.view: ui.hint.spacing required")
-			or 0,
+		spacing = (ui.hint and ui.hint.show ~= false and ui.hint.text and #ui.hint.text > 0) and tonumber(
+			ui.hint.spacing
+		) or 0,
 		layout = wibox.layout.fixed.vertical,
 	})
 

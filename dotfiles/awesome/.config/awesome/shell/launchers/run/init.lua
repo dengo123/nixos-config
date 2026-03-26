@@ -82,6 +82,100 @@ local function resolve_web_cfg(cfg)
 	}
 end
 
+local function build_view_ui(panel, search, d)
+	return {
+		body_width = panel.width - 2 * d.pad_h,
+		height = tonumber(search.sizes.height),
+
+		bg_active = search.colors.bg_active,
+		fg_active = search.colors.fg_active,
+
+		padding = {
+			left = search.layout.left,
+			right = search.layout.right,
+			top = search.layout.top,
+			bottom = search.layout.bottom,
+		},
+
+		spacing = search.layout.spacing,
+		border_w = search.border_w,
+		border_color = search.border_color,
+
+		prefix_width = search.prefix_width,
+		prefix_font = search.prefix_font,
+		prefix_size = search.prefix_size,
+		hint = search.hint,
+	}
+end
+
+local function build_body_widget(view, search, d)
+	local bar_h = tonumber(search.sizes.height)
+	local hint = search.hint or {}
+	local hint_enabled = (hint.show ~= false) and (hint.text and #tostring(hint.text) > 0)
+
+	local pad_t = tonumber(search.layout.top)
+	local hint_spacing = tonumber(hint.spacing)
+	local hint_size = tonumber(hint.size)
+
+	local hint_h = hint_enabled and (pad_t + hint_size + hint_spacing) or 0
+	local offset_in_body = math.max(0, math.floor(d.body_h / 2 - (hint_h + bar_h / 2)))
+
+	return wibox.widget({
+		view.widget,
+		top = offset_in_body,
+		widget = wibox.container.margin,
+	})
+end
+
+local function build_controller_ctx(args)
+	local search = args.search
+	local cfg = args.cfg or {}
+	local web_cfg = args.web_cfg or {}
+
+	return {
+		awful = args.awful,
+		gears = args.gears,
+		prompt = args.prompt,
+		view = args.view,
+
+		parts = {
+			textbox = args.textbox,
+		},
+
+		sizes = {
+			width_expanded = search.sizes.width_expanded,
+		},
+
+		colors = {
+			bg_active = search.colors.bg_active,
+			fg_active = search.colors.fg_active,
+			cursor_bg = search.colors.cursor_bg,
+			cursor_fg = search.colors.cursor_fg,
+		},
+
+		layout = {
+			left = search.layout.left,
+			right = search.layout.right,
+			top = search.layout.top,
+			bottom = search.layout.bottom,
+		},
+
+		prefixes = search.prefix,
+		providers = args.providers,
+		complete = args.complete,
+		web = web_cfg,
+		home = os.getenv("HOME"),
+		apps = cfg.apps or {},
+		modkey = cfg.input and cfg.input.modkey or "Mod4",
+
+		hide_menu_popup = function()
+			if args.handle and args.handle.close then
+				args.handle.close()
+			end
+		end,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -128,7 +222,6 @@ function M.open(opts, Lib)
 	local web_cfg = resolve_web_cfg(cfg)
 
 	local th = resolve_theme(opts.theme)
-
 	local panel = th.panel
 	local search = th.search
 	local buttons = th.buttons
@@ -142,51 +235,11 @@ function M.open(opts, Lib)
 	local ok_id = button_id(buttons.ok, "ok")
 	local cancel_id = button_id(buttons.cancel, "cancel")
 
-	local prompt = awful.widget.prompt()
-	local textbox = prompt.widget
+	local textbox = wibox.widget.textbox()
 
-	local ui = {
-		body_width = panel.width - 2 * d.pad_h,
-		height = tonumber(search.sizes.height),
-
-		bg_active = search.colors.bg_active,
-		fg_active = search.colors.fg_active,
-
-		padding = {
-			left = search.layout.left,
-			right = search.layout.right,
-			top = search.layout.top,
-			bottom = search.layout.bottom,
-		},
-
-		spacing = search.layout.spacing,
-		border_w = search.border_w,
-		border_color = search.border_color,
-
-		prefix_width = search.prefix_width,
-		prefix_font = search.prefix_font,
-		prefix_size = search.prefix_size,
-		hint = search.hint,
-	}
-
+	local ui = build_view_ui(panel, search, d)
 	local view = View.build(ui, textbox)
-
-	local bar_h = tonumber(search.sizes.height)
-	local hint = search.hint or {}
-	local hint_enabled = (hint.show ~= false) and (hint.text and #tostring(hint.text) > 0)
-
-	local pad_t = tonumber(search.layout.top)
-	local hint_spacing = tonumber(hint.spacing)
-	local hint_size = tonumber(hint.size)
-
-	local hint_h = hint_enabled and (pad_t + hint_size + hint_spacing) or 0
-	local offset_in_body = math.max(0, math.floor(d.body_h / 2 - (hint_h + bar_h / 2)))
-
-	local body_widget = wibox.widget({
-		view.widget,
-		top = offset_in_body,
-		widget = wibox.container.margin,
-	})
+	local body_widget = build_body_widget(view, search, d)
 
 	local act_mode = function() end
 	local act_ok = function() end
@@ -224,47 +277,19 @@ function M.open(opts, Lib)
 		end,
 	})
 
-	local ctrl = Controller.new({
+	local ctrl = Controller.new(build_controller_ctx({
 		awful = awful,
 		gears = gears,
+		prompt = prompt,
 		view = view,
-
-		parts = {
-			textbox = textbox,
-		},
-
-		sizes = {
-			width_expanded = search.sizes.width_expanded,
-		},
-
-		colors = {
-			bg_active = search.colors.bg_active,
-			fg_active = search.colors.fg_active,
-			cursor_bg = search.colors.cursor_bg,
-			cursor_fg = search.colors.cursor_fg,
-		},
-
-		layout = {
-			left = search.layout.left,
-			right = search.layout.right,
-			top = search.layout.top,
-			bottom = search.layout.bottom,
-		},
-
-		prefixes = search.prefix,
+		textbox = textbox,
+		search = search,
+		cfg = cfg,
+		web_cfg = web_cfg,
 		providers = Providers,
 		complete = Complete,
-		web = web_cfg,
-		home = os.getenv("HOME"),
-		apps = cfg.apps or {},
-		modkey = cfg.input and cfg.input.modkey or "Mod4",
-
-		hide_menu_popup = function()
-			if handle and handle.close then
-				handle.close()
-			end
-		end,
-	})
+		handle = handle,
+	}))
 
 	ctrl.init()
 

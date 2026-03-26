@@ -23,6 +23,7 @@ function M.build(s, _opts)
 	local glyph_closed = beautiful.notify_button_glyph_closed
 	local glyph_open = beautiful.notify_button_glyph_open
 	local glyph_offset_y = tonumber(beautiful.notify_button_glyph_offset_y)
+	local button_offset_x = tonumber(beautiful.notify_button_offset_x)
 	local button_offset_y = tonumber(beautiful.notify_button_offset_y)
 
 	local is_open = false
@@ -64,6 +65,8 @@ function M.build(s, _opts)
 
 	local button_box = wibox.widget({
 		button,
+		right = math.max(0, button_offset_x),
+		left = math.max(0, -button_offset_x),
 		top = math.max(0, button_offset_y),
 		bottom = math.max(0, -button_offset_y),
 		widget = wibox.container.margin,

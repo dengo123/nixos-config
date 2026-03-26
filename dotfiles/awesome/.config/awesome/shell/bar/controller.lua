@@ -179,6 +179,19 @@ local function build_sections(api, parts, visibility)
 end
 
 local function create_wibar(s, props, sections, bar_normally_visible)
+	local old = s.mywibar
+
+	if old and old.valid then
+		old.visible = false
+		pcall(function()
+			old:struts(nil)
+		end)
+		pcall(function()
+			old.widget = nil
+		end)
+		s.mywibar = nil
+	end
+
 	s.mywibar = awful.wibar({
 		position = props.position,
 		screen = s,

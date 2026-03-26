@@ -11,66 +11,43 @@ with lib.${namespace}; let
   cfg = config.${namespace}.services.picom;
 in {
   options.${namespace}.services.picom = with types; {
-    enable = mkBoolOpt false "Enable Picom compositor.";
+    enable = mkBoolOpt false "Enable Picom integration.";
 
     package = mkOpt package pkgs.picom "Picom package to use.";
 
-    backend = mkOpt str "glx" "Picom backend.";
-    vSync = mkOpt bool true "Enable VSync.";
-    fade = mkOpt bool false "Enable fade effects.";
-    shadow = mkOpt bool false "Enable shadows.";
+    manageConfig = mkOpt bool true ''
+      If true, Home Manager manages ~/.config/picom/picom.conf and starts Picom.
+      If false, config management and autostart are expected to be handled externally.
+    '';
 
-    activeOpacity = mkOpt float 1.0 "Opacity for active windows.";
-    inactiveOpacity = mkOpt float 1.0 "Opacity for inactive windows.";
-
-    cornerRadius = mkOpt int 0 "Global corner radius.";
-    roundBorders = mkOpt int 0 "Rounded border radius.";
-
-    useDefaultWintypes = mkOpt bool true "Apply default wintype rules for panels and menus.";
-
-    extraSettings = mkOpt attrs {} "Additional raw settings merged into services.picom.settings.";
+    configFile =
+      mkOpt (types.nullOr types.path) null
+      "Path to picom.conf when Home Manager manages the config.";
   };
 
-  config = mkIf cfg.enable {
-    services.picom = {
-      enable = true;
-      package = cfg.package;
+  config = mkIf cfg.enable (mkMerge [
+    {
+      home.packages = [cfg.package];
+    }
 
-      backend = cfg.backend;
-      vSync = cfg.vSync;
-
-      shadow = cfg.shadow;
-      fade = cfg.fade;
-
-      activeOpacity = cfg.activeOpacity;
-      inactiveOpacity = cfg.inactiveOpacity;
-
-      settings =
+    (mkIf cfg.manageConfig {
+      assertions = [
         {
-          corner-radius = cfg.cornerRadius;
-          round-borders = cfg.roundBorders;
+          assertion = cfg.configFile != null;
+          message = "${namespace}.services.picom.configFile must be set when manageConfig is enabled.";
         }
-        // optionalAttrs cfg.useDefaultWintypes {
-          wintypes = {
-            dock = {
-              shadow = cfg.shadow;
-              clip-shadow-above = true;
-            };
+      ];
 
-            tooltip = {
-              shadow = cfg.shadow;
-            };
+      xdg.configFile."picom/picom.conf".source = cfg.configFile;
 
-            dropdown_menu = {
-              shadow = cfg.shadow;
-            };
-
-            popup_menu = {
-              shadow = cfg.shadow;
-            };
-          };
-        }
-        // cfg.extraSettings;
-    };
-  };
+      services.picom = {
+        enable = true;
+        package = cfg.package;
+        extraArgs = [
+          "--config"
+          "${config.xdg.configHome}/picom/picom.conf"
+        ];
+      };
+    })
+  ]);
 }

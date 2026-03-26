@@ -15,14 +15,14 @@ function M.get()
 			green = "#13B12D",
 			green_dark = "#11A229",
 
-			red = "#E5210B",
-			red_dark = "#D21E0A",
+			red = "#D7331D",
+			red_dark = "#B42B18",
 
 			cream = "#F0EAD6",
 			cream_dark = "#E6DCBB",
 
-			orange = "#F39C12",
-			orange_dark = "#D68910",
+			orange = "#EF9B0F",
+			orange_dark = "#D6841F",
 
 			yellow = "#E4BE26",
 			yellow_dark = "#ECAD1C",

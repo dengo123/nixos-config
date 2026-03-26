@@ -42,6 +42,20 @@ local function materialize_theme(colors_lib, resolved_theme)
 	}
 end
 
+local function maybe_export_theme_state(theme_state_mod, theme)
+	if not (theme_state_mod and type(theme_state_mod.available) == "function") then
+		return
+	end
+
+	if not theme_state_mod.available() then
+		return
+	end
+
+	if type(theme_state_mod.export) == "function" then
+		theme_state_mod.export(theme)
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -52,8 +66,22 @@ function M.init(args)
 
 	local Helpers = safe_require("ui.lib.helpers")
 	local ColorLib = safe_require("ui.lib.colors")
+	local ThemeState = safe_require("ui.lib.theme_state")
 	local Themes = safe_require("ui.themes")
 	local Wallpaper = safe_require("ui.wallpaper")
+
+	local naughty = require("naughty")
+
+	local ok, mod = pcall(require, "cjson")
+	naughty.notify({
+		title = "cjson",
+		text = ok and "available" or tostring(mod),
+	})
+
+	naughty.notify({
+		title = "theme_state available",
+		text = tostring(ThemeState and type(ThemeState.available) == "function" and ThemeState.available()),
+	})
 
 	local resolved = resolve_theme(Themes, runtime_cfg)
 	local theme = materialize_theme(ColorLib, resolved)
@@ -62,9 +90,12 @@ function M.init(args)
 		lib = {
 			helpers = Helpers or {},
 			colors = ColorLib or {},
+			theme_state = ThemeState or {},
 		},
 		theme = theme,
 	}
+
+	maybe_export_theme_state(ThemeState, theme)
 
 	if Wallpaper and type(Wallpaper.init) == "function" then
 		Wallpaper.init({

@@ -2,42 +2,41 @@
 local M = {}
 
 function M.new(ctx)
-	assert(ctx and ctx.parts and ctx.parts.textbox, "run.controller: ctx.parts.textbox required")
-
 	-- =========================================================================
 	-- Config
 	-- =========================================================================
 
-	local awful = assert(ctx.awful, "run.controller: ctx.awful required")
-	local gears = assert(ctx.gears, "run.controller: ctx.gears required")
+	local awful = ctx.awful
+	local gears = ctx.gears
 	local Providers = ctx.providers or {}
 	local Complete = ctx.complete
 
-	local parts = assert(ctx.parts, "run.controller: ctx.parts required")
-	local view = assert(ctx.view, "run.controller: ctx.view required")
+	local parts = ctx.parts
+	local view = ctx.view
 
 	local textbox = parts.textbox
 
-	local sizes = assert(ctx.sizes, "run.controller: ctx.sizes required")
-	local colors = assert(ctx.colors, "run.controller: ctx.colors required")
-	local layout = assert(ctx.layout, "run.controller: ctx.layout required")
-	local prefixes = assert(ctx.prefixes, "run.controller: ctx.prefixes required")
+	local sizes = ctx.sizes
+	local colors = ctx.colors
+	local layout = ctx.layout
+	local prefixes = ctx.prefixes
 
-	local width_expanded = assert(tonumber(sizes.width_expanded), "run.controller: sizes.width_expanded required")
+	local width_expanded = tonumber(sizes.width_expanded)
+	local prompt = ctx.prompt
 
-	local bg_active = assert(colors.bg_active, "run.controller: colors.bg_active required")
-	local fg_active = assert(colors.fg_active, "run.controller: colors.fg_active required")
-	local cursor_bg = assert(colors.cursor_bg, "run.controller: colors.cursor_bg required")
-	local cursor_fg = assert(colors.cursor_fg, "run.controller: colors.cursor_fg required")
+	local bg_active = colors.bg_active
+	local fg_active = colors.fg_active
+	local cursor_bg = colors.cursor_bg
+	local cursor_fg = colors.cursor_fg
 
-	local pad_l = assert(tonumber(layout.left), "run.controller: layout.left required")
-	local pad_r = assert(tonumber(layout.right), "run.controller: layout.right required")
-	local pad_t = assert(tonumber(layout.top), "run.controller: layout.top required")
-	local pad_b = assert(tonumber(layout.bottom), "run.controller: layout.bottom required")
+	local pad_l = tonumber(layout.left)
+	local pad_r = tonumber(layout.right)
+	local pad_t = tonumber(layout.top)
+	local pad_b = tonumber(layout.bottom)
 
-	local prefix_run = assert(prefixes.run_mode, "run.controller: prefixes.run_mode required")
-	local prefix_local = assert(prefixes.local_mode, "run.controller: prefixes.local_mode required")
-	local prefix_web = assert(prefixes.web_mode, "run.controller: prefixes.web_mode required")
+	local prefix_run = prefixes.run_mode
+	local prefix_local = prefixes.local_mode
+	local prefix_web = prefixes.web_mode
 
 	local home = ctx.home
 	local browser = ctx.web and ctx.web.browser
@@ -96,14 +95,6 @@ function M.new(ctx)
 
 		try(function()
 			textbox.fg = fg_active
-		end)
-
-		try(function()
-			textbox.bg_cursor = cursor_bg
-		end)
-
-		try(function()
-			textbox.fg_cursor = cursor_fg
 		end)
 	end
 
@@ -234,6 +225,8 @@ function M.new(ctx)
 			prompt = "",
 			textbox = textbox,
 			history_path = nil,
+			bg_cursor = cursor_bg,
+			fg_cursor = cursor_fg,
 
 			exe_callback = function(q)
 				if q ~= nil then

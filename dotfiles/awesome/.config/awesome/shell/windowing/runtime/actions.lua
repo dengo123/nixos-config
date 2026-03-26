@@ -13,6 +13,49 @@ local function state_api()
 	return runtime_api.state
 end
 
+local function focused_screen()
+	return awful.screen.focused()
+end
+
+local function each_client_on_tag(t, fn)
+	for _, c in ipairs((t and t:clients()) or {}) do
+		if c and c.valid and not c.minimized then
+			fn(c)
+		end
+	end
+end
+
+local function each_client_on_screen_tags(s, fn)
+	if not (s and s.valid) then
+		return
+	end
+
+	for _, t in ipairs(s.tags or {}) do
+		each_client_on_tag(t, fn)
+	end
+end
+
+local function each_client_on_visible_tag_of_screen(s, fn)
+	if not (s and s.valid) then
+		return
+	end
+
+	each_client_on_tag(s.selected_tag, fn)
+end
+
+local function minimize_client(c)
+	if not (c and c.valid) then
+		return
+	end
+
+	if c.minimized then
+		return
+	end
+
+	awesome.emit_signal("ui::suppress_center", 0.2)
+	c.minimized = true
+end
+
 -- =========================================================================
 -- Init
 -- =========================================================================
@@ -67,6 +110,52 @@ function M.move_client_to_screen(dir)
 	awful.screen.focus(target)
 	client.focus = c
 	c:raise()
+end
+
+function M.minimize_focused()
+	local c = client.focus
+	if not c then
+		return false
+	end
+
+	minimize_client(c)
+	return true
+end
+
+function M.minimize_visible_tag_on_screen(s)
+	s = s or focused_screen()
+	if not (s and s.valid) then
+		return false
+	end
+
+	each_client_on_visible_tag_of_screen(s, minimize_client)
+	return true
+end
+
+function M.minimize_all_tags_on_screen(s)
+	s = s or focused_screen()
+	if not (s and s.valid) then
+		return false
+	end
+
+	each_client_on_screen_tags(s, minimize_client)
+	return true
+end
+
+function M.minimize_visible_tags_on_all_screens()
+	for s in screen do
+		each_client_on_visible_tag_of_screen(s, minimize_client)
+	end
+
+	return true
+end
+
+function M.minimize_all_tags_on_all_screens()
+	for s in screen do
+		each_client_on_screen_tags(s, minimize_client)
+	end
+
+	return true
 end
 
 -- =========================================================================

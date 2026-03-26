@@ -12,6 +12,10 @@ local M = {
 	api = {},
 }
 
+local runtime = {
+	last_setup_args = nil,
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
@@ -67,6 +71,8 @@ function M.init(args)
 end
 
 function M.setup(s, args)
+	runtime.last_setup_args = args or {}
+
 	local Controller = bar_mod("controller")
 
 	if Controller and type(Controller.setup) == "function" then
@@ -78,6 +84,23 @@ function M.setup(s, args)
 	end
 
 	return nil
+end
+
+function M.resync_all()
+	local Controller = bar_mod("controller")
+	local args = runtime.last_setup_args or {}
+
+	if not (Controller and type(Controller.setup) == "function") then
+		return
+	end
+
+	for s in screen do
+		Controller.setup({
+			screen = s,
+			args = args,
+			api = api(),
+		})
+	end
 end
 
 return M

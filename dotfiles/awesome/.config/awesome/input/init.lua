@@ -104,7 +104,11 @@ local function build_clientkeys(cfg)
 	return join(
 		call_key_factory(client_mod("kill"), modkey),
 		call_key_factory(client_mod("mouse"), modkey),
-		call_key_factory(client_mod("navigation"), modkey),
+		call_key_factory(
+			client_mod("navigation"),
+			modkey,
+			cfg.actions and cfg.actions.windowing and cfg.actions.windowing.clients
+		),
 		call_key_factory(
 			client_mod("screens"),
 			modkey,

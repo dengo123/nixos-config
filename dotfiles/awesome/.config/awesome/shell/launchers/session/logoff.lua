@@ -60,8 +60,8 @@ end
 
 function M.build(_th, cfg)
 	local assets = {
-		-- lock = "ui/assets/lock.png",
-		-- logout = "ui/assets/logoff.png",
+		-- lock = "ui/assets/Lock_Session.png",
+		-- logout = "ui/assets/Log_Off.png",
 		-- switch_user = "ui/assets/users.png",
 	}
 	local actions = {

@@ -16,10 +16,6 @@ with lib.${namespace}; {
       office = enabled;
       developer.editor = "doom";
       terminal.emulator = "kitty";
-
-      desktop = {
-        awesome = enabled;
-      };
     };
 
     programs = {
@@ -36,6 +32,7 @@ with lib.${namespace}; {
         enable = true;
         kind = "gnome";
       };
+      picom.manageConfig = false;
     };
   };
   home.stateVersion = "24.05";

@@ -15,6 +15,10 @@ local function focused_client()
 	return client.focus
 end
 
+local function focused_screen()
+	return awful.screen.focused()
+end
+
 local function toggle_native_fullscreen(dim_other_screens)
 	local c = focused_client()
 	if not c then
@@ -31,16 +35,86 @@ local function toggle_native_fullscreen(dim_other_screens)
 	end
 end
 
-local function toggle_minimized()
-	local c = focused_client()
-
-	if c and not c.minimized then
-		awesome.emit_signal("ui::suppress_center", 0.2)
-		c.minimized = true
+local function restore_local(actions)
+	if type(actions.current_screen) == "function" then
+		awesome.emit_signal("windowing::restore_request", actions.current_screen())
 		return
 	end
 
-	awesome.emit_signal("windowing::restore_request", awful.screen.focused())
+	awesome.emit_signal("windowing::restore_request", focused_screen())
+end
+
+local function toggle_minimized(cfg)
+	local c = focused_client()
+	local actions = windowing_actions(cfg)
+
+	if c and not c.minimized then
+		awesome.emit_signal("ui::suppress_center", 0.2)
+
+		if type(actions.minimize_focused) == "function" then
+			actions.minimize_focused()
+		else
+			c.minimized = true
+		end
+		return
+	end
+
+	restore_local(actions)
+end
+
+local function toggle_scope_minimize(cfg, minimize_fn)
+	local actions = windowing_actions(cfg)
+
+	local ok = false
+	if type(minimize_fn) == "function" then
+		ok = (minimize_fn(actions) == true)
+	end
+
+	if ok then
+		return
+	end
+
+	restore_local(actions)
+end
+
+local function toggle_visible_tag_on_screen(cfg)
+	toggle_scope_minimize(cfg, function(actions)
+		if type(actions.minimize_visible_tag_on_screen) == "function" then
+			return actions.minimize_visible_tag_on_screen(focused_screen())
+		end
+
+		return false
+	end)
+end
+
+local function toggle_all_tags_on_screen(cfg)
+	toggle_scope_minimize(cfg, function(actions)
+		if type(actions.minimize_all_tags_on_screen) == "function" then
+			return actions.minimize_all_tags_on_screen(focused_screen())
+		end
+
+		return false
+	end)
+end
+
+local function toggle_visible_tags_on_all_screens(cfg)
+	toggle_scope_minimize(cfg, function(actions)
+		if type(actions.minimize_visible_tags_on_all_screens) == "function" then
+			return actions.minimize_visible_tags_on_all_screens()
+		end
+
+		return false
+	end)
+end
+
+local function toggle_all_tags_on_all_screens(cfg)
+	toggle_scope_minimize(cfg, function(actions)
+		if type(actions.minimize_all_tags_on_all_screens) == "function" then
+			return actions.minimize_all_tags_on_all_screens()
+		end
+
+		return false
+	end)
 end
 
 local function toggle_layout_state(cfg)
@@ -91,9 +165,37 @@ function M.build(modkey, cfg)
 		}),
 
 		awful.key({ modkey }, "m", function()
-			toggle_minimized()
+			toggle_minimized(cfg)
 		end, {
 			description = "Minimize Or Restore",
+			group = "Client",
+		}),
+
+		awful.key({ modkey, "Shift" }, "m", function()
+			toggle_visible_tag_on_screen(cfg)
+		end, {
+			description = "Minimize Visible Tag Or Restore",
+			group = "Client",
+		}),
+
+		awful.key({ modkey, "Control" }, "m", function()
+			toggle_all_tags_on_screen(cfg)
+		end, {
+			description = "Minimize Screen Or Restore",
+			group = "Client",
+		}),
+
+		awful.key({ modkey, "Shift", "Mod1" }, "m", function()
+			toggle_visible_tags_on_all_screens(cfg)
+		end, {
+			description = "Minimize Visible Tags On All Screens Or Restore",
+			group = "Client",
+		}),
+
+		awful.key({ modkey, "Control", "Mod1" }, "m", function()
+			toggle_all_tags_on_all_screens(cfg)
+		end, {
+			description = "Minimize All Screens Or Restore",
 			group = "Client",
 		}),
 

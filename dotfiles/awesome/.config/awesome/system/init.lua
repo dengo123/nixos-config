@@ -101,6 +101,11 @@ function M.init(overrides)
 	-- ---------------------------------------------------------------------
 
 	local SessionState = require("system.session_state")
+	SessionState = SessionState.init({
+		cfg = cfg,
+		ui = ui,
+	})
+
 	SessionState.attach_signals()
 	SessionState.restore_on_start()
 

@@ -96,6 +96,17 @@ local function build_actions()
 				layout_state_mode = windowing_actions.layout_state_mode,
 				is_layout_state_active = windowing_actions.is_layout_state_active,
 				toggle_layout_state = windowing_actions.toggle_layout_state,
+
+				focus_client = windowing_actions.focus_client,
+				swap_client = windowing_actions.swap_client,
+				is_max_layout = windowing_actions.is_max_layout,
+				current_screen = windowing_actions.current_screen,
+
+				minimize_focused = windowing_actions.minimize_focused,
+				minimize_visible_tag_on_screen = windowing_actions.minimize_visible_tag_on_screen,
+				minimize_all_tags_on_screen = windowing_actions.minimize_all_tags_on_screen,
+				minimize_visible_tags_on_all_screens = windowing_actions.minimize_visible_tags_on_all_screens,
+				minimize_all_tags_on_all_screens = windowing_actions.minimize_all_tags_on_all_screens,
 			},
 		},
 		workspaces = {
@@ -141,12 +152,6 @@ function M.init(args)
 	local Menu = mod("menu")
 	local Notify = mod("notify")
 
-	assert(Bar and type(Bar) == "table", "shell.init: shell.bar fehlt")
-	assert(Workspaces and type(Workspaces) == "table", "shell.init: shell.workspaces fehlt")
-	assert(Windowing and type(Windowing) == "table", "shell.init: shell.windowing fehlt")
-	assert(Menu and type(Menu) == "table", "shell.init: shell.menu fehlt")
-	assert(Notify and type(Notify) == "table", "shell.init: shell.notify fehlt")
-
 	-- ---------------------------------------------------------------------
 	-- Shared API
 	-- ---------------------------------------------------------------------
@@ -164,16 +169,16 @@ function M.init(args)
 	-- Workspaces
 	-- ---------------------------------------------------------------------
 
-	assert(type(Workspaces.init) == "function", "shell.init: shell.workspaces.init fehlt")
+	if Workspaces and type(Workspaces.init) == "function" then
+		local workspace_api = Workspaces.init({
+			cfg = cfg,
+			ui = ui,
+		})
 
-	local workspace_api = Workspaces.init({
-		cfg = cfg,
-		ui = ui,
-	})
-
-	if workspace_api then
-		M.api.workspaces = workspace_api
-		Workspaces = workspace_api
+		if workspace_api then
+			M.api.workspaces = workspace_api
+			Workspaces = workspace_api
+		end
 	end
 
 	cfg.api.workspaces = Workspaces
@@ -182,17 +187,17 @@ function M.init(args)
 	-- Windowing
 	-- ---------------------------------------------------------------------
 
-	assert(type(Windowing.init) == "function", "shell.init: shell.windowing.init fehlt")
+	if Windowing and type(Windowing.init) == "function" then
+		local windowing_api = Windowing.init({
+			modkey = cfg.input and cfg.input.modkey,
+			ui = ui,
+			cfg = cfg,
+		})
 
-	local windowing_api = Windowing.init({
-		modkey = cfg.input and cfg.input.modkey,
-		ui = ui,
-		cfg = cfg,
-	})
-
-	if windowing_api then
-		M.api.windowing = windowing_api
-		Windowing = windowing_api
+		if windowing_api then
+			M.api.windowing = windowing_api
+			Windowing = windowing_api
+		end
 	end
 
 	cfg.api.windowing = Windowing
@@ -219,16 +224,16 @@ function M.init(args)
 	-- Menu
 	-- ---------------------------------------------------------------------
 
-	assert(type(Menu.init) == "function", "shell.init: shell.menu.init fehlt")
+	if Menu and type(Menu.init) == "function" then
+		local menu_api = Menu.init({
+			ui = ui,
+			cfg = cfg,
+		})
 
-	local menu_api = Menu.init({
-		ui = ui,
-		cfg = cfg,
-	})
-
-	if menu_api then
-		M.api.menu = menu_api
-		Menu = menu_api
+		if menu_api then
+			M.api.menu = menu_api
+			Menu = menu_api
+		end
 	end
 
 	cfg.api.menu = Menu
@@ -237,16 +242,16 @@ function M.init(args)
 	-- Notifications
 	-- ---------------------------------------------------------------------
 
-	assert(type(Notify.init) == "function", "shell.init: shell.notify.init fehlt")
+	if Notify and type(Notify.init) == "function" then
+		local notify_api = Notify.init({
+			ui = ui,
+			cfg = cfg,
+		})
 
-	local notify_api = Notify.init({
-		ui = ui,
-		cfg = cfg,
-	})
-
-	if notify_api then
-		M.api.notify = notify_api
-		Notify = notify_api
+		if notify_api then
+			M.api.notify = notify_api
+			Notify = notify_api
+		end
 	end
 
 	cfg.api.notify = Notify
@@ -262,28 +267,35 @@ function M.init(args)
 	-- Bars
 	-- ---------------------------------------------------------------------
 
-	assert(type(Bar.init) == "function", "shell.init: shell.bar.init fehlt")
-	assert(type(Bar.setup) == "function", "shell.init: shell.bar.setup fehlt")
+	if Bar and type(Bar.init) == "function" then
+		local bar_api = Bar.init({
+			ui = ui,
+			cfg = cfg,
+		})
 
-	local bar_api = Bar.init({
-		ui = ui,
-		cfg = cfg,
-	})
-
-	if bar_api then
-		M.api.bar = bar_api
-		Bar = bar_api
+		if bar_api then
+			M.api.bar = bar_api
+			Bar = bar_api
+		end
 	end
 
 	cfg.api.bar = Bar
 
-	awful.screen.connect_for_each_screen(function(s)
-		Bar.setup(s, {
-			cfg = cfg,
-			ui = ui,
-			menu_api = Menu,
-		})
-	end)
+	if Bar and type(Bar.setup) == "function" then
+		awful.screen.connect_for_each_screen(function(s)
+			Bar.setup(s, {
+				cfg = cfg,
+				ui = ui,
+				menu_api = Menu,
+			})
+		end)
+	end
+
+	if Bar and type(Bar.resync_all) == "function" then
+		awesome.connect_signal("autorandr::applied", function()
+			Bar.resync_all()
+		end)
+	end
 
 	return cfg
 end
