@@ -35,10 +35,13 @@ in {
       # Config formatting
       nixfmt-rfc-style
     ];
-    # nixforge = {
-    #   misc = {
-    #     scripts = enabled;
-    #   };
-    # };
+    nixforge = {
+      misc = {
+        scripts = enabled;
+      };
+      services = {
+        polkit-agent = mkDefault enabled;
+      };
+    };
   };
 }

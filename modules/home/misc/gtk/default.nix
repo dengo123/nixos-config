@@ -4,67 +4,81 @@
   lib,
   pkgs,
   namespace,
+  osConfig ? null,
   ...
 }:
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.misc.gtk;
 
-  iconPkg =
-    if cfg.iconTheme == "Papirus-Light" || cfg.iconTheme == "Papirus-Dark"
-    then pkgs.papirus-icon-theme
-    else pkgs.adwaita-icon-theme;
+  systemFonts =
+    if osConfig != null
+    then osConfig.${namespace}.system.fonts
+    else null;
 
-  iconName = cfg.iconTheme;
+  sansFont =
+    if systemFonts != null
+    then builtins.head systemFonts.fontconfig.defaults.sansSerif
+    else "Inter";
+
+  defaultFontSize =
+    if systemFonts != null
+    then systemFonts.gtk.fontSize
+    else 11;
+
+  iconPkg = pkgs.papirus-icon-theme;
 
   gtk3Theme = "adw-gtk3";
   gtk4Theme = "Adwaita";
 in {
   options.${namespace}.misc.gtk = with types; {
-    enable = mkBoolOpt false "Enable GTK base theming with static settings.ini and runtime-generated gtk.css.";
+    enable = mkBoolOpt false "Enable GTK base theming.";
 
     iconTheme = mkOpt (types.enum [
-      "Adwaita"
       "Papirus-Light"
       "Papirus-Dark"
-    ]) "Adwaita" "Choose system icon theme.";
+    ]) "Papirus-Dark" "Choose GTK icon theme.";
 
-    fontName = mkOpt types.str "Intel One Mono" "GTK application font family.";
-    fontSize = mkOpt types.int 12 "GTK application font size.";
+    fontSize = mkOpt types.int defaultFontSize "GTK application font size.";
+
+    cursor = {
+      package = mkOpt types.package pkgs.bibata-cursors "Cursor package.";
+      name = mkOpt types.str "Bibata-Original-Ice" "Cursor theme name.";
+      size = mkOpt types.int 24 "Cursor size.";
+    };
   };
 
   config = mkIf cfg.enable {
-    home.packages = with pkgs; [
-      bibata-cursors
-      intel-one-mono
-      adw-gtk3
+    home.packages = [
+      pkgs.adw-gtk3
       iconPkg
+      cfg.cursor.package
     ];
 
     home.pointerCursor = {
       x11.enable = true;
-      package = pkgs.bibata-cursors;
-      name = "Bibata-Original-Ice";
-      size = 24;
+      package = cfg.cursor.package;
+      name = cfg.cursor.name;
+      size = cfg.cursor.size;
     };
 
     xdg.configFile."gtk-3.0/settings.ini".text = ''
       [Settings]
       gtk-theme-name=${gtk3Theme}
-      gtk-icon-theme-name=${iconName}
-      gtk-cursor-theme-name=Bibata-Original-Ice
-      gtk-cursor-theme-size=24
-      gtk-font-name=${cfg.fontName} ${toString cfg.fontSize}
+      gtk-icon-theme-name=${cfg.iconTheme}
+      gtk-cursor-theme-name=${cfg.cursor.name}
+      gtk-cursor-theme-size=${toString cfg.cursor.size}
+      gtk-font-name=${sansFont} ${toString cfg.fontSize}
       gtk-application-prefer-dark-theme=0
     '';
 
     xdg.configFile."gtk-4.0/settings.ini".text = ''
       [Settings]
       gtk-theme-name=${gtk4Theme}
-      gtk-icon-theme-name=${iconName}
-      gtk-cursor-theme-name=Bibata-Original-Ice
-      gtk-cursor-theme-size=24
-      gtk-font-name=${cfg.fontName} ${toString cfg.fontSize}
+      gtk-icon-theme-name=${cfg.iconTheme}
+      gtk-cursor-theme-name=${cfg.cursor.name}
+      gtk-cursor-theme-size=${toString cfg.cursor.size}
+      gtk-font-name=${sansFont} ${toString cfg.fontSize}
       gtk-application-prefer-dark-theme=0
     '';
   };

@@ -3,6 +3,9 @@
 
 # Running `nixos-rebuild build` or `nix build` generates a result directory.
 result
+**/result
+result-*
+**/result-*
 
 # Running `nixos-rebuild build-vm` and starting the VM adds a file for
 # the virtual storage drive.
@@ -13,6 +16,3 @@ options.json
 
 # Direnv
 .direnv
-
-# Ags
-modules/nixos/desktop/addons/ags/bar/src/types

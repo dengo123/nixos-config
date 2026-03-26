@@ -1,4 +1,4 @@
-# modules/home/bundles/desktop/awesome/default.nix
+# modules/home/bundles/desktop/default.nix
 {
   inputs,
   config,
@@ -18,12 +18,9 @@ in {
   config = mkIf cfg.enable {
     nixforge = {
       misc = {
-        gtk = {
-          enable = mkDefault true;
-          iconTheme = mkDefault "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
-        };
-
-        scripts.enable = mkDefault true;
+        gtk = mkDefault enabled;
+        scripts = mkDefault enabled;
+        xdg = enabled;
       };
 
       config = {
@@ -41,11 +38,7 @@ in {
           };
         };
 
-        picom = {
-          enable = mkDefault true;
-          configFile = mkDefault (inputs.self + /dotfiles/picom/.config/picom/picom.conf);
-          manageConfig = mkDefault true;
-        };
+        picom = mkDefault enabled;
 
         redshift = {
           enable = mkDefault true;
@@ -68,11 +61,11 @@ in {
     };
 
     home.packages = with pkgs; [
+      pavucontrol
       copyq
       gnome-calendar
       gowall
       imagemagick
-      lua52Packages.cjson
     ];
   };
 }

@@ -1,3 +1,4 @@
+# modules/home/config/user/default.nix
 {
   lib,
   config,

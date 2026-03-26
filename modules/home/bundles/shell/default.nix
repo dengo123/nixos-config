@@ -19,7 +19,7 @@ in {
           "emacs"
         ]))
       null
-      "Select shell bundle mode: 'full' (alles), 'emacs' (nur für vterm nötig) oder 'lite' (nur zsh + Zusatzpakete).";
+      "Select shell bundle mode: 'full' (all packages), 'emacs' (vterm necessities), null (zsh only).";
   };
 
   config = mkIf cfg.enable (mkMerge [

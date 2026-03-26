@@ -9,54 +9,31 @@
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.services.polkit-agent;
-  pkgLXQT = pkgs.lxqt-policykit; # bin: lxqt-policykit
-  pkgGNOME = pkgs.polkit_gnome; # bin: polkit-gnome-authentication-agent-1
+  pkg = pkgs.polkit_gnome;
 in {
   options.${namespace}.services.polkit-agent = with types; {
-    enable = mkBoolOpt false "Start a Polkit authentication agent in user session.";
-    kind = mkOpt (types.enum [
-      "lxqt"
-      "gnome"
-    ]) "lxqt" "Which agent to run.";
+    enable = mkBoolOpt false "Start the GNOME polkit authentication agent in the user session.";
   };
 
   config = mkIf cfg.enable {
-    # LXQt Agent
-    systemd.user.services.polkit-lxqt-agent = mkIf (cfg.kind == "lxqt") {
-      Unit = {
-        Description = "LXQt PolicyKit authentication agent";
-        After = ["graphical-session.target"];
-        PartOf = ["graphical-session.target"];
-      };
-      Service = {
-        ExecStart = "${pkgLXQT}/bin/lxqt-policykit";
-        Restart = "on-failure";
-        RestartSec = 2;
-      };
-      Install.WantedBy = ["graphical-session.target"];
-    };
-
-    # GNOME Agent
-    systemd.user.services.polkit-gnome-agent = mkIf (cfg.kind == "gnome") {
+    systemd.user.services.polkit-gnome-agent = {
       Unit = {
         Description = "GNOME PolicyKit authentication agent";
         After = ["graphical-session.target"];
         PartOf = ["graphical-session.target"];
       };
+
       Service = {
-        ExecStart = "${pkgGNOME}/libexec/polkit-gnome-authentication-agent-1";
+        ExecStart = "${pkg}/libexec/polkit-gnome-authentication-agent-1";
         Restart = "on-failure";
         RestartSec = 2;
       };
-      Install.WantedBy = ["graphical-session.target"];
+
+      Install = {
+        WantedBy = ["graphical-session.target"];
+      };
     };
 
-    home.packages = [
-      (
-        if cfg.kind == "lxqt"
-        then pkgLXQT
-        else pkgGNOME
-      )
-    ];
+    home.packages = [pkg];
   };
 }

@@ -1,3 +1,4 @@
+# modules/nixos/config/user/default.nix
 {
   config,
   lib,
@@ -38,11 +39,11 @@ with lib.${namespace}; let
     '';
 in {
   options.${namespace}.config.user = with types; {
-    name = mkOpt str "blacksmith" "The name to use for the user account.";
-    fullName = mkOpt str "John Forge" "The full name of the user.";
-    email = mkOpt str "john.forge@nixforge.com" "The email of the user.";
+    name = mkStrOpt "" "The name to use for the user account.";
+    fullName = mkStrOpt "" "The full name of the user.";
+    email = mkStrOpt "" "The email of the user.";
     initialPassword =
-      mkOpt str "password"
+      mkStrOpt "password"
       "The initial password to use when the user is first created.";
     icon = mkOpt (nullOr package) defaultIcon "The profile picture to use for the user.";
     prompt-init = mkBoolOpt true "Whether or not to show an initial message when opening a new shell.";

@@ -1,37 +1,47 @@
+# modules/nixos/hardware/audio/default.nix
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.audio;
-in
-{
+in {
   options.${namespace}.hardware.audio = with types; {
-    enable = mkBoolOpt false "Enable PipeWire (ALSA + Pulse).";
+    enable = mkBoolOpt false "Enable PipeWire audio.";
+
+    pulse = mkBoolOpt true "Enable PulseAudio compatibility via PipeWire.";
+    alsa = mkBoolOpt true "Enable ALSA support via PipeWire.";
+    alsa32Bit = mkBoolOpt true "Enable 32-bit ALSA support for games and legacy applications.";
+    jack = mkBoolOpt false "Enable JACK compatibility via PipeWire.";
+    gamingBuffer = mkBoolOpt false "Enable PipeWire settings tuned for gaming workloads.";
   };
 
   config = mkIf cfg.enable {
     services.pipewire = {
       enable = true;
-      alsa.enable = true;
-      alsa.support32Bit = true;
-      pulse.enable = true;
-      extraConfig.pipewire."10-gaming-buffer" = {
-        "context.properties" = {
-          "default.clock.rate" = 48000;
-          "default.clock.quantum" = 256;
-          "default.clock.min-quantum" = 256;
-          "default.clock.max-quantum" = 1024;
+
+      pulse.enable = cfg.pulse;
+
+      alsa = {
+        enable = cfg.alsa;
+        support32Bit = cfg.alsa32Bit;
+      };
+
+      jack.enable = cfg.jack;
+
+      extraConfig = mkIf cfg.gamingBuffer {
+        pipewire."10-gaming-buffer" = {
+          "context.properties" = {
+            "default.clock.rate" = 48000;
+            "default.clock.quantum" = 256;
+            "default.clock.min-quantum" = 256;
+            "default.clock.max-quantum" = 1024;
+          };
         };
       };
     };
-    environment.systemPackages = with pkgs; [
-      pavucontrol
-    ];
   };
 }

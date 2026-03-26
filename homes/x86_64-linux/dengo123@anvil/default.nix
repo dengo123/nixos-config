@@ -26,14 +26,22 @@ with lib.${namespace}; {
     };
     misc = {
       xdg = enabled;
+      gtk = {
+        iconTheme = "Papirus-Dark"; # or Papirus-Dark"
+
+        # cursor = {
+        #   package = pkgs.bibata-cursors;
+        #   name = "Bibata-Modern-Ice";
+        #   size = 26;
+        # };
+      };
     };
 
     services = {
-      polkit-agent = {
-        enable = true;
-        kind = "gnome";
+      picom = {
+        configFile = mkDefault (inputs.self + /dotfiles/picom/.config/picom/picom.conf);
+        manageConfig = false;
       };
-      picom.manageConfig = false;
     };
   };
   home.stateVersion = "24.05";

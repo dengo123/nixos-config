@@ -9,7 +9,7 @@
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.desktop.awesome;
-  userName = config.${namespace}.config.user.name or "dengo123";
+  userName = config.${namespace}.config.user.name;
 
   awesomePkg =
     if cfg.package == "patched"
@@ -43,7 +43,6 @@ in {
       user = cfg.autoLogin.user;
     };
 
-    # Awesome uses LightDM in this setup
     services.xserver.displayManager.lightdm.enable = true;
     services.xserver.displayManager.lightdm.greeters.gtk.enable = mkDefault true;
   };

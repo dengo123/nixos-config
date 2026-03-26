@@ -30,41 +30,72 @@ with lib.${namespace}; {
     };
     bundles = {
       common = enabled;
+      desktop = enabled;
+      security = enabled;
       gpu.vendor = "nvidia";
       ai = enabled;
     };
+
     desktop.awesome = {
       enable = true;
       package = "patched";
       autoLogin = enabled;
     };
+
     hardware = {
       xmonitors = enabled;
+
       rgb = {
         enable = true;
         profile = mkForce "all_white.orp";
       };
     };
+
     programs = {
       steam = enabled;
       nh = enabled;
       nix-ld = enabled;
       screenshot = enabled;
     };
+
     services = {
       virtualisation = enabled;
     };
+
     system = {
-      boot.grub = enabled;
+      boot = {
+        loader = "grub";
+        timeout = 7;
+
+        extraKernelParams = [
+          "resume=UUID=5c987df5-d144-43ae-9db1-899a7d6f5424"
+        ];
+
+        # grub = {
+        #   useOSProber = true;
+        # };
+      };
       keyboard = {
         layout = "us";
         variant = "intl";
         naturalScrolling = true;
       };
+
       region = {
         locale = "de_DE.UTF-8";
         timeZone = "Europe/Berlin";
       };
+
+      # fonts = {
+      #   packages.extra = with pkgs; [];
+      #   fontconfig.defaults = {
+      #     sansSerif = [];
+      #     serif = [];
+      #     monospace = [];
+      #     emoji = [];
+      #   };
+      #   gtk.fontSize = 12;
+      # };
     };
   };
   system.stateVersion = "24.05";

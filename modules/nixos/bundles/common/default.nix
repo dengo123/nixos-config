@@ -1,3 +1,4 @@
+# modules/nixos/bundles/common/default.nix
 {
   config,
   lib,
@@ -6,47 +7,24 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.bundles.common;
-in
-{
+in {
   options.${namespace}.bundles.common = with types; {
     enable = mkBoolOpt false "Whether or not to enable common configuration.";
   };
 
   config = mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      stow
     ];
 
     ${namespace} = {
       config = {
-        nix = enabled;
+        nix = mkDefault enabled;
       };
 
       hardware = {
-        audio = enabled;
-        networking = enabled;
-        bluetooth = enabled;
-      };
-
-      services = {
-        security = {
-          allowPowerActions = true;
-          allowSleepActions = true;
-          greeterAfterResume = false;
-        };
-        printing = enabled;
-        tailscale = enabled;
-        udisks2 = enabled;
-      };
-
-      system = {
-        fonts = {
-          fontconfig = disabled;
-          packages = with pkgs; [ ];
-        };
+        networking = mkDefault enabled;
       };
     };
   };

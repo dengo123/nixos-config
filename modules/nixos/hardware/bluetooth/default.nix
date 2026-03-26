@@ -1,7 +1,7 @@
+# modules/nixos/hardware/bluetooth/default.nix
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -10,9 +10,9 @@ with lib.${namespace}; let
   cfg = config.${namespace}.hardware.bluetooth;
 in {
   options.${namespace}.hardware.bluetooth = with types; {
-    enable = mkBoolOpt false "Enable Bluetooth (BlueZ) + Blueman.";
-    powerOnBoot = mkBoolOpt true "Power on adapter at boot.";
-    trayApplet = mkBoolOpt true "Install blueman (tools & applet binaries).";
+    enable = mkBoolOpt false "Enable Bluetooth (BlueZ).";
+    powerOnBoot = mkBoolOpt true "Power on the adapter at boot.";
+    blueman = mkBoolOpt true "Enable Blueman integration.";
   };
 
   config = mkIf cfg.enable {
@@ -21,11 +21,6 @@ in {
       powerOnBoot = cfg.powerOnBoot;
     };
 
-    services.blueman = enabled;
-
-    environment.systemPackages = mkIf cfg.trayApplet [
-      pkgs.obexd
-      pkgs.blueman
-    ];
+    services.blueman.enable = cfg.blueman;
   };
 }
