@@ -35,10 +35,10 @@ in {
       # Config formatting
       nixfmt-rfc-style
     ];
-    nixforge = {
-      misc = {
-        scripts = enabled;
-      };
-    };
+    # nixforge = {
+    #   misc = {
+    #     scripts = enabled;
+    #   };
+    # };
   };
 }

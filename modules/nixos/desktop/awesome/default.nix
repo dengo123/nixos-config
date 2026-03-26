@@ -12,14 +12,14 @@ with lib.${namespace}; let
   userName = config.${namespace}.config.user.name or "dengo123";
 
   awesomePkg =
-    if cfg.package == "git"
-    then pkgs.awesome-git
+    if cfg.package == "patched"
+    then pkgs.awesome-patched
     else pkgs.awesome;
 in {
   options.${namespace}.desktop.awesome = with types; {
     enable = mkBoolOpt false "Enable Awesome WM on X11.";
 
-    package = mkOpt (enum ["stable" "git"]) "stable" "Which Awesome package to use.";
+    package = mkOpt (enum ["stable" "patched"]) "stable" "Which Awesome package to use.";
 
     autoLogin = {
       enable = mkBoolOpt false "Enable LightDM autologin into Awesome.";

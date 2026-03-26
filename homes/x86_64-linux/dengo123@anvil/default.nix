@@ -19,6 +19,7 @@ with lib.${namespace}; {
     };
 
     programs = {
+      # starship.template = "default";
       spotify = enabled;
       gimp = enabled;
       discord = enabled;

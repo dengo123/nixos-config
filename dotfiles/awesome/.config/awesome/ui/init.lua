@@ -67,21 +67,9 @@ function M.init(args)
 	local Helpers = safe_require("ui.lib.helpers")
 	local ColorLib = safe_require("ui.lib.colors")
 	local ThemeState = safe_require("ui.lib.theme_state")
+	local ThemeApply = safe_require("ui.lib.theme_apply")
 	local Themes = safe_require("ui.themes")
 	local Wallpaper = safe_require("ui.wallpaper")
-
-	local naughty = require("naughty")
-
-	local ok, mod = pcall(require, "cjson")
-	naughty.notify({
-		title = "cjson",
-		text = ok and "available" or tostring(mod),
-	})
-
-	naughty.notify({
-		title = "theme_state available",
-		text = tostring(ThemeState and type(ThemeState.available) == "function" and ThemeState.available()),
-	})
 
 	local resolved = resolve_theme(Themes, runtime_cfg)
 	local theme = materialize_theme(ColorLib, resolved)
@@ -91,9 +79,16 @@ function M.init(args)
 			helpers = Helpers or {},
 			colors = ColorLib or {},
 			theme_state = ThemeState or {},
+			theme_apply = ThemeApply or {},
 		},
 		theme = theme,
 	}
+
+	if ThemeApply and type(ThemeApply.init) == "function" then
+		ThemeApply.init({
+			apply_on_init = true,
+		})
+	end
 
 	maybe_export_theme_state(ThemeState, theme)
 

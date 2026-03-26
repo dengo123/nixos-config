@@ -23,9 +23,7 @@ in {
           iconTheme = mkDefault "Papirus-Dark"; # or "Adwaita" | "Papirus-Dark"
         };
 
-        scripts = {
-          autorandr-toggle = mkDefault enabled;
-        };
+        scripts.enable = mkDefault true;
       };
 
       config = {
@@ -56,7 +54,7 @@ in {
           longitude = mkDefault 8.6;
         };
 
-        udiskie = mkDefault enabled;
+        udiskie.enable = mkDefault true;
       };
 
       programs = {

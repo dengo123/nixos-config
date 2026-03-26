@@ -1,3 +1,4 @@
+# modules/home/misc/scripts/default.nix
 {
   config,
   lib,
@@ -14,16 +15,10 @@ in {
 
   config = mkIf cfg.enable {
     nixforge.misc.scripts = {
-      auto-monitors = enabled;
-      brightness = enabled;
-      caffeine = enabled;
-      hyprfocus = enabled;
-      hyprpanel = enabled;
-      night_shift = enabled;
-      notification = enabled;
-      screenshot = enabled;
-      sounds = enabled;
-      system = enabled;
+      autorandr-toggle = enabled;
+      apply-gtk-theme = enabled;
+      apply-starship-theme = enabled;
+      # brightness = enabled;
     };
   };
 }
