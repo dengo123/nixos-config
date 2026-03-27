@@ -4,6 +4,9 @@ local gears = require("gears")
 local config = require("system.config")
 local errors = require("system.errors")
 
+local Context = require("lib.context")
+local Compat = require("lib.compat")
+
 local M = {
 	config = config,
 	errors = errors,
@@ -69,6 +72,16 @@ function M.init(overrides)
 	local ui = ui_mod.get()
 
 	-- ---------------------------------------------------------------------
+	-- Context
+	-- ---------------------------------------------------------------------
+
+	local ctx = Context.new({
+		cfg = cfg,
+		ui = ui,
+		modkey = cfg.input and cfg.input.modkey,
+	})
+
+	-- ---------------------------------------------------------------------
 	-- Autostart
 	-- ---------------------------------------------------------------------
 
@@ -79,41 +92,46 @@ function M.init(overrides)
 	-- Input
 	-- ---------------------------------------------------------------------
 
-	local input = require("input")
-	input = input.init({
-		ui = ui,
-	})
+	local Input = require("input")
+	local input = Input.init(ctx)
 
 	-- ---------------------------------------------------------------------
 	-- Shell
 	-- ---------------------------------------------------------------------
 
-	local shell = require("shell")
-
-	shell.init({
-		cfg = cfg,
-		ui = ui,
-		input = input,
-	})
+	local Shell = require("shell")
+	Shell.init(ctx)
 
 	-- ---------------------------------------------------------------------
 	-- Session State
 	-- ---------------------------------------------------------------------
 
 	local SessionState = require("system.session_state")
-	SessionState = SessionState.init({
-		cfg = cfg,
-		ui = ui,
-	})
+	local session_state = SessionState.init(ctx)
 
-	SessionState.attach_signals()
-	SessionState.restore_on_start()
+	session_state.attach_signals()
+	session_state.restore_on_start()
+
+	-- ---------------------------------------------------------------------
+	-- Compatibility
+	-- ---------------------------------------------------------------------
+
+	Compat.apply(ctx)
+
+	-- ---------------------------------------------------------------------
+	-- Runtime hooks
+	-- ---------------------------------------------------------------------
+
+	session_state.attach_signals()
+	session_state.restore_on_start()
 
 	-- ---------------------------------------------------------------------
 	-- Apply Input
 	-- ---------------------------------------------------------------------
 
-	input.apply(cfg)
+	if input and input.apply then
+		input.apply(cfg)
+	end
 
 	return cfg
 end

@@ -1,6 +1,9 @@
 -- ~/.config/awesome/shell/init.lua
 local awful = require("awful")
 
+local Compat = require("lib.compat")
+local Resolve = require("lib.resolve")
+
 local function safe_require(path)
 	local ok, mod = pcall(require, path)
 	if ok then
@@ -10,20 +13,28 @@ local function safe_require(path)
 	return nil
 end
 
-local M = {
-	api = {},
+local M = {}
+
+local runtime = {
+	ctx = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function api()
-	return M.api or {}
+local function ctx()
+	return runtime.ctx or {}
 end
 
-local function mod(name)
-	return api()[name]
+local function shell_ctx()
+	local c = ctx()
+	c.shell = c.shell or {}
+	return c.shell
+end
+
+local function shell_mod(name)
+	return shell_ctx()[name]
 end
 
 local function resolve_wallpaper_fn(ui)
@@ -59,9 +70,9 @@ end
 local function build_overlays()
 	local ordered = {}
 
-	local Launchers = mod("launchers")
-	local Menu = mod("menu")
-	local Notify = mod("notify")
+	local Launchers = shell_mod("launchers")
+	local Menu = shell_mod("menu")
+	local Notify = shell_mod("notify")
 
 	if Launchers and type(Launchers.build_overlays) == "function" then
 		for _, entry in ipairs(Launchers.build_overlays()) do
@@ -78,8 +89,8 @@ local function build_overlays()
 end
 
 local function build_actions()
-	local Windowing = mod("windowing")
-	local Workspaces = mod("workspaces")
+	local Windowing = shell_mod("windowing")
+	local Workspaces = shell_mod("workspaces")
 
 	local windowing_actions = (Windowing and Windowing.actions) or {}
 	local workspace_actions = (Workspaces and Workspaces.actions) or {}
@@ -123,169 +134,136 @@ local function build_actions()
 	}
 end
 
+local function ensure_compat_roots(c)
+	c.cfg = c.cfg or {}
+	c.ui = c.ui or {}
+	c.input = c.input or {}
+	c.shell = c.shell or {}
+	c.features = c.features or {}
+	c.services = c.services or {}
+	c.policy = c.policy or {}
+	c.external = c.external or {}
+	c.api = c.api or {}
+	c.cfg.api = c.cfg.api or {}
+end
+
+local function register_shell_module(name, value)
+	if not name then
+		return value
+	end
+
+	local c = ctx()
+	ensure_compat_roots(c)
+
+	c.shell[name] = value
+
+	if name == "windowing" then
+		c.features.windowing = value
+	elseif name == "workspaces" then
+		c.features.workspaces = value
+	elseif name == "notify" then
+		c.features.notify = value
+	elseif name == "menu" then
+		c.features.menu = value
+	elseif name == "launchers" then
+		c.features.launchers = value
+	elseif name == "bar" then
+		c.features.bar = value
+	end
+
+	c.cfg.api[name] = value
+	c.api[name] = value
+
+	return value
+end
+
+local function init_module(name)
+	local c = ctx()
+	local mod = shell_mod(name)
+
+	if not (mod and type(mod.init) == "function") then
+		return mod
+	end
+
+	local out = mod.init(c)
+	if out ~= nil then
+		register_shell_module(name, out)
+		return out
+	end
+
+	return mod
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = args or {}
 
-	local cfg = args.cfg or {}
-	local ui = args.ui or {}
-	local input = args.input or {}
-
-	M.api = {
-		ui = ui,
-		input = input,
-		bar = safe_require("shell.bar"),
-		workspaces = safe_require("shell.workspaces"),
-		windowing = safe_require("shell.windowing"),
-		launchers = safe_require("shell.launchers"),
-		menu = safe_require("shell.menu"),
-		notify = safe_require("shell.notify"),
-	}
-
-	local Bar = mod("bar")
-	local Workspaces = mod("workspaces")
-	local Windowing = mod("windowing")
-	local Launchers = mod("launchers")
-	local Menu = mod("menu")
-	local Notify = mod("notify")
+	local c = ctx()
+	ensure_compat_roots(c)
 
 	-- ---------------------------------------------------------------------
-	-- Shared API
+	-- Load modules
 	-- ---------------------------------------------------------------------
 
-	cfg.api = cfg.api or {}
-	cfg.api.ui = ui
-	cfg.api.input = input
+	register_shell_module("bar", safe_require("shell.bar"))
+	register_shell_module("workspaces", safe_require("shell.workspaces"))
+	register_shell_module("windowing", safe_require("shell.windowing"))
+	register_shell_module("launchers", safe_require("shell.launchers"))
+	register_shell_module("menu", safe_require("shell.menu"))
+	register_shell_module("notify", safe_require("shell.notify"))
 
-	local wallpaper_fn = resolve_wallpaper_fn(ui)
+	-- ---------------------------------------------------------------------
+	-- Shared API / compatibility
+	-- ---------------------------------------------------------------------
+
+	c.cfg.api.ui = c.ui
+	c.cfg.api.input = c.input
+
+	local wallpaper_fn = resolve_wallpaper_fn(c.ui)
 	if wallpaper_fn then
-		cfg.wallpaper_fn = wallpaper_fn
+		c.cfg.wallpaper_fn = wallpaper_fn
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Workspaces
-	-- ---------------------------------------------------------------------
-
-	if Workspaces and type(Workspaces.init) == "function" then
-		local workspace_api = Workspaces.init({
-			cfg = cfg,
-			ui = ui,
-		})
-
-		if workspace_api then
-			M.api.workspaces = workspace_api
-			Workspaces = workspace_api
-		end
-	end
-
-	cfg.api.workspaces = Workspaces
+	Compat.apply(c)
 
 	-- ---------------------------------------------------------------------
-	-- Windowing
+	-- Init submodules
 	-- ---------------------------------------------------------------------
 
-	if Windowing and type(Windowing.init) == "function" then
-		local windowing_api = Windowing.init({
-			modkey = cfg.input and cfg.input.modkey,
-			ui = ui,
-			cfg = cfg,
-		})
+	init_module("workspaces")
+	init_module("windowing")
+	init_module("launchers")
+	init_module("menu")
+	init_module("notify")
 
-		if windowing_api then
-			M.api.windowing = windowing_api
-			Windowing = windowing_api
-		end
-	end
-
-	cfg.api.windowing = Windowing
+	Compat.apply(c)
 
 	-- ---------------------------------------------------------------------
-	-- Launchers
+	-- Runtime state
 	-- ---------------------------------------------------------------------
 
-	if Launchers and type(Launchers.init) == "function" then
-		local launchers_api = Launchers.init({
-			cfg = cfg,
-			ui = ui,
-		})
-
-		if launchers_api then
-			M.api.launchers = launchers_api
-			Launchers = launchers_api
-		end
-	end
-
-	cfg.api.launchers = Launchers
+	c.cfg.overlays = build_overlays()
+	c.cfg.actions = build_actions()
 
 	-- ---------------------------------------------------------------------
-	-- Menu
+	-- Bar last
 	-- ---------------------------------------------------------------------
 
-	if Menu and type(Menu.init) == "function" then
-		local menu_api = Menu.init({
-			ui = ui,
-			cfg = cfg,
-		})
+	init_module("bar")
 
-		if menu_api then
-			M.api.menu = menu_api
-			Menu = menu_api
-		end
-	end
+	Compat.apply(c)
 
-	cfg.api.menu = Menu
-
-	-- ---------------------------------------------------------------------
-	-- Notifications
-	-- ---------------------------------------------------------------------
-
-	if Notify and type(Notify.init) == "function" then
-		local notify_api = Notify.init({
-			ui = ui,
-			cfg = cfg,
-		})
-
-		if notify_api then
-			M.api.notify = notify_api
-			Notify = notify_api
-		end
-	end
-
-	cfg.api.notify = Notify
-
-	-- ---------------------------------------------------------------------
-	-- Runtime State
-	-- ---------------------------------------------------------------------
-
-	cfg.overlays = build_overlays()
-	cfg.actions = build_actions()
-
-	-- ---------------------------------------------------------------------
-	-- Bars
-	-- ---------------------------------------------------------------------
-
-	if Bar and type(Bar.init) == "function" then
-		local bar_api = Bar.init({
-			ui = ui,
-			cfg = cfg,
-		})
-
-		if bar_api then
-			M.api.bar = bar_api
-			Bar = bar_api
-		end
-	end
-
-	cfg.api.bar = Bar
+	local Bar = shell_mod("bar")
+	local Menu = shell_mod("menu")
 
 	if Bar and type(Bar.setup) == "function" then
 		awful.screen.connect_for_each_screen(function(s)
 			Bar.setup(s, {
-				cfg = cfg,
-				ui = ui,
+				cfg = c.cfg,
+				ui = c.ui,
 				menu_api = Menu,
 			})
 		end)
@@ -297,7 +275,7 @@ function M.init(args)
 		end)
 	end
 
-	return cfg
+	return c.shell
 end
 
 return M

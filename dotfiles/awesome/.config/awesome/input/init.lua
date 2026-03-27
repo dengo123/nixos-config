@@ -18,9 +18,35 @@ local M = {
 	client = {},
 }
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
+
+local function ensure_ctx_roots()
+	local c = ctx()
+
+	c.input = c.input or M
+	c.api = c.api or {}
+	c.external = c.external or {}
+	c.cfg = c.cfg or {}
+	c.cfg.api = c.cfg.api or {}
+end
 
 local function api()
 	return M.api or {}
@@ -68,37 +94,39 @@ local function init_module(mod, args)
 	end
 end
 
-local function build_globalkeys(cfg)
-	local modkey = cfg.input and cfg.input.modkey
+local function build_globalkeys()
+	local conf = cfg()
+	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
 	return join(
-		call_key_factory(global_mod("apps"), modkey, cfg),
+		call_key_factory(global_mod("apps"), modkey, conf),
 		call_key_factory(global_mod("awesome"), modkey),
-		call_key_factory(global_mod("display"), modkey, cfg),
+		call_key_factory(global_mod("display"), modkey, conf),
 		call_key_factory(global_mod("layout"), modkey),
-		call_key_factory(global_mod("logoff"), modkey, cfg.api and cfg.api.launchers),
-		call_key_factory(global_mod("media"), modkey, cfg),
-		call_key_factory(global_mod("menu"), modkey, cfg),
-		call_key_factory(global_mod("notify"), modkey, cfg),
-		call_key_factory(global_mod("power"), modkey, cfg.api and cfg.api.launchers),
-		call_key_factory(global_mod("run"), modkey, cfg.api and cfg.api.launchers),
+		call_key_factory(global_mod("logoff"), modkey, conf.api and conf.api.launchers),
+		call_key_factory(global_mod("media"), modkey, conf),
+		call_key_factory(global_mod("menu"), modkey, conf),
+		call_key_factory(global_mod("notify"), modkey, conf),
+		call_key_factory(global_mod("power"), modkey, conf.api and conf.api.launchers),
+		call_key_factory(global_mod("run"), modkey, conf.api and conf.api.launchers),
 		call_key_factory(
 			global_mod("screens"),
 			modkey,
-			cfg.actions and cfg.actions.windowing and cfg.actions.windowing.screens
+			conf.actions and conf.actions.windowing and conf.actions.windowing.screens
 		),
-		call_key_factory(global_mod("screenshot"), modkey, cfg),
+		call_key_factory(global_mod("screenshot"), modkey, conf),
 		call_key_factory(
 			global_mod("tags"),
 			modkey,
-			cfg.actions and cfg.actions.workspaces and cfg.actions.workspaces.tags
+			conf.actions and conf.actions.workspaces and conf.actions.workspaces.tags
 		)
 	)
 end
 
-local function build_clientkeys(cfg)
-	local modkey = cfg.input and cfg.input.modkey
+local function build_clientkeys()
+	local conf = cfg()
+	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
 	return join(
@@ -107,33 +135,34 @@ local function build_clientkeys(cfg)
 		call_key_factory(
 			client_mod("navigation"),
 			modkey,
-			cfg.actions and cfg.actions.windowing and cfg.actions.windowing.clients
+			conf.actions and conf.actions.windowing and conf.actions.windowing.clients
 		),
 		call_key_factory(
 			client_mod("screens"),
 			modkey,
-			cfg.actions and cfg.actions.windowing and cfg.actions.windowing.screens
+			conf.actions and conf.actions.windowing and conf.actions.windowing.screens
 		),
-		call_key_factory(client_mod("state"), modkey, cfg),
+		call_key_factory(client_mod("state"), modkey, conf),
 		call_key_factory(
 			client_mod("tags"),
 			modkey,
-			cfg.actions and cfg.actions.workspaces and cfg.actions.workspaces.tags
+			conf.actions and conf.actions.workspaces and conf.actions.workspaces.tags
 		)
 	)
 end
 
-local function init_runtimekeys(cfg, rootkeys)
+local function init_runtimekeys(rootkeys)
+	local conf = cfg()
 	local Runtime = runtime_api()
 
 	init_module(Runtime.escape, {
 		globalkeys = rootkeys,
-		overlays = cfg.overlays,
+		overlays = conf.overlays,
 	})
 
 	init_module(Runtime.notify, {
 		globalkeys = rootkeys,
-		overlays = cfg.overlays,
+		overlays = conf.overlays,
 	})
 end
 
@@ -142,10 +171,11 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
 	M.api = {
-		ui = args.ui or {},
+		ui = ui(),
 		global = {
 			apps = safe_require("input.global.apps"),
 			awesome = safe_require("input.global.awesome"),
@@ -179,26 +209,44 @@ function M.init(args)
 	M.runtime = M.api.runtime or {}
 	M.client = M.api.client or {}
 
+	-- ---------------------------------------------------------------------
+	-- Compatibility mirrors
+	-- ---------------------------------------------------------------------
+
+	local c = ctx()
+	c.input = M
+	c.api.input = M
+	c.external.input = M
+	c.cfg.api.input = M
+
+	-- ---------------------------------------------------------------------
+	-- Client mouse init
+	-- ---------------------------------------------------------------------
+
 	init_module(M.client.mouse, {
+		ctx = c,
+		ui = ui(),
+		cfg = cfg(),
+		input = M,
 		api = {
 			ui = M.api.ui or {},
+			input = M,
+			cfg = cfg(),
 		},
 	})
 
 	return M
 end
 
-function M.apply(cfg)
-	cfg = cfg or {}
-
-	local globalkeys = build_globalkeys(cfg)
-	local clientkeys = build_clientkeys(cfg)
+function M.apply(_cfg)
+	local globalkeys = build_globalkeys()
+	local clientkeys = build_clientkeys()
 	local rootkeys = gears.table.join(globalkeys, clientkeys)
 
 	M.globalkeys = rootkeys
 	root.keys(rootkeys)
 
-	init_runtimekeys(cfg, rootkeys)
+	init_runtimekeys(rootkeys)
 
 	return M
 end

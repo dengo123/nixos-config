@@ -4,9 +4,7 @@ local gfs = require("gears.filesystem")
 local M = {}
 
 local runtime = {
-	api = {},
-	cfg = {},
-	ui = {},
+	ctx = {},
 	state_path = nil,
 }
 
@@ -14,8 +12,16 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function resolve_state_path(cfg)
-	local session_cfg = ((cfg or {}).system or {}).session_state or {}
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function resolve_state_path(conf)
+	local session_cfg = ((conf or {}).system or {}).session_state or {}
 	local custom_path = session_cfg.path
 
 	if type(custom_path) == "string" and custom_path ~= "" then
@@ -127,18 +133,14 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
-	runtime.state_path = resolve_state_path(runtime.cfg)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.state_path = resolve_state_path(cfg())
 
 	return M
 end
 
 function M.path()
-	return runtime.state_path or resolve_state_path(runtime.cfg)
+	return runtime.state_path or resolve_state_path(cfg())
 end
 
 function M.read()

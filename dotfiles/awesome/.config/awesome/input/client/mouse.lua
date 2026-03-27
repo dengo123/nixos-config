@@ -35,6 +35,7 @@ function M.init(args)
 end
 
 function M.client_buttons(modkey)
+	local mods = type(modkey) == "string" and modkey ~= "" and { modkey } or {}
 	return gears.table.join(
 		awful.button({}, 1, function(c)
 			activate_client(c, "mouse_click", true)

@@ -5,14 +5,16 @@ local gears = require("gears")
 local M = {}
 
 local runtime = {
-	api = {},
-	cfg = {},
-	ui = {},
+	ctx = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function screen_key(s)
 	if s and type(s.outputs) == "table" then
@@ -104,7 +106,18 @@ local function apply_screen_state(data)
 	end
 end
 
-local function apply_client_state(data)
+local function should_preserve_rule_floating(c)
+	return c.portrait_autosize == true or c.centered_autosize == true or c.type == "dialog" or c.type == "utility"
+end
+
+local function apply_client_state(data, opts)
+	opts = opts or {}
+
+	local restore_screen = opts.restore_screen == true
+	local restore_tag = opts.restore_tag == true
+	local restore_floating = opts.restore_floating == true
+	local restore_state = (opts.restore_state ~= false)
+
 	local by_window = {}
 
 	for _, cs in ipairs(data.clients or {}) do
@@ -117,13 +130,14 @@ local function apply_client_state(data)
 		local cs = by_window[c.window]
 
 		if cs then
-			local target_screen = cs.screen_key and screen_by_key(cs.screen_key) or nil
-
-			if target_screen and target_screen.valid and c.screen ~= target_screen then
-				c.screen = target_screen
+			if restore_screen then
+				local target_screen = cs.screen_key and screen_by_key(cs.screen_key) or nil
+				if target_screen and target_screen.valid and c.screen ~= target_screen then
+					c.screen = target_screen
+				end
 			end
 
-			if c.screen then
+			if restore_tag and c.screen then
 				local t = cs.tag_name and safe_get_tag_by_name(c.screen, cs.tag_name) or nil
 
 				if not t and cs.tag_idx then
@@ -135,17 +149,22 @@ local function apply_client_state(data)
 				end
 			end
 
-			c.minimized = cs.minimized == true
-			awful.client.floating.set(c, cs.floating == true)
-			c.maximized = cs.maximized == true
-			c.fullscreen = cs.fullscreen == true
+			if restore_state then
+				c.minimized = cs.minimized == true
+				c.maximized = cs.maximized == true
+				c.fullscreen = cs.fullscreen == true
+			end
+
+			if restore_floating and not should_preserve_rule_floating(c) then
+				c.floating = cs.floating == true
+			end
 		end
 	end
 end
 
-local function restore_pass(data)
+local function restore_pass(data, opts)
 	apply_screen_state(data)
-	apply_client_state(data)
+	apply_client_state(data, opts)
 end
 
 -- =========================================================================
@@ -153,34 +172,31 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
-
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	return M
 end
 
-function M.run(data)
+function M.run(data, opts)
 	if type(data) ~= "table" then
 		return false
 	end
 
-	restore_pass(data)
+	opts = opts or {}
+
+	restore_pass(data, opts)
 
 	gears.timer.start_new(0.30, function()
-		restore_pass(data)
+		restore_pass(data, opts)
 		return false
 	end)
 
 	gears.timer.start_new(0.90, function()
-		restore_pass(data)
+		restore_pass(data, opts)
 		return false
 	end)
 
 	gears.timer.start_new(1.80, function()
-		restore_pass(data)
+		restore_pass(data, opts)
 		return false
 	end)
 

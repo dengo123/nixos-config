@@ -13,12 +13,27 @@ local M = {
 }
 
 local runtime = {
+	ctx = {},
 	restore_scheduled = false,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function ensure_ctx_roots()
+	local c = ctx()
+
+	c.system = c.system or {}
+	c.api = c.api or {}
+	c.external = c.external or {}
+	c.cfg = c.cfg or {}
+	c.cfg.api = c.cfg.api or {}
+end
 
 local function api()
 	return M.api or {}
@@ -40,7 +55,8 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
 	M.api = {
 		store = safe_require("system.session_state.store"),
@@ -49,10 +65,19 @@ function M.init(args)
 		signals = safe_require("system.session_state.signals"),
 	}
 
+	local c = ctx()
+
+	c.system.session_state = M
+	c.api.session_state = M
+	c.external.session_state = M
+	c.cfg.api.session_state = M
+
 	local shared = {
+		ctx = c,
 		api = api(),
-		cfg = args.cfg or {},
-		ui = args.ui or {},
+		cfg = c.cfg or {},
+		ui = c.ui or {},
+		system = c.system or {},
 	}
 
 	init_module("store", shared)
@@ -78,7 +103,7 @@ function M.snapshot()
 	return Store.write(Snapshot.current_state())
 end
 
-function M.restore()
+function M.restore(opts)
 	local Store = mod("store")
 	local Restore = mod("restore")
 
@@ -95,7 +120,7 @@ function M.restore()
 		return false
 	end
 
-	return Restore.run(data)
+	return Restore.run(data, opts)
 end
 
 function M.restore_on_start()
@@ -110,7 +135,12 @@ function M.restore_on_start()
 	if Restore and type(Restore.restore_on_start) == "function" then
 		Restore.restore_on_start(function()
 			runtime.restore_scheduled = false
-			M.restore()
+			M.restore({
+				restore_screen = false,
+				restore_tag = false,
+				restore_floating = false,
+				restore_state = true,
+			})
 		end)
 	else
 		runtime.restore_scheduled = false
@@ -125,8 +155,8 @@ function M.attach_signals()
 			snapshot = function()
 				return M.snapshot()
 			end,
-			restore = function()
-				return M.restore()
+			restore = function(opts)
+				return M.restore(opts)
 			end,
 		})
 	end

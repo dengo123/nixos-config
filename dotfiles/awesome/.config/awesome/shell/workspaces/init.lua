@@ -10,7 +10,10 @@ local function safe_require(path)
 	return nil
 end
 
-local M = {
+local M = {}
+
+local runtime = {
+	ctx = {},
 	api = {},
 }
 
@@ -18,8 +21,20 @@ local M = {
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
+
 local function api()
-	return M.api or {}
+	return runtime.api or {}
 end
 
 local function runtime_api()
@@ -38,7 +53,38 @@ local function policy_mod(name)
 	return policies_api()[name]
 end
 
-local function attach_policy_signals(cfg)
+local function ensure_ctx_roots()
+	local c = ctx()
+
+	c.shell = c.shell or {}
+	c.features = c.features or {}
+	c.policy = c.policy or {}
+	c.api = c.api or {}
+	c.external = c.external or {}
+	c.cfg = c.cfg or {}
+	c.cfg.api = c.cfg.api or {}
+end
+
+local function register_policy(name, value)
+	local c = ctx()
+	ensure_ctx_roots()
+
+	if value == nil then
+		return nil
+	end
+
+	if name == "max" then
+		c.policy.max_policy = value
+		c.api.max_policy = value
+		c.external.max_policy = value
+	else
+		c.policy[name] = value
+	end
+
+	return value
+end
+
+local function attach_policy_signals()
 	local Focus = policy_mod("focus")
 	local Layout = policy_mod("layout")
 	local Spacing = policy_mod("spacing")
@@ -48,7 +94,7 @@ local function attach_policy_signals(cfg)
 	end
 
 	if Spacing and type(Spacing.init) == "function" then
-		Spacing.init(cfg)
+		Spacing.init(cfg())
 	end
 end
 
@@ -57,12 +103,11 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
-	local cfg = args.cfg or args or {}
-
-	M.api = {
-		ui = args.ui or {},
+	runtime.api = {
+		ui = ui(),
 		runtime = {
 			actions = safe_require("shell.workspaces.runtime.actions"),
 			base = safe_require("shell.workspaces.runtime.base"),
@@ -75,8 +120,15 @@ function M.init(args)
 			spacing = safe_require("shell.workspaces.policies.spacing_policy"),
 			focus = safe_require("shell.workspaces.policies.focus_policy"),
 			client = safe_require("shell.workspaces.policies.client_policy"),
+			max = safe_require("shell.workspaces.policies.max_policy"),
 		},
 	}
+
+	local c = ctx()
+	c.shell.workspaces = M
+	c.features.workspaces = M
+	c.cfg.api.workspaces = M
+	c.api.workspaces = M
 
 	local RuntimeActions = runtime_mod("actions")
 	local RuntimeBase = runtime_mod("base")
@@ -86,8 +138,9 @@ function M.init(args)
 
 	local PolicyLayout = policy_mod("layout")
 	local PolicyClient = policy_mod("client")
+	local PolicyMax = policy_mod("max")
 
-	local tags_cfg = cfg.tags or {}
+	local tags_cfg = cfg().tags or {}
 	local layouts_cfg = tags_cfg.layouts or {}
 
 	RuntimeBase.set_config({
@@ -97,10 +150,10 @@ function M.init(args)
 	})
 
 	local opts = {
-		ensure_one_tag = (cfg.ensure_one_tag ~= false),
-		renumber_on_start = (cfg.renumber_on_start ~= false),
-		auto_adapt_layout_on_rotation = (cfg.auto_adapt_layout_on_rotation ~= false),
-		desktop_deco_fn = cfg.desktop_deco_fn,
+		ensure_one_tag = (cfg().ensure_one_tag ~= false),
+		renumber_on_start = (cfg().renumber_on_start ~= false),
+		auto_adapt_layout_on_rotation = (cfg().auto_adapt_layout_on_rotation ~= false),
+		desktop_deco_fn = cfg().desktop_deco_fn,
 	}
 
 	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
@@ -108,21 +161,27 @@ function M.init(args)
 	local impl = use_sync and RuntimeSync or RuntimeBase
 
 	if RuntimeLayouts and type(RuntimeLayouts.apply) == "function" then
-		RuntimeLayouts.apply(cfg)
+		RuntimeLayouts.apply(cfg())
 	end
 
 	if PolicyLayout and type(PolicyLayout.init_enforcement) == "function" then
 		PolicyLayout.init_enforcement({
-			cfg = cfg,
-			api = M.api,
+			cfg = cfg(),
+			api = runtime.api,
+			external = c.external,
+			ctx = c,
 		})
 	end
 
 	if PolicyClient and type(PolicyClient.init) == "function" then
-		PolicyClient.init(cfg)
+		PolicyClient.init(cfg())
 	end
 
-	attach_policy_signals(cfg)
+	if PolicyMax and type(PolicyMax.init) == "function" then
+		register_policy("max", PolicyMax.init(c))
+	end
+
+	attach_policy_signals()
 
 	RuntimeBase.set_hooks({
 		kill_clients_in_tag = PolicyClient and PolicyClient.kill_clients_in_tag or function(_) end,
@@ -149,6 +208,10 @@ function M.init(args)
 
 		if PolicyLayout and PolicyLayout.apply_layout_policy then
 			PolicyLayout.apply_layout_policy(s)
+		end
+
+		if PolicyMax and type(PolicyMax.apply_current) == "function" then
+			PolicyMax.apply_current(s)
 		end
 
 		if opts.desktop_deco_fn then

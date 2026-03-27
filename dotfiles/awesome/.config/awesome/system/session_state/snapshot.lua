@@ -4,14 +4,16 @@ local awful = require("awful")
 local M = {}
 
 local runtime = {
-	api = {},
-	cfg = {},
-	ui = {},
+	ctx = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function screen_key(s)
 	if s and type(s.outputs) == "table" then
@@ -75,12 +77,7 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
-
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	return M
 end
 
@@ -111,7 +108,7 @@ function M.current_state()
 			tag_name = tag_name(t),
 			tag_idx = t and t.index or nil,
 			minimized = c.minimized == true,
-			floating = awful.client.floating.get(c) == true,
+			floating = c.floating == true,
 			fullscreen = c.fullscreen == true,
 			maximized = c.maximized == true,
 		})

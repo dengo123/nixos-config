@@ -4,12 +4,18 @@ local gears = require("gears")
 local M = {}
 
 local runtime = {
-	api = {},
-	cfg = {},
-	ui = {},
+	ctx = {},
 	attached = false,
 	save_timer = nil,
 }
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function schedule_save(snapshot_fn)
 	if runtime.save_timer then
@@ -30,11 +36,12 @@ local function schedule_save(snapshot_fn)
 	})
 end
 
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
 function M.init(args)
-	args = args or {}
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	return M
 end
 
@@ -56,7 +63,12 @@ function M.attach(args)
 
 	awesome.connect_signal("autorandr::applied", function()
 		if type(restore) == "function" then
-			restore()
+			restore({
+				restore_screen = true,
+				restore_tag = true,
+				restore_floating = false,
+				restore_state = true,
+			})
 		end
 	end)
 
@@ -68,7 +80,12 @@ function M.attach(args)
 
 	awesome.connect_signal("session::post_change", function()
 		if type(restore) == "function" then
-			restore()
+			restore({
+				restore_screen = false,
+				restore_tag = false,
+				restore_floating = false,
+				restore_state = true,
+			})
 		end
 	end)
 

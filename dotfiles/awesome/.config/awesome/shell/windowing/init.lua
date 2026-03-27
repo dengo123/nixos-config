@@ -169,11 +169,7 @@ function M.init(args)
 		ui = runtime.ui_root,
 	})
 
-	init_module(runtime.navigation, {
-		cfg = cfg,
-		api = runtime.runtime,
-		ui = runtime.ui_root,
-	})
+	init_module(runtime.navigation, args)
 
 	if runtime.minimized and type(runtime.minimized.attach_signals) == "function" then
 		runtime.minimized.attach_signals()
