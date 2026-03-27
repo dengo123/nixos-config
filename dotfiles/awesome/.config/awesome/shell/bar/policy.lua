@@ -3,9 +3,17 @@ local awful = require("awful")
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function is_landscape_screen(s)
 	return s and s.geometry and s.geometry.width >= s.geometry.height
@@ -19,9 +27,18 @@ local function normalize_start_show(value, default)
 	return tostring(value or default or "on"):lower()
 end
 
+local function normalize_notify_show(value, default)
+	return tostring(value or default or "visible_bar_only"):lower()
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return M
+end
 
 function M.matches_screen_policy(s, policy)
 	local primary = screen.primary or awful.screen.focused()
@@ -79,18 +96,6 @@ function M.start_action(bar_cfg)
 	return tostring(bar_cfg.start_action or "menu"):lower()
 end
 
-function M.normalize_screen_policy(value, default)
-	return normalize_screen_policy(value, default)
-end
-
-function M.normalize_start_show(value, default)
-	return normalize_start_show(value, default)
-end
-
-local function normalize_notify_show(value, default)
-	return tostring(value or default or "visible_bar_only"):lower()
-end
-
 function M.notify_enabled_on_screen(s, bar_cfg)
 	bar_cfg = bar_cfg or {}
 
@@ -106,6 +111,14 @@ function M.notify_enabled_on_screen(s, bar_cfg)
 	end
 
 	return true
+end
+
+function M.normalize_screen_policy(value, default)
+	return normalize_screen_policy(value, default)
+end
+
+function M.normalize_start_show(value, default)
+	return normalize_start_show(value, default)
 end
 
 function M.normalize_notify_show(value, default)

@@ -42,6 +42,29 @@ local function spawn_cmd(cmd)
 	return false
 end
 
+local function resolve_ctx(opts)
+	return (opts and opts.ctx) or {}
+end
+
+local function resolve_cfg(opts)
+	local c = resolve_ctx(opts)
+	return (opts and opts.cfg) or c.cfg or {}
+end
+
+local function resolve_menu_api(opts)
+	local c = resolve_ctx(opts)
+
+	return (opts and opts.menu_api)
+		or (c.features and c.features.menu)
+		or (c.shell and c.shell.menu)
+		or (c.api and c.api.menu)
+		or nil
+end
+
+local function resolve_screen(opts)
+	return (opts and opts.screen) or (mouse and mouse.screen) or nil
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -53,11 +76,11 @@ function M.build(opts)
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local screen = opts.screen or (mouse and mouse.screen) or nil
-	local theme = opts.theme
+	local screen = resolve_screen(opts)
+	local theme = opts.theme or {}
 	local bar_height = tonumber(opts.bar_height)
-	local cfg = opts.cfg or {}
-	local menu_api = opts.menu_api
+	local cfg = resolve_cfg(opts)
+	local menu_api = resolve_menu_api(opts)
 
 	local apps_cfg = cfg.apps or {}
 	local bar_cfg = cfg.bar or {}
@@ -71,9 +94,9 @@ function M.build(opts)
 	local bg_hover = theme.bg_hover
 	local fg = theme.fg
 	local shape = theme.shape
-	local margin = theme.margin
+	local margin = theme.margin or { left = 0, right = 0, top = 0, bottom = 0 }
 
-	local width = math.floor(tonumber(theme.width_factor) * bar_height)
+	local width = math.floor((tonumber(theme.width_factor) or 4) * (bar_height or 1))
 
 	-- ---------------------------------------------------------------------
 	-- Icon
@@ -86,8 +109,8 @@ function M.build(opts)
 
 	local icon_surface = (type(icon_path) == "string") and gsurface.load_uncached(icon_path) or icon_path
 
-	local inner_height = bar_height - (margin.top + margin.bottom)
-	local icon_px = math.min(theme.icon_size, inner_height)
+	local inner_height = (bar_height or 0) - ((margin.top or 0) + (margin.bottom or 0))
+	local icon_px = math.min(theme.icon_size or inner_height, inner_height)
 
 	local icon_widget = wibox.widget({
 		image = icon_surface,
@@ -123,10 +146,10 @@ function M.build(opts)
 	local row = wibox.widget({
 		{
 			row_inner,
-			left = margin.left,
-			right = margin.right,
-			top = margin.top,
-			bottom = margin.bottom,
+			left = margin.left or 0,
+			right = margin.right or 0,
+			top = margin.top or 0,
+			bottom = margin.bottom or 0,
 			widget = wibox.container.margin,
 		},
 		fg = fg,

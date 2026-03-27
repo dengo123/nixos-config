@@ -6,12 +6,21 @@ local dpi = xr.apply_dpi
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function resolved_theme(args)
-	local ui = (args and args.ui) or {}
+	local c = (args and (args.ctx or args)) or ctx()
+	local ui = (args and args.ui) or c.ui or {}
 	return ui.theme or {}
 end
 
@@ -20,6 +29,7 @@ end
 -- =========================================================================
 
 function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
 	local theme = resolved_theme(args)
@@ -74,8 +84,6 @@ function M.init(args)
 	beautiful.clock_calendar_fg = C.text
 	beautiful.clock_calendar_border_color = C.surface_focus
 	beautiful.clock_calendar_border_width = 0
-
-	-- beautiful.clock_calendar_bg_focus = C.surface_focus
 
 	-- ---------------------------------------------------------------------
 	-- Layoutbox

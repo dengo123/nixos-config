@@ -12,7 +12,9 @@ local M = {}
 -- Public API
 -- =========================================================================
 
-function M.build(s, _opts)
+function M.build(s, opts)
+	opts = opts or {}
+
 	local size = tonumber(beautiful.notify_button_size)
 	local bg = beautiful.notify_button_bg
 	local bg_hover = beautiful.notify_button_bg_hover
@@ -72,17 +74,9 @@ function M.build(s, _opts)
 		widget = wibox.container.margin,
 	})
 
-	-- ---------------------------------------------------------------------
-	-- State
-	-- ---------------------------------------------------------------------
-
 	local function refresh_glyph()
 		glyph.text = is_open and glyph_open or glyph_closed
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Signals
-	-- ---------------------------------------------------------------------
 
 	awesome.connect_signal("notify::center_state", function(open)
 		is_open = (open == true)

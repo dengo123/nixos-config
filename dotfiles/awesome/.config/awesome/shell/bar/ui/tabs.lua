@@ -6,12 +6,21 @@ local dpi = xr.apply_dpi
 
 local T = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function resolved_theme(args)
-	local ui = (args and args.ui) or {}
+	local c = (args and (args.ctx or args)) or ctx()
+	local ui = (args and args.ui) or c.ui or {}
 	return ui.theme or {}
 end
 
@@ -20,6 +29,7 @@ end
 -- =========================================================================
 
 function T.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
 	local theme = resolved_theme(args)
