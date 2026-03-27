@@ -123,6 +123,7 @@ return {
 
 		gap = 4,
 		max_padding = true,
+		max_solo = false,
 
 		delete = {
 			kill_clients = true,
