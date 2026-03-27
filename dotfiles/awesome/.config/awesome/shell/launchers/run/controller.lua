@@ -2,6 +2,8 @@
 local M = {}
 
 function M.new(ctx)
+	ctx = ctx or {}
+
 	-- =========================================================================
 	-- Config
 	-- =========================================================================
@@ -9,34 +11,34 @@ function M.new(ctx)
 	local awful = ctx.awful
 	local gears = ctx.gears
 	local Providers = ctx.providers or {}
-	local Complete = ctx.complete
+	local Complete = ctx.complete or nil
 
-	local parts = ctx.parts
-	local view = ctx.view
+	local parts = ctx.parts or {}
+	local view = ctx.view or {}
 
 	local textbox = parts.textbox
+	assert(textbox, "run.controller: ctx.parts.textbox fehlt")
 
-	local sizes = ctx.sizes
-	local colors = ctx.colors
-	local layout = ctx.layout
-	local prefixes = ctx.prefixes
+	local sizes = ctx.sizes or {}
+	local colors = ctx.colors or {}
+	local layout = ctx.layout or {}
+	local prefixes = ctx.prefixes or {}
 
-	local width_expanded = tonumber(sizes.width_expanded)
-	local prompt = ctx.prompt
+	local width_expanded = tonumber(sizes.width_expanded) or 320
 
 	local bg_active = colors.bg_active
 	local fg_active = colors.fg_active
 	local cursor_bg = colors.cursor_bg
 	local cursor_fg = colors.cursor_fg
 
-	local pad_l = tonumber(layout.left)
-	local pad_r = tonumber(layout.right)
-	local pad_t = tonumber(layout.top)
-	local pad_b = tonumber(layout.bottom)
+	local pad_l = tonumber(layout.left) or 0
+	local pad_r = tonumber(layout.right) or 0
+	local pad_t = tonumber(layout.top) or 0
+	local pad_b = tonumber(layout.bottom) or 0
 
-	local prefix_run = prefixes.run_mode
-	local prefix_local = prefixes.local_mode
-	local prefix_web = prefixes.web_mode
+	local prefix_run = prefixes.run_mode or "Run:"
+	local prefix_local = prefixes.local_mode or "Files:"
+	local prefix_web = prefixes.web_mode or "Browse:"
 
 	local home = ctx.home
 	local browser = ctx.web and ctx.web.browser
@@ -62,16 +64,40 @@ function M.new(ctx)
 		return ok
 	end
 
+	local function complete_ready()
+		return Complete
+			and type(Complete.ensure) == "function"
+			and type(Complete.candidates) == "function"
+			and type(Complete.best) == "function"
+	end
+
 	local function current_text()
-		return (textbox and textbox.get_text and textbox:get_text() or textbox.text or ""):match("^%s*(.-)%s*$")
+		local text = ""
+
+		if textbox and type(textbox.get_text) == "function" then
+			local ok, value = pcall(function()
+				return textbox:get_text()
+			end)
+			if ok and type(value) == "string" then
+				text = value
+			end
+		elseif textbox and type(textbox.text) == "string" then
+			text = textbox.text
+		end
+
+		return text:match("^%s*(.-)%s*$")
 	end
 
 	local function set_text(s)
 		s = s or ""
 
-		try(function()
-			textbox:set_text(s)
-		end)
+		if textbox and type(textbox.set_text) == "function" then
+			pcall(function()
+				textbox:set_text(s)
+			end)
+		elseif textbox then
+			textbox.text = s
+		end
 
 		if textbox and textbox.cursor then
 			textbox.cursor = #s + 1
@@ -79,15 +105,17 @@ function M.new(ctx)
 	end
 
 	local function apply_active_style()
-		view.apply_active_style({
-			bg_active = bg_active,
-			fg_active = fg_active,
-			left = pad_l,
-			right = pad_r,
-			top = pad_t,
-			bottom = pad_b,
-			width_expanded = width_expanded,
-		})
+		if type(view.apply_active_style) == "function" then
+			view.apply_active_style({
+				bg_active = bg_active,
+				fg_active = fg_active,
+				left = pad_l,
+				right = pad_r,
+				top = pad_t,
+				bottom = pad_b,
+				width_expanded = width_expanded,
+			})
+		end
 
 		try(function()
 			textbox.bg = bg_active
@@ -99,6 +127,10 @@ function M.new(ctx)
 	end
 
 	local function set_prefix()
+		if type(view.set_prefix) ~= "function" then
+			return
+		end
+
 		if state.mode == "local" then
 			view.set_prefix(prefix_local)
 		elseif state.mode == "web" then
@@ -109,7 +141,7 @@ function M.new(ctx)
 	end
 
 	local function set_mode(new_mode)
-		state.mode = (new_mode == "files") and "local" or new_mode
+		state.mode = (new_mode == "files") and "local" or (new_mode or "run")
 		set_prefix()
 	end
 
@@ -124,7 +156,7 @@ function M.new(ctx)
 	end
 
 	local function update_autofill()
-		if not Complete then
+		if not complete_ready() then
 			return
 		end
 
@@ -198,7 +230,7 @@ function M.new(ctx)
 		local cur = current_text()
 		local final = cur
 
-		if cur ~= "" and Complete then
+		if cur ~= "" and complete_ready() then
 			Complete.ensure()
 			local list = Complete.candidates(state.mode)
 			local best = Complete.best(list, cur)

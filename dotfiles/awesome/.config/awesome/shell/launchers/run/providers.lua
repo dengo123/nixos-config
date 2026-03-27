@@ -3,9 +3,17 @@ local awful = require("awful")
 
 local P = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function urlencode(s)
 	if not s then
@@ -208,6 +216,35 @@ local function open_with_system(target)
 	spawn_shell_bg(string.format("xdg-open %q >/dev/null 2>&1 &", target))
 end
 
+local function resolve_web_engine(engine)
+	if type(engine) ~= "string" or engine == "" then
+		return "https://www.google.com/search?q=%s"
+	end
+
+	local key = trim(engine):lower()
+
+	local WEB_ENGINES = {
+		google = "https://www.google.com/search?q=%s",
+		duckduckgo = "https://duckduckgo.com/?q=%s",
+		bing = "https://www.bing.com/search?q=%s",
+		brave = "https://search.brave.com/search?q=%s",
+		startpage = "https://www.startpage.com/do/search?q=%s",
+		ecosia = "https://www.ecosia.org/search?q=%s",
+		kagi = "https://kagi.com/search?q=%s",
+	}
+
+	return WEB_ENGINES[key] or WEB_ENGINES.google
+end
+
+-- =========================================================================
+-- Init
+-- =========================================================================
+
+function P.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return P
+end
+
 -- =========================================================================
 -- Run
 -- =========================================================================
@@ -340,25 +377,6 @@ end
 -- =========================================================================
 -- Web
 -- =========================================================================
-
-local WEB_ENGINES = {
-	google = "https://www.google.com/search?q=%s",
-	duckduckgo = "https://duckduckgo.com/?q=%s",
-	bing = "https://www.bing.com/search?q=%s",
-	brave = "https://search.brave.com/search?q=%s",
-	startpage = "https://www.startpage.com/do/search?q=%s",
-	ecosia = "https://www.ecosia.org/search?q=%s",
-	kagi = "https://kagi.com/search?q=%s",
-}
-
-local function resolve_web_engine(engine)
-	if type(engine) ~= "string" or engine == "" then
-		return WEB_ENGINES.google
-	end
-
-	local key = trim(engine):lower()
-	return WEB_ENGINES[key] or WEB_ENGINES.google
-end
 
 function P.web_open(query, engine_name, browser)
 	local q = trim((query or ""):gsub("^%?+", ""))

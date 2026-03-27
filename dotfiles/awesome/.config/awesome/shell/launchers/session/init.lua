@@ -15,9 +15,25 @@ local M = {
 	_handle = nil,
 }
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
 
 local function api()
 	return M.api or {}
@@ -47,13 +63,14 @@ local function button_id(spec, fallback)
 	return fallback
 end
 
-local function resolve_theme(cfg, overrides)
+local function resolve_theme(conf, overrides)
 	local Theme = mod("theme")
 
 	if Theme and type(Theme.init) == "function" then
 		Theme.init({
-			cfg = cfg or {},
-			ui = api().ui or {},
+			ctx = ctx(),
+			cfg = conf or {},
+			ui = api().ui or ui(),
 		})
 	end
 
@@ -142,15 +159,19 @@ local function resolve_module(variant)
 	return variants.power
 end
 
+local function resolve_lib(Lib)
+	return (Lib and Lib.api and Lib.api.lib) or {}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
 
 	M.api = {
-		ui = args.ui or {},
+		ui = args and args.ui or ui(),
 		container = safe_require("shell.launchers.session.container"),
 		layout = safe_require("shell.launchers.session.layout"),
 		icons = safe_require("shell.launchers.session.icons"),
@@ -192,20 +213,20 @@ function M.open(opts, Lib)
 	local Layout = mod("layout")
 	local Icons = mod("icons")
 
-	local lib = (Lib.api and Lib.api.lib) or {}
+	local lib = resolve_lib(Lib)
 	local Popup = lib.popup
 	local Button = lib.button
 	local Actions = lib.actions
 
-	local cfg = opts.cfg or {}
-	local th = resolve_theme(cfg, opts.theme)
+	local conf = opts.cfg or cfg()
+	local th = resolve_theme(conf, opts.theme)
 	local d = resolve_dims(th)
 
 	local variant = resolve_variant(opts)
 	local Variant = resolve_module(variant)
 
 	local handle = nil
-	local spec = Variant and Variant.build and Variant.build(th, cfg) or nil
+	local spec = Variant and Variant.build and Variant.build(th, conf) or nil
 	local actions = spec and spec.actions or nil
 	local header_title = spec and spec.header_title or nil
 	local cancel_spec = (spec and spec.cancel_label) or th.cancel_label
@@ -231,15 +252,11 @@ function M.open(opts, Lib)
 		cancel_btn = cancel_btn,
 	})
 
-	local launchers_cfg = cfg.launchers or {}
-	local session_cfg = launchers_cfg.session or {}
-	local variant_cfg = session_cfg[variant] or {}
-
 	handle = Popup.show(stack, th, {
 		width = resolve_popup_width(th, required_w),
 		height = d.h,
 		placement = awful.placement.centered,
-		use_backdrop = (variant_cfg.backdrop ~= false),
+		use_backdrop = (((conf.launchers or {}).session or {})[variant] or {}).backdrop ~= false,
 		group = "launchers",
 		show_root = "with_bars",
 	})

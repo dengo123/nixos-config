@@ -6,6 +6,7 @@ local wibox = require("wibox")
 local B = {}
 
 local runtime = {
+	ctx = {},
 	ui = {},
 }
 
@@ -27,8 +28,12 @@ local DEFAULTS = {
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function ui_api()
-	return runtime.ui or {}
+	return runtime.ui or ctx().ui or {}
 end
 
 local function merge(a, b)
@@ -110,8 +115,8 @@ end
 -- =========================================================================
 
 function B.init(args)
-	args = args or {}
-	runtime.ui = args.ui or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.ui = (args and args.ui) or ctx().ui or {}
 	return B
 end
 

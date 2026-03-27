@@ -5,8 +5,10 @@ local L = {
 	api = {},
 }
 
-local initialized = false
-local runtime_cfg = {}
+local runtime = {
+	ctx = {},
+	initialized = false,
+}
 
 local function safe_require(path)
 	local ok, mod = pcall(require, path)
@@ -20,6 +22,25 @@ end
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ensure_ctx_roots()
+	local c = ctx()
+
+	c.shell = c.shell or {}
+	c.features = c.features or {}
+	c.api = c.api or {}
+	c.external = c.external or {}
+	c.cfg = c.cfg or {}
+	c.cfg.api = c.cfg.api or {}
+end
 
 local function api()
 	return L.api or {}
@@ -72,17 +93,21 @@ local function merge_shallow(a, b)
 	return out
 end
 
-local function resolve_ui(args, cfg)
+local function resolve_ui(args, conf)
+	local c = (args and (args.ctx or args)) or ctx()
+
 	local arg_ui = (args and args.ui) or {}
-	local cfg_ui = (cfg and cfg.ui) or {}
-	local api_ui = (cfg and cfg.api and cfg.api.ui) or {}
+	local ctx_ui = c.ui or {}
+	local cfg_ui = (conf and conf.ui) or {}
+	local api_ui = (conf and conf.api and conf.api.ui) or {}
 
 	local ui = merge_shallow(cfg_ui, api_ui)
+	ui = merge_shallow(ui, ctx_ui)
 	ui = merge_shallow(ui, arg_ui)
 
 	if not (ui.theme and ui.theme.colors and ui.theme.fonts) then
 		local UI = require("ui")
-		local ui_mod = UI.init({ cfg = cfg or {} })
+		local ui_mod = UI.init({ cfg = conf or {} })
 		ui = ui_mod.get()
 	end
 
@@ -163,8 +188,8 @@ local function build_ui_bridge()
 end
 
 local function ensure_init()
-	if not initialized then
-		L.init(runtime_cfg)
+	if not runtime.initialized then
+		L.init(ctx())
 	end
 end
 
@@ -189,16 +214,18 @@ end
 -- =========================================================================
 
 function L.init(args)
-	if initialized then
+	if runtime.initialized then
 		return L
 	end
 
-	args = args or {}
+	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
-	runtime_cfg = args.cfg or args or {}
-	L.cfg = runtime_cfg
+	local c = ctx()
+	local conf = cfg()
+	local resolved_ui = resolve_ui(c, conf)
 
-	local resolved_ui = resolve_ui(args, runtime_cfg)
+	L.cfg = conf
 
 	L.api = {
 		lib = {
@@ -213,30 +240,42 @@ function L.init(args)
 		ui = resolved_ui,
 	}
 
+	c.shell.launchers = L
+	c.features.launchers = L
+	c.api.launchers = L
+	c.external.launchers = L
+	c.cfg.api.launchers = L
+
 	local Button = lib("button")
 	if Button and type(Button.init) == "function" then
 		Button.init({
+			ctx = c,
 			ui = api().ui or {},
+			cfg = conf,
 		})
 	end
 
 	local Session = launcher("session")
 	if Session and type(Session.init) == "function" then
 		Session.init({
+			ctx = c,
 			ui = api().ui or {},
+			cfg = conf,
 		})
 	end
 
 	local Run = launcher("run")
 	if Run and type(Run.init) == "function" then
 		Run.init({
+			ctx = c,
 			ui = api().ui or {},
+			cfg = conf,
 		})
 	end
 
 	L.ui_api = build_ui_bridge()
 
-	initialized = true
+	runtime.initialized = true
 	return L
 end
 
@@ -285,7 +324,9 @@ L.open = {
 	power = function(opts)
 		ensure_init()
 		opts = opts or {}
+		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
+
 		opts.variant = "power"
 
 		local Session = launcher("session")
@@ -297,7 +338,9 @@ L.open = {
 	logoff = function(opts)
 		ensure_init()
 		opts = opts or {}
+		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
+
 		opts.variant = "logoff"
 
 		local Session = launcher("session")
@@ -309,6 +352,7 @@ L.open = {
 	session = function(opts)
 		ensure_init()
 		opts = opts or {}
+		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
 
 		local Session = launcher("session")
@@ -320,6 +364,7 @@ L.open = {
 	run = function(opts)
 		ensure_init()
 		opts = opts or {}
+		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
 
 		local Run = launcher("run")

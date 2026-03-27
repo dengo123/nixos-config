@@ -4,12 +4,29 @@ local gears = require("gears")
 
 local V = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function escape(text)
 	return gears.string.xml_escape(tostring(text or ""))
+end
+
+local function resolved_ui(ui)
+	if ui then
+		return ui
+	end
+
+	local c = ctx()
+	return c.ui or {}
 end
 
 local function build_hint_row(ui, pad_l, pad_r, pad_t)
@@ -102,7 +119,14 @@ end
 -- Public API
 -- =========================================================================
 
+function V.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return V
+end
+
 function V.build(ui, textbox)
+	ui = resolved_ui(ui)
+
 	-- ---------------------------------------------------------------------
 	-- Config
 	-- ---------------------------------------------------------------------

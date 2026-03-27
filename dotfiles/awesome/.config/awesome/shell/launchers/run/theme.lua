@@ -8,6 +8,7 @@ local DEFAULT_RUN_ICON = gfs.get_configuration_dir() .. "ui/assets/Run_2001.png"
 local M = {}
 
 local runtime = {
+	ctx = {},
 	ui = {},
 }
 
@@ -15,8 +16,12 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function ui_api()
-	return runtime.ui or {}
+	return runtime.ui or ctx().ui or {}
 end
 
 local function merge(a, b)
@@ -56,8 +61,8 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-	runtime.ui = args.ui or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.ui = (args and args.ui) or ctx().ui or {}
 	return M
 end
 

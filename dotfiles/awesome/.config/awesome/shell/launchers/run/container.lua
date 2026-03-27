@@ -4,9 +4,17 @@ local gears = require("gears")
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function build_title_widget(th, title_text)
 	return wibox.widget({
@@ -148,6 +156,11 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return M
+end
 
 function M.build(th, dims, w)
 	w = w or {}

@@ -3,9 +3,17 @@ local wibox = require("wibox")
 
 local L = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- ============================================================================
 -- Helpers
 -- ============================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function fixed_cell(widget, width)
 	return wibox.widget({
@@ -67,6 +75,11 @@ end
 -- Public API
 -- ============================================================================
 
+function L.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return L
+end
+
 function L.build_row(actions, th, dims, deps, get_close_ref)
 	actions = actions or {}
 	deps = deps or {}
@@ -122,27 +135,6 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 	-- Row
 	-- ------------------------------------------------------------------------
 
-	local inner_row = wibox.widget({
-		layout = wibox.layout.fixed.horizontal,
-		spacing = geom.spacing,
-	})
-
-	local slot_count = math.max(3, count)
-
-	if count == 2 then
-		inner_row:add(cells[1])
-		inner_row:add(fixed_cell(wibox.widget({}), geom.cell_w))
-		inner_row:add(cells[2])
-	else
-		for i = 1, #cells do
-			inner_row:add(cells[i])
-		end
-
-		for _ = (#cells + 1), slot_count do
-			inner_row:add(fixed_cell(wibox.widget({}), geom.cell_w))
-		end
-	end
-
 	local slot_count = math.max(3, count)
 	local row_w = required_row_width(slot_count, geom.cell_w, geom.spacing)
 
@@ -156,8 +148,18 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 		spacing = row_spacing,
 	})
 
-	for i = 1, #cells do
-		inner_row:add(cells[i])
+	if count == 2 then
+		inner_row:add(cells[1])
+		inner_row:add(fixed_cell(wibox.widget({}), geom.cell_w))
+		inner_row:add(cells[2])
+	else
+		for i = 1, #cells do
+			inner_row:add(cells[i])
+		end
+
+		for _ = (#cells + 1), slot_count do
+			inner_row:add(fixed_cell(wibox.widget({}), geom.cell_w))
+		end
 	end
 
 	local inner_h = math.max(1, dims.body_h - 2 * dims.pad_v)

@@ -16,9 +16,25 @@ local M = {
 	api = {},
 }
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
 
 local function api()
 	return M.api or {}
@@ -71,9 +87,9 @@ local function resolve_theme(overrides)
 	return (Theme and Theme.get and Theme.get(overrides or {})) or {}
 end
 
-local function resolve_web_cfg(cfg)
-	local apps_cfg = cfg.apps or {}
-	local launchers_cfg = cfg.launchers or {}
+local function resolve_web_cfg(conf)
+	local apps_cfg = conf.apps or {}
+	local launchers_cfg = conf.launchers or {}
 	local run_cfg = launchers_cfg.run or {}
 
 	return {
@@ -129,10 +145,13 @@ end
 
 local function build_controller_ctx(args)
 	local search = args.search
-	local cfg = args.cfg or {}
+	local conf = args.cfg or {}
 	local web_cfg = args.web_cfg or {}
+	local c = args.ctx or ctx()
 
 	return {
+		ctx = c,
+
 		awful = args.awful,
 		gears = args.gears,
 		prompt = args.prompt,
@@ -165,8 +184,8 @@ local function build_controller_ctx(args)
 		complete = args.complete,
 		web = web_cfg,
 		home = os.getenv("HOME"),
-		apps = cfg.apps or {},
-		modkey = cfg.input and cfg.input.modkey or "Mod4",
+		apps = conf.apps or {},
+		modkey = c.modkey or (conf.input and conf.input.modkey) or "Mod4",
 
 		hide_menu_popup = function()
 			if args.handle and args.handle.close then
@@ -176,15 +195,36 @@ local function build_controller_ctx(args)
 	}
 end
 
+local function resolve_lib(Lib)
+	return (Lib and Lib.api and Lib.api.lib) or {}
+end
+
+local function resolve_open_panel(Lib)
+	if Lib and Lib.ui_api and type(Lib.ui_api.open_panel) == "function" then
+		return Lib.ui_api.open_panel
+	end
+
+	local c = ctx()
+	local launchers = (c.features and c.features.launchers)
+		or (c.shell and c.shell.launchers)
+		or (c.api and c.api.launchers)
+
+	if launchers and launchers.ui_api and type(launchers.ui_api.open_panel) == "function" then
+		return launchers.ui_api.open_panel
+	end
+
+	return nil
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
 
 	M.api = {
-		ui = args.ui or {},
+		ui = args and args.ui or ui(),
 		container = safe_require("shell.launchers.run.container"),
 		view = safe_require("shell.launchers.run.view"),
 		providers = safe_require("shell.launchers.run.providers"),
@@ -207,19 +247,24 @@ function M.open(opts, Lib)
 	local Controller = mod("controller")
 	local Theme = mod("theme")
 
-	local _ui = api().ui or {}
+	local conf = opts.cfg or cfg()
+	local c = opts.ctx or ctx()
+	local _ui = api().ui or ui()
+
 	if Theme and type(Theme.init) == "function" then
 		Theme.init({
+			ctx = c,
+			cfg = conf,
 			ui = _ui,
 		})
 	end
 
-	local lib = (Lib.api and Lib.api.lib) or {}
+	local lib = resolve_lib(Lib)
 	local Button = lib.button
 	local Actions = lib.actions
+	local open_panel = resolve_open_panel(Lib)
 
-	local cfg = opts.cfg or {}
-	local web_cfg = resolve_web_cfg(cfg)
+	local web_cfg = resolve_web_cfg(conf)
 
 	local th = resolve_theme(opts.theme)
 	local panel = th.panel
@@ -237,8 +282,7 @@ function M.open(opts, Lib)
 
 	local textbox = wibox.widget.textbox()
 
-	local ui = build_view_ui(panel, search, d)
-	local view = View.build(ui, textbox)
+	local view = View.build(build_view_ui(panel, search, d), textbox)
 	local body_widget = build_body_widget(view, search, d)
 
 	local act_mode = function() end
@@ -267,7 +311,9 @@ function M.open(opts, Lib)
 		},
 	})
 
-	local handle = Lib.ui_api.open_panel(stack, panel, {
+	assert(open_panel, "launchers.run.init: open_panel fehlt")
+
+	local handle = open_panel(stack, panel, {
 		use_backdrop = false,
 		show_root = false,
 		screen = opts.screen or (mouse and mouse.screen) or awful.screen.focused(),
@@ -278,13 +324,14 @@ function M.open(opts, Lib)
 	})
 
 	local ctrl = Controller.new(build_controller_ctx({
+		ctx = c,
 		awful = awful,
 		gears = gears,
 		prompt = prompt,
 		view = view,
 		textbox = textbox,
 		search = search,
-		cfg = cfg,
+		cfg = conf,
 		web_cfg = web_cfg,
 		providers = Providers,
 		complete = Complete,
