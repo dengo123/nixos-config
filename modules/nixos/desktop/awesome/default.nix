@@ -45,5 +45,8 @@ in {
 
     services.xserver.displayManager.lightdm.enable = true;
     services.xserver.displayManager.lightdm.greeters.gtk.enable = mkDefault true;
+    services.xserver.displayManager.lightdm.greeters.gtk.extraConfig = ''
+      active-monitor=DP-4
+    '';
   };
 }

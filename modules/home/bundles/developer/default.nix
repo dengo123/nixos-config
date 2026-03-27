@@ -28,6 +28,7 @@ in {
     (mkIf (cfg.editor == null) {
       home.packages = with pkgs; [
         vim
+        micro
         git
       ];
     })

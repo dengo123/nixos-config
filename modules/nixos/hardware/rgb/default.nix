@@ -7,99 +7,149 @@
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.hardware.rgb;
 
   userName = config.${namespace}.config.user.name;
   userHome = "/home/${userName}";
 
-  openrgbPkg = pkgs.openrgb-with-all-plugins;
+  openrgbPkg = pkgs.openrgb;
   profilePath = "${userHome}/.config/OpenRGB/${cfg.profile}";
+
+  applyProfileScript = pkgs.writeShellScript "openrgb-apply-profile" ''
+    set -euo pipefail
+
+    export HOME="${userHome}"
+    export XDG_CONFIG_HOME="${userHome}/.config"
+
+    ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
+    ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
+    ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
+
+    ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}" || true
+  '';
+
+  disableRgbScript = pkgs.writeShellScript "openrgb-disable-rgb" ''
+    set -euo pipefail
+
+    ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
+    ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
+    ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
+
+    num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l)"
+
+    if [ "$num_devices" -eq 0 ]; then
+      exit 0
+    fi
+
+    for i in $(${pkgs.coreutils}/bin/seq 0 "$((num_devices - 1))"); do
+      ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 || true
+    done
+  '';
 
   resumeScript = pkgs.writeShellScript "openrgb-resume" ''
     set -euo pipefail
 
     export HOME="${userHome}"
     export XDG_CONFIG_HOME="${userHome}/.config"
-    export PATH="${pkgs.coreutils}/bin:${pkgs.kmod}/bin:/run/current-system/sw/bin"
 
-    # SMBus/i2c wieder sicherstellen
     ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
     ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
-
-    # warten bis udev durch ist (devices kommen nach hibernate gern spät)
     ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
 
-    # Hibernate: RGB wird oft erst nach 30-60s final gesetzt -> wir kommen später
-    ${pkgs.coreutils}/bin/sleep 60
-
-    # Apply #1
-    ${openrgbPkg}/bin/openrgb --noautoconnect --loglevel 6 \
-      --profile "${profilePath}" || true
-
-    # nochmal warten, falls Aura/DRAM ein zweites Mal resetten
     ${pkgs.coreutils}/bin/sleep 10
 
-    # Apply #2 (der “killer” gegen spätes Rainbow)
-    ${openrgbPkg}/bin/openrgb --noautoconnect --loglevel 6 \
-      --profile "${profilePath}" || true
+    if [ "${cfg.mode}" = "profile" ]; then
+      ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}" || true
+    else
+      num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l)"
 
-    exit 0
+      if [ "$num_devices" -gt 0 ]; then
+        for i in $(${pkgs.coreutils}/bin/seq 0 "$((num_devices - 1))"); do
+          ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 || true
+        done
+      fi
+    fi
   '';
-in
-{
+in {
   options.${namespace}.hardware.rgb = with types; {
-    enable = mkBoolOpt false "Apply an OpenRGB profile automatically (login + resume).";
-    profile =
-      mkOpt (nullOr str) (mkDefault null)
-        "Profile filename in ~/.config/OpenRGB (e.g. all_white.orp).";
+    enable = mkBoolOpt false "Manage RGB via OpenRGB.";
+
+    mode = mkOpt (enum [
+      "profile"
+      "off"
+    ]) "profile" "Whether to apply an OpenRGB profile or switch RGB off.";
+
+    profile = mkOpt (nullOr str) null "Profile filename in ~/.config/OpenRGB (for mode = profile).";
+
+    applyOnResume = mkBoolOpt true "Re-apply RGB state after resume.";
   };
 
-  config = mkIf (cfg.enable && cfg.profile != null) {
-    environment.systemPackages = [ openrgbPkg ];
-    services.udev.packages = [ openrgbPkg ];
+  config = mkIf cfg.enable (mkMerge [
+    {
+      assertions = [
+        {
+          assertion = cfg.mode != "profile" || cfg.profile != null;
+          message = "${namespace}.hardware.rgb.profile must be set when mode = \"profile\".";
+        }
+      ];
 
-    boot.kernelModules = [
-      "i2c-dev"
-      "i2c-piix4"
-    ];
+      environment.systemPackages = [openrgbPkg];
+      services.udev.packages = [openrgbPkg];
 
-    # Login apply (User)
-    systemd.user.services.openrgb-apply = {
-      description = "OpenRGB apply profile (login)";
-      wantedBy = [ "default.target" ];
-      after = [ "graphical-session.target" ];
-      serviceConfig = {
-        Type = "oneshot";
-        Environment = [
-          "HOME=${userHome}"
-          "XDG_CONFIG_HOME=${userHome}/.config"
+      hardware.i2c.enable = true;
+
+      boot.kernelModules = [
+        "i2c-dev"
+        "i2c-piix4"
+      ];
+    }
+
+    (mkIf (cfg.mode == "profile") {
+      systemd.user.services.openrgb-apply = {
+        description = "OpenRGB apply profile on login";
+        wantedBy = ["default.target"];
+        after = ["graphical-session.target"];
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = applyProfileScript;
+        };
+      };
+    })
+
+    (mkIf (cfg.mode == "off") {
+      systemd.services.openrgb-disable = {
+        description = "Disable RGB via OpenRGB";
+        wantedBy = ["multi-user.target"];
+        after = ["systemd-udev-settle.service"];
+        wants = ["systemd-udev-settle.service"];
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = disableRgbScript;
+        };
+      };
+    })
+
+    (mkIf cfg.applyOnResume {
+      systemd.services.openrgb-resume = {
+        description = "Restore OpenRGB state after resume";
+        wantedBy = [
+          "suspend.target"
+          "hibernate.target"
         ];
-        ExecStart = "${openrgbPkg}/bin/openrgb --noautoconnect --profile ${profilePath}";
+        after = [
+          "suspend.target"
+          "hibernate.target"
+          "systemd-udev-settle.service"
+        ];
+        wants = ["systemd-udev-settle.service"];
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = resumeScript;
+          StandardOutput = "journal";
+          StandardError = "journal";
+        };
       };
-    };
-
-    # Resume apply (System)
-    systemd.services.openrgb-resume = {
-      description = "OpenRGB re-apply profile after resume";
-      wantedBy = [
-        "suspend.target"
-        "hibernate.target"
-      ];
-      after = [
-        "suspend.target"
-        "hibernate.target"
-        "systemd-udev-settle.service"
-      ];
-      wants = [ "systemd-udev-settle.service" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = resumeScript;
-        StandardOutput = "journal";
-        StandardError = "journal";
-      };
-    };
-  };
+    })
+  ]);
 }

@@ -12,22 +12,23 @@ with lib.${namespace}; {
 
   nixforge = {
     bundles = {
-      common = enabled;
-      office = enabled;
-      developer.editor = "doom";
       terminal.emulator = "kitty";
+      browser.app = "firefox";
+      files.manager = "nemo";
+      developer.editor = "doom";
+      office = enabled;
     };
 
     programs = {
       # starship.template = "default";
+      # nemo.withBundle = "true";
       spotify = enabled;
       gimp = enabled;
       discord = enabled;
     };
     misc = {
-      xdg = enabled;
       gtk = {
-        iconTheme = "Papirus-Dark"; # or Papirus-Dark"
+        iconTheme = "Papirus-Dark"; # or Papirus-light"
 
         # cursor = {
         #   package = pkgs.bibata-cursors;

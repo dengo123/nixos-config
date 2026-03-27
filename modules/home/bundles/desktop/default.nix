@@ -17,19 +17,23 @@ in {
 
   config = mkIf cfg.enable {
     nixforge = {
+      bundles = {
+        files = mkDefault enabled;
+        browser = mkDefault enabled;
+        terminal = mkDefault enabled;
+      };
       misc = {
         gtk = mkDefault enabled;
         scripts = mkDefault enabled;
-        xdg = enabled;
+        xdg = mkDefault enabled;
       };
 
       config = {
-        systray = {
-          enable = mkDefault true;
-        };
+        systray = mkDefault enabled;
       };
 
       services = {
+        polkit-agent = mkDefault enabled;
         xscreensaver = {
           enable = mkDefault true;
           suspend = {
@@ -51,11 +55,6 @@ in {
       };
 
       programs = {
-        nemo = {
-          enable = mkDefault true;
-          withBundle = mkDefault false;
-        };
-
         autorandr = mkDefault enabled;
       };
     };
@@ -64,6 +63,10 @@ in {
       pavucontrol
       copyq
       gnome-calendar
+      celluloid
+      loupe
+      vlc
+      bitwarden-desktop
       gowall
       imagemagick
     ];

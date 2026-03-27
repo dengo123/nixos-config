@@ -2,40 +2,44 @@
 {
   lib,
   config,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.bundles.browser;
-  anyEnabled =
-    (config.${namespace}.programs.brave.enable or false)
-    || (config.${namespace}.programs.librewolf.enable or false)
-    || (config.${namespace}.programs.zen.enable or false);
 in {
-  options.${namespace}.bundles.browser = {
-    enable = mkBoolOpt true "Enable the browser bundle.";
+  options.${namespace}.bundles.browser = with types; {
+    enable = mkBoolOpt false "Enable the browser bundle.";
+
     app =
       mkOpt (types.nullOr (
         types.enum [
+          "firefox"
           "brave"
           "librewolf"
           "zen"
         ]
       ))
-      null "Choose a browser app. If null, Firefox is installed as fallback.";
+      null
+      "Choose a browser app. If null, no browser is enabled by this bundle.";
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # Gewählten Browser einschalten (deine bestehenden Module übernehmen die Konfig)
-    (mkIf (cfg.app == "brave") {${namespace}.programs.brave.enable = true;})
-    (mkIf (cfg.app == "librewolf") {${namespace}.programs.librewolf.enable = true;})
-    (mkIf (cfg.app == "zen") {${namespace}.programs.zen.enable = true;})
+    (mkIf (cfg.app == "firefox") {
+      ${namespace}.programs.firefox.enable = true;
+    })
 
-    # Fallback: nichts gewählt und kein anderer Browser aktiviert → Firefox
-    (mkIf (cfg.app == null && !anyEnabled) {
-      programs.firefox.enable = true;
+    (mkIf (cfg.app == "brave") {
+      ${namespace}.programs.brave.enable = true;
+    })
+
+    (mkIf (cfg.app == "librewolf") {
+      ${namespace}.programs.librewolf.enable = true;
+    })
+
+    (mkIf (cfg.app == "zen") {
+      ${namespace}.programs.zen.enable = true;
     })
   ]);
 }

@@ -34,6 +34,7 @@ with lib.${namespace}; {
       security = enabled;
       gpu.vendor = "nvidia";
       ai = enabled;
+      gaming = enabled;
     };
 
     desktop.awesome = {
@@ -47,12 +48,12 @@ with lib.${namespace}; {
 
       rgb = {
         enable = true;
+        mode = "profile";
         profile = mkForce "all_white.orp";
       };
     };
 
     programs = {
-      steam = enabled;
       nh = enabled;
       nix-ld = enabled;
       screenshot = enabled;
