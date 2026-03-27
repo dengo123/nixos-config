@@ -1,14 +1,21 @@
--- ~/.config/awesome/shell/notify/naughty.lua
+-- ~/.config/awesome/shell/notify/ui/naughty.lua
 local beautiful = require("beautiful")
-local gears = require("gears")
 local naughty = require("naughty")
 local wibox = require("wibox")
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function notify_cfg(cfg)
 	return (cfg and cfg.notify) or {}
@@ -115,16 +122,19 @@ end
 -- =========================================================================
 
 function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
-	local cfg = args.cfg or {}
+	local cfg = args.cfg or ctx().cfg or {}
 	local Shape = args.shape
-	local notify_theme = require_notify_theme()
+	local notify_theme = args.notify_theme or require_notify_theme()
 	local shape_fn = resolve_shape(cfg, Shape, notify_theme)
 
 	apply_defaults(cfg, notify_theme, shape_fn)
 	apply_widget_template(notify_theme, shape_fn)
 	apply_presets(cfg, notify_theme, shape_fn)
+
+	return M
 end
 
 return M

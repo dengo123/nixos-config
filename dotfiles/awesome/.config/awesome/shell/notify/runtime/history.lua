@@ -1,19 +1,22 @@
--- ~/.config/awesome/shell/notify/history.lua
+-- ~/.config/awesome/shell/notify/runtime/history.lua
 local gears = require("gears")
 
 local M = {}
 
--- =========================================================================
--- State
--- =========================================================================
-
-local entries = {}
-local unread_count = 0
-local max_entries = 100
+local runtime = {
+	max_entries = 100,
+	entries = {},
+	unread_count = 0,
+}
 
 -- =========================================================================
 -- Internal
 -- =========================================================================
+
+local function emit_changed()
+	awesome.emit_signal("notify::history_changed")
+	awesome.emit_signal("notify::unread_count", runtime.unread_count)
+end
 
 local function shallow_copy(t)
 	local out = {}
@@ -25,17 +28,16 @@ local function shallow_copy(t)
 	return out
 end
 
-local function emit_changed()
-	awesome.emit_signal("notify::history_changed")
-	awesome.emit_signal("notify::unread_count", unread_count)
+local function set_unread_count(value)
+	runtime.unread_count = math.max(0, tonumber(value) or 0)
 end
 
 local function clamp_history()
-	while #entries > max_entries do
-		local removed = table.remove(entries, 1)
+	while #runtime.entries > runtime.max_entries do
+		local removed = table.remove(runtime.entries, 1)
 
 		if removed and removed.read ~= true then
-			unread_count = math.max(0, unread_count - 1)
+			set_unread_count(runtime.unread_count - 1)
 		end
 	end
 end
@@ -108,7 +110,7 @@ local function find_entry_index(target)
 		return nil
 	end
 
-	for i, entry in ipairs(entries) do
+	for i, entry in ipairs(runtime.entries) do
 		if same_entry(entry, target) then
 			return i
 		end
@@ -120,14 +122,14 @@ end
 local function remove_at(index)
 	index = tonumber(index)
 
-	if not index or index < 1 or index > #entries then
+	if not index or index < 1 or index > #runtime.entries then
 		return nil
 	end
 
-	local removed = table.remove(entries, index)
+	local removed = table.remove(runtime.entries, index)
 
 	if removed and removed.read ~= true then
-		unread_count = math.max(0, unread_count - 1)
+		set_unread_count(runtime.unread_count - 1)
 	end
 
 	emit_changed()
@@ -142,20 +144,21 @@ function M.init(opts)
 	opts = opts or {}
 
 	local n = tonumber(opts.max_entries)
-
 	if n then
-		max_entries = math.max(1, math.floor(n))
+		runtime.max_entries = math.max(1, math.floor(n))
 	end
 
 	clamp_history()
 	emit_changed()
+
+	return M
 end
 
 function M.add(notification)
 	local entry = normalize_entry(notification)
 
-	table.insert(entries, entry)
-	unread_count = unread_count + 1
+	table.insert(runtime.entries, entry)
+	set_unread_count(runtime.unread_count + 1)
 
 	clamp_history()
 	emit_changed()
@@ -166,29 +169,29 @@ end
 function M.list()
 	local out = {}
 
-	for i = #entries, 1, -1 do
-		table.insert(out, shallow_copy(entries[i]))
+	for i = #runtime.entries, 1, -1 do
+		table.insert(out, shallow_copy(runtime.entries[i]))
 	end
 
 	return out
 end
 
 function M.raw_list()
-	return entries
+	return runtime.entries
 end
 
 function M.get_unread_count()
-	return unread_count
+	return runtime.unread_count
 end
 
 function M.get_count()
-	return #entries
+	return #runtime.entries
 end
 
 function M.mark_all_read()
 	local changed = false
 
-	for _, entry in ipairs(entries) do
+	for _, entry in ipairs(runtime.entries) do
 		if entry.read ~= true then
 			entry.read = true
 			changed = true
@@ -196,22 +199,22 @@ function M.mark_all_read()
 	end
 
 	if changed then
-		unread_count = 0
+		set_unread_count(0)
 		emit_changed()
 	end
 end
 
 function M.mark_read_reverse(index)
-	local count = #entries
+	local count = #runtime.entries
 	local raw_index = count - index + 1
-	local entry = entries[raw_index]
+	local entry = runtime.entries[raw_index]
 
 	if not entry or entry.read == true then
 		return
 	end
 
 	entry.read = true
-	unread_count = math.max(0, unread_count - 1)
+	set_unread_count(runtime.unread_count - 1)
 	emit_changed()
 end
 
@@ -233,8 +236,8 @@ function M.dismiss(entry)
 end
 
 function M.clear()
-	entries = {}
-	unread_count = 0
+	runtime.entries = {}
+	set_unread_count(0)
 	emit_changed()
 end
 
@@ -245,7 +248,7 @@ function M.set_max_entries(value)
 		return
 	end
 
-	max_entries = math.max(1, math.floor(n))
+	runtime.max_entries = math.max(1, math.floor(n))
 	clamp_history()
 	emit_changed()
 end

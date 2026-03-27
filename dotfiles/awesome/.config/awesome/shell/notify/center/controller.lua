@@ -57,7 +57,11 @@ end
 -- =========================================================================
 
 function M.new(args)
-	local cfg = args.cfg or {}
+	args = args or {}
+
+	local ctx = args.ctx or {}
+	local cfg = args.cfg or ctx.cfg or {}
+
 	local Popup = args.popup
 	local Layout = args.layout
 	local Widget = args.widget
@@ -98,6 +102,7 @@ function M.new(args)
 		end
 
 		return Layout.resolve_geometry({
+			ctx = ctx,
 			popup = popup,
 			cfg = cfg,
 			height_override = height_override,
@@ -145,6 +150,7 @@ function M.new(args)
 			end
 
 			local built = List.build({
+				ctx = ctx,
 				theme = theme,
 				entries = entries,
 				cfg = cfg,
@@ -174,6 +180,7 @@ function M.new(args)
 
 			if View and type(View.build) == "function" then
 				panel = View.build({
+					ctx = ctx,
 					widget = built.widget,
 					popup_width = base_geo.width,
 					popup_height = base_geo.height,
@@ -262,18 +269,20 @@ function M.new(args)
 	end
 
 	function controller.clear_history()
-		if not Actions or type(Actions.clear_history) ~= "function" then
-			return
+		if Actions and type(Actions.clear_history) == "function" then
+			Actions.clear_history(cfg)
+		elseif History and type(History.clear) == "function" then
+			History.clear()
 		end
 
-		Actions.clear_history(cfg)
-
-		controller.each_popup(function(popup)
-			if popup then
-				controller.rebuild_popup(popup)
-				controller.apply_geometry(popup)
+		for _, s in ipairs(controller.target_screens()) do
+			local state = State and State.state_for_screen and State.state_for_screen(s) or nil
+			if state and type(State.clear_selection) == "function" then
+				State.clear_selection(state)
 			end
-		end)
+		end
+
+		awesome.emit_signal("notify::close_center")
 	end
 
 	function controller.set_visible(open)
@@ -327,21 +336,6 @@ function M.new(args)
 	function controller.scroll_down(s)
 		s = s or screen.primary or awful.screen.focused()
 		controller.scroll_delta(s, -1)
-	end
-
-	function controller.clear_history()
-		if History and type(History.clear) == "function" then
-			History.clear()
-		end
-
-		for _, s in ipairs(controller.target_screens()) do
-			local state = State and State.state_for_screen and State.state_for_screen(s) or nil
-			if state then
-				State.clear_selection(state)
-			end
-		end
-
-		awesome.emit_signal("notify::close_center")
 	end
 
 	return controller

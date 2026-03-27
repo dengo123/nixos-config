@@ -182,6 +182,7 @@ end
 
 function M.build(entry, cfg, deps)
 	deps = deps or {}
+	cfg = cfg or {}
 
 	local Actions = deps.actions
 	local theme = resolve_theme()

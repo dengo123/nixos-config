@@ -15,15 +15,27 @@ local M = {
 	controller = nil,
 }
 
-local signals_ready = false
-local runtime_cfg = {}
-local injected = {
+local runtime = {
+	ctx = {},
+	signals_ready = false,
 	history = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
 
 local function api()
 	return M.api or {}
@@ -34,7 +46,7 @@ local function mod(name)
 end
 
 local function notify_cfg()
-	return runtime_cfg.notify or {}
+	return cfg().notify or {}
 end
 
 local function center_cfg()
@@ -42,11 +54,11 @@ local function center_cfg()
 end
 
 local function is_signals_ready()
-	return signals_ready
+	return runtime.signals_ready == true
 end
 
 local function set_signals_ready(value)
-	signals_ready = (value == true)
+	runtime.signals_ready = (value == true)
 end
 
 local function current_screen(s)
@@ -70,7 +82,8 @@ local function register_signals()
 	end
 
 	Signals.register({
-		cfg = runtime_cfg,
+		ctx = ctx(),
+		cfg = cfg(),
 		is_ready = is_signals_ready,
 		set_ready = set_signals_ready,
 		set_visible = controller.set_visible,
@@ -112,7 +125,7 @@ local function register_signals()
 
 		before_history_rebuild = function(popup)
 			if State and type(State.prepare_history_update) == "function" then
-				State.prepare_history_update(popup, injected.history)
+				State.prepare_history_update(popup, runtime.history)
 			end
 		end,
 		after_history_rebuild = function(popup)
@@ -128,12 +141,11 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-	runtime_cfg = args.cfg or args or {}
-	injected.history = args.history or injected.history
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.history = (args and args.history) or runtime.history
 
 	M.api = {
-		ui = args.ui or {},
+		ui = ui(),
 		popup = safe_require("shell.notify.center.popup"),
 		layout = safe_require("shell.notify.center.layout"),
 		signals = safe_require("shell.notify.center.signals"),
@@ -148,20 +160,22 @@ function M.init(args)
 	local Actions = mod("actions")
 	if Actions and type(Actions.init) == "function" then
 		Actions.init({
-			history = injected.history,
+			ctx = ctx(),
+			history = runtime.history,
 		})
 	end
 
 	local ControllerMod = mod("controller")
 	if ControllerMod and type(ControllerMod.new) == "function" then
 		M.controller = ControllerMod.new({
-			cfg = runtime_cfg,
+			ctx = ctx(),
+			cfg = cfg(),
 			popup = mod("popup"),
 			layout = mod("layout"),
 			widget = mod("widget"),
 			view = mod("view"),
 			actions = mod("actions"),
-			history = injected.history,
+			history = runtime.history,
 			list = mod("list"),
 			state = mod("state"),
 		})

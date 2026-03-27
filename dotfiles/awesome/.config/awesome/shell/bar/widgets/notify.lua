@@ -4,17 +4,16 @@ local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
-local History = require("shell.notify.history")
-
 local M = {}
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.build(s, opts)
+function M.build(_s, opts)
 	opts = opts or {}
 
+	local notify_api = opts.notify_api or {}
 	local size = tonumber(beautiful.notify_button_size)
 	local bg = beautiful.notify_button_bg
 	local bg_hover = beautiful.notify_button_bg_hover
@@ -93,11 +92,22 @@ function M.build(s, opts)
 
 	button:buttons(gears.table.join(
 		awful.button({}, 1, function()
-			awesome.emit_signal("notify::toggle_center")
+			if type(notify_api.toggle_center) == "function" then
+				notify_api.toggle_center()
+			else
+				awesome.emit_signal("notify::toggle_center")
+			end
 		end),
 		awful.button({}, 3, function()
-			History.clear()
-			awesome.emit_signal("notify::close_center")
+			if type(notify_api.clear_history) == "function" then
+				notify_api.clear_history()
+			end
+
+			if type(notify_api.close_center) == "function" then
+				notify_api.close_center()
+			else
+				awesome.emit_signal("notify::close_center")
+			end
 		end)
 	))
 

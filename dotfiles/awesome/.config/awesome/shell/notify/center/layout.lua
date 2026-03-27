@@ -1,11 +1,20 @@
 -- ~/.config/awesome/shell/notify/center/layout.lua
+-- ~/.config/awesome/shell/notify/center/layout.lua
 local beautiful = require("beautiful")
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function center_theme()
 	local notify = beautiful.notify or {}
@@ -31,6 +40,11 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return M
+end
 
 function M.build_theme()
 	local t = center_theme()
@@ -95,8 +109,10 @@ function M.resolve_position(theme, s, bar_position, width, height)
 end
 
 function M.resolve_geometry(args)
+	args = args or {}
+
 	local popup = args.popup
-	local cfg = args.cfg or {}
+	local cfg = args.cfg or ctx().cfg or {}
 	local height_override = args.height_override
 
 	if not (popup and popup.screen) then

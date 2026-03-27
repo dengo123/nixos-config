@@ -165,6 +165,8 @@ function M.scroll_delta(state, delta)
 end
 
 function M.build(args)
+	args = args or {}
+
 	local theme = args.theme or {}
 	local entries = args.entries or {}
 	local state = args.state or {}

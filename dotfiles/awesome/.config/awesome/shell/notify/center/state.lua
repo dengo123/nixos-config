@@ -1,7 +1,10 @@
 -- ~/.config/awesome/shell/notify/center/state.lua
 local M = {}
 
-local popup_state = {}
+local runtime = {
+	ctx = {},
+	popup_state = {},
+}
 
 -- =========================================================================
 -- Helpers
@@ -9,6 +12,10 @@ local popup_state = {}
 
 local function key_for_screen(s)
 	return tostring(tonumber(s.index) or 0)
+end
+
+local function state_store()
+	return runtime.popup_state
 end
 
 local function clamp_index(state, index)
@@ -34,9 +41,15 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return M
+end
+
 function M.state_for_screen(s)
 	local key = key_for_screen(s)
-	popup_state[key] = popup_state[key]
+
+	state_store()[key] = state_store()[key]
 		or {
 			items = {},
 			selected_index = nil,
@@ -44,7 +57,8 @@ function M.state_for_screen(s)
 			last_total = 0,
 			last_visible = 0,
 		}
-	return popup_state[key]
+
+	return state_store()[key]
 end
 
 function M.reset_view(s, List)

@@ -2,6 +2,7 @@
 local M = {}
 
 local runtime = {
+	ctx = {},
 	history = nil,
 }
 
@@ -32,8 +33,8 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-	runtime.history = args.history or nil
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.history = args and args.history or nil
 	return M
 end
 
