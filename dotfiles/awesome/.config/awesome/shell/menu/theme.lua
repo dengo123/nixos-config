@@ -7,12 +7,21 @@ local dpi = xr.apply_dpi
 
 local M = {}
 
+local runtime = {
+	ctx = {},
+}
+
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
 local function resolved_theme(args)
-	local ui = (args and args.ui) or {}
+	local c = (args and (args.ctx or args)) or ctx()
+	local ui = (args and args.ui) or c.ui or {}
 	return ui.theme or {}
 end
 
@@ -21,6 +30,7 @@ end
 -- =========================================================================
 
 function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
 	local theme = resolved_theme(args)
@@ -64,6 +74,8 @@ function M.init(args)
 	beautiful.hotkeys_font = F.ui
 	beautiful.hotkeys_description_font = F.ui
 	beautiful.hotkeys_group_margin = dpi(12)
+
+	return M
 end
 
 function M.get()

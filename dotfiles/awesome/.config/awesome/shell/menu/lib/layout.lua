@@ -5,14 +5,17 @@ local dpi = xr.apply_dpi
 
 local M = {}
 
-local runtime = nil
+local runtime = {
+	ctx = {},
+	layout = nil,
+}
 
 -- =========================================================================
--- Public API
+-- Helpers
 -- =========================================================================
 
-function M.init(_cfg)
-	runtime = {
+local function default_layout()
+	return {
 		item_height = dpi(28),
 		width = dpi(220),
 		gap = dpi(2),
@@ -22,12 +25,26 @@ function M.init(_cfg)
 	}
 end
 
-function M.get()
-	if not runtime then
-		M.init({})
+local function ensure_layout()
+	if not runtime.layout then
+		runtime.layout = default_layout()
 	end
 
-	return runtime
+	return runtime.layout
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.layout = default_layout()
+	return M
+end
+
+function M.get()
+	return ensure_layout()
 end
 
 function M.item_height()

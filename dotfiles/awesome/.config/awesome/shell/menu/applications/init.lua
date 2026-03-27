@@ -13,6 +13,7 @@ local M = {
 }
 
 local runtime = {
+	ctx = {},
 	items = {},
 	loaded = false,
 }
@@ -20,6 +21,18 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
 
 local function api()
 	return M.api or {}
@@ -42,7 +55,7 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
 
 	M.api = {
 		loader = safe_require("shell.menu.applications.loader"),
@@ -53,14 +66,17 @@ function M.init(args)
 	}
 
 	local shared = {
+		ctx = ctx(),
 		api = api(),
-		cfg = args.cfg or {},
-		ui = args.ui or {},
+		cfg = cfg(),
+		ui = ui(),
 	}
 
 	init_submodule("loader", shared)
 	init_submodule("dedupe", shared)
 	init_submodule("builder", shared)
+	init_submodule("categories", shared)
+	init_submodule("overrides", shared)
 
 	runtime.items = {}
 	runtime.loaded = false

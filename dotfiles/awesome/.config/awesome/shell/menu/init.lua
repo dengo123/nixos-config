@@ -11,16 +11,40 @@ local function safe_require(path)
 end
 
 local Menu = {
-	ui = nil,
-	cfg = nil,
 	api = {},
 }
 
-local signals_ready = false
+local runtime = {
+	ctx = {},
+	signals_ready = false,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function ensure_ctx_roots()
+	local c = ctx()
+
+	c.shell = c.shell or {}
+	c.features = c.features or {}
+	c.api = c.api or {}
+	c.external = c.external or {}
+	c.cfg = c.cfg or {}
+	c.cfg.api = c.cfg.api or {}
+end
+
+local function cfg()
+	return ctx().cfg or {}
+end
+
+local function ui()
+	return ctx().ui or {}
+end
 
 local function api()
 	return Menu.api or {}
@@ -32,14 +56,15 @@ end
 
 local function get_context()
 	return {
-		ui = Menu.ui or {},
-		cfg = Menu.cfg or {},
+		ctx = ctx(),
+		ui = ui(),
+		cfg = cfg(),
 		api = api(),
 	}
 end
 
 local function menu_cfg()
-	return (Menu.cfg or {}).menu or {}
+	return cfg().menu or {}
 end
 
 local function tabs_enabled()
@@ -47,17 +72,18 @@ local function tabs_enabled()
 end
 
 local function ensure_ui()
-	local _ui = Menu.ui or {}
+	local _ui = ui()
 
 	if _ui and _ui.theme and _ui.theme.colors and _ui.theme.fonts then
 		return _ui
 	end
 
 	local UI = require("ui")
-	local ui_mod = UI.init({ cfg = Menu.cfg })
+	local ui_mod = UI.init({ cfg = cfg() })
 	_ui = ui_mod.get()
 
-	Menu.ui = _ui
+	local c = ctx()
+	c.ui = _ui
 	Menu.api.ui = _ui
 
 	return _ui
@@ -113,12 +139,23 @@ local function coords_for_start(s, item_count)
 	return x, y
 end
 
+local function coords_for_keybind(s, item_count)
+	local Place = mod("placement")
+	local x, y = 0, 0
+
+	if Place and type(Place.coords_for_keybind) == "function" then
+		x, y = Place.coords_for_keybind(s, item_count)
+	end
+
+	return x, y
+end
+
 local function register_signals()
-	if signals_ready then
+	if runtime.signals_ready then
 		return
 	end
 
-	signals_ready = true
+	runtime.signals_ready = true
 
 	awesome.connect_signal("menu::toggle", function()
 		if Menu.is_open() then
@@ -141,29 +178,18 @@ local function register_signals()
 	end)
 end
 
-local function coords_for_keybind(s, item_count)
-	local Place = mod("placement")
-	local x, y = 0, 0
-
-	if Place and type(Place.coords_for_keybind) == "function" then
-		x, y = Place.coords_for_keybind(s, item_count)
-	end
-
-	return x, y
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function Menu.init(args)
-	args = args or {}
+	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
-	Menu.ui = args.ui or {}
-	Menu.cfg = args.cfg or {}
+	local c = ctx()
 
 	Menu.api = {
-		ui = args.ui or {},
+		ui = c.ui or {},
 		theme = safe_require("shell.menu.theme"),
 		layout = safe_require("shell.menu.lib.layout"),
 		items = safe_require("shell.menu.items"),
@@ -172,12 +198,19 @@ function Menu.init(args)
 		popup = safe_require("shell.menu.lib.popup"),
 	}
 
+	c.shell.menu = Menu
+	c.features.menu = Menu
+	c.api.menu = Menu
+	c.external.menu = Menu
+	c.cfg.api.menu = Menu
+
 	local _ui = ensure_ui()
 
 	local Theme = mod("theme")
 	if Theme and type(Theme.init) == "function" then
 		Theme.init({
-			cfg = Menu.cfg,
+			ctx = c,
+			cfg = cfg(),
 			ui = _ui,
 		})
 	end
@@ -185,7 +218,8 @@ function Menu.init(args)
 	local Layout = mod("layout")
 	if Layout and type(Layout.init) == "function" then
 		Layout.init({
-			cfg = Menu.cfg,
+			ctx = c,
+			cfg = cfg(),
 			ui = _ui,
 		})
 	end
@@ -193,6 +227,7 @@ function Menu.init(args)
 	local Place = mod("placement")
 	if Place and type(Place.init) == "function" then
 		Place.init({
+			ctx = c,
 			api = {
 				layout = Layout,
 				ui = _ui,
@@ -203,7 +238,8 @@ function Menu.init(args)
 	local Apps = mod("applications")
 	if Apps and type(Apps.init) == "function" then
 		Apps.init({
-			cfg = Menu.cfg,
+			ctx = c,
+			cfg = cfg(),
 			ui = _ui,
 		})
 	end
@@ -213,6 +249,7 @@ function Menu.init(args)
 	end
 
 	register_signals()
+	return Menu
 end
 
 function Menu.get_start_items()

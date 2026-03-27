@@ -4,6 +4,7 @@ local awful = require("awful")
 local M = {}
 
 local runtime = {
+	ctx = {},
 	api = {},
 	cfg = {},
 	ui = {},
@@ -12,6 +13,10 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function api()
 	return runtime.api or {}
@@ -119,12 +124,6 @@ local function sort_items(items)
 	end)
 end
 
-local function sort_groups(groups)
-	table.sort(groups, function(a, b)
-		return tostring(a[1] or ""):lower() < tostring(b[1] or ""):lower()
-	end)
-end
-
 local function should_hide_entry(entry)
 	local Overrides = mod("overrides")
 
@@ -175,11 +174,10 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.api = (args and args.api) or {}
+	runtime.cfg = (args and args.cfg) or (runtime.ctx.cfg or {})
+	runtime.ui = (args and args.ui) or (runtime.ctx.ui or {})
 
 	return M
 end
@@ -216,7 +214,6 @@ function M.build(entries)
 		end
 	end
 
-	sort_groups(groups)
 	return groups
 end
 

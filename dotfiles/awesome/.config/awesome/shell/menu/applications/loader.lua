@@ -5,6 +5,7 @@ local menubar_utils = require("menubar.utils")
 local M = {}
 
 local runtime = {
+	ctx = {},
 	api = {},
 	cfg = {},
 	ui = {},
@@ -13,6 +14,10 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function first_string(...)
 	for i = 1, select("#", ...) do
@@ -120,11 +125,10 @@ end
 -- =========================================================================
 
 function M.init(args)
-	args = args or {}
-
-	runtime.api = args.api or {}
-	runtime.cfg = args.cfg or {}
-	runtime.ui = args.ui or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.api = (args and args.api) or {}
+	runtime.cfg = (args and args.cfg) or (runtime.ctx.cfg or {})
+	runtime.ui = (args and args.ui) or (runtime.ctx.ui or {})
 
 	return M
 end

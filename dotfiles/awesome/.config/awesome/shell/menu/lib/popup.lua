@@ -5,6 +5,7 @@ local gears = require("gears")
 local M = {}
 
 local runtime = {
+	ctx = {},
 	menu = nil,
 	root_buttons = nil,
 	client_callback = nil,
@@ -13,6 +14,10 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function ctx()
+	return runtime.ctx or {}
+end
 
 local function current_menu()
 	return runtime.menu
@@ -101,6 +106,11 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
+
+function M.init(args)
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	return M
+end
 
 function M.show(args)
 	args = args or {}

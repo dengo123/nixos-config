@@ -1,13 +1,25 @@
+-- ~/.config/awesome/shell/menu/lib/placement.lua
 local P = {}
 
-local runtime_api = {}
+local runtime = {
+	ctx = {},
+	api = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function ctx()
+	return runtime.ctx or {}
+end
+
+local function api()
+	return runtime.api or {}
+end
+
 local function layout_api()
-	return runtime_api.layout
+	return api().layout
 end
 
 local function get_layout()
@@ -79,8 +91,9 @@ end
 -- =========================================================================
 
 function P.init(args)
-	args = args or {}
-	runtime_api = args.api or args or {}
+	runtime.ctx = (args and (args.ctx or args)) or {}
+	runtime.api = (args and args.api) or {}
+	return P
 end
 
 function P.y_over_bar(s, total_height)
