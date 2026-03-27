@@ -1,13 +1,22 @@
--- ~/.config/awesome/shell/windowing/floating.lua
+-- ~/.config/awesome/shell/windowing/policy/floating.lua
 local gears = require("gears")
-
-local Clients = require("shell.windowing.clients")
 
 local M = {}
 
-local portrait_autosize_ready = false
-local centered_autosize_ready = false
-local tall_centered_reinforce_ready = false
+local runtime = {
+	clients = nil,
+	portrait_autosize_ready = false,
+	centered_autosize_ready = false,
+	tall_centered_reinforce_ready = false,
+}
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function clients()
+	return runtime.clients
+end
 
 -- =========================================================================
 -- Portrait Autosize
@@ -50,7 +59,7 @@ function M.portrait_autosize_apply(c)
 end
 
 local function hook_portrait_autosize()
-	if portrait_autosize_ready then
+	if runtime.portrait_autosize_ready then
 		return
 	end
 
@@ -70,7 +79,7 @@ local function hook_portrait_autosize()
 		end
 	end)
 
-	portrait_autosize_ready = true
+	runtime.portrait_autosize_ready = true
 end
 
 -- =========================================================================
@@ -97,7 +106,6 @@ function M.centered_autosize_apply(c)
 
 	local wa = s.workarea
 	local width = math.floor(math.min(wa.width * 0.36, 620))
-
 	width = math.max(width, 420)
 
 	local height = math.floor(width * 1.60)
@@ -124,7 +132,7 @@ function M.centered_autosize_apply(c)
 end
 
 local function hook_centered_autosize()
-	if centered_autosize_ready then
+	if runtime.centered_autosize_ready then
 		return
 	end
 
@@ -144,7 +152,7 @@ local function hook_centered_autosize()
 		end
 	end)
 
-	centered_autosize_ready = true
+	runtime.centered_autosize_ready = true
 end
 
 -- =========================================================================
@@ -168,7 +176,8 @@ function M.normalize_tall_centered_client(c)
 end
 
 function M.reinforce_tall_centered_client(c)
-	if not Clients.is_tall_centered_client(c) then
+	local Clients = clients()
+	if not (Clients and Clients.is_tall_centered_client and Clients.is_tall_centered_client(c)) then
 		return
 	end
 
@@ -190,12 +199,13 @@ function M.reinforce_tall_centered_client(c)
 end
 
 local function hook_tall_centered_reinforce()
-	if tall_centered_reinforce_ready then
+	if runtime.tall_centered_reinforce_ready then
 		return
 	end
 
 	client.connect_signal("property::maximized", function(c)
-		if Clients.is_tall_centered_client(c) and c.floating then
+		local Clients = clients()
+		if Clients and Clients.is_tall_centered_client and Clients.is_tall_centered_client(c) and c.floating then
 			gears.timer.delayed_call(function()
 				M.normalize_tall_centered_client(c)
 			end)
@@ -203,24 +213,30 @@ local function hook_tall_centered_reinforce()
 	end)
 
 	client.connect_signal("property::fullscreen", function(c)
-		if Clients.is_tall_centered_client(c) and c.floating then
+		local Clients = clients()
+		if Clients and Clients.is_tall_centered_client and Clients.is_tall_centered_client(c) and c.floating then
 			gears.timer.delayed_call(function()
 				M.normalize_tall_centered_client(c)
 			end)
 		end
 	end)
 
-	tall_centered_reinforce_ready = true
+	runtime.tall_centered_reinforce_ready = true
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init()
+function M.init(args)
+	args = args or {}
+	runtime.clients = args.clients or runtime.clients
+
 	hook_portrait_autosize()
 	hook_centered_autosize()
 	hook_tall_centered_reinforce()
+
+	return M
 end
 
 return M

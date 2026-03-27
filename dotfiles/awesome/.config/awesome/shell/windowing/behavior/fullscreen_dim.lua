@@ -10,8 +10,6 @@ local ENABLED = true
 local DIM_BG = "#000000F2"
 local NEVER_DIM_PRIMARY = false
 
-local inhibit_pid = nil
-local xset_active = false
 local overlays = {}
 local pending_update = nil
 local signals_ready = false
@@ -52,45 +50,6 @@ local function ensure_overlay(s)
 	return o
 end
 
-local function enable_idle_inhibit()
-	if inhibit_pid or xset_active then
-		return
-	end
-
-	local ok, pid = pcall(function()
-		return awful.spawn({
-			"systemd-inhibit",
-			"--what=idle",
-			"--who=awesome",
-			"--why=fullscreen-active",
-			"sleep",
-			"infinity",
-		})
-	end)
-
-	if ok and pid then
-		inhibit_pid = pid
-		return
-	end
-
-	awful.spawn.easy_async_with_shell("xset -dpms; xset s off", function() end)
-	xset_active = true
-end
-
-local function disable_idle_inhibit()
-	if inhibit_pid then
-		pcall(function()
-			awful.spawn({ "kill", "-TERM", tostring(inhibit_pid) })
-		end)
-		inhibit_pid = nil
-	end
-
-	if xset_active then
-		awful.spawn.easy_async_with_shell("xset +dpms; xset s on", function() end)
-		xset_active = false
-	end
-end
-
 local function find_fullscreen_target()
 	local fc = client.focus
 
@@ -112,17 +71,10 @@ end
 local function do_update()
 	if not ENABLED then
 		hide_all()
-		disable_idle_inhibit()
 		return
 	end
 
 	local fs_screen, active_dim = find_fullscreen_target()
-
-	if fs_screen and active_dim then
-		enable_idle_inhibit()
-	else
-		disable_idle_inhibit()
-	end
 
 	if not fs_screen or not active_dim then
 		hide_all()
@@ -193,10 +145,6 @@ local function setup_signals()
 		gears.timer.delayed_call(schedule_update)
 	end)
 
-	awesome.connect_signal("exit", function()
-		disable_idle_inhibit()
-	end)
-
 	signals_ready = true
 end
 
@@ -206,10 +154,6 @@ end
 
 function M.init(opts)
 	opts = opts or {}
-
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
 
 	if opts.enabled ~= nil then
 		ENABLED = (opts.enabled == true)
@@ -221,23 +165,14 @@ function M.init(opts)
 		NEVER_DIM_PRIMARY = (opts.never_dim_primary == true)
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Setup
-	-- ---------------------------------------------------------------------
-
 	setup_signals()
 
 	for s in screen do
 		ensure_overlay(s)
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Initial
-	-- ---------------------------------------------------------------------
-
 	if not ENABLED then
 		hide_all()
-		disable_idle_inhibit()
 		return
 	end
 

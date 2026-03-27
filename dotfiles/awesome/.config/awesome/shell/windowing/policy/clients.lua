@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/clients.lua
+-- ~/.config/awesome/shell/windowing/policy/clients.lua
 local M = {}
 
 -- =========================================================================

@@ -6,29 +6,21 @@ local beautiful = require("beautiful")
 
 local C = {}
 
-local runtime_api = {}
+local runtime = {
+	shape_fn = nil,
+	rounded_corners = true,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function current_api(opts)
-	return (opts and opts.api) or runtime_api
-end
-
-local function buttons_api(opts)
-	local api = current_api(opts)
-	return api and api.titlebar_buttons or nil
-end
-
-local function input_api(opts)
-	local api = current_api(opts)
-	local cfg = api and api.cfg or {}
-	return cfg.api and cfg.api.input or {}
+local function titlebar_buttons_mod(opts)
+	return opts and opts.titlebar_buttons or nil
 end
 
 local function client_mouse_api(opts)
-	local input = input_api(opts)
+	local input = (opts and opts.input) or {}
 	local client = input.client or {}
 	return client.mouse or {}
 end
@@ -50,9 +42,10 @@ end
 function C.init(o)
 	o = o or {}
 
-	runtime_api = o.api or {}
-	C.shape_fn = o.shape_fn or nil
-	C.rounded_corners = (o.rounded_corners ~= false)
+	runtime.shape_fn = o.shape_fn or nil
+	runtime.rounded_corners = (o.rounded_corners ~= false)
+
+	return C
 end
 
 function C.apply(c, _opts)
@@ -69,9 +62,9 @@ function C.apply(c, _opts)
 	c.border_width = maximized and 0 or border_width
 	c.border_color = (c == client.focus) and border_focus or border_normal
 
-	local shape_fn = C.shape_fn
+	local shape_fn = runtime.shape_fn
 
-	if not shape_fn and C.rounded_corners ~= false then
+	if not shape_fn and runtime.rounded_corners ~= false then
 		local radius = tonumber(beautiful.border_radius)
 
 		if radius and radius > 0 then
@@ -91,8 +84,10 @@ function C.attach_titlebar(c, style, actions, cfg, opts)
 		return
 	end
 
-	local Buttons = buttons_api(opts)
-	assert(Buttons and type(Buttons.build) == "function", "windowing.container: api.titlebar_buttons.build fehlt")
+	opts = opts or {}
+
+	local Buttons = titlebar_buttons_mod(opts)
+	assert(Buttons and type(Buttons.build) == "function", "windowing.container: titlebar_buttons.build fehlt")
 
 	local ClientMouse = client_mouse_api(opts)
 

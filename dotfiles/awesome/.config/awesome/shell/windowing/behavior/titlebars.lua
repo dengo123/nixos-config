@@ -1,14 +1,28 @@
 -- ~/.config/awesome/shell/windowing/behavior/titlebars.lua
 local M = {}
 
-local runtime_cfg = {}
+local runtime = {
+	windowing = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function windowing()
+	return runtime.windowing or {}
+end
+
+local function cfg()
+	return windowing().cfg or {}
+end
+
+local function clients_api()
+	return windowing().clients
+end
+
 local function titlebars_cfg()
-	local windowing_cfg = runtime_cfg.windowing or {}
+	local windowing_cfg = cfg().windowing or {}
 	local value = windowing_cfg.titlebars
 
 	if type(value) == "table" then
@@ -55,15 +69,14 @@ local function client_name(c)
 	return tostring(c and c.name or ""):lower()
 end
 
-local function token_matches_client(token, c, api)
+local function token_matches_client(token, c)
 	token = tostring(token or ""):lower()
 
-	local Clients = api and api.clients or nil
-	local apps_cfg = runtime_cfg.apps or {}
+	local Clients = clients_api()
+	local apps_cfg = cfg().apps or {}
 
 	local fm_match = Clients and Clients.build_file_manager_match and Clients.build_file_manager_match(apps_cfg.files)
 		or nil
-
 	local term_match = Clients and Clients.build_terminal_match and Clients.build_terminal_match(apps_cfg.terminal)
 		or nil
 
@@ -98,16 +111,15 @@ local function token_matches_client(token, c, api)
 		local editor = tostring((apps_cfg.editor or "")):lower()
 		local exe = editor:match("^%s*([^%s]+)")
 		exe = exe and (exe:match("([^/]+)$") or exe):lower() or nil
-
 		return (exe ~= nil and (class == exe or instance == exe)) or class == "emacs" or instance == "emacs"
 	end
 
 	return token == class or token == instance or token == name
 end
 
-local function excluded(c, api)
+local function excluded(c)
 	for _, token in ipairs(titlebar_exclude()) do
-		if token_matches_client(token, c, api) then
+		if token_matches_client(token, c) then
 			return true
 		end
 	end
@@ -119,9 +131,10 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(o)
-	o = o or {}
-	runtime_cfg = o.cfg or o or {}
+function M.init(args)
+	args = args or {}
+	runtime.windowing = args.windowing or runtime.windowing
+	return M
 end
 
 function M.show()
@@ -132,14 +145,14 @@ function M.mode()
 	return titlebar_show()
 end
 
-function M.enabled_for(c, api)
+function M.enabled_for(c, _windowing)
 	local show = titlebar_show()
 
 	if show == "off" then
 		return false
 	end
 
-	if excluded(c, api) then
+	if excluded(c) then
 		return false
 	end
 

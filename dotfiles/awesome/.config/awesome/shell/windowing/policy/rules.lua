@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/rules.lua
+-- ~/.config/awesome/shell/windowing/policy/rules.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 
@@ -11,19 +11,15 @@ local M = {}
 function M.apply(o)
 	o = o or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
 	local cfg = o.cfg or {}
-	local api = o.api or {}
 	local modkey = o.modkey
+	local input = o.input or {}
 
-	local Clients = api.clients
-	local Floating = api.floating
+	local Clients = o.clients
+	local Floating = o.floating
+	local Titlebars = o.titlebars
 
-	local input_api = cfg.api and cfg.api.input or {}
-	local client_input = input_api.client or {}
+	local client_input = input.client or {}
 	local client_mouse = client_input.mouse or {}
 
 	local apps_cfg = cfg.apps or {}
@@ -40,10 +36,6 @@ function M.apply(o)
 		or nil
 	local term_match = Clients and Clients.build_terminal_match and Clients.build_terminal_match(terminal) or nil
 
-	-- ---------------------------------------------------------------------
-	-- Rules
-	-- ---------------------------------------------------------------------
-
 	local rules = {
 		{
 			rule = {},
@@ -58,10 +50,6 @@ function M.apply(o)
 			},
 		},
 	}
-
-	-- ---------------------------------------------------------------------
-	-- File Manager
-	-- ---------------------------------------------------------------------
 
 	if files_floating and fm_match and Clients and Clients.has_entries then
 		if Clients.has_entries(fm_match.class) or Clients.has_entries(fm_match.instance) then
@@ -79,10 +67,6 @@ function M.apply(o)
 			})
 		end
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Terminal
-	-- ---------------------------------------------------------------------
 
 	if terminals_floating and term_match and Clients and Clients.has_entries then
 		if Clients.has_entries(term_match.class) or Clients.has_entries(term_match.instance) then
@@ -106,10 +90,6 @@ function M.apply(o)
 		end
 	end
 
-	-- ---------------------------------------------------------------------
-	-- CopyQ
-	-- ---------------------------------------------------------------------
-
 	table.insert(rules, {
 		rule_any = {
 			class = { "copyq", "CopyQ" },
@@ -127,10 +107,6 @@ function M.apply(o)
 			end
 		end,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Calendar
-	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = {
@@ -155,10 +131,6 @@ function M.apply(o)
 			end
 		end,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- System Utilities
-	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule_any = {
@@ -198,10 +170,6 @@ function M.apply(o)
 		},
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Generic Floaters
-	-- ---------------------------------------------------------------------
-
 	table.insert(rules, {
 		rule_any = {
 			type = { "dialog", "utility", "toolbar", "splash" },
@@ -215,25 +183,19 @@ function M.apply(o)
 		},
 	})
 
-	-- ---------------------------------------------------------------------
-	-- Titlebars
-	-- ---------------------------------------------------------------------
-
 	table.insert(rules, {
 		rule_any = {
 			type = { "normal", "dialog" },
 		},
 		properties = {},
 		callback = function(c)
-			if api.titlebars and type(api.titlebars.enabled_for) == "function" then
-				c.titlebars_enabled = api.titlebars.enabled_for(c, api)
+			if Titlebars and type(Titlebars.enabled_for) == "function" then
+				c.titlebars_enabled = Titlebars.enabled_for(c, {
+					clients = Clients,
+				})
 			end
 		end,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- Callbacks
-	-- ---------------------------------------------------------------------
 
 	table.insert(rules, {
 		rule = {},
@@ -250,8 +212,7 @@ function M.apply(o)
 
 	if Floating and type(Floating.init) == "function" then
 		Floating.init({
-			cfg = cfg,
-			api = api,
+			clients = Clients,
 		})
 	end
 end

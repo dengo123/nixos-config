@@ -3,14 +3,20 @@ local awful = require("awful")
 
 local M = {}
 
-local runtime_api = {}
+local runtime = {
+	windowing = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
+local function windowing()
+	return runtime.windowing or {}
+end
+
 local function state_api()
-	return runtime_api.state
+	return windowing().state
 end
 
 local function focused_screen()
@@ -60,9 +66,10 @@ end
 -- Init
 -- =========================================================================
 
-function M.init(o)
-	o = o or {}
-	runtime_api = o.api or {}
+function M.init(args)
+	args = args or {}
+	runtime.windowing = args.windowing or args or {}
+	return M
 end
 
 -- =========================================================================

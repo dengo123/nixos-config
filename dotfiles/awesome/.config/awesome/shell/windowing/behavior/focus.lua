@@ -1,24 +1,32 @@
--- ~/.config/awesome/shell/windowing/policies/focus.lua
+-- ~/.config/awesome/shell/windowing/behavior/focus.lua
 local awful = require("awful")
 local gears = require("gears")
 
 local F = {}
 
-F.raise_on_mouse = false
-F.block_ms = 150
+local runtime = {
+	windowing = {},
 
-F.center_mouse_enable = true
-F.center_mouse_exclude_layouts = {}
-F.center_mouse_exclude_states = {}
+	raise_on_mouse = false,
+	block_ms = 150,
 
-F._kbd_recent = false
-F._suppress_center = false
-F._mouse_by_client = setmetatable({}, { __mode = "k" })
-F._last_focused_client = nil
+	center_mouse_enable = true,
+	center_mouse_exclude_layouts = {},
+	center_mouse_exclude_states = {},
+
+	kbd_recent = false,
+	suppress_center = false,
+	mouse_by_client = setmetatable({}, { __mode = "k" }),
+	last_focused_client = nil,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function windowing()
+	return runtime.windowing or {}
+end
 
 local function list_to_set(list)
 	local set = {}
@@ -50,23 +58,23 @@ local function client_has_excluded_state(c)
 		return false
 	end
 
-	if F.center_mouse_exclude_states.fullscreen and c.fullscreen then
+	if runtime.center_mouse_exclude_states.fullscreen and c.fullscreen then
 		return true
 	end
 
-	if F.center_mouse_exclude_states.maximized and c.maximized then
+	if runtime.center_mouse_exclude_states.maximized and c.maximized then
 		return true
 	end
 
-	if F.center_mouse_exclude_states.maximized_horizontal and c.maximized_horizontal then
+	if runtime.center_mouse_exclude_states.maximized_horizontal and c.maximized_horizontal then
 		return true
 	end
 
-	if F.center_mouse_exclude_states.maximized_vertical and c.maximized_vertical then
+	if runtime.center_mouse_exclude_states.maximized_vertical and c.maximized_vertical then
 		return true
 	end
 
-	if F.center_mouse_exclude_states.floating and c.floating then
+	if runtime.center_mouse_exclude_states.floating and c.floating then
 		return true
 	end
 
@@ -74,12 +82,12 @@ local function client_has_excluded_state(c)
 end
 
 local function should_center_mouse(c)
-	if not F.center_mouse_enable then
+	if not runtime.center_mouse_enable then
 		return false
 	end
 
 	local layout_name = current_layout_name(c)
-	if layout_name and F.center_mouse_exclude_layouts[layout_name] then
+	if layout_name and runtime.center_mouse_exclude_layouts[layout_name] then
 		return false
 	end
 
@@ -114,7 +122,7 @@ local function remember_mouse_for_client(c)
 		return
 	end
 
-	F._mouse_by_client[c] = {
+	runtime.mouse_by_client[c] = {
 		rx = (m.x - g.x) / math.max(g.width, 1),
 		ry = (m.y - g.y) / math.max(g.height, 1),
 	}
@@ -131,7 +139,7 @@ local function move_mouse_to_client(c)
 		end
 
 		local g = c:geometry()
-		local mem = F._mouse_by_client[c]
+		local mem = runtime.mouse_by_client[c]
 
 		if mem then
 			local px = g.x + math.floor(g.width * mem.rx)
@@ -176,48 +184,45 @@ end
 -- Public API
 -- =========================================================================
 
-function F.init(o)
-	o = o or {}
+function F.init(args)
+	args = args or {}
+	runtime.windowing = args.windowing or runtime.windowing
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
+	local focus_cfg = (windowing().focus_cfg or {})
+	local center_cfg = focus_cfg.center_mouse
 
-	F.raise_on_mouse = (o.raise_on_mouse == true)
-	F.block_ms = tonumber(o.block_ms) or 150
+	runtime.raise_on_mouse = (focus_cfg.raise_on_mouse == true)
+	runtime.block_ms = tonumber(focus_cfg.block_ms) or 150
 
-	local center_cfg = o.center_mouse
 	if type(center_cfg) == "table" then
-		F.center_mouse_enable = (center_cfg.enable ~= false)
-		F.center_mouse_exclude_layouts = list_to_set(center_cfg.exclude_layouts)
-		F.center_mouse_exclude_states = list_to_set(center_cfg.exclude_states)
+		runtime.center_mouse_enable = (center_cfg.enable ~= false)
+		runtime.center_mouse_exclude_layouts = list_to_set(center_cfg.exclude_layouts)
+		runtime.center_mouse_exclude_states = list_to_set(center_cfg.exclude_states)
 	else
-		F.center_mouse_enable = (center_cfg ~= false)
-		F.center_mouse_exclude_layouts = {}
-		F.center_mouse_exclude_states = {}
+		runtime.center_mouse_enable = (center_cfg ~= false)
+		runtime.center_mouse_exclude_layouts = {}
+		runtime.center_mouse_exclude_states = {}
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Signals
-	-- ---------------------------------------------------------------------
-
 	awesome.connect_signal("focus_policy::keyboard_intent", function(ms)
-		F._kbd_recent = true
+		runtime.kbd_recent = true
 
-		gears.timer.start_new(((ms or F.block_ms) / 1000), function()
-			F._kbd_recent = false
+		gears.timer.start_new(((ms or runtime.block_ms) / 1000), function()
+			runtime.kbd_recent = false
 			return false
 		end)
 	end)
 
 	awesome.connect_signal("ui::suppress_center", function(sec)
-		F._suppress_center = true
+		runtime.suppress_center = true
 
 		gears.timer.start_new((sec or 0.15), function()
-			F._suppress_center = false
+			runtime.suppress_center = false
 			return false
 		end)
 	end)
+
+	return F
 end
 
 function F:on_mouse_enter(c)
@@ -235,9 +240,9 @@ function F:on_mouse_enter(c)
 	end
 
 	client.focus = c
-	F._last_focused_client = c
+	runtime.last_focused_client = c
 
-	if F.raise_on_mouse then
+	if runtime.raise_on_mouse then
 		c:raise()
 	end
 end
@@ -247,13 +252,13 @@ function F:on_focus(c)
 		return
 	end
 
-	local prev = F._last_focused_client
+	local prev = runtime.last_focused_client
 	if prev and prev ~= c and prev.valid then
 		remember_mouse_for_client(prev)
 	end
-	F._last_focused_client = c
+	runtime.last_focused_client = c
 
-	if not F._kbd_recent or F._suppress_center then
+	if not runtime.kbd_recent or runtime.suppress_center then
 		return
 	end
 

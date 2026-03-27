@@ -4,70 +4,85 @@ local gears = require("gears")
 
 local M = {}
 
+local runtime = {
+	windowing = {},
+	signals_ready = false,
+}
+
 -- =========================================================================
--- Public API
+-- Helpers
 -- =========================================================================
 
-function M.apply(o)
-	o = o or {}
+local function windowing()
+	return runtime.windowing or {}
+end
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
+local function focus_api()
+	return windowing().focus
+end
 
-	local api = o.api or {}
-	local focus = o.focus
-	local container = o.container
-	local attach_titlebar = o.attach_titlebar
+local function container_api()
+	return windowing().container
+end
 
-	local titlebars = api.titlebars
+local function titlebars_api()
+	return windowing().titlebars
+end
 
-	-- ---------------------------------------------------------------------
-	-- Helpers
-	-- ---------------------------------------------------------------------
+local function attach_titlebar_fn()
+	return windowing().attach_titlebar
+end
 
-	local function restyle(c)
-		if container and container.apply then
-			container.apply(c, {
-				api = api,
-			})
-		end
+local function restyle(c)
+	local Container = container_api()
+
+	if Container and type(Container.apply) == "function" then
+		Container.apply(c)
+	end
+end
+
+local function titlebars_enabled_for(c)
+	local Titlebars = titlebars_api()
+
+	if Titlebars and type(Titlebars.enabled_for) == "function" then
+		return Titlebars.enabled_for(c, windowing())
 	end
 
-	local function titlebars_enabled_for(c)
-		if titlebars and type(titlebars.enabled_for) == "function" then
-			return titlebars.enabled_for(c, api)
-		end
+	return true
+end
 
-		return true
+local function sync_titlebar(c)
+	if not (c and c.valid) then
+		return
 	end
 
-	local function sync_titlebar(c)
-		if not (c and c.valid) then
-			return
+	local attach_titlebar = attach_titlebar_fn()
+	local enabled = titlebars_enabled_for(c)
+
+	if enabled then
+		c.titlebars_enabled = true
+
+		if type(attach_titlebar) == "function" then
+			attach_titlebar(c)
 		end
 
-		local enabled = titlebars_enabled_for(c)
-
-		if enabled then
-			c.titlebars_enabled = true
-
-			if type(attach_titlebar) == "function" then
-				attach_titlebar(c)
-			end
-
-			return
-		end
-
-		c.titlebars_enabled = false
-		awful.titlebar.hide(c)
+		return
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Titlebars
-	-- ---------------------------------------------------------------------
+	c.titlebars_enabled = false
+	awful.titlebar.hide(c)
+end
+
+local function register_signals()
+	if runtime.signals_ready then
+		return
+	end
+
+	runtime.signals_ready = true
 
 	client.connect_signal("request::titlebars", function(c)
+		local attach_titlebar = attach_titlebar_fn()
+
 		if titlebars_enabled_for(c) and type(attach_titlebar) == "function" then
 			attach_titlebar(c)
 		end
@@ -91,25 +106,19 @@ function M.apply(o)
 		end)
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Focus
-	-- ---------------------------------------------------------------------
+	local Focus = focus_api()
 
-	if focus and focus.on_mouse_enter then
+	if Focus and Focus.on_mouse_enter then
 		client.connect_signal("mouse::enter", function(c)
-			focus:on_mouse_enter(c)
+			Focus:on_mouse_enter(c)
 		end)
 	end
 
-	if focus and focus.on_focus then
+	if Focus and Focus.on_focus then
 		client.connect_signal("focus", function(c)
-			focus:on_focus(c)
+			Focus:on_focus(c)
 		end)
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Container
-	-- ---------------------------------------------------------------------
 
 	client.connect_signal("manage", function(c)
 		gears.timer.delayed_call(restyle, c)
@@ -133,6 +142,32 @@ function M.apply(o)
 			restyle(c)
 		end
 	end)
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.init(args)
+	args = args or {}
+	runtime.windowing = args.windowing or args or {}
+	return M
+end
+
+function M.apply(args)
+	args = args or {}
+
+	if args.windowing then
+		runtime.windowing = args.windowing
+	else
+		local w = runtime.windowing
+		for k, v in pairs(args) do
+			w[k] = v
+		end
+	end
+
+	register_signals()
+	return M
 end
 
 return M

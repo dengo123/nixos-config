@@ -1,18 +1,18 @@
--- ~/.config/awesome/shell/windowing/behavior/navigation.lua
+-- ~/.config/awesome/shell/windowing/runtime/navigation.lua
 local awful = require("awful")
 
 local M = {}
 
 local runtime = {
-	ctx = {},
+	windowing = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
+local function windowing()
+	return runtime.windowing or {}
 end
 
 local function current_nav_screen()
@@ -33,9 +33,11 @@ local function kbd_intent(ms)
 end
 
 local function max_policy()
-	local c = ctx()
+	local w = windowing()
+	local c = w.ctx or {}
 
-	return (c.policy and c.policy.max_policy)
+	return w.max_policy
+		or (c.policy and c.policy.max_policy)
 		or (c.workspaces and c.workspaces.policy and c.workspaces.policy.max_policy)
 		or nil
 end
@@ -45,7 +47,8 @@ end
 -- =========================================================================
 
 function M.init(args)
-	runtime.ctx = args or {}
+	args = args or {}
+	runtime.windowing = args.windowing or args or {}
 	return M
 end
 
