@@ -4,6 +4,10 @@ local gears = require("gears")
 
 local M = {}
 
+local runtime = {
+	workspaces = {},
+}
+
 local hooks = {
 	kill_clients_in_tag = function(_) end,
 	apply_layout_policy = function(_) end,
@@ -12,6 +16,18 @@ local hooks = {
 local cfg = {
 	default_layout = awful.layout.suit.max,
 }
+
+-- =========================================================================
+-- Helpers
+-- =========================================================================
+
+local function workspaces()
+	return runtime.workspaces or {}
+end
+
+local function controller()
+	return workspaces().controller
+end
 
 -- =========================================================================
 -- Hooks
@@ -153,6 +169,12 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	args = args or {}
+	runtime.workspaces = args.workspaces or args or {}
+	return M
+end
+
 function M.ensure(s)
 	ensure_one_tag(s)
 end
@@ -205,19 +227,22 @@ function M.delete_current_force(s)
 	delete_tag_when_empty(t)
 end
 
-function M.enable(base_module, value)
-	local base = base_module or require("shell.workspaces.runtime.base")
-
+function M.enable(value)
 	if value then
 		M.set_hooks(value)
 	end
 
-	base.ensure = M.ensure
-	base.renumber = M.renumber
-	base.add = M.add
-	base.add_silent = M.add_silent
-	base.delete_current = M.delete_current
-	base.delete_current_force = M.delete_current_force
+	local Controller = controller()
+	if not Controller then
+		return false
+	end
+
+	Controller.ensure = M.ensure
+	Controller.renumber = M.renumber
+	Controller.add = M.add
+	Controller.add_silent = M.add_silent
+	Controller.delete_current = M.delete_current
+	Controller.delete_current_force = M.delete_current_force
 
 	return true
 end

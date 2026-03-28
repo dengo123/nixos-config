@@ -122,8 +122,11 @@ return {
 		},
 
 		gap = 4,
-		max_padding = true,
-		max_solo = false,
+
+		max = {
+			padding = true,
+			solo = false,
+		},
 
 		delete = {
 			kill_clients = true,

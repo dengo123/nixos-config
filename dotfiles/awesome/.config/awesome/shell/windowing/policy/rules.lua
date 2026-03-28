@@ -190,9 +190,7 @@ function M.apply(o)
 		properties = {},
 		callback = function(c)
 			if Titlebars and type(Titlebars.enabled_for) == "function" then
-				c.titlebars_enabled = Titlebars.enabled_for(c, {
-					clients = Clients,
-				})
+				c.titlebars_enabled = Titlebars.enabled_for(c)
 			end
 		end,
 	})

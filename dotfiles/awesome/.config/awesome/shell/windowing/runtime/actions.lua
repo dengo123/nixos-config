@@ -15,12 +15,8 @@ local function windowing()
 	return runtime.windowing or {}
 end
 
-local function state_api()
+local function state_mod()
 	return windowing().state
-end
-
-local function focused_screen()
-	return awful.screen.focused()
 end
 
 local function each_client_on_tag(t, fn)
@@ -130,7 +126,7 @@ function M.minimize_focused()
 end
 
 function M.minimize_visible_tag_on_screen(s)
-	s = s or focused_screen()
+	s = s or awful.screen.focused()
 	if not (s and s.valid) then
 		return false
 	end
@@ -140,7 +136,7 @@ function M.minimize_visible_tag_on_screen(s)
 end
 
 function M.minimize_all_tags_on_screen(s)
-	s = s or focused_screen()
+	s = s or awful.screen.focused()
 	if not (s and s.valid) then
 		return false
 	end
@@ -170,7 +166,7 @@ end
 -- =========================================================================
 
 function M.layout_state_mode(cfg)
-	local State = state_api()
+	local State = state_mod()
 
 	if State and type(State.layout_state_mode) == "function" then
 		return State.layout_state_mode(cfg)
@@ -188,7 +184,7 @@ function M.layout_state_mode(cfg)
 end
 
 function M.is_layout_state_active(c, cfg)
-	local State = state_api()
+	local State = state_mod()
 
 	if State and type(State.is_layout_state_active) == "function" then
 		return State.is_layout_state_active(c, cfg)

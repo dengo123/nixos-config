@@ -8,87 +8,56 @@ local function req(path)
 	error(("ui.wallpaper.init: require failed: %s\n%s"):format(path, tostring(mod)))
 end
 
-local M = {
-	api = {},
-}
+local M = {}
 
-local runtime_cfg = {}
+local runtime = {
+	cfg = {},
+	ui = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function api()
-	return M.api or {}
-end
-
-local function config_api()
-	return api().config
-end
-
-local function source_api()
-	return api().source
-end
-
-local function colors_api()
-	return api().colors
-end
-
-local function scope_api()
-	return api().scope
-end
-
-local function apply_api()
-	return api().apply
-end
-
-local function refresh_api()
-	return api().refresh
-end
-
-local function rotation_api()
-	return api().rotation
-end
-
 local function set_runtime_cfg(cfg)
-	runtime_cfg = cfg or {}
+	runtime.cfg = cfg or {}
 
-	local Config = config_api()
-	local Source = source_api()
-	local Scope = scope_api()
-	local Refresh = refresh_api()
-	local Rotation = rotation_api()
+	local Controller = M.controller
+	local Source = M.source
+	local Scope = M.scope
+	local RefreshMod = M.refresh_mod
+	local RotationMod = M.rotation_mod
 
-	if Config and type(Config.set_runtime_cfg) == "function" then
-		Config.set_runtime_cfg(runtime_cfg)
+	if Controller and type(Controller.set_runtime_cfg) == "function" then
+		Controller.set_runtime_cfg(runtime.cfg)
 	end
 
 	if Source and type(Source.set_runtime_cfg) == "function" then
-		Source.set_runtime_cfg(runtime_cfg)
+		Source.set_runtime_cfg(runtime.cfg)
 	end
 
 	if Scope and type(Scope.set_runtime_cfg) == "function" then
-		Scope.set_runtime_cfg(runtime_cfg)
+		Scope.set_runtime_cfg(runtime.cfg)
 	end
 
-	if Refresh and type(Refresh.set_runtime_cfg) == "function" then
-		Refresh.set_runtime_cfg(runtime_cfg)
+	if RefreshMod and type(RefreshMod.set_runtime_cfg) == "function" then
+		RefreshMod.set_runtime_cfg(runtime.cfg)
 	end
 
-	if Rotation and type(Rotation.set_runtime_cfg) == "function" then
-		Rotation.set_runtime_cfg(runtime_cfg)
+	if RotationMod and type(RotationMod.set_runtime_cfg) == "function" then
+		RotationMod.set_runtime_cfg(runtime.cfg)
 	end
 end
 
 local function resolved_spec_for_screen(s)
-	local Config = config_api()
-	local Source = source_api()
+	local Controller = M.controller
+	local Source = M.source
 
-	if not (Config and type(Config.screen_spec) == "function") then
+	if not (Controller and type(Controller.screen_spec) == "function") then
 		return nil
 	end
 
-	local spec = Config.screen_spec(s)
+	local spec = Controller.screen_spec(s)
 	if not spec then
 		return nil
 	end
@@ -105,15 +74,15 @@ local function resolved_spec_for_screen(s)
 end
 
 local function desktop_entries()
-	local Config = config_api()
-	local Source = source_api()
+	local Controller = M.controller
+	local Source = M.source
 	local out = {}
 
-	if not (Config and type(Config.screens_for_desktop_span) == "function") then
+	if not (Controller and type(Controller.screens_for_desktop_span) == "function") then
 		return out
 	end
 
-	for _, entry in ipairs(Config.screens_for_desktop_span() or {}) do
+	for _, entry in ipairs(Controller.screens_for_desktop_span() or {}) do
 		local s = entry.screen
 		local spec = entry.spec
 
@@ -141,23 +110,23 @@ local function has_desktop_span()
 end
 
 local function sync_rotation()
-	local Rotation = rotation_api()
-	local Config = config_api()
+	local RotationMod = M.rotation_mod
+	local Controller = M.controller
 
-	if not (Rotation and type(Rotation.sync_all) == "function") then
+	if not (RotationMod and type(RotationMod.sync_all) == "function") then
 		return
 	end
 
 	if has_desktop_span() then
-		if type(Rotation.stop_all) == "function" then
-			Rotation.stop_all()
+		if type(RotationMod.stop_all) == "function" then
+			RotationMod.stop_all()
 		end
 		return
 	end
 
-	Rotation.sync_all(function(s)
-		if Config and type(Config.screen_spec) == "function" then
-			return Config.screen_spec(s)
+	RotationMod.sync_all(function(s)
+		if Controller and type(Controller.screen_spec) == "function" then
+			return Controller.screen_spec(s)
 		end
 
 		return nil
@@ -165,9 +134,9 @@ local function sync_rotation()
 end
 
 local function apply_desktop_wallpapers()
-	local Apply = apply_api()
-	local Scope = scope_api()
-	local Colors = colors_api()
+	local Apply = M.apply
+	local Scope = M.scope
+	local Colors = M.colors
 
 	if not (Apply and type(Apply.apply_desktop) == "function") then
 		return
@@ -179,18 +148,18 @@ local function apply_desktop_wallpapers()
 end
 
 local function apply_screen_wallpapers()
-	local Apply = apply_api()
-	local Colors = colors_api()
-	local Config = config_api()
+	local Apply = M.apply
+	local Colors = M.colors
+	local Controller = M.controller
 
 	if not (Apply and type(Apply.apply_screen) == "function") then
 		return
 	end
 
 	for s in screen do
-		local spans_desktop = Config
-			and type(Config.screen_spans_desktop) == "function"
-			and Config.screen_spans_desktop(s)
+		local spans_desktop = Controller
+			and type(Controller.screen_spans_desktop) == "function"
+			and Controller.screen_spans_desktop(s)
 
 		if not spans_desktop then
 			local spec = resolved_spec_for_screen(s)
@@ -203,35 +172,35 @@ local function apply_screen_wallpapers()
 end
 
 local function init_refresh()
-	local Refresh = refresh_api()
+	local RefreshMod = M.refresh_mod
 
-	if Refresh and type(Refresh.init) == "function" then
-		Refresh.init({
-			cfg = runtime_cfg,
+	if RefreshMod and type(RefreshMod.init) == "function" then
+		RefreshMod.init({
+			cfg = runtime.cfg,
 			refresh = M.refresh,
 		})
 	end
 end
 
 local function init_rotation()
-	local Rotation = rotation_api()
-	local Config = config_api()
+	local RotationMod = M.rotation_mod
+	local Controller = M.controller
 
-	if not (Rotation and type(Rotation.init) == "function") then
+	if not (RotationMod and type(RotationMod.init) == "function") then
 		return
 	end
 
-	Rotation.init({
-		cfg = runtime_cfg,
+	RotationMod.init({
+		cfg = runtime.cfg,
 		refresh = M.refresh,
 		spec_for_screen = function(s)
-			if Config and type(Config.screen_spec) == "function" then
-				return Config.screen_spec(s)
+			if Controller and type(Controller.screen_spec) == "function" then
+				return Controller.screen_spec(s)
 			end
 
 			return nil
 		end,
-		source_api = source_api(),
+		source = M.source,
 	})
 end
 
@@ -242,22 +211,21 @@ end
 function M.init(args)
 	args = args or {}
 
-	M.api = {
-		ui = args.ui or {},
-		config = req("ui.wallpaper.config"),
-		source = req("ui.wallpaper.source"),
-		colors = req("ui.wallpaper.colors"),
-		scope = req("ui.wallpaper.scope"),
-		apply = req("ui.wallpaper.apply"),
-		refresh = req("ui.wallpaper.refresh"),
-		rotation = req("ui.wallpaper.rotation"),
-	}
+	runtime.ui = args.ui or runtime.ui or {}
+
+	M.ui = runtime.ui
+	M.controller = req("ui.wallpaper.controller")
+	M.source = req("ui.wallpaper.source")
+	M.colors = req("ui.wallpaper.colors")
+	M.scope = req("ui.wallpaper.scope")
+	M.apply = req("ui.wallpaper.apply")
+	M.refresh_mod = req("ui.wallpaper.refresh")
+	M.rotation_mod = req("ui.wallpaper.rotation")
 
 	set_runtime_cfg(args.cfg or args or {})
 
-	local Source = source_api()
-	if Source and type(Source.reset_all) == "function" then
-		Source.reset_all()
+	if M.source and type(M.source.reset_all) == "function" then
+		M.source.reset_all()
 	end
 
 	init_refresh()
@@ -275,16 +243,15 @@ function M.refresh()
 end
 
 function M.set(source)
-	runtime_cfg.ui = runtime_cfg.ui or {}
-	runtime_cfg.ui.wallpaper = runtime_cfg.ui.wallpaper or {}
-	runtime_cfg.ui.wallpaper.source = source
+	runtime.cfg.ui = runtime.cfg.ui or {}
+	runtime.cfg.ui.wallpaper = runtime.cfg.ui.wallpaper or {}
+	runtime.cfg.ui.wallpaper.source = source
 
-	local Source = source_api()
-	if Source and type(Source.reset_all) == "function" then
-		Source.reset_all()
+	if M.source and type(M.source.reset_all) == "function" then
+		M.source.reset_all()
 	end
 
-	set_runtime_cfg(runtime_cfg)
+	set_runtime_cfg(runtime.cfg)
 	M.refresh()
 end
 

@@ -2,23 +2,20 @@
 local M = {}
 
 local runtime = {
-	windowing = {},
+	cfg = {},
+	clients = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function windowing()
-	return runtime.windowing or {}
-end
-
 local function cfg()
-	return windowing().cfg or {}
+	return runtime.cfg or {}
 end
 
 local function clients_api()
-	return windowing().clients
+	return runtime.clients
 end
 
 local function titlebars_cfg()
@@ -30,6 +27,20 @@ local function titlebars_cfg()
 	end
 
 	if value == false then
+		return {
+			show = "off",
+			exclude = {},
+		}
+	end
+
+	if value == "floating_only" then
+		return {
+			show = "floating_only",
+			exclude = {},
+		}
+	end
+
+	if value == "off" then
 		return {
 			show = "off",
 			exclude = {},
@@ -133,7 +144,8 @@ end
 
 function M.init(args)
 	args = args or {}
-	runtime.windowing = args.windowing or runtime.windowing
+	runtime.cfg = args.cfg or runtime.cfg or {}
+	runtime.clients = args.clients or runtime.clients
 	return M
 end
 
@@ -145,7 +157,7 @@ function M.mode()
 	return titlebar_show()
 end
 
-function M.enabled_for(c, _windowing)
+function M.enabled_for(c)
 	local show = titlebar_show()
 
 	if show == "off" then
@@ -157,7 +169,7 @@ function M.enabled_for(c, _windowing)
 	end
 
 	if show == "floating_only" then
-		return c.floating == true
+		return c and c.floating == true
 	end
 
 	return true

@@ -18,6 +18,7 @@ local runtime = {
 	suppress_center = false,
 	mouse_by_client = setmetatable({}, { __mode = "k" }),
 	last_focused_client = nil,
+	geometry_follow_ready = false,
 }
 
 -- =========================================================================
@@ -180,6 +181,50 @@ local function center_mouse_in_client(c)
 	end)
 end
 
+local function should_follow_geometry(c)
+	if not (c and c.valid) then
+		return false
+	end
+
+	if c ~= client.focus then
+		return false
+	end
+
+	if c.minimized or not c:isvisible() then
+		return false
+	end
+
+	if runtime.suppress_center then
+		return false
+	end
+
+	return should_center_mouse(c)
+end
+
+local function hook_geometry_follow()
+	if runtime.geometry_follow_ready then
+		return
+	end
+
+	client.connect_signal("property::geometry", function(c)
+		if not should_follow_geometry(c) then
+			return
+		end
+
+		move_mouse_to_client(c)
+	end)
+
+	client.connect_signal("property::screen", function(c)
+		if not should_follow_geometry(c) then
+			return
+		end
+
+		move_mouse_to_client(c)
+	end)
+
+	runtime.geometry_follow_ready = true
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -221,6 +266,8 @@ function F.init(args)
 			return false
 		end)
 	end)
+
+	hook_geometry_follow()
 
 	return F
 end

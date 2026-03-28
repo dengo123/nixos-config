@@ -19,7 +19,7 @@ local function titlebar_buttons_mod(opts)
 	return opts and opts.titlebar_buttons or nil
 end
 
-local function client_mouse_api(opts)
+local function client_mouse_mod(opts)
 	local input = (opts and opts.input) or {}
 	local client = input.client or {}
 	return client.mouse or {}
@@ -89,7 +89,7 @@ function C.attach_titlebar(c, style, actions, cfg, opts)
 	local Buttons = titlebar_buttons_mod(opts)
 	assert(Buttons and type(Buttons.build) == "function", "windowing.container: titlebar_buttons.build fehlt")
 
-	local ClientMouse = client_mouse_api(opts)
+	local ClientMouse = client_mouse_mod(opts)
 
 	local pos = beautiful.titlebar_position
 	local size = tonumber(beautiful.titlebar_height)

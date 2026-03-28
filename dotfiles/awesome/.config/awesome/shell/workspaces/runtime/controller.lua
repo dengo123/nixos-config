@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/workspaces/runtime/base.lua
+-- ~/.config/awesome/shell/workspaces/runtime/controller.lua
 local awful = require("awful")
 
 local M = {}

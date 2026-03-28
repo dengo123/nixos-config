@@ -33,13 +33,9 @@ local function kbd_intent(ms)
 end
 
 local function max_policy()
-	local w = windowing()
-	local c = w.ctx or {}
-
-	return w.max_policy
-		or (c.policy and c.policy.max_policy)
-		or (c.workspaces and c.workspaces.policy and c.workspaces.policy.max_policy)
-		or nil
+	local workspaces = windowing().workspaces or nil
+	local policies = workspaces and workspaces.policies or nil
+	return policies and policies.max or nil
 end
 
 -- =========================================================================

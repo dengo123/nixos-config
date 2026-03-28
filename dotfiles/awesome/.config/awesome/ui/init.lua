@@ -8,11 +8,11 @@ local function safe_require(path)
 	return nil
 end
 
-local M = {
-	api = {},
-}
+local M = {}
 
-local runtime_cfg = {}
+local runtime = {
+	cfg = {},
+}
 
 -- =========================================================================
 -- Helpers
@@ -62,7 +62,7 @@ end
 
 function M.init(args)
 	args = args or {}
-	runtime_cfg = args.cfg or args or {}
+	runtime.cfg = args.cfg or args or {}
 
 	local Helpers = safe_require("ui.lib.helpers")
 	local ColorLib = safe_require("ui.lib.colors")
@@ -71,18 +71,25 @@ function M.init(args)
 	local Themes = safe_require("ui.themes")
 	local Wallpaper = safe_require("ui.wallpaper")
 
-	local resolved = resolve_theme(Themes, runtime_cfg)
+	local resolved = resolve_theme(Themes, runtime.cfg)
 	local theme = materialize_theme(ColorLib, resolved)
 
-	local ui_api = {
-		lib = {
-			helpers = Helpers or {},
-			colors = ColorLib or {},
-			theme_state = ThemeState or {},
-			theme_apply = ThemeApply or {},
-		},
-		theme = theme,
+	M.cfg = runtime.cfg
+
+	M.lib = {
+		helpers = Helpers or {},
+		colors = ColorLib or {},
+		theme_state = ThemeState or {},
+		theme_apply = ThemeApply or {},
 	}
+
+	M.theme = theme
+	M.wallpaper = Wallpaper or {}
+
+	M.colors = theme.colors or {}
+	M.fonts = theme.fonts or {}
+	M.icons = theme.icons or {}
+	M.utils = theme.utils or {}
 
 	if ThemeApply and type(ThemeApply.init) == "function" then
 		ThemeApply.init({
@@ -94,21 +101,12 @@ function M.init(args)
 
 	if Wallpaper and type(Wallpaper.init) == "function" then
 		Wallpaper.init({
-			cfg = runtime_cfg,
-			ui = ui_api,
+			cfg = runtime.cfg,
+			ui = M,
 		})
 	end
 
-	ui_api.wallpaper = Wallpaper
-
-	M.api = ui_api
-	M.cfg = runtime_cfg
-
 	return M
-end
-
-function M.get()
-	return M.api or {}
 end
 
 return M

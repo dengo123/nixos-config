@@ -10,11 +10,15 @@ local function safe_require(path)
 	return nil
 end
 
-local M = {}
+local M = {
+	runtime = {},
+	policies = {},
+	actions = nil,
+}
 
 local runtime = {
 	ctx = {},
-	api = {},
+	workspaces = {},
 }
 
 -- =========================================================================
@@ -33,68 +37,84 @@ local function ui()
 	return ctx().ui or {}
 end
 
-local function api()
-	return runtime.api or {}
+local function shell()
+	return ctx().shell or {}
 end
 
-local function runtime_api()
-	return api().runtime or {}
+local function build_workspaces()
+	local conf = cfg()
+
+	local RuntimeMods = M.runtime or {}
+	local Policies = M.policies or {}
+
+	local tags_cfg = conf.tags or {}
+	local layouts_cfg = tags_cfg.layouts or {}
+
+	return {
+		cfg = conf,
+		ui = ui(),
+		shell = shell(),
+
+		tags_cfg = tags_cfg,
+		layouts_cfg = layouts_cfg,
+
+		runtime = RuntimeMods,
+		policies = Policies,
+
+		actions = RuntimeMods.actions,
+		controller = RuntimeMods.controller,
+		layouts = RuntimeMods.layouts,
+		sync = RuntimeMods.sync,
+		dynamic = RuntimeMods.dynamic,
+
+		layout_policy = Policies.layout,
+		spacing_policy = Policies.spacing,
+		focus_policy = Policies.focus,
+		delete_policy = Policies.delete,
+		max_policy = Policies.max,
+
+		windowing = shell().windowing or nil,
+	}
 end
 
-local function policies_api()
-	return api().policies or {}
-end
-
-local function runtime_mod(name)
-	return runtime_api()[name]
-end
-
-local function policy_mod(name)
-	return policies_api()[name]
-end
-
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.policy = c.policy or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
-end
-
-local function register_policy(name, value)
-	local c = ctx()
-	ensure_ctx_roots()
-
-	if value == nil then
-		return nil
-	end
-
-	if name == "max" then
-		c.policy.max_policy = value
-		c.api.max_policy = value
-		c.external.max_policy = value
-	else
-		c.policy[name] = value
-	end
-
-	return value
-end
-
-local function attach_policy_signals()
-	local Focus = policy_mod("focus")
-	local Layout = policy_mod("layout")
-	local Spacing = policy_mod("spacing")
+local function attach_policy_signals(workspaces)
+	local Focus = workspaces.focus_policy
+	local Layout = workspaces.layout_policy
+	local Spacing = workspaces.spacing_policy
 
 	if Focus and type(Focus.attach_policy_signals) == "function" then
 		Focus.attach_policy_signals(Layout and Layout.apply_layout_policy or nil)
 	end
 
 	if Spacing and type(Spacing.init) == "function" then
-		Spacing.init(cfg())
+		Spacing.init(workspaces.cfg)
+	end
+end
+
+local function configure_controller(workspaces)
+	local Controller = workspaces.controller
+	assert(Controller, "workspaces.init: runtime.controller fehlt")
+
+	if type(Controller.set_config) == "function" then
+		Controller.set_config({
+			tags_fixed_count = workspaces.tags_cfg.fixed_count,
+			default_layout = workspaces.layouts_cfg.default or "max",
+		})
+	end
+end
+
+local function configure_controller_hooks(workspaces)
+	local Controller = workspaces.controller
+	local DeletePolicy = workspaces.delete_policy
+	local LayoutPolicy = workspaces.layout_policy
+
+	assert(Controller, "workspaces.init: runtime.controller fehlt")
+
+	if type(Controller.set_hooks) == "function" then
+		Controller.set_hooks({
+			kill_clients_in_tag = DeletePolicy and DeletePolicy.kill_clients_in_tag or function(_) end,
+			apply_layout_policy = LayoutPolicy and LayoutPolicy.apply_layout_policy or function(_) end,
+		})
 	end
 end
 
@@ -104,94 +124,109 @@ end
 
 function M.init(args)
 	runtime.ctx = args or {}
-	ensure_ctx_roots()
 
-	runtime.api = {
-		ui = ui(),
-		runtime = {
-			actions = safe_require("shell.workspaces.runtime.actions"),
-			base = safe_require("shell.workspaces.runtime.base"),
-			layouts = safe_require("shell.workspaces.runtime.layouts"),
-			sync = safe_require("shell.workspaces.runtime.sync"),
-			dynamic = safe_require("shell.workspaces.runtime.dynamic"),
-		},
-		policies = {
-			layout = safe_require("shell.workspaces.policies.layout_policy"),
-			spacing = safe_require("shell.workspaces.policies.spacing_policy"),
-			focus = safe_require("shell.workspaces.policies.focus_policy"),
-			client = safe_require("shell.workspaces.policies.client_policy"),
-			max = safe_require("shell.workspaces.policies.max_policy"),
-		},
+	M.runtime = {
+		actions = safe_require("shell.workspaces.runtime.actions"),
+		controller = safe_require("shell.workspaces.runtime.controller"),
+		layouts = safe_require("shell.workspaces.runtime.layouts"),
+		sync = safe_require("shell.workspaces.runtime.sync"),
+		dynamic = safe_require("shell.workspaces.runtime.dynamic"),
 	}
 
-	local c = ctx()
-	c.shell.workspaces = M
-	c.features.workspaces = M
-	c.cfg.api.workspaces = M
-	c.api.workspaces = M
+	M.policies = {
+		layout = safe_require("shell.workspaces.policies.layout_policy"),
+		spacing = safe_require("shell.workspaces.policies.spacing_policy"),
+		focus = safe_require("shell.workspaces.policies.focus_policy"),
+		delete = safe_require("shell.workspaces.policies.delete_policy"),
+		max = safe_require("shell.workspaces.policies.max_policy"),
+	}
 
-	local RuntimeActions = runtime_mod("actions")
-	local RuntimeBase = runtime_mod("base")
-	local RuntimeLayouts = runtime_mod("layouts")
-	local RuntimeSync = runtime_mod("sync")
-	local RuntimeDynamic = runtime_mod("dynamic")
+	runtime.workspaces = build_workspaces()
+	local workspaces = runtime.workspaces
 
-	local PolicyLayout = policy_mod("layout")
-	local PolicyClient = policy_mod("client")
-	local PolicyMax = policy_mod("max")
+	M.workspaces = workspaces
 
-	local tags_cfg = cfg().tags or {}
-	local layouts_cfg = tags_cfg.layouts or {}
+	local RuntimeActions = workspaces.actions
+	local RuntimeController = workspaces.controller
+	local RuntimeLayouts = workspaces.layouts
+	local RuntimeSync = workspaces.sync
+	local RuntimeDynamic = workspaces.dynamic
 
-	RuntimeBase.set_config({
-		tags_mode = tags_cfg.mode,
-		tags_fixed_count = tags_cfg.fixed_count,
-		default_layout = layouts_cfg.default or "max",
-	})
+	local PolicyLayout = workspaces.layout_policy
+	local PolicyDelete = workspaces.delete_policy
+	local PolicyMax = workspaces.max_policy
+
+	assert(RuntimeController, "workspaces.init: runtime.controller fehlt")
+	assert(RuntimeLayouts, "workspaces.init: runtime.layouts fehlt")
+
+	configure_controller(workspaces)
 
 	local opts = {
-		ensure_one_tag = (cfg().ensure_one_tag ~= false),
-		renumber_on_start = (cfg().renumber_on_start ~= false),
-		auto_adapt_layout_on_rotation = (cfg().auto_adapt_layout_on_rotation ~= false),
-		desktop_deco_fn = cfg().desktop_deco_fn,
+		ensure_one_tag = (workspaces.cfg.ensure_one_tag ~= false),
+		renumber_on_start = (workspaces.cfg.renumber_on_start ~= false),
+		auto_adapt_layout_on_rotation = (workspaces.cfg.auto_adapt_layout_on_rotation ~= false),
+		desktop_deco_fn = workspaces.cfg.desktop_deco_fn,
 	}
 
-	local selection_mode = tostring(tags_cfg.selection or "single"):lower()
+	local selection_mode = tostring(workspaces.tags_cfg.selection or "single"):lower()
 	local use_sync = (selection_mode == "sync")
-	local impl = use_sync and RuntimeSync or RuntimeBase
+	local impl = use_sync and RuntimeSync or RuntimeController
 
-	if RuntimeLayouts and type(RuntimeLayouts.apply) == "function" then
-		RuntimeLayouts.apply(cfg())
+	assert(impl, "workspaces.init: runtime implementation fehlt")
+
+	if type(RuntimeLayouts.apply) == "function" then
+		RuntimeLayouts.apply(workspaces.cfg)
+	end
+
+	if PolicyLayout and type(PolicyLayout.init) == "function" then
+		PolicyLayout.init({
+			workspaces = workspaces,
+			cfg = workspaces.cfg,
+		})
 	end
 
 	if PolicyLayout and type(PolicyLayout.init_enforcement) == "function" then
 		PolicyLayout.init_enforcement({
-			cfg = cfg(),
-			api = runtime.api,
-			external = c.external,
-			ctx = c,
+			workspaces = workspaces,
+			cfg = workspaces.cfg,
 		})
 	end
 
-	if PolicyClient and type(PolicyClient.init) == "function" then
-		PolicyClient.init(cfg())
+	if PolicyDelete and type(PolicyDelete.init) == "function" then
+		PolicyDelete.init(workspaces.cfg)
 	end
 
 	if PolicyMax and type(PolicyMax.init) == "function" then
-		register_policy("max", PolicyMax.init(c))
+		PolicyMax.init({
+			workspaces = workspaces,
+		})
 	end
 
-	attach_policy_signals()
+	attach_policy_signals(workspaces)
+	configure_controller_hooks(workspaces)
 
-	RuntimeBase.set_hooks({
-		kill_clients_in_tag = PolicyClient and PolicyClient.kill_clients_in_tag or function(_) end,
-		apply_layout_policy = PolicyLayout and PolicyLayout.apply_layout_policy or function(_) end,
-	})
+	if RuntimeActions and type(RuntimeActions.init) == "function" then
+		RuntimeActions.init({
+			workspaces = workspaces,
+		})
+	end
 
-	if tostring(tags_cfg.mode or "fixed"):lower() == "dynamic" then
+	if RuntimeSync and type(RuntimeSync.init) == "function" then
+		RuntimeSync.init({
+			workspaces = workspaces,
+		})
+	end
+
+	if RuntimeDynamic and type(RuntimeDynamic.init) == "function" then
+		RuntimeDynamic.init({
+			workspaces = workspaces,
+		})
+	end
+
+	if tostring(workspaces.tags_cfg.mode or "fixed"):lower() == "dynamic" then
 		if RuntimeDynamic and type(RuntimeDynamic.enable) == "function" then
-			RuntimeDynamic.enable(RuntimeBase, {
-				kill_clients_in_tag = PolicyClient and PolicyClient.kill_clients_in_tag or function(_) end,
+			RuntimeDynamic.enable({
+				kill_clients_in_tag = PolicyDelete and PolicyDelete.kill_clients_in_tag or function(_) end,
 				apply_layout_policy = PolicyLayout and PolicyLayout.apply_layout_policy or function(_) end,
 			})
 		end
@@ -199,11 +234,11 @@ function M.init(args)
 
 	awful.screen.connect_for_each_screen(function(s)
 		if opts.ensure_one_tag then
-			RuntimeBase.ensure(s)
+			RuntimeController.ensure(s)
 		end
 
 		if opts.renumber_on_start then
-			RuntimeBase.renumber(s)
+			RuntimeController.renumber(s)
 		end
 
 		if PolicyLayout and PolicyLayout.apply_layout_policy then
@@ -232,14 +267,14 @@ function M.init(args)
 		end
 	end
 
-	M.add = impl.add or RuntimeBase.add
-	M.add_silent = impl.add_silent or RuntimeBase.add_silent
-	M.delete_current = impl.delete_current or RuntimeBase.delete_current
-	M.delete_current_force = impl.delete_current_force or RuntimeBase.delete_current_force
+	M.add = impl.add or RuntimeController.add
+	M.add_silent = impl.add_silent or RuntimeController.add_silent
+	M.delete_current = impl.delete_current or RuntimeController.delete_current
+	M.delete_current_force = impl.delete_current_force or RuntimeController.delete_current_force
 	M.view_tag_idx = impl.view_tag_idx
 	M.view_tag_abs = impl.view_tag_abs
-	M.ensure = RuntimeBase.ensure
-	M.renumber = RuntimeBase.renumber
+	M.ensure = RuntimeController.ensure
+	M.renumber = RuntimeController.renumber
 
 	M.actions = {
 		view_tag_idx = RuntimeActions and RuntimeActions.view_tag_idx or nil,

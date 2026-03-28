@@ -2,7 +2,6 @@
 local M = {}
 
 local runtime = {
-	api = {},
 	stacks = setmetatable({}, { __mode = "k" }),
 	signals_ready = false,
 }
@@ -42,9 +41,7 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	args = args or {}
-	runtime.api = args.api or {}
+function M.init(_args)
 	return M
 end
 

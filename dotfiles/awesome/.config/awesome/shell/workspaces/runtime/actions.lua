@@ -3,20 +3,32 @@ local awful = require("awful")
 
 local M = {}
 
-local deps = {
-	scr_in_dir = nil,
+local runtime = {
+	workspaces = {},
 }
 
 -- =========================================================================
--- Dependencies
+-- Helpers
 -- =========================================================================
 
-function M.set_dependencies(value)
-	value = value or {}
+local function workspaces()
+	return runtime.workspaces or {}
+end
 
-	if type(value.scr_in_dir) == "function" then
-		deps.scr_in_dir = value.scr_in_dir
-	end
+local function scr_in_dir_fn()
+	local windowing = workspaces().windowing or nil
+	local actions = windowing and windowing.actions or nil
+	return actions and actions.scr_in_dir or nil
+end
+
+-- =========================================================================
+-- Public API
+-- =========================================================================
+
+function M.init(args)
+	args = args or {}
+	runtime.workspaces = args.workspaces or args or {}
+	return M
 end
 
 -- =========================================================================
@@ -40,12 +52,12 @@ function M.move_tag_to_screen(dir)
 		return
 	end
 
-	if type(deps.scr_in_dir) ~= "function" then
+	local scr_in_dir = scr_in_dir_fn()
+	if type(scr_in_dir) ~= "function" then
 		return
 	end
 
-	local target = deps.scr_in_dir(dir)
-
+	local target = scr_in_dir(dir)
 	if not target then
 		return
 	end

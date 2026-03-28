@@ -10,7 +10,10 @@ end
 
 local M = {
 	actions = nil,
-	api = {},
+	behavior = {},
+	policy = {},
+	runtime = {},
+	ui_mods = {},
 }
 
 local runtime = {
@@ -26,17 +29,6 @@ local function ctx()
 	return runtime.ctx or {}
 end
 
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
-end
-
 local function cfg()
 	return ctx().cfg or {}
 end
@@ -45,28 +37,8 @@ local function ui()
 	return ctx().ui or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function group_api(name)
-	return api()[name] or {}
-end
-
-local function behavior_api()
-	return group_api("behavior")
-end
-
-local function policy_api()
-	return group_api("policy")
-end
-
-local function runtime_api()
-	return group_api("runtime")
-end
-
-local function ui_api()
-	return group_api("ui")
+local function shell()
+	return ctx().shell or {}
 end
 
 local function init_module(mod, args)
@@ -90,15 +62,15 @@ local function build_windowing()
 	local conf = cfg()
 	local windowing_cfg = conf.windowing or {}
 
-	local Behavior = behavior_api()
-	local Policy = policy_api()
-	local RuntimeMods = runtime_api()
-	local UI = ui_api()
+	local Behavior = M.behavior or {}
+	local Policy = M.policy or {}
+	local RuntimeMods = M.runtime or {}
+	local UI = M.ui_mods or {}
 
 	return {
-		ctx = c,
 		cfg = conf,
 		ui = ui(),
+		shell = shell(),
 		input = c.input or {},
 		modkey = c.modkey,
 		mouse = c.mouse,
@@ -130,9 +102,7 @@ local function build_windowing()
 		theme = UI.theme,
 		titlebar_buttons = UI.titlebar_buttons,
 
-		max_policy = (c.policy and c.policy.max_policy)
-			or (c.workspaces and c.workspaces.policy and c.workspaces.policy.max_policy)
-			or nil,
+		workspaces = shell().workspaces or nil,
 	}
 end
 
@@ -167,46 +137,36 @@ end
 
 function M.init(args)
 	runtime.ctx = args or {}
-	ensure_ctx_roots()
 
-	local c = ctx()
-	local conf = cfg()
-
-	M.api = {
-		behavior = {
-			focus = safe_require("shell.windowing.behavior.focus"),
-			fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
-			titlebars = safe_require("shell.windowing.behavior.titlebars"),
-		},
-		policy = {
-			clients = safe_require("shell.windowing.policy.clients"),
-			floating = safe_require("shell.windowing.policy.floating"),
-			rules = safe_require("shell.windowing.policy.rules"),
-		},
-		runtime = {
-			actions = safe_require("shell.windowing.runtime.actions"),
-			minimized = safe_require("shell.windowing.runtime.minimized"),
-			navigation = safe_require("shell.windowing.runtime.navigation"),
-			signals = safe_require("shell.windowing.runtime.signals"),
-			state = safe_require("shell.windowing.runtime.state"),
-		},
-		ui = {
-			container = safe_require("shell.windowing.ui.container"),
-			theme = safe_require("shell.windowing.ui.theme"),
-			titlebar_buttons = safe_require("shell.windowing.ui.titlebar_buttons"),
-		},
+	M.behavior = {
+		focus = safe_require("shell.windowing.behavior.focus"),
+		fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
+		titlebars = safe_require("shell.windowing.behavior.titlebars"),
 	}
 
-	c.shell.windowing = M
-	c.features.windowing = M
-	c.api.windowing = M
-	c.external.windowing = M
-	c.cfg.api.windowing = M
+	M.policy = {
+		clients = safe_require("shell.windowing.policy.clients"),
+		floating = safe_require("shell.windowing.policy.floating"),
+		rules = safe_require("shell.windowing.policy.rules"),
+	}
+
+	M.runtime = {
+		actions = safe_require("shell.windowing.runtime.actions"),
+		minimized = safe_require("shell.windowing.runtime.minimized"),
+		navigation = safe_require("shell.windowing.runtime.navigation"),
+		signals = safe_require("shell.windowing.runtime.signals"),
+		state = safe_require("shell.windowing.runtime.state"),
+	}
+
+	M.ui_mods = {
+		container = safe_require("shell.windowing.ui.container"),
+		theme = safe_require("shell.windowing.ui.theme"),
+		titlebar_buttons = safe_require("shell.windowing.ui.titlebar_buttons"),
+	}
 
 	runtime.windowing = build_windowing()
-	M.api.windowing = runtime.windowing
-
 	local windowing = runtime.windowing
+	local conf = windowing.cfg
 
 	-- ---------------------------------------------------------------------
 	-- Policy

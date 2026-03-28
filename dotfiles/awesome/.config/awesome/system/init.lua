@@ -1,11 +1,6 @@
 -- ~/.config/awesome/system/init.lua
-local gears = require("gears")
-
 local config = require("system.config")
 local errors = require("system.errors")
-
-local Context = require("lib.context")
-local Compat = require("lib.compat")
 
 local M = {
 	config = config,
@@ -42,6 +37,17 @@ local function deep_merge(dst, src)
 	return dst
 end
 
+local function build_root_ctx(cfg)
+	return {
+		cfg = cfg,
+		ui = nil,
+		input = nil,
+		shell = nil,
+		system = {},
+		modkey = cfg.input and cfg.input.modkey or nil,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -61,24 +67,15 @@ function M.init(overrides)
 		M.errors.hook()
 	end
 
+	local ctx = build_root_ctx(cfg)
+
 	-- ---------------------------------------------------------------------
 	-- UI
 	-- ---------------------------------------------------------------------
 
 	local UI = require("ui")
-	local ui_mod = UI.init({
+	ctx.ui = UI.init({
 		cfg = cfg,
-	})
-	local ui = ui_mod.get()
-
-	-- ---------------------------------------------------------------------
-	-- Context
-	-- ---------------------------------------------------------------------
-
-	local ctx = Context.new({
-		cfg = cfg,
-		ui = ui,
-		modkey = cfg.input and cfg.input.modkey,
 	})
 
 	-- ---------------------------------------------------------------------
@@ -89,51 +86,56 @@ function M.init(overrides)
 	autostart.init(cfg)
 
 	-- ---------------------------------------------------------------------
-	-- Input
-	-- ---------------------------------------------------------------------
-
-	local Input = require("input")
-	local input = Input.init(ctx)
-
-	-- ---------------------------------------------------------------------
 	-- Shell
 	-- ---------------------------------------------------------------------
 
 	local Shell = require("shell")
-	Shell.init(ctx)
+	ctx.shell = Shell.init({
+		cfg = ctx.cfg,
+		ui = ctx.ui,
+		modkey = ctx.modkey,
+	})
+
+	-- ---------------------------------------------------------------------
+	-- Input
+	-- ---------------------------------------------------------------------
+
+	local Input = require("input")
+	ctx.input = Input.init({
+		cfg = ctx.cfg,
+		ui = ctx.ui,
+		shell = ctx.shell,
+		modkey = ctx.modkey,
+	})
 
 	-- ---------------------------------------------------------------------
 	-- Session State
 	-- ---------------------------------------------------------------------
 
 	local SessionState = require("system.session_state")
-	local session_state = SessionState.init(ctx)
+	ctx.system.session_state = SessionState.init({
+		cfg = ctx.cfg,
+		ui = ctx.ui,
+		shell = ctx.shell,
+		input = ctx.input,
+		system = ctx.system,
+		modkey = ctx.modkey,
+	})
 
-	session_state.attach_signals()
-	session_state.restore_on_start()
-
-	-- ---------------------------------------------------------------------
-	-- Compatibility
-	-- ---------------------------------------------------------------------
-
-	Compat.apply(ctx)
-
-	-- ---------------------------------------------------------------------
-	-- Runtime hooks
-	-- ---------------------------------------------------------------------
-
-	session_state.attach_signals()
-	session_state.restore_on_start()
+	if ctx.system.session_state then
+		ctx.system.session_state.attach_signals()
+		ctx.system.session_state.restore_on_start()
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Apply Input
 	-- ---------------------------------------------------------------------
 
-	if input and input.apply then
-		input.apply(cfg)
+	if ctx.input and ctx.input.apply then
+		ctx.input.apply(cfg)
 	end
 
-	return cfg
+	return ctx
 end
 
 return M

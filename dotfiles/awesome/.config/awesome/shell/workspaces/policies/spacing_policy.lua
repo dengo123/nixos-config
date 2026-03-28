@@ -1,7 +1,6 @@
 -- ~/.config/awesome/shell/workspaces/policies/spacing_policy.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
-local gears = require("gears")
 
 local M = {}
 
@@ -15,6 +14,15 @@ local function tags_cfg()
 	return runtime_cfg.tags or {}
 end
 
+local function max_cfg()
+	local tags = tags_cfg()
+	local max = tags.max or {}
+
+	return {
+		padding = (max.padding == true),
+	}
+end
+
 local function resolve_gap()
 	local gap = tonumber(tags_cfg().gap)
 	assert(gap ~= nil, "workspaces.spacing_policy: cfg.tags.gap fehlt/ungueltig")
@@ -25,11 +33,7 @@ local function is_max_layout(layout)
 	return layout == awful.layout.suit.max or layout == awful.layout.suit.max.fullscreen
 end
 
-local function is_max_fullscreen_layout(layout)
-	return layout == awful.layout.suit.max.fullscreen
-end
-
-local function apply_beautiful_spacing(layout)
+local function apply_beautiful_spacing()
 	local gap = resolve_gap()
 
 	beautiful.useless_gap = gap
@@ -38,7 +42,28 @@ local function apply_beautiful_spacing(layout)
 	beautiful.max_pad_same_as_gap = true
 end
 
--- debug
+local function clear_screen_padding(s)
+	if not s then
+		return
+	end
+
+	s.padding = nil
+end
+
+local function apply_max_padding(s)
+	if not s then
+		return
+	end
+
+	local gap = resolve_gap()
+
+	s.padding = {
+		left = gap,
+		right = gap,
+		top = gap,
+		bottom = gap,
+	}
+end
 
 -- =========================================================================
 -- Apply
@@ -51,26 +76,18 @@ local function apply(s)
 
 	local t = s.selected_tag
 	if not t then
-		awful.screen.padding(s, nil)
+		clear_screen_padding(s)
 		return
 	end
 
-	apply_beautiful_spacing(t.layout)
+	apply_beautiful_spacing()
 
-	if is_max_layout(t.layout) then
-		local gap = resolve_gap()
-
-		awful.screen.padding(s, {
-			left = gap,
-			right = gap,
-			top = gap,
-			bottom = gap,
-		})
-
+	if is_max_layout(t.layout) and max_cfg().padding == true then
+		apply_max_padding(s)
 		return
 	end
 
-	awful.screen.padding(s, nil)
+	clear_screen_padding(s)
 end
 
 -- =========================================================================
@@ -95,6 +112,8 @@ function M.init(cfg)
 			apply(t.screen)
 		end
 	end)
+
+	return M
 end
 
 return M

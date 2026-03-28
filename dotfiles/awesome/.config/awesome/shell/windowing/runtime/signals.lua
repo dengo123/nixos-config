@@ -17,15 +17,15 @@ local function windowing()
 	return runtime.windowing or {}
 end
 
-local function focus_api()
+local function focus_mod()
 	return windowing().focus
 end
 
-local function container_api()
+local function container_mod()
 	return windowing().container
 end
 
-local function titlebars_api()
+local function titlebars_mod()
 	return windowing().titlebars
 end
 
@@ -34,7 +34,7 @@ local function attach_titlebar_fn()
 end
 
 local function restyle(c)
-	local Container = container_api()
+	local Container = container_mod()
 
 	if Container and type(Container.apply) == "function" then
 		Container.apply(c)
@@ -42,10 +42,10 @@ local function restyle(c)
 end
 
 local function titlebars_enabled_for(c)
-	local Titlebars = titlebars_api()
+	local Titlebars = titlebars_mod()
 
 	if Titlebars and type(Titlebars.enabled_for) == "function" then
-		return Titlebars.enabled_for(c, windowing())
+		return Titlebars.enabled_for(c)
 	end
 
 	return true
@@ -106,7 +106,7 @@ local function register_signals()
 		end)
 	end
 
-	local Focus = focus_api()
+	local Focus = focus_mod()
 
 	if Focus and Focus.on_mouse_enter then
 		client.connect_signal("mouse::enter", function(c)
@@ -159,11 +159,6 @@ function M.apply(args)
 
 	if args.windowing then
 		runtime.windowing = args.windowing
-	else
-		local w = runtime.windowing
-		for k, v in pairs(args) do
-			w[k] = v
-		end
 	end
 
 	register_signals()

@@ -3,36 +3,39 @@ local awful = require("awful")
 
 local M = {}
 
-local runtime_cfg = {}
-local runtime_api = {}
+local runtime = {
+	workspaces = {},
+	cfg = {},
+	rotation_handler = nil,
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function current_api()
-	return runtime_api or {}
+local function workspaces()
+	return runtime.workspaces or {}
 end
 
-local function layouts_api()
-	return current_api().runtime and current_api().runtime.layouts or nil
+local function cfg()
+	return runtime.cfg or {}
 end
 
-local function tags_cfg()
-	return runtime_cfg.tags or {}
+local function layouts_mod()
+	return workspaces().layouts
 end
 
 local function mode()
-	local Layouts = layouts_api()
-	return Layouts and Layouts.mode and Layouts.mode(runtime_cfg) or "tiling"
+	local Layouts = layouts_mod()
+	return (Layouts and type(Layouts.mode) == "function" and Layouts.mode(cfg())) or "tiling"
 end
 
 local function is_horizontal_screen(s)
-	return s.geometry.width >= s.geometry.height
+	return s and s.geometry and s.geometry.width >= s.geometry.height
 end
 
 local function expand_entry(entry, s)
-	local Layouts = layouts_api()
+	local Layouts = layouts_mod()
 	local horizontal = is_horizontal_screen(s)
 
 	if type(entry) ~= "string" then
@@ -51,17 +54,17 @@ local function expand_entry(entry, s)
 		return horizontal and awful.layout.suit.tile.left or awful.layout.suit.tile.bottom
 	end
 
-	return Layouts and Layouts.resolve and Layouts.resolve(entry) or entry
+	return (Layouts and type(Layouts.resolve) == "function" and Layouts.resolve(entry)) or entry
 end
 
 local function allowed_for(s)
-	local Layouts = layouts_api()
+	local Layouts = layouts_mod()
 
 	if mode() == "floating" then
 		return { awful.layout.suit.floating }
 	end
 
-	local include = (Layouts and Layouts.resolve_include and Layouts.resolve_include(runtime_cfg)) or {}
+	local include = (Layouts and type(Layouts.resolve_include) == "function" and Layouts.resolve_include(cfg())) or {}
 	local out = {}
 
 	for _, entry in ipairs(include) do
@@ -81,26 +84,32 @@ local function in_allowed(current, allowed)
 	return false
 end
 
+local function same_layout_list(a, b)
+	if a == b then
+		return true
+	end
+
+	if type(a) ~= "table" or type(b) ~= "table" or #a ~= #b then
+		return false
+	end
+
+	for i, layout in ipairs(b) do
+		if a[i] ~= layout then
+			return false
+		end
+	end
+
+	return true
+end
+
 local function set_tag_layouts_for_screen(t, s)
 	if not (t and s) then
 		return
 	end
 
 	local allowed = allowed_for(s)
-	local same = true
 
-	if not t.layouts or #t.layouts ~= #allowed then
-		same = false
-	else
-		for i, layout in ipairs(allowed) do
-			if t.layouts[i] ~= layout then
-				same = false
-				break
-			end
-		end
-	end
-
-	if not same then
+	if not same_layout_list(t.layouts, allowed) then
 		t.layouts = allowed
 	end
 end
@@ -136,13 +145,14 @@ local function normalize_for_screen(layout, s)
 end
 
 local function fallback_layout(s)
-	local Layouts = layouts_api()
+	local Layouts = layouts_mod()
 
 	if mode() == "floating" then
 		return awful.layout.suit.floating
 	end
 
-	return expand_entry((Layouts and Layouts.default_name and Layouts.default_name(runtime_cfg)) or "max", s)
+	local default_name = (Layouts and type(Layouts.default_name) == "function" and Layouts.default_name(cfg())) or "max"
+	return expand_entry(default_name, s)
 end
 
 -- =========================================================================
@@ -192,6 +202,15 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	args = args or {}
+
+	runtime.workspaces = args.workspaces or runtime.workspaces
+	runtime.cfg = args.cfg or (runtime.workspaces and runtime.workspaces.cfg) or args or {}
+
+	return M
+end
+
 function M.apply_layout_policy(s)
 	s = s or awful.screen.focused()
 
@@ -208,20 +227,24 @@ function M.apply_layout_policy_all(s)
 end
 
 function M.on_screen_rotation()
-	screen.disconnect_signal("property::geometry", M.apply_layout_policy_all)
+	if runtime.rotation_handler then
+		screen.disconnect_signal("property::geometry", runtime.rotation_handler)
+	end
 
-	screen.connect_signal("property::geometry", function()
+	runtime.rotation_handler = function()
 		for s in screen do
 			enforce_all_on_screen(s)
 		end
-	end)
+	end
+
+	screen.connect_signal("property::geometry", runtime.rotation_handler)
 end
 
 function M.init_enforcement(args)
 	args = args or {}
 
-	runtime_cfg = args.cfg or args or {}
-	runtime_api = args.api or {}
+	runtime.workspaces = args.workspaces or runtime.workspaces
+	runtime.cfg = args.cfg or (runtime.workspaces and runtime.workspaces.cfg) or args or {}
 
 	tag.disconnect_signal("property::layout", enforce_on_tag)
 	tag.connect_signal("property::layout", enforce_on_tag)

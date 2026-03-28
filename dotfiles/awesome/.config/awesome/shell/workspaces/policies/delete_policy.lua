@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/workspaces/policies/client_policy.lua
+-- ~/.config/awesome/shell/workspaces/policies/delete_policy.lua
 local M = {}
 
 local runtime_cfg = {

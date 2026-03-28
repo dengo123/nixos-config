@@ -1,23 +1,21 @@
--- ~/.config/awesome/ui/wallpaper/config.lua
+-- ~/.config/awesome/ui/wallpaper/controller.lua
 local beautiful = require("beautiful")
 local gfs = require("gears.filesystem")
 local Themes = require("ui.themes")
 
 local M = {}
 
-local runtime_cfg = {}
+local runtime = {
+	cfg = {},
+}
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
 local function wallpaper_cfg()
-	local ui_cfg = runtime_cfg.ui or {}
+	local ui_cfg = runtime.cfg.ui or {}
 	return ui_cfg.wallpaper or {}
-end
-
-local function fallback_source()
-	return gfs.get_configuration_dir() .. "ui/assets/bliss2d.png"
 end
 
 local function deepcopy(value)
@@ -66,7 +64,7 @@ local function expand_source_path(source)
 end
 
 local function theme_wallpaper_source()
-	local theme = Themes.resolve(runtime_cfg)
+	local theme = Themes.resolve(runtime.cfg)
 	local wallpaper = (theme and theme.wallpaper) or {}
 	return wallpaper.source
 end
@@ -86,7 +84,7 @@ local function resolve_source(source)
 		return beautiful.wallpaper
 	end
 
-	return fallback_source()
+	return nil
 end
 
 local function normalize_rotation(rotation)
@@ -233,7 +231,7 @@ end
 -- =========================================================================
 
 function M.set_runtime_cfg(cfg)
-	runtime_cfg = cfg or {}
+	runtime.cfg = cfg or {}
 end
 
 function M.get()

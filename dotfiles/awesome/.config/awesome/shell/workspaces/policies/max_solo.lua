@@ -1,29 +1,30 @@
 -- ~/.config/awesome/shell/workspaces/policies/max_solo.lua
+local awful = require("awful")
 local gears = require("gears")
 
 local M = {}
 
 local runtime = {
-	ctx = {},
+	workspaces = {},
 	signals_ready = false,
 	primary_by_tag = setmetatable({}, { __mode = "k" }),
+	is_enabled = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
+local function workspaces()
+	return runtime.workspaces or {}
 end
 
 local function minimized_api()
-	local c = ctx()
+	return workspaces().minimized or nil
+end
 
-	return (c.services and c.services.minimized)
-		or (c.external and c.external.minimized)
-		or (c.api and c.api.minimized)
-		or nil
+local function solo_enabled()
+	return type(runtime.is_enabled) == "function" and runtime.is_enabled() == true
 end
 
 local function current_tag(s)
@@ -152,23 +153,95 @@ local function relevant_tag_for_client(c)
 	return c.first_tag
 end
 
+local function activate_target(c)
+	if not (c and c.valid) then
+		return false
+	end
+
+	if c.screen and c.screen.valid then
+		awful.screen.focus(c.screen)
+	end
+
+	if c.minimized then
+		c.minimized = false
+	end
+
+	remove_from_minimized(c)
+	c:emit_signal("request::activate", "max_solo_restore", { raise = true })
+
+	return true
+end
+
+local function visible_focus_candidate_for_tag(t)
+	if not t then
+		return nil
+	end
+
+	local remembered = get_primary(t)
+	if remembered and remembered.valid and client_on_tag(remembered, t) and remembered.screen == t.screen then
+		return remembered
+	end
+
+	for _, c in ipairs(tag_clients(t, true)) do
+		if c.valid and c.screen == t.screen then
+			return c
+		end
+	end
+
+	return nil
+end
+
+local function ensure_focus_after_change(t, is_max_layout_fn)
+	if not solo_enabled() then
+		return
+	end
+
+	if not (t and t.screen and type(is_max_layout_fn) == "function" and is_max_layout_fn(t.screen)) then
+		return
+	end
+
+	local focused = client.focus
+	if
+		focused
+		and focused.valid
+		and focused.screen == t.screen
+		and client_on_tag(focused, t)
+		and not focused.minimized
+	then
+		return
+	end
+
+	local target = visible_focus_candidate_for_tag(t)
+	if not target then
+		return
+	end
+
+	if activate_target(target) then
+		M.apply_for_tag(t, target, is_max_layout_fn)
+	end
+end
+
 -- =========================================================================
 -- Core
 -- =========================================================================
 
 function M.apply_for_tag(t, focused, is_max_layout_fn)
+	if not solo_enabled() then
+		return
+	end
+
 	if not (t and t.screen and type(is_max_layout_fn) == "function" and is_max_layout_fn(t.screen)) then
 		return
 	end
 
 	local keep = {}
-
 	local primary = resolve_primary(t, focused)
+
 	if primary and primary.valid then
 		keep[primary] = true
 	end
 
-	if focused and focused.valid and client_on_tag(focused, t) then
+	if focused and focused.valid and client_on_tag(focused, t) and not focused.minimized and focused.floating then
 		keep[focused] = true
 	end
 
@@ -188,6 +261,10 @@ function M.apply_for_tag(t, focused, is_max_layout_fn)
 end
 
 function M.apply_from_screen(s, is_max_layout_fn)
+	if not solo_enabled() then
+		return
+	end
+
 	local t = current_tag(s)
 	if not t then
 		return
@@ -197,6 +274,10 @@ function M.apply_from_screen(s, is_max_layout_fn)
 end
 
 function M.apply_from_focus(c, is_max_layout_fn)
+	if not solo_enabled() then
+		return
+	end
+
 	local t = relevant_tag_for_client(c)
 	if not t then
 		return
@@ -215,61 +296,135 @@ function M.init_signals(args)
 	end
 
 	args = args or {}
-	runtime.ctx = args.ctx or args or {}
+	runtime.workspaces = args.workspaces or runtime.workspaces
+	runtime.is_enabled = args.is_enabled
 	local is_max_layout_fn = args.is_max_layout
 
 	runtime.signals_ready = true
 
 	client.connect_signal("focus", function(c)
+		if not solo_enabled() then
+			return
+		end
+
 		if not (c and c.valid) then
 			return
 		end
 
 		gears.timer.delayed_call(function()
-			M.apply_from_focus(c, is_max_layout_fn)
+			if solo_enabled() then
+				M.apply_from_focus(c, is_max_layout_fn)
+			end
 		end)
 	end)
 
 	client.connect_signal("manage", function(c)
+		if not solo_enabled() then
+			return
+		end
+
 		gears.timer.delayed_call(function()
-			M.apply_from_focus(c, is_max_layout_fn)
+			if solo_enabled() then
+				M.apply_from_focus(c, is_max_layout_fn)
+			end
 		end)
 	end)
 
 	client.connect_signal("property::floating", function(c)
+		if not solo_enabled() then
+			return
+		end
+
 		gears.timer.delayed_call(function()
-			M.apply_from_focus(c, is_max_layout_fn)
+			if solo_enabled() then
+				M.apply_from_focus(c, is_max_layout_fn)
+			end
+		end)
+	end)
+
+	client.connect_signal("property::minimized", function(c)
+		if not solo_enabled() then
+			return
+		end
+
+		local t = relevant_tag_for_client(c)
+		if not t then
+			return
+		end
+
+		gears.timer.delayed_call(function()
+			if not solo_enabled() then
+				return
+			end
+
+			M.apply_for_tag(t, client.focus, is_max_layout_fn)
+			ensure_focus_after_change(t, is_max_layout_fn)
 		end)
 	end)
 
 	client.connect_signal("unmanage", function(c)
+		if not solo_enabled() then
+			return
+		end
+
 		local t = relevant_tag_for_client(c)
-		if t and get_primary(t) == c then
+		local s = c and c.screen or nil
+		local was_primary = t and get_primary(t) == c or false
+
+		if was_primary and t then
 			set_primary(t, nil)
 		end
 
 		gears.timer.delayed_call(function()
-			M.apply_from_screen(c and c.screen or nil, is_max_layout_fn)
+			if not solo_enabled() then
+				return
+			end
+
+			if s and s.valid then
+				M.apply_from_screen(s, is_max_layout_fn)
+			end
+
+			if t then
+				ensure_focus_after_change(t, is_max_layout_fn)
+			end
 		end)
 	end)
 
 	tag.connect_signal("property::layout", function(t)
+		if not solo_enabled() then
+			return
+		end
+
 		if not (t and t.screen and t.selected) then
 			return
 		end
 
 		gears.timer.delayed_call(function()
+			if not solo_enabled() then
+				return
+			end
+
 			M.apply_from_screen(t.screen, is_max_layout_fn)
+			ensure_focus_after_change(t, is_max_layout_fn)
 		end)
 	end)
 
 	tag.connect_signal("property::selected", function(t)
+		if not solo_enabled() then
+			return
+		end
+
 		if not (t and t.screen and t.selected) then
 			return
 		end
 
 		gears.timer.delayed_call(function()
+			if not solo_enabled() then
+				return
+			end
+
 			M.apply_from_screen(t.screen, is_max_layout_fn)
+			ensure_focus_after_change(t, is_max_layout_fn)
 		end)
 	end)
 end

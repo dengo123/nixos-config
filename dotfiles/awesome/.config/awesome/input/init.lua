@@ -11,10 +11,8 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
 	globalkeys = nil,
 	global = {},
-	runtime = {},
 	client = {},
 }
 
@@ -38,42 +36,14 @@ local function ui()
 	return ctx().ui or {}
 end
 
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.input = c.input or M
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
+local function shell()
+	return ctx().shell or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function group_api(name)
-	return api()[name] or {}
-end
-
-local function global_api()
-	return group_api("global")
-end
-
-local function runtime_api()
-	return group_api("runtime")
-end
-
-local function client_api()
-	return group_api("client")
-end
-
-local function global_mod(name)
-	return global_api()[name]
-end
-
-local function client_mod(name)
-	return client_api()[name]
+local function init_module(mod, args)
+	if type(mod) == "table" and type(mod.init) == "function" then
+		mod.init(args)
+	end
 end
 
 local function call_key_factory(mod, ...)
@@ -88,10 +58,18 @@ local function call_key_factory(mod, ...)
 	return {}
 end
 
-local function init_module(mod, args)
-	if type(mod) == "table" and type(mod.init) == "function" then
-		mod.init(args)
-	end
+local function shell_launchers()
+	return shell().launchers or nil
+end
+
+local function shell_windowing_actions()
+	local Windowing = shell().windowing
+	return (Windowing and Windowing.actions) or {}
+end
+
+local function shell_workspaces_actions()
+	local Workspaces = shell().workspaces
+	return (Workspaces and Workspaces.actions) or {}
 end
 
 local function build_globalkeys()
@@ -99,28 +77,24 @@ local function build_globalkeys()
 	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
+	local windowing_actions = shell_windowing_actions()
+	local workspace_actions = shell_workspaces_actions()
+	local launchers = shell_launchers()
+
 	return join(
-		call_key_factory(global_mod("apps"), modkey, conf),
-		call_key_factory(global_mod("awesome"), modkey),
-		call_key_factory(global_mod("display"), modkey, conf),
-		call_key_factory(global_mod("layout"), modkey),
-		call_key_factory(global_mod("logoff"), modkey, conf.api and conf.api.launchers),
-		call_key_factory(global_mod("media"), modkey, conf),
-		call_key_factory(global_mod("menu"), modkey, conf),
-		call_key_factory(global_mod("notify"), modkey, conf),
-		call_key_factory(global_mod("power"), modkey, conf.api and conf.api.launchers),
-		call_key_factory(global_mod("run"), modkey, conf.api and conf.api.launchers),
-		call_key_factory(
-			global_mod("screens"),
-			modkey,
-			conf.actions and conf.actions.windowing and conf.actions.windowing.screens
-		),
-		call_key_factory(global_mod("screenshot"), modkey, conf),
-		call_key_factory(
-			global_mod("tags"),
-			modkey,
-			conf.actions and conf.actions.workspaces and conf.actions.workspaces.tags
-		)
+		call_key_factory(M.global.apps, modkey, conf),
+		call_key_factory(M.global.awesome, modkey),
+		call_key_factory(M.global.display, modkey, conf),
+		call_key_factory(M.global.layout, modkey),
+		call_key_factory(M.global.logoff, modkey, launchers),
+		call_key_factory(M.global.media, modkey, conf),
+		call_key_factory(M.global.menu, modkey, conf),
+		call_key_factory(M.global.notify, modkey, conf),
+		call_key_factory(M.global.power, modkey, launchers),
+		call_key_factory(M.global.run, modkey, launchers),
+		call_key_factory(M.global.screens, modkey, windowing_actions.screens),
+		call_key_factory(M.global.screenshot, modkey, conf),
+		call_key_factory(M.global.tags, modkey, workspace_actions.tags)
 	)
 end
 
@@ -129,41 +103,17 @@ local function build_clientkeys()
 	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
+	local windowing_actions = shell_windowing_actions()
+	local workspace_actions = shell_workspaces_actions()
+
 	return join(
-		call_key_factory(client_mod("kill"), modkey),
-		call_key_factory(client_mod("mouse"), modkey),
-		call_key_factory(
-			client_mod("navigation"),
-			modkey,
-			conf.actions and conf.actions.windowing and conf.actions.windowing.clients
-		),
-		call_key_factory(
-			client_mod("screens"),
-			modkey,
-			conf.actions and conf.actions.windowing and conf.actions.windowing.screens
-		),
-		call_key_factory(client_mod("state"), modkey, conf),
-		call_key_factory(
-			client_mod("tags"),
-			modkey,
-			conf.actions and conf.actions.workspaces and conf.actions.workspaces.tags
-		)
+		call_key_factory(M.client.kill, modkey),
+		call_key_factory(M.client.mouse, modkey),
+		call_key_factory(M.client.navigation, modkey, windowing_actions.clients),
+		call_key_factory(M.client.screens, modkey, windowing_actions.screens),
+		call_key_factory(M.client.state, modkey, conf),
+		call_key_factory(M.client.tags, modkey, workspace_actions.tags)
 	)
-end
-
-local function init_runtimekeys(rootkeys)
-	local conf = cfg()
-	local Runtime = runtime_api()
-
-	init_module(Runtime.escape, {
-		globalkeys = rootkeys,
-		overlays = conf.overlays,
-	})
-
-	init_module(Runtime.notify, {
-		globalkeys = rootkeys,
-		overlays = conf.overlays,
-	})
 end
 
 -- =========================================================================
@@ -172,67 +122,37 @@ end
 
 function M.init(args)
 	runtime.ctx = args or {}
-	ensure_ctx_roots()
 
-	M.api = {
-		ui = ui(),
-		global = {
-			apps = safe_require("input.global.apps"),
-			awesome = safe_require("input.global.awesome"),
-			display = safe_require("input.global.display"),
-			layout = safe_require("input.global.layout"),
-			logoff = safe_require("input.global.logoff"),
-			media = safe_require("input.global.media"),
-			menu = safe_require("input.global.menu"),
-			notify = safe_require("input.global.notify"),
-			power = safe_require("input.global.power"),
-			run = safe_require("input.global.run"),
-			screens = safe_require("input.global.screens"),
-			screenshot = safe_require("input.global.screenshot"),
-			tags = safe_require("input.global.tags"),
-		},
-		runtime = {
-			escape = safe_require("input.runtime.escape"),
-			notify = safe_require("input.runtime.notify"),
-		},
-		client = {
-			kill = safe_require("input.client.kill"),
-			mouse = safe_require("input.client.mouse"),
-			navigation = safe_require("input.client.navigation"),
-			screens = safe_require("input.client.screens"),
-			state = safe_require("input.client.state"),
-			tags = safe_require("input.client.tags"),
-		},
+	M.global = {
+		apps = safe_require("input.global.apps"),
+		awesome = safe_require("input.global.awesome"),
+		display = safe_require("input.global.display"),
+		layout = safe_require("input.global.layout"),
+		logoff = safe_require("input.global.logoff"),
+		media = safe_require("input.global.media"),
+		menu = safe_require("input.global.menu"),
+		notify = safe_require("input.global.notify"),
+		power = safe_require("input.global.power"),
+		run = safe_require("input.global.run"),
+		screens = safe_require("input.global.screens"),
+		screenshot = safe_require("input.global.screenshot"),
+		tags = safe_require("input.global.tags"),
 	}
 
-	M.global = M.api.global or {}
-	M.runtime = M.api.runtime or {}
-	M.client = M.api.client or {}
-
-	-- ---------------------------------------------------------------------
-	-- Compatibility mirrors
-	-- ---------------------------------------------------------------------
-
-	local c = ctx()
-	c.input = M
-	c.api.input = M
-	c.external.input = M
-	c.cfg.api.input = M
-
-	-- ---------------------------------------------------------------------
-	-- Client mouse init
-	-- ---------------------------------------------------------------------
+	M.client = {
+		kill = safe_require("input.client.kill"),
+		mouse = safe_require("input.client.mouse"),
+		navigation = safe_require("input.client.navigation"),
+		screens = safe_require("input.client.screens"),
+		state = safe_require("input.client.state"),
+		tags = safe_require("input.client.tags"),
+	}
 
 	init_module(M.client.mouse, {
-		ctx = c,
 		ui = ui(),
 		cfg = cfg(),
 		input = M,
-		api = {
-			ui = M.api.ui or {},
-			input = M,
-			cfg = cfg(),
-		},
+		shell = shell(),
 	})
 
 	return M
@@ -246,13 +166,11 @@ function M.apply(_cfg)
 	M.globalkeys = rootkeys
 	root.keys(rootkeys)
 
-	init_runtimekeys(rootkeys)
-
 	return M
 end
 
 function M.client_mouse()
-	return client_mod("mouse")
+	return M.client.mouse
 end
 
 return M

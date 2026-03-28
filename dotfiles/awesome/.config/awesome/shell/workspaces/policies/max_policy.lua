@@ -5,7 +5,7 @@ local gears = require("gears")
 local M = {}
 
 local runtime = {
-	ctx = {},
+	workspaces = {},
 	max_solo = false,
 	solo = nil,
 }
@@ -14,25 +14,32 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
+local function workspaces()
+	return runtime.workspaces or {}
 end
 
 local function cfg()
-	return ctx().cfg or {}
+	return workspaces().cfg or {}
 end
 
 local function solo_api()
 	return runtime.solo
 end
 
-local function minimized_api()
-	local c = ctx()
+local function max_cfg()
+	local tags = cfg().tags or {}
+	local max = tags.max or {}
 
-	return (c.services and c.services.minimized)
-		or (c.external and c.external.minimized)
-		or (c.api and c.api.minimized)
-		or nil
+	return {
+		solo = (max.solo == true) or (tags.max_solo == true),
+		padding = (max.padding == true),
+	}
+end
+
+local function minimized_api()
+	local windowing = workspaces().windowing or nil
+	local runtime_mods = windowing and windowing.runtime or nil
+	return runtime_mods and runtime_mods.minimized or nil
 end
 
 local function current_nav_screen()
@@ -204,15 +211,18 @@ end
 function M.init(args)
 	args = args or {}
 
-	runtime.ctx = args
-	runtime.max_solo = ((cfg().tags or {}).max_solo == true)
+	runtime.workspaces = args.workspaces or args or {}
+	runtime.max_solo = (max_cfg().solo == true)
 
 	runtime.solo = require("shell.workspaces.policies.max_solo")
 
 	if runtime.solo and type(runtime.solo.init_signals) == "function" then
 		runtime.solo.init_signals({
-			ctx = ctx(),
+			workspaces = runtime.workspaces,
 			is_max_layout = is_max_layout,
+			is_enabled = function()
+				return runtime.max_solo == true
+			end,
 		})
 	end
 
@@ -261,6 +271,7 @@ end
 
 function M.apply_current(s)
 	local Solo = solo_api()
+
 	if runtime.max_solo == true and Solo and type(Solo.apply_from_screen) == "function" then
 		Solo.apply_from_screen(s or current_nav_screen(), is_max_layout)
 	end

@@ -1,15 +1,24 @@
 -- ~/.config/awesome/shell/workspaces/runtime/sync.lua
 local awful = require("awful")
 
-local Base = require("shell.workspaces.runtime.base")
-
 local M = {}
 
-local sync_busy = false
+local runtime = {
+	workspaces = {},
+	sync_busy = false,
+}
 
 -- =========================================================================
--- Internal
+-- Helpers
 -- =========================================================================
+
+local function workspaces()
+	return runtime.workspaces or {}
+end
+
+local function controller()
+	return workspaces().controller
+end
 
 local function each_screen(fn)
 	for s in screen do
@@ -43,15 +52,13 @@ local function max_index()
 end
 
 local function with_guard(fn)
-	if sync_busy then
+	if runtime.sync_busy then
 		return
 	end
 
-	sync_busy = true
-
+	runtime.sync_busy = true
 	local ok, err = pcall(fn)
-
-	sync_busy = false
+	runtime.sync_busy = false
 
 	if not ok then
 		error(err)
@@ -62,10 +69,21 @@ end
 -- Public API
 -- =========================================================================
 
+function M.init(args)
+	args = args or {}
+	runtime.workspaces = args.workspaces or args or {}
+	return M
+end
+
 function M.add()
+	local Controller = controller()
+	if not Controller then
+		return
+	end
+
 	with_guard(function()
 		each_screen(function(s)
-			Base.add_silent(s)
+			Controller.add_silent(s)
 		end)
 
 		local idx = current_index()
@@ -77,34 +95,49 @@ function M.add()
 end
 
 function M.add_silent()
+	local Controller = controller()
+	if not Controller then
+		return
+	end
+
 	with_guard(function()
 		each_screen(function(s)
-			Base.add_silent(s)
+			Controller.add_silent(s)
 		end)
 	end)
 end
 
 function M.delete_current()
+	local Controller = controller()
+	if not Controller then
+		return
+	end
+
 	local idx = current_index()
 
 	with_guard(function()
 		each_screen(function(s)
 			if s.tags[idx] then
 				awful.screen.focus(s)
-				Base.delete_current(s)
+				Controller.delete_current(s)
 			end
 		end)
 	end)
 end
 
 function M.delete_current_force()
+	local Controller = controller()
+	if not Controller then
+		return
+	end
+
 	local idx = current_index()
 
 	with_guard(function()
 		each_screen(function(s)
 			if s.tags[idx] then
 				awful.screen.focus(s)
-				Base.delete_current_force(s)
+				Controller.delete_current_force(s)
 			end
 		end)
 	end)
@@ -149,7 +182,7 @@ function M.init_selection_sync()
 	end
 
 	M._on_tag_selected = function(t)
-		if sync_busy or not (t and t.selected and t.screen) then
+		if runtime.sync_busy or not (t and t.selected and t.screen) then
 			return
 		end
 
