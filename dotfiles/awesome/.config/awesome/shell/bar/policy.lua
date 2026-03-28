@@ -3,17 +3,9 @@ local awful = require("awful")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function is_landscape_screen(s)
 	return s and s.geometry and s.geometry.width >= s.geometry.height
@@ -34,11 +26,6 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
-
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
 
 function M.matches_screen_policy(s, policy)
 	local primary = screen.primary or awful.screen.focused()

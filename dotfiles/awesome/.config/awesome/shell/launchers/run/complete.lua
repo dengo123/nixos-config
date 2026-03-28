@@ -1,10 +1,6 @@
 -- ~/.config/awesome/shell/launchers/run/complete.lua
 local C = {}
 
-local runtime = {
-	ctx = {},
-}
-
 local CACHE = {
 	apps = false,
 	home = false,
@@ -13,10 +9,6 @@ local CACHE = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function split_path(p)
 	local out = {}
@@ -179,11 +171,6 @@ end
 -- =========================================================================
 -- Cache
 -- =========================================================================
-
-function C.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return C
-end
 
 function C.ensure()
 	if not CACHE.apps then

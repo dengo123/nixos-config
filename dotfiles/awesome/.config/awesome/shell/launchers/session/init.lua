@@ -11,36 +11,34 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
-	_handle = nil,
+	container = nil,
+	layout = nil,
+	icons = nil,
+	theme = nil,
+	variants = {},
+	_handle = {},
 }
 
 local runtime = {
-	ctx = {},
+	cfg = {},
+	ui = {},
+	launchers = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
 local function cfg()
-	return ctx().cfg or {}
+	return runtime.cfg or {}
 end
 
 local function ui()
-	return ctx().ui or {}
+	return runtime.ui or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function mod(name)
-	return api()[name]
+local function launchers()
+	return runtime.launchers
 end
 
 local function button_label(spec, fallback)
@@ -64,17 +62,16 @@ local function button_id(spec, fallback)
 end
 
 local function resolve_theme(conf, overrides)
-	local Theme = mod("theme")
+	local Theme = M.theme
 
 	if Theme and type(Theme.init) == "function" then
 		Theme.init({
-			ctx = ctx(),
 			cfg = conf or {},
-			ui = api().ui or ui(),
+			ui = ui(),
 		})
 	end
 
-	local theme = (Theme and Theme.get and Theme.get()) or {}
+	local theme = (Theme and type(Theme.get) == "function" and Theme.get()) or {}
 
 	if type(overrides) ~= "table" or next(overrides) == nil then
 		return theme
@@ -134,8 +131,10 @@ local function resolve_popup_width(th, required_w)
 end
 
 local function clear_handle_if_closed()
-	if M._handle and M._handle.is_open and not M._handle.is_open() then
-		M._handle = nil
+	local handle = M._handle
+
+	if type(handle.is_open) == "function" and not handle.is_open() then
+		M._handle = {}
 	end
 end
 
@@ -150,36 +149,36 @@ local function resolve_variant(opts)
 end
 
 local function resolve_module(variant)
-	local variants = api().variants or {}
-
 	if variant == "logoff" then
-		return variants.logoff
+		return M.variants.logoff
 	end
 
-	return variants.power
+	return M.variants.power
 end
 
-local function resolve_lib(Lib)
-	return (Lib and Lib.api and Lib.api.lib) or {}
+local function resolve_lib()
+	local L = launchers() or {}
+	return L.lib or {}
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+function M.init(opts)
+	opts = opts or {}
 
-	M.api = {
-		ui = args and args.ui or ui(),
-		container = safe_require("shell.launchers.session.container"),
-		layout = safe_require("shell.launchers.session.layout"),
-		icons = safe_require("shell.launchers.session.icons"),
-		theme = safe_require("shell.launchers.session.theme"),
-		variants = {
-			logoff = safe_require("shell.launchers.session.logoff"),
-			power = safe_require("shell.launchers.session.power"),
-		},
+	runtime.cfg = opts.cfg or runtime.cfg
+	runtime.ui = opts.ui or runtime.ui
+	runtime.launchers = opts.launchers or runtime.launchers
+
+	M.container = safe_require("shell.launchers.session.container")
+	M.layout = safe_require("shell.launchers.session.layout")
+	M.icons = safe_require("shell.launchers.session.icons")
+	M.theme = safe_require("shell.launchers.session.theme")
+	M.variants = {
+		logoff = safe_require("shell.launchers.session.logoff"),
+		power = safe_require("shell.launchers.session.power"),
 	}
 
 	return M
@@ -187,36 +186,47 @@ end
 
 function M.is_open()
 	clear_handle_if_closed()
-	return M._handle and M._handle.is_open and M._handle.is_open() or false
+
+	local handle = M._handle
+	return type(handle.is_open) == "function" and handle.is_open() or false
 end
 
 function M.close()
 	clear_handle_if_closed()
 
-	if M._handle and M._handle.close then
-		M._handle.close()
+	local handle = M._handle
+	if type(handle.close) == "function" then
+		handle.close()
 	end
 
-	M._handle = nil
+	M._handle = {}
 end
 
-function M.open(opts, Lib)
+function M.open(opts)
 	opts = opts or {}
-	Lib = Lib or {}
 
 	if M.is_open() then
 		M.close()
 		return nil
 	end
 
-	local Container = mod("container")
-	local Layout = mod("layout")
-	local Icons = mod("icons")
+	local Container = M.container
+	local Layout = M.layout
+	local Icons = M.icons
 
-	local lib = resolve_lib(Lib)
+	assert(Container and type(Container.build) == "function", "launchers.session.init: container.build fehlt")
+	assert(Layout and type(Layout.build_row) == "function", "launchers.session.init: layout.build_row fehlt")
+
+	local icon_button_fn = Icons and Icons.mk_icon_button or nil
+
+	local lib = resolve_lib()
 	local Popup = lib.popup
 	local Button = lib.button
 	local Actions = lib.actions
+
+	assert(Popup and type(Popup.show) == "function", "launchers.session.init: popup.show fehlt")
+	assert(Button and type(Button.mk_button) == "function", "launchers.session.init: button.mk_button fehlt")
+	assert(Actions and type(Actions.bind) == "function", "launchers.session.init: actions.bind fehlt")
 
 	local conf = opts.cfg or cfg()
 	local th = resolve_theme(conf, opts.theme)
@@ -226,7 +236,7 @@ function M.open(opts, Lib)
 	local Variant = resolve_module(variant)
 
 	local handle = nil
-	local spec = Variant and Variant.build and Variant.build(th, conf) or nil
+	local spec = Variant and type(Variant.build) == "function" and Variant.build(th, conf) or nil
 	local actions = spec and spec.actions or nil
 	local header_title = spec and spec.header_title or nil
 	local cancel_spec = (spec and spec.cancel_label) or th.cancel_label
@@ -235,14 +245,19 @@ function M.open(opts, Lib)
 	local cancel_id = button_id(cancel_spec, "cancel")
 
 	local row, _, required_w = Layout.build_row(actions, th, d, {
-		mk_icon_button = Icons and Icons.mk_icon_button,
+		mk_icon_button = icon_button_fn,
 	}, function()
-		return handle and handle.close
+		local current = handle or M._handle
+		if type(current.close) == "function" then
+			return current.close
+		end
+
+		return nil
 	end)
 
 	local act_cancel = function() end
 
-	local cancel_btn = Button and Button.mk_button and Button.mk_button(cancel_label, function()
+	local cancel_btn = Button.mk_button(cancel_label, function()
 		act_cancel()
 	end)
 
@@ -258,15 +273,15 @@ function M.open(opts, Lib)
 		placement = awful.placement.centered,
 		use_backdrop = (((conf.launchers or {}).session or {})[variant] or {}).backdrop ~= false,
 		group = "launchers",
-		show_root = "with_bars",
+		show_root = false,
 	})
 
-	M._handle = handle
+	M._handle = handle or {}
 
 	local bound = Actions.bind({
 		handle = handle,
 		actions = actions,
-	})
+	}) or {}
 
 	act_cancel = bound[cancel_id] or act_cancel
 

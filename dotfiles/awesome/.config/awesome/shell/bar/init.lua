@@ -9,11 +9,17 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
+	widgets = {},
+	ui = {},
+	wibar = {},
+	policy = nil,
+	behavior = {},
 }
 
 local runtime = {
-	ctx = {},
+	cfg = {},
+	ui = {},
+	shell = {},
 	last_setup_args = nil,
 }
 
@@ -21,101 +27,84 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
+local function cfg()
+	return runtime.cfg or {}
 end
 
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
+local function ui()
+	return runtime.ui or {}
 end
 
-local function api()
-	return M.api or {}
+local function shell()
+	return runtime.shell or {}
 end
 
-local function wibar_api()
-	return api().wibar or {}
+local function menu()
+	return shell().menu
 end
 
-local function wibar_mod(name)
-	return wibar_api()[name]
+local function notify()
+	return shell().notify
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = args or {}
-	ensure_ctx_roots()
+function M.init(opts)
+	opts = opts or {}
 
-	local c = ctx()
+	runtime.cfg = opts.cfg or runtime.cfg
+	runtime.ui = opts.ui or runtime.ui
+	runtime.shell = opts.shell or runtime.shell
 
-	M.api = {
-		root_ui = c.ui or {},
-
-		widgets = {
-			clock = safe_require("shell.bar.widgets.clock"),
-			layoutbox = safe_require("shell.bar.widgets.layoutbox"),
-			notify = safe_require("shell.bar.widgets.notify"),
-			start = safe_require("shell.bar.widgets.start"),
-			systray = safe_require("shell.bar.widgets.systray"),
-			tabs = safe_require("shell.bar.widgets.tabs"),
-			tags = safe_require("shell.bar.widgets.tags"),
-		},
-
-		bar_ui = {
-			start = safe_require("shell.bar.ui.start"),
-			tabs = safe_require("shell.bar.ui.tabs"),
-			wibar = safe_require("shell.bar.ui.wibar"),
-		},
-
-		wibar = {
-			controller = safe_require("shell.bar.wibar.controller"),
-			widgets = safe_require("shell.bar.wibar.widgets"),
-			sections = safe_require("shell.bar.wibar.sections"),
-		},
-
-		policy = safe_require("shell.bar.policy"),
-		reveal = safe_require("shell.bar.reveal"),
+	M.widgets = {
+		clock = safe_require("shell.bar.widgets.clock"),
+		layoutbox = safe_require("shell.bar.widgets.layoutbox"),
+		notify = safe_require("shell.bar.widgets.notify"),
+		start = safe_require("shell.bar.widgets.start"),
+		systray = safe_require("shell.bar.widgets.systray"),
+		tabs = safe_require("shell.bar.widgets.tabs"),
+		tags = safe_require("shell.bar.widgets.tags"),
 	}
 
-	c.shell.bar = M
-	c.features.bar = M
-	c.api.bar = M
-	c.external.bar = M
-	c.cfg.api.bar = M
+	M.ui = {
+		start = safe_require("shell.bar.ui.start"),
+		tabs = safe_require("shell.bar.ui.tabs"),
+		wibar = safe_require("shell.bar.ui.wibar"),
+	}
+
+	M.wibar = {
+		controller = safe_require("shell.bar.wibar.controller"),
+		widgets = safe_require("shell.bar.wibar.widgets"),
+		sections = safe_require("shell.bar.wibar.sections"),
+	}
+
+	M.policy = safe_require("shell.bar.policy")
+	M.behavior = {
+		reveal = safe_require("shell.bar.behavior.reveal"),
+		group_tabs = safe_require("shell.bar.behavior.group_tabs"),
+	}
 
 	return M
 end
 
-function M.setup(s, args)
-	local c = ctx()
+function M.setup(s, opts)
+	opts = opts or {
+		cfg = cfg(),
+		ui = ui(),
+		menu = menu(),
+		notify = notify(),
+	}
 
-	args = args
-		or {
-			cfg = c.cfg,
-			ui = c.ui,
-			menu_api = (c.features and c.features.menu) or (c.shell and c.shell.menu) or (c.api and c.api.menu),
-		}
+	runtime.last_setup_args = opts
 
-	runtime.last_setup_args = args
-
-	local Controller = wibar_mod("controller")
-
+	local Controller = M.wibar.controller
 	if Controller and type(Controller.setup) == "function" then
 		return Controller.setup({
 			screen = s,
-			args = args,
-			api = api(),
-			ctx = c,
+			args = opts,
+			bar = M,
 		})
 	end
 
@@ -123,8 +112,13 @@ function M.setup(s, args)
 end
 
 function M.resync_all()
-	local Controller = wibar_mod("controller")
-	local args = runtime.last_setup_args or {}
+	local Controller = M.wibar.controller
+	local opts = runtime.last_setup_args or {
+		cfg = cfg(),
+		ui = ui(),
+		menu = menu(),
+		notify = notify(),
+	}
 
 	if not (Controller and type(Controller.setup) == "function") then
 		return
@@ -133,9 +127,8 @@ function M.resync_all()
 	for s in screen do
 		Controller.setup({
 			screen = s,
-			args = args,
-			api = api(),
-			ctx = ctx(),
+			args = opts,
+			bar = M,
 		})
 	end
 end

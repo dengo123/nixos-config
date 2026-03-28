@@ -4,17 +4,9 @@ local hotkeys_popup = require("awful.hotkeys_popup")
 
 local Items = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function needs_shell(cmd)
 	if type(cmd) ~= "string" then
@@ -94,53 +86,41 @@ local function mk_item(label, fn_or_submenu, icon)
 	return { label, fn_or_submenu, icon }
 end
 
-local function local_ctx(arg_ctx)
-	return arg_ctx or ctx() or {}
+local function cfg(opts)
+	return (opts and opts.cfg) or {}
 end
 
-local function cfg(arg_ctx)
-	return local_ctx(arg_ctx).cfg or {}
+local function ui(opts)
+	return (opts and opts.ui) or {}
 end
 
-local function api(arg_ctx)
-	return local_ctx(arg_ctx).api or {}
+local function applications_mod(opts)
+	return (opts and opts.applications) or nil
 end
 
-local function resolve_launchers(arg_ctx)
-	local c = local_ctx(arg_ctx)
-
-	return (c.features and c.features.launchers)
-		or (c.shell and c.shell.launchers)
-		or (c.api and c.api.launchers)
-		or package.loaded["shell.launchers"]
-		or require("shell.launchers")
+local function launchers_mod(opts)
+	return (opts and opts.launchers) or nil
 end
 
-local function resolve_applications(arg_ctx)
-	local a = api(arg_ctx)
-
-	return a.applications or (a.api and a.api.applications) or nil
+local function client_actions(conf)
+	return ((((conf or {}).actions or {}).windowing or {}).clients or {})
 end
 
-local function client_actions(arg_cfg)
-	return ((((arg_cfg or {}).actions or {}).windowing or {}).clients or {})
-end
+local function layout_state_label(conf)
+	local actions = client_actions(conf)
 
-local function layout_state_label(arg_cfg)
-	local actions = client_actions(arg_cfg)
-
-	if type(actions.layout_state_mode) == "function" and actions.layout_state_mode(arg_cfg) == "maximized" then
+	if type(actions.layout_state_mode) == "function" and actions.layout_state_mode(conf) == "maximized" then
 		return "Maximize / Restore"
 	end
 
 	return "Floating / Tiling"
 end
 
-local function toggle_layout_state(c, arg_cfg)
-	local actions = client_actions(arg_cfg)
+local function toggle_layout_state(c, conf)
+	local actions = client_actions(conf)
 
 	if type(actions.toggle_layout_state) == "function" then
-		actions.toggle_layout_state(c, arg_cfg)
+		actions.toggle_layout_state(c, conf)
 		return
 	end
 
@@ -153,8 +133,8 @@ local function toggle_layout_state(c, arg_cfg)
 	c:raise()
 end
 
-local function applications_submenu(arg_ctx)
-	local Apps = resolve_applications(arg_ctx)
+local function applications_submenu(opts)
+	local Apps = applications_mod(opts)
 	if not Apps then
 		return {
 			mk_item("Unavailable", function() end, nil),
@@ -183,22 +163,18 @@ end
 -- Public API
 -- =========================================================================
 
-function Items.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return Items
-end
+function Items.build_start(opts)
+	opts = opts or {}
 
-function Items.build_start(arg_ctx)
-	local c = local_ctx(arg_ctx)
-	local conf = cfg(c)
-	local ui = c.ui or {}
+	local conf = cfg(opts)
+	local current_ui = ui(opts)
 
-	local theme_menu = ui.theme and ui.theme.menu
-	local items = (theme_menu and type(theme_menu.items) == "table" and theme_menu.items)
+	local theme_menu = current_ui.theme and current_ui.theme.menu
+	local themed_items = (theme_menu and type(theme_menu.items) == "table" and theme_menu.items)
 		or (conf.menus and type(conf.menus.items) == "table" and conf.menus.items)
 
-	if items then
-		return items
+	if themed_items then
+		return themed_items
 	end
 
 	local apps_cfg = conf.apps or {}
@@ -216,7 +192,8 @@ function Items.build_start(arg_ctx)
 	local browser_name = resolve_label(dynamic_labels, browser_cmd, "Browser")
 
 	local browser_available = cmd_exists(browser_cmd)
-	local desktop_items = applications_submenu(c)
+	local desktop_items = applications_submenu(opts)
+	local launchers = launchers_mod(opts)
 
 	local out = {
 		mk_item(files_name, function()
@@ -243,10 +220,8 @@ function Items.build_start(arg_ctx)
 	table.insert(
 		out,
 		mk_item("Run", function()
-			local launchers = resolve_launchers(c)
 			if launchers and launchers.open and launchers.open.run then
 				launchers.open.run({
-					ctx = c,
 					cfg = conf,
 				})
 			end
@@ -279,10 +254,8 @@ function Items.build_start(arg_ctx)
 	table.insert(
 		out,
 		mk_item("Log Off", function()
-			local launchers = resolve_launchers(c)
 			if launchers and launchers.open and launchers.open.logoff then
 				launchers.open.logoff({
-					ctx = c,
 					cfg = conf,
 				})
 			end
@@ -292,10 +265,8 @@ function Items.build_start(arg_ctx)
 	table.insert(
 		out,
 		mk_item("Shut Down", function()
-			local launchers = resolve_launchers(c)
 			if launchers and launchers.open and launchers.open.power then
 				launchers.open.power({
-					ctx = c,
 					cfg = conf,
 				})
 			end
@@ -305,8 +276,8 @@ function Items.build_start(arg_ctx)
 	return out
 end
 
-function Items.build_clients(clients, arg_ctx)
-	local conf = cfg(arg_ctx)
+function Items.build_clients(clients, opts)
+	local conf = cfg(opts)
 	local c = nil
 
 	for _, cc in ipairs(clients or {}) do

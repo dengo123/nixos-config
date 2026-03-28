@@ -39,7 +39,7 @@ end
 -- =========================================================================
 
 function M.build(modkey, actions)
-	assert(type(actions) == "table", "input.global.tags: actions fehlt/ungueltig")
+	-- assert(type(actions) == "table", "input.global.tags: actions fehlt/ungueltig")
 
 	return awful.util.table.join(
 		awful.key({ modkey, "Control" }, "Right", function()

@@ -7,20 +7,15 @@ local dpi = xr.apply_dpi
 local T = {}
 
 local runtime = {
-	ctx = {},
+	ui = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+local function resolved_theme()
+	local ui = runtime.ui or {}
 	return ui.theme or {}
 end
 
@@ -28,12 +23,12 @@ end
 -- Public API
 -- =========================================================================
 
-function T.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	args = args or {}
+function T.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 
-	local theme = resolved_theme(args)
-	local C = theme.colors or {}
+	local theme = resolved_theme()
+	local colors = theme.colors or {}
 
 	local wibar_height = tonumber(beautiful.wibar_height) or 28
 	local icon_size = math.floor(wibar_height * 0.8)
@@ -53,51 +48,53 @@ function T.init(args)
 	}
 
 	beautiful.tabs_colors = {
-		accent = C.tertiary,
-		focus_bg = C.tertiary,
-		focus_fg = C.text_invert,
-		focus_border = C.tertiary,
+		accent = colors.tertiary,
+		focus_bg = colors.tertiary,
+		focus_fg = colors.text_invert,
+		focus_border = colors.tertiary,
 
-		normal_bg = C.transparent,
-		normal_fg = C.text_invert,
-		normal_border = C.tertiary,
+		normal_bg = colors.transparent,
+		normal_fg = colors.text_invert,
+		normal_border = colors.tertiary,
 
-		minimize_bg = C.transparent,
-		minimize_fg = C.text_invert,
-		minimize_border = C.transparent,
+		minimize_bg = colors.transparent,
+		minimize_fg = colors.text_invert,
+		minimize_border = colors.transparent,
 	}
+
+	return T
 end
 
 function T.get()
-	local S = beautiful.tabs or {}
-	local C = beautiful.tabs_colors or {}
+	local tabs_theme = beautiful.tabs or {}
+	local colors = beautiful.tabs_colors or {}
 
 	return {
-		spacing = S.spacing,
-		radius = S.radius,
-		pad_h = S.pad_h,
-		pad_v = S.pad_v,
+		spacing = tabs_theme.spacing,
+		radius = tabs_theme.radius,
+		pad_h = tabs_theme.pad_h,
+		pad_v = tabs_theme.pad_v,
 
-		icon_size = S.icon_size,
-		title_len = S.title_len,
-		title_offset_y = S.title_offset_y,
-		width_factor = S.width_factor,
+		icon_size = tabs_theme.icon_size,
+		title_len = tabs_theme.title_len,
+		title_offset_y = tabs_theme.title_offset_y,
+		width_factor = tabs_theme.width_factor,
 
-		inactive_border_width = S.inactive_border_width,
+		inactive_border_width = tabs_theme.inactive_border_width,
 
 		colors = {
-			accent = C.accent,
-			focus_bg = C.focus_bg,
-			focus_fg = C.focus_fg,
-			focus_border = C.focus_border,
+			accent = colors.accent,
+			focus_bg = colors.focus_bg,
+			focus_fg = colors.focus_fg,
+			focus_border = colors.focus_border,
 
-			normal_bg = C.normal_bg,
-			normal_fg = C.normal_fg,
-			normal_border = C.normal_border,
+			normal_bg = colors.normal_bg,
+			normal_fg = colors.normal_fg,
+			normal_border = colors.normal_border,
 
-			minimize_bg = C.minimize_bg,
-			minimize_fg = C.minimize_fg,
-			minimize_border = C.minimize_border,
+			minimize_bg = colors.minimize_bg,
+			minimize_fg = colors.minimize_fg,
+			minimize_border = colors.minimize_border,
 		},
 	}
 end

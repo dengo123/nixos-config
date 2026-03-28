@@ -5,7 +5,7 @@ local gfs = require("gears.filesystem")
 local Theme = {}
 
 local runtime = {
-	ctx = {},
+	ui = {},
 }
 
 local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
@@ -14,13 +14,8 @@ local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
 -- Helpers
 -- ============================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+local function resolved_theme()
+	local ui = runtime.ui or {}
 	return ui.theme or {}
 end
 
@@ -36,11 +31,11 @@ end
 -- Theme
 -- ============================================================================
 
-function Theme.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	args = args or {}
+function Theme.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 
-	local theme = resolved_theme(args)
+	local theme = resolved_theme()
 	local colors = theme.colors or {}
 	local fonts = theme.fonts or {}
 	local icons = theme.icons or {}
@@ -112,6 +107,8 @@ function Theme.init(args)
 
 		transparent = utils.transparent,
 	}
+
+	return Theme
 end
 
 function Theme.get()

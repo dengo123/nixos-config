@@ -89,50 +89,6 @@ local function load_children()
 	s.notify = safe_require("shell.notify")
 end
 
-local function build_actions()
-	local Windowing = shell().windowing
-	local Workspaces = shell().workspaces
-
-	local windowing_actions = (Windowing and Windowing.actions) or {}
-	local workspace_actions = (Workspaces and Workspaces.actions) or {}
-
-	return {
-		windowing = {
-			screens = {
-				scr_in_dir = windowing_actions.scr_in_dir,
-				move_client_to_screen = windowing_actions.move_client_to_screen,
-			},
-			clients = {
-				move_client_dir = windowing_actions.move_client_dir,
-				move_client_to_screen = windowing_actions.move_client_to_screen,
-				layout_state_mode = windowing_actions.layout_state_mode,
-				is_layout_state_active = windowing_actions.is_layout_state_active,
-				toggle_layout_state = windowing_actions.toggle_layout_state,
-				focus_client = windowing_actions.focus_client,
-				swap_client = windowing_actions.swap_client,
-				is_max_layout = windowing_actions.is_max_layout,
-				current_screen = windowing_actions.current_screen,
-				minimize_focused = windowing_actions.minimize_focused,
-				minimize_visible_tag_on_screen = windowing_actions.minimize_visible_tag_on_screen,
-				minimize_all_tags_on_screen = windowing_actions.minimize_all_tags_on_screen,
-				minimize_visible_tags_on_all_screens = windowing_actions.minimize_visible_tags_on_all_screens,
-				minimize_all_tags_on_all_screens = windowing_actions.minimize_all_tags_on_all_screens,
-			},
-		},
-		workspaces = {
-			tags = {
-				view_tag_idx = workspace_actions.view_tag_idx,
-				move_tag_to_screen = workspace_actions.move_tag_to_screen,
-				move_client_to_neighbor_tag = workspace_actions.move_client_to_neighbor_tag,
-				add = Workspaces and Workspaces.add or nil,
-				add_silent = Workspaces and Workspaces.add_silent or nil,
-				delete_current = Workspaces and Workspaces.delete_current or nil,
-				delete_current_force = Workspaces and Workspaces.delete_current_force or nil,
-			},
-		},
-	}
-end
-
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -159,18 +115,49 @@ function M.init(args)
 	init_child("workspaces")
 
 	-- ---------------------------------------------------------------------
-	-- Other shell modules
+	-- Independent modules
 	-- ---------------------------------------------------------------------
 
 	init_child("launchers")
-	init_child("menu")
-	init_child("notify")
 
 	-- ---------------------------------------------------------------------
-	-- Shared actions for input / config consumers
+	-- Menu / Notify
 	-- ---------------------------------------------------------------------
 
-	c.cfg.actions = build_actions()
+	do
+		local Menu = shell().menu
+		if Menu and type(Menu.init) == "function" then
+			local out = Menu.init({
+				cfg = c.cfg,
+				ui = c.ui,
+				shell = shell(),
+				launchers = shell().launchers,
+			})
+
+			if out ~= nil then
+				shell().menu = out
+			end
+		end
+	end
+
+	do
+		local Notify = shell().notify
+		if Notify and type(Notify.init) == "function" then
+			local out = Notify.init({
+				cfg = c.cfg,
+				ui = c.ui,
+				input = c.input,
+				system = c.system,
+				modkey = c.modkey,
+				mouse = c.mouse,
+				shell = shell(),
+			})
+
+			if out ~= nil then
+				shell().notify = out
+			end
+		end
+	end
 
 	-- ---------------------------------------------------------------------
 	-- Bar last
@@ -180,13 +167,15 @@ function M.init(args)
 
 	local Bar = shell().bar
 	local Menu = shell().menu
+	local Notify = shell().notify
 
 	if Bar and type(Bar.setup) == "function" then
 		awful.screen.connect_for_each_screen(function(s)
 			Bar.setup(s, {
 				cfg = c.cfg,
 				ui = c.ui,
-				menu_api = Menu,
+				menu = Menu,
+				notify = Notify,
 			})
 		end)
 	end

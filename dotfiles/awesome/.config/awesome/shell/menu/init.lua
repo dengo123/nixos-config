@@ -11,236 +11,81 @@ local function safe_require(path)
 end
 
 local Menu = {
-	api = {},
+	applications = nil,
+	runtime = {},
+	ui = {},
+	items = nil,
 }
 
 local runtime = {
-	ctx = {},
-	signals_ready = false,
+	cfg = {},
+	ui = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
-end
-
 local function cfg()
-	return ctx().cfg or {}
+	return runtime.cfg or {}
 end
 
 local function ui()
-	return ctx().ui or {}
-end
-
-local function api()
-	return Menu.api or {}
-end
-
-local function mod(name)
-	return api()[name]
-end
-
-local function get_context()
-	return {
-		ctx = ctx(),
-		ui = ui(),
-		cfg = cfg(),
-		api = api(),
-	}
-end
-
-local function menu_cfg()
-	return cfg().menu or {}
-end
-
-local function tabs_enabled()
-	return menu_cfg().tabs ~= false
-end
-
-local function ensure_ui()
-	local _ui = ui()
-
-	if _ui and _ui.theme and _ui.theme.colors and _ui.theme.fonts then
-		return _ui
-	end
-
-	local UI = require("ui")
-	local ui_mod = UI.init({ cfg = cfg() })
-	_ui = ui_mod.get()
-
-	local c = ctx()
-	c.ui = _ui
-	Menu.api.ui = _ui
-
-	return _ui
-end
-
-local function get_theme()
-	local Theme = mod("theme")
-	return (Theme and type(Theme.get) == "function" and Theme.get()) or {}
-end
-
-local function get_start_items()
-	local Items = mod("items")
-	return (Items and type(Items.build_start) == "function" and Items.build_start(get_context())) or {}
-end
-
-local function get_client_items(clients)
-	local Items = mod("items")
-	return (Items and type(Items.build_clients) == "function" and Items.build_clients(clients, get_context())) or {}
-end
-
-local function open_menu(items, coords)
-	local Popup = mod("popup")
-
-	if Popup and type(Popup.show) == "function" then
-		Popup.show({
-			items = items,
-			theme = get_theme(),
-			coords = coords,
-			on_closed = function() end,
-		})
-	end
-end
-
-local function coords_for_tabs(s, anchor_x_left, item_count)
-	local Place = mod("placement")
-	local x, y = 0, 0
-
-	if Place and type(Place.coords_for_tabs) == "function" then
-		x, y = Place.coords_for_tabs(s, anchor_x_left, item_count)
-	end
-
-	return x, y
-end
-
-local function coords_for_start(s, item_count)
-	local Place = mod("placement")
-	local x, y = 0, 0
-
-	if Place and type(Place.coords_for_start) == "function" then
-		x, y = Place.coords_for_start(s, item_count)
-	end
-
-	return x, y
-end
-
-local function coords_for_keybind(s, item_count)
-	local Place = mod("placement")
-	local x, y = 0, 0
-
-	if Place and type(Place.coords_for_keybind) == "function" then
-		x, y = Place.coords_for_keybind(s, item_count)
-	end
-
-	return x, y
-end
-
-local function register_signals()
-	if runtime.signals_ready then
-		return
-	end
-
-	runtime.signals_ready = true
-
-	awesome.connect_signal("menu::toggle", function()
-		if Menu.is_open() then
-			Menu.hide()
-		else
-			Menu.show_for_keybind(awful.screen.focused())
-		end
-	end)
-
-	awesome.connect_signal("menu::open_start", function()
-		if not Menu.is_open() then
-			Menu.show_for_keybind(awful.screen.focused())
-		end
-	end)
-
-	awesome.connect_signal("menu::close", function()
-		if Menu.is_open() then
-			Menu.hide()
-		end
-	end)
+	return runtime.ui or {}
 end
 
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function Menu.init(args)
-	runtime.ctx = args or {}
-	ensure_ctx_roots()
+function Menu.init(opts)
+	opts = opts or {}
 
-	local c = ctx()
+	runtime.cfg = opts.cfg or runtime.cfg
+	runtime.ui = opts.ui or runtime.ui
 
-	Menu.api = {
-		ui = c.ui or {},
-		theme = safe_require("shell.menu.theme"),
-		layout = safe_require("shell.menu.lib.layout"),
-		items = safe_require("shell.menu.items"),
-		applications = safe_require("shell.menu.applications"),
-		placement = safe_require("shell.menu.lib.placement"),
-		popup = safe_require("shell.menu.lib.popup"),
+	Menu.applications = safe_require("shell.menu.applications")
+	Menu.items = safe_require("shell.menu.items")
+
+	Menu.runtime = {
+		controller = safe_require("shell.menu.runtime.controller"),
+		placement = safe_require("shell.menu.runtime.placement"),
+		signals = safe_require("shell.menu.runtime.signals"),
 	}
 
-	c.shell.menu = Menu
-	c.features.menu = Menu
-	c.api.menu = Menu
-	c.external.menu = Menu
-	c.cfg.api.menu = Menu
+	Menu.ui = {
+		layout = safe_require("shell.menu.ui.layout"),
+		popup = safe_require("shell.menu.ui.popup"),
+		theme = safe_require("shell.menu.ui.theme"),
+	}
 
-	local _ui = ensure_ui()
-
-	local Theme = mod("theme")
+	local Theme = Menu.ui.theme
 	if Theme and type(Theme.init) == "function" then
 		Theme.init({
-			ctx = c,
-			cfg = cfg(),
-			ui = _ui,
+			ui = ui(),
 		})
 	end
 
-	local Layout = mod("layout")
+	local Layout = Menu.ui.layout
 	if Layout and type(Layout.init) == "function" then
 		Layout.init({
-			ctx = c,
 			cfg = cfg(),
-			ui = _ui,
+			ui = ui(),
 		})
 	end
 
-	local Place = mod("placement")
-	if Place and type(Place.init) == "function" then
-		Place.init({
-			ctx = c,
-			api = {
-				layout = Layout,
-				ui = _ui,
-			},
+	local Placement = Menu.runtime.placement
+	if Placement and type(Placement.init) == "function" then
+		Placement.init({
+			layout = Menu.ui.layout,
 		})
 	end
 
-	local Apps = mod("applications")
+	local Apps = Menu.applications
 	if Apps and type(Apps.init) == "function" then
 		Apps.init({
-			ctx = c,
 			cfg = cfg(),
-			ui = _ui,
+			ui = ui(),
 		})
 	end
 
@@ -248,65 +93,80 @@ function Menu.init(args)
 		Apps.load()
 	end
 
-	register_signals()
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.init) == "function" then
+		Controller.init({
+			cfg = cfg(),
+			ui = ui(),
+			items = Menu.items,
+			applications = Menu.applications,
+			launchers = opts.launchers,
+			layout = Menu.ui.layout,
+			popup = Menu.ui.popup,
+			theme = Menu.ui.theme,
+			placement = Menu.runtime.placement,
+		})
+	end
+
+	local Signals = Menu.runtime.signals
+	if Signals and type(Signals.init) == "function" then
+		Signals.init({
+			menu = Menu,
+		})
+	end
+
 	return Menu
 end
 
 function Menu.get_start_items()
-	return get_start_items()
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.get_start_items) == "function" then
+		return Controller.get_start_items()
+	end
+
+	return {}
 end
 
 function Menu.show_for_tabs_widget_with_clients_at(s, _widget, clients, anchor)
-	if not tabs_enabled() then
-		return
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.show_for_tabs_widget_with_clients_at) == "function" then
+		Controller.show_for_tabs_widget_with_clients_at(s, clients, anchor)
 	end
-
-	local items = get_client_items(clients)
-	local x, y = coords_for_tabs(s, anchor and anchor.x_left, #items)
-
-	open_menu(items, {
-		x = x,
-		y = y,
-	})
 end
 
 function Menu.show_for_start_widget(s, _widget)
-	local items = get_start_items()
-	local x, y = coords_for_start(s, #items)
-
-	open_menu(items, {
-		x = x,
-		y = y,
-	})
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.show_for_start_widget) == "function" then
+		Controller.show_for_start_widget(s)
+	end
 end
 
 function Menu.build_main()
-	return awful.menu({
-		items = get_start_items(),
-		theme = get_theme(),
-	})
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.build_main) == "function" then
+		return Controller.build_main()
+	end
+
+	return awful.menu({ items = {} })
 end
 
 function Menu.is_open()
-	local Popup = mod("popup")
-	return Popup and type(Popup.is_open) == "function" and Popup.is_open() or false
+	local Controller = Menu.runtime.controller
+	return Controller and type(Controller.is_open) == "function" and Controller.is_open() or false
 end
 
 function Menu.hide()
-	local Popup = mod("popup")
-	if Popup and type(Popup.hide) == "function" then
-		Popup.hide()
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.hide) == "function" then
+		Controller.hide()
 	end
 end
 
 function Menu.show_for_keybind(s)
-	local items = get_start_items()
-	local x, y = coords_for_keybind(s, #items)
-
-	open_menu(items, {
-		x = x,
-		y = y,
-	})
+	local Controller = Menu.runtime.controller
+	if Controller and type(Controller.show_for_keybind) == "function" then
+		Controller.show_for_keybind(s)
+	end
 end
 
 return Menu

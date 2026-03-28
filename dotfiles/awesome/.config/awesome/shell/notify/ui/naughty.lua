@@ -5,17 +5,9 @@ local wibox = require("wibox")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function notify_cfg(cfg)
 	return (cfg and cfg.notify) or {}
@@ -47,11 +39,13 @@ local function resolve_timeout(cfg)
 end
 
 local function resolve_shape(cfg, Shape, notify_theme)
-	if notify_cfg(cfg).speech == false then
-		return Shape and Shape.rounded and Shape.rounded(notify_theme.radius) or nil
+	local ncfg = notify_cfg(cfg)
+
+	if ncfg.speech == true then
+		return Shape and Shape.speech and Shape.speech(notify_theme.radius) or nil
 	end
 
-	return Shape and Shape.speech and Shape.speech(notify_theme.radius) or nil
+	return Shape and Shape.rounded and Shape.rounded(notify_theme.radius) or nil
 end
 
 local function apply_defaults(cfg, notify_theme, shape_fn)
@@ -71,7 +65,7 @@ local function apply_defaults(cfg, notify_theme, shape_fn)
 end
 
 local function apply_widget_template(notify_theme, shape_fn)
-	naughty.config.defaults.widget_template = {
+	local template = {
 		{
 			{
 				{
@@ -95,9 +89,14 @@ local function apply_widget_template(notify_theme, shape_fn)
 			widget = wibox.container.margin,
 		},
 		bg = notify_theme.bg,
-		shape = shape_fn,
 		widget = wibox.container.background,
 	}
+
+	if shape_fn then
+		template.shape = shape_fn
+	end
+
+	naughty.config.defaults.widget_template = template
 end
 
 local function apply_presets(cfg, notify_theme, shape_fn)
@@ -122,10 +121,9 @@ end
 -- =========================================================================
 
 function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
-	local cfg = args.cfg or ctx().cfg or {}
+	local cfg = args.cfg or {}
 	local Shape = args.shape
 	local notify_theme = args.notify_theme or require_notify_theme()
 	local shape_fn = resolve_shape(cfg, Shape, notify_theme)

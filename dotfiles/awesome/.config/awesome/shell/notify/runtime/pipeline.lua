@@ -5,17 +5,12 @@ local naughty = require("naughty")
 local M = {}
 
 local runtime = {
-	ctx = {},
 	callback_ready = false,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function notify_cfg(cfg)
 	return (cfg and cfg.notify) or {}
@@ -85,11 +80,6 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
-
 function M.register(args)
 	args = args or {}
 
@@ -99,7 +89,7 @@ function M.register(args)
 
 	runtime.callback_ready = true
 
-	local cfg = args.cfg or ctx().cfg or {}
+	local cfg = args.cfg or {}
 	local History = args.history
 	local prev_callback = naughty.config.notify_callback
 

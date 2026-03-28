@@ -5,7 +5,9 @@ local wibox = require("wibox")
 
 local M = {}
 
-local reveal_signals_ready = false
+local runtime = {
+	reveal_signals_ready = false,
+}
 
 -- =========================================================================
 -- Helpers
@@ -19,81 +21,25 @@ local function empty_widget()
 	})
 end
 
-local function ctx(args)
-	return (args and args.ctx) or {}
-end
-
-local function setup_args(args)
-	return (args and args.args) or {}
-end
-
-local function cfg(args)
-	local c = ctx(args)
-	if c.cfg then
-		return c.cfg
-	end
-	return setup_args(args).cfg or {}
-end
-
-local function root_ui_api(api)
-	return (api and api.root_ui) or {}
-end
-
-local function bar_ui_api(api)
-	return (api and api.bar_ui) or {}
-end
-
-local function wibar_api(api)
-	return (api and api.wibar) or {}
-end
-
-local function bar_ui_mod(api, name)
-	return bar_ui_api(api)[name]
-end
-
-local function wibar_mod(api, name)
-	return wibar_api(api)[name]
-end
-
-local function policy_mod(api)
-	return api and api.policy or nil
-end
-
-local function reveal_mod(api)
-	return api and api.reveal or nil
-end
-
-local function ensure_ui(conf, api)
-	local _ui = root_ui_api(api)
-
-	if _ui and _ui.theme and _ui.theme.colors then
-		return _ui
-	end
-
-	local UI = require("ui")
-	local ui_mod = UI.init({ cfg = conf })
-	return ui_mod.get()
-end
-
-local function resolve_visibility(Policy, s, bar_cfg)
+local function resolve_visibility(policy, s, bar_cfg)
 	local bar_normally_visible = true
-	if Policy and type(Policy.bar_enabled_on_screen) == "function" then
-		bar_normally_visible = (Policy.bar_enabled_on_screen(s, bar_cfg) == true)
+	if policy and type(policy.bar_enabled_on_screen) == "function" then
+		bar_normally_visible = (policy.bar_enabled_on_screen(s, bar_cfg) == true)
 	end
 
 	local tags_visible_on_screen = true
-	if Policy and type(Policy.tags_enabled_on_screen) == "function" then
-		tags_visible_on_screen = (Policy.tags_enabled_on_screen(s, bar_cfg) == true)
+	if policy and type(policy.tags_enabled_on_screen) == "function" then
+		tags_visible_on_screen = (policy.tags_enabled_on_screen(s, bar_cfg) == true)
 	end
 
 	local start_visible_on_screen = true
-	if Policy and type(Policy.start_enabled_on_screen) == "function" then
-		start_visible_on_screen = (Policy.start_enabled_on_screen(s, bar_cfg) == true)
+	if policy and type(policy.start_enabled_on_screen) == "function" then
+		start_visible_on_screen = (policy.start_enabled_on_screen(s, bar_cfg) == true)
 	end
 
 	local notify_visible_on_screen = true
-	if Policy and type(Policy.notify_enabled_on_screen) == "function" then
-		notify_visible_on_screen = (Policy.notify_enabled_on_screen(s, bar_cfg) == true)
+	if policy and type(policy.notify_enabled_on_screen) == "function" then
+		notify_visible_on_screen = (policy.notify_enabled_on_screen(s, bar_cfg) == true)
 	end
 
 	return {
@@ -104,44 +50,44 @@ local function resolve_visibility(Policy, s, bar_cfg)
 	}
 end
 
-local function resolve_start_action(Policy, bar_cfg)
+local function resolve_start_action(policy, bar_cfg)
 	local start_action = "menu"
 
-	if Policy and type(Policy.start_action) == "function" then
-		start_action = Policy.start_action(bar_cfg)
+	if policy and type(policy.start_action) == "function" then
+		start_action = policy.start_action(bar_cfg)
 	end
 
 	return start_action
 end
 
-local function init_bar_ui(api, conf, _ui)
-	local WibarUI = bar_ui_mod(api, "wibar")
-	local StartUI = bar_ui_mod(api, "start")
-	local TabsUI = bar_ui_mod(api, "tabs")
+local function init_bar_ui(bar, conf, current_ui)
+	local wibar_ui = bar.ui and bar.ui.wibar or nil
+	local start_ui = bar.ui and bar.ui.start or nil
+	local tabs_ui = bar.ui and bar.ui.tabs or nil
 
-	if WibarUI and type(WibarUI.init) == "function" then
-		WibarUI.init({
+	if wibar_ui and type(wibar_ui.init) == "function" then
+		wibar_ui.init({
 			cfg = conf,
-			ui = _ui,
+			ui = current_ui,
 		})
 	end
 
-	if StartUI and type(StartUI.init) == "function" then
-		StartUI.init({
+	if start_ui and type(start_ui.init) == "function" then
+		start_ui.init({
 			cfg = conf,
-			ui = _ui,
+			ui = current_ui,
 		})
 	end
 
-	if TabsUI and type(TabsUI.init) == "function" then
-		TabsUI.init({
+	if tabs_ui and type(tabs_ui.init) == "function" then
+		tabs_ui.init({
 			cfg = conf,
-			ui = _ui,
+			ui = current_ui,
 		})
 	end
 
-	local start_theme = (StartUI and type(StartUI.get) == "function" and StartUI.get()) or {}
-	local tabs_theme = (TabsUI and type(TabsUI.get) == "function" and TabsUI.get()) or {}
+	local start_theme = (start_ui and type(start_ui.get) == "function" and start_ui.get()) or {}
+	local tabs_theme = (tabs_ui and type(tabs_ui.get) == "function" and tabs_ui.get()) or {}
 
 	if type(start_theme) ~= "table" then
 		start_theme = {}
@@ -152,7 +98,7 @@ local function init_bar_ui(api, conf, _ui)
 	end
 
 	return {
-		wibar = WibarUI,
+		wibar = wibar_ui,
 		start = start_theme,
 		tabs = tabs_theme,
 	}
@@ -177,11 +123,11 @@ local function resolve_props(wibar_ui, bar_position)
 	return props
 end
 
-local function build_sections(api, parts, visibility)
-	local Sections = wibar_mod(api, "sections")
+local function build_sections(bar, parts, visibility)
+	local sections_mod = bar.wibar and bar.wibar.sections or nil
 
-	if Sections and type(Sections.build) == "function" then
-		return Sections.build({
+	if sections_mod and type(sections_mod.build) == "function" then
+		return sections_mod.build({
 			show_start = visibility.start,
 			show_tags = visibility.tags,
 			show_notify = visibility.notify,
@@ -243,19 +189,19 @@ local function create_wibar(s, props, sections, bar_normally_visible)
 	return s.mywibar
 end
 
-local function attach_reveal(api, s, bar, bar_cfg, props)
-	local Reveal = reveal_mod(api)
-	if not Reveal then
+local function attach_reveal(bar, s, wibar, bar_cfg, props)
+	local reveal = bar.behavior and bar.behavior.reveal or nil
+	if not reveal then
 		return
 	end
 
-	if not reveal_signals_ready and type(Reveal.init_signals) == "function" then
-		Reveal.init_signals()
-		reveal_signals_ready = true
+	if not runtime.reveal_signals_ready and type(reveal.init_signals) == "function" then
+		reveal.init_signals()
+		runtime.reveal_signals_ready = true
 	end
 
-	if type(Reveal.attach) == "function" then
-		Reveal.attach(s, bar, {
+	if type(reveal.attach) == "function" then
+		reveal.attach(s, wibar, {
 			edge = props.position,
 			trigger_px = tonumber(bar_cfg.reveal_trigger_px) or 2,
 			hide_delay = tonumber(bar_cfg.reveal_hide_delay) or 0.20,
@@ -268,56 +214,54 @@ end
 -- Public API
 -- =========================================================================
 
-function M.setup(args)
-	args = args or {}
+function M.setup(opts)
+	opts = opts or {}
 
-	local s = args.screen
+	local s = opts.screen
 	if not s then
 		return nil
 	end
 
-	local api_ref = args.api or {}
-	local conf = cfg(args)
-	local legacy_args = setup_args(args)
-	local c = ctx(args)
+	local bar = opts.bar or {}
+	local args = opts.args or {}
 
-	local menu_api = legacy_args.menu_api
-		or (c.features and c.features.menu)
-		or (c.shell and c.shell.menu)
-		or (c.api and c.api.menu)
+	local conf = args.cfg or {}
+	local current_ui = args.ui or {}
+	local menu_api = args.menu
+	local notify_api = args.notify
 
-	local input_cfg = conf.input or {}
 	local bar_cfg = conf.bar or {}
 
-	local modkey = c.modkey or input_cfg.modkey or "Mod4"
-	local showtray = (legacy_args.systray ~= false)
+	local showtray = (args.systray ~= false)
 
-	local Policy = policy_mod(api_ref)
-	local Widgets = wibar_mod(api_ref, "widgets")
+	local policy = bar.policy
+	local widgets_mod = bar.wibar and bar.wibar.widgets or nil
+	local group_tabs = bar.behavior and bar.behavior.group_tabs or nil
 
-	local visibility = resolve_visibility(Policy, s, bar_cfg)
-	local start_action = resolve_start_action(Policy, bar_cfg)
+	local visibility = resolve_visibility(policy, s, bar_cfg)
+	local start_action = resolve_start_action(policy, bar_cfg)
 
-	local _ui = ensure_ui(conf, api_ref)
-	local bar_ui = init_bar_ui(api_ref, conf, _ui)
+	local bar_ui = init_bar_ui(bar, conf, current_ui)
 	local props = resolve_props(bar_ui.wibar, bar_cfg.position)
 
 	local parts = {}
 
-	if Widgets and type(Widgets.init) == "function" then
-		Widgets.init({
-			ctx = c,
-			api = api_ref,
+	if widgets_mod and type(widgets_mod.init) == "function" then
+		widgets_mod.init({
+			widgets = bar.widgets,
 			cfg = conf,
-			ui = _ui,
+			menu = menu_api,
+			notify = notify_api,
+			group_tabs = group_tabs,
 		})
 	end
 
-	if Widgets and type(Widgets.build) == "function" then
-		parts = Widgets.build(s, {
-			ctx = c,
+	if widgets_mod and type(widgets_mod.build) == "function" then
+		parts = widgets_mod.build(s, {
 			cfg = conf,
-			modkey = modkey,
+			menu = menu_api,
+			notify_api = notify_api,
+			group_tabs = group_tabs,
 			props = props,
 			start_theme = bar_ui.start,
 			tabs_theme = bar_ui.tabs,
@@ -326,20 +270,19 @@ function M.setup(args)
 			show_tags = visibility.tags,
 			show_notify = visibility.notify,
 			start_action = start_action,
-			menu_api = menu_api,
 		}) or {}
 	end
 
-	local sections = build_sections(api_ref, parts, visibility)
-	local bar = create_wibar(s, props, sections, visibility.bar)
+	local sections = build_sections(bar, parts, visibility)
+	local wibar = create_wibar(s, props, sections, visibility.bar)
 
 	if parts.tray and s == (screen.primary or awful.screen.focused()) then
 		awesome.emit_signal("ui::tray_ready", s)
 	end
 
-	attach_reveal(api_ref, s, bar, bar_cfg, props)
+	attach_reveal(bar, s, wibar, bar_cfg, props)
 
-	return bar
+	return wibar
 end
 
 return M

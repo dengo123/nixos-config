@@ -4,17 +4,9 @@ local wibox = require("wibox")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function empty_widget()
 	return wibox.widget({
@@ -50,40 +42,22 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = args and (args.ctx or args) or {}
-	return M
-end
+function M.build(opts)
+	opts = opts or {}
 
-function M.build(args)
-	args = args or {}
+	local show_start = (opts.show_start == true)
+	local show_tags = (opts.show_tags == true)
+	local show_notify = (opts.show_notify == true)
 
-	local show_start = (args.show_start == true)
-	local show_tags = (args.show_tags == true)
-	local show_notify = (args.show_notify == true)
-
-	local start_btn = args.start_btn or empty_widget()
-	local tags = args.tags or { indicator = empty_widget() }
-	local tabs = args.tabs or { tasklist = empty_widget() }
-	local tray = args.tray or empty_widget()
-	local notify = args.notify or empty_widget()
-	local clock = args.clock or empty_widget()
-	local layoutbox = args.layoutbox or empty_widget()
+	local start_btn = opts.start_btn or empty_widget()
+	local tags = opts.tags or { indicator = empty_widget() }
+	local tabs = opts.tabs or { tasklist = empty_widget() }
+	local tray = opts.tray or empty_widget()
+	local notify = opts.notify or empty_widget()
+	local clock = opts.clock or empty_widget()
+	local layoutbox = opts.layoutbox or empty_widget()
 
 	local tabs_leading_spacer = hspace(compute_tabs_leading_gap(show_start, show_tags))
-
-	local parts = {
-		start_btn = start_btn,
-		tags = tags,
-		tabs = tabs,
-		tray = tray,
-		notify = notify,
-		clock = clock,
-		layoutbox = layoutbox,
-		tabs_leading_spacer = tabs_leading_spacer,
-		spacing_l = 0,
-		spacing_r = 0,
-	}
 
 	local notify_gap_left = beautiful.notify_button_gap_left or 0
 	local notify_zone_width = beautiful.notify_button_zone_width or 0
@@ -100,7 +74,7 @@ function M.build(args)
 		},
 		{
 			{
-				parts.notify,
+				notify,
 				halign = "left",
 				valign = "center",
 				widget = wibox.container.place,
@@ -114,7 +88,7 @@ function M.build(args)
 	local tray_cluster = wibox.widget({
 		{
 			notify_zone,
-			parts.tray,
+			tray,
 			layout = wibox.layout.fixed.horizontal,
 		},
 		bg = systray_bg,
@@ -130,19 +104,19 @@ function M.build(args)
 	return {
 		left = {
 			layout = wibox.layout.fixed.horizontal,
-			spacing = parts.spacing_l,
-			parts.start_btn,
-			parts.tags.indicator,
-			parts.tabs_leading_spacer,
-			parts.tabs.tasklist,
+			spacing = 0,
+			start_btn,
+			tags.indicator,
+			tabs_leading_spacer,
+			tabs.tasklist,
 		},
 		center = nil,
 		right = {
 			layout = wibox.layout.fixed.horizontal,
-			spacing = parts.spacing_r,
-			parts.layoutbox,
+			spacing = 0,
+			layoutbox,
 			notify_with_gap,
-			parts.clock,
+			clock,
 		},
 	}
 end

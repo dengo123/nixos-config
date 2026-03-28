@@ -61,10 +61,6 @@ function M.build(s, opts)
 
 	local mode = tags_mode(opts)
 
-	-- ---------------------------------------------------------------------
-	-- Theme
-	-- ---------------------------------------------------------------------
-
 	local theme = as_table(beautiful.tags_indicator, {})
 
 	local pad_h = as_number(opts.pad_h, as_number(theme.pad_h, 8)) or 8
@@ -73,10 +69,6 @@ function M.build(s, opts)
 
 	local font = first_string(opts.font, theme.font, beautiful.font, "Sans 10")
 	local format = first_string(opts.format, theme.fmt, "%d")
-
-	-- ---------------------------------------------------------------------
-	-- Widgets
-	-- ---------------------------------------------------------------------
 
 	local text = wibox.widget({
 		widget = wibox.widget.textbox,
@@ -93,10 +85,6 @@ function M.build(s, opts)
 		bottom = pad_v,
 		widget = wibox.container.margin,
 	})
-
-	-- ---------------------------------------------------------------------
-	-- State
-	-- ---------------------------------------------------------------------
 
 	local function set_normal_margins()
 		indicator.left = pad_h
@@ -131,15 +119,7 @@ function M.build(s, opts)
 		text.text = string.format(format, selected_index(s))
 	end
 
-	-- ---------------------------------------------------------------------
-	-- Init
-	-- ---------------------------------------------------------------------
-
 	refresh()
-
-	-- ---------------------------------------------------------------------
-	-- Signals
-	-- ---------------------------------------------------------------------
 
 	awful.tag.attached_connect_signal(s, "property::selected", refresh)
 	awful.tag.attached_connect_signal(s, "property::name", refresh)
@@ -147,10 +127,6 @@ function M.build(s, opts)
 	awful.tag.attached_connect_signal(s, "untagged", refresh)
 	awful.tag.attached_connect_signal(s, "property::activated", refresh)
 	s:connect_signal("tag::history::update", refresh)
-
-	-- ---------------------------------------------------------------------
-	-- Mouse
-	-- ---------------------------------------------------------------------
 
 	indicator:buttons(gears.table.join(
 		awful.button({}, 4, function()

@@ -2,26 +2,15 @@
 local M = {}
 
 local runtime = {
-	ctx = {},
-	api = {},
-	cfg = {},
-	ui = {},
+	overrides = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function api()
-	return runtime.api or {}
-end
-
-local function mod(name)
-	return api()[name]
+local function overrides_mod()
+	return runtime.overrides
 end
 
 local function normalize_exec(cmd)
@@ -51,7 +40,7 @@ local function first_string(...)
 end
 
 local function dedupe_key_for_entry(entry)
-	local Overrides = mod("overrides")
+	local Overrides = overrides_mod()
 
 	if Overrides and type(Overrides.dedupe_key) == "function" then
 		local forced = Overrides.dedupe_key(entry)
@@ -143,12 +132,9 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.api = (args and args.api) or {}
-	runtime.cfg = (args and args.cfg) or (runtime.ctx.cfg or {})
-	runtime.ui = (args and args.ui) or (runtime.ctx.ui or {})
-
+function M.init(opts)
+	opts = opts or {}
+	runtime.overrides = opts.overrides or runtime.overrides
 	return M
 end
 

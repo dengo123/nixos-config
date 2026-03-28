@@ -4,19 +4,11 @@ local gears = require("gears")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function build_title_widget(th, title_text)
+local function build_title_widget(_theme, title_text)
 	return wibox.widget({
 		text = title_text,
 		align = "left",
@@ -25,12 +17,12 @@ local function build_title_widget(th, title_text)
 	})
 end
 
-local function build_header(th, title_text)
-	local header_pad_l = assert(tonumber(th.header_pad_l), "run.container: th.header_pad_l fehlt/ungültig")
-	local header_pad_r = assert(tonumber(th.header_pad_r), "run.container: th.header_pad_r fehlt/ungültig")
-	local header_pad_v = assert(tonumber(th.header_pad_v), "run.container: th.header_pad_v fehlt/ungültig")
+local function build_header(theme, title_text)
+	local header_pad_l = assert(tonumber(theme.header_pad_l), "run.container: theme.header_pad_l fehlt/ungültig")
+	local header_pad_r = assert(tonumber(theme.header_pad_r), "run.container: theme.header_pad_r fehlt/ungültig")
+	local header_pad_v = assert(tonumber(theme.header_pad_v), "run.container: theme.header_pad_v fehlt/ungültig")
 
-	local title = build_title_widget(th, title_text)
+	local title = build_title_widget(theme, title_text)
 
 	return wibox.widget({
 		{
@@ -46,17 +38,21 @@ local function build_header(th, title_text)
 			bottom = header_pad_v,
 			widget = wibox.container.margin,
 		},
-		bg = th.header_bg,
-		fg = th.header_fg,
+		bg = theme.header_bg,
+		fg = theme.header_fg,
 		widget = wibox.container.background,
 	})
 end
 
-local function build_body(th, dims, body_widget)
-	local panel_pad_h =
-		assert(tonumber(th.panel_pad_h or th.pad_h), "run.container: th.panel_pad_h/th.pad_h fehlt/ungültig")
-	local panel_pad_v =
-		assert(tonumber(th.panel_pad_v or th.pad_v), "run.container: th.panel_pad_v/th.pad_v fehlt/ungültig")
+local function build_body(theme, dims, body_widget)
+	local panel_pad_h = assert(
+		tonumber(theme.panel_pad_h or theme.pad_h),
+		"run.container: theme.panel_pad_h/theme.pad_h fehlt/ungültig"
+	)
+	local panel_pad_v = assert(
+		tonumber(theme.panel_pad_v or theme.pad_v),
+		"run.container: theme.panel_pad_v/theme.pad_v fehlt/ungültig"
+	)
 
 	return wibox.widget({
 		{
@@ -67,13 +63,13 @@ local function build_body(th, dims, body_widget)
 			bottom = panel_pad_v,
 			widget = wibox.container.margin,
 		},
-		bg = th.body_bg,
-		fg = th.body_fg,
+		bg = theme.body_bg,
+		fg = theme.body_fg,
 		widget = wibox.container.background,
 	})
 end
 
-local function build_footer(th, footer_buttons, footer_widget)
+local function build_footer(theme, footer_buttons, footer_widget)
 	if footer_widget then
 		return footer_widget
 	end
@@ -82,11 +78,15 @@ local function build_footer(th, footer_buttons, footer_widget)
 		return nil
 	end
 
-	local footer_spacing = assert(tonumber(th.footer_spacing), "run.container: th.footer_spacing fehlt/ungültig")
-	local footer_pad_h =
-		assert(tonumber(th.footer_pad_h or th.pad_h), "run.container: th.footer_pad_h/th.pad_h fehlt/ungültig")
-	local footer_pad_v =
-		assert(tonumber(th.footer_pad_v or th.pad_v), "run.container: th.footer_pad_v/th.pad_v fehlt/ungültig")
+	local footer_spacing = assert(tonumber(theme.footer_spacing), "run.container: theme.footer_spacing fehlt/ungültig")
+	local footer_pad_h = assert(
+		tonumber(theme.footer_pad_h or theme.pad_h),
+		"run.container: theme.footer_pad_h/theme.pad_h fehlt/ungültig"
+	)
+	local footer_pad_v = assert(
+		tonumber(theme.footer_pad_v or theme.pad_v),
+		"run.container: theme.footer_pad_v/theme.pad_v fehlt/ungültig"
+	)
 
 	local buttons_row = wibox.layout.fixed.horizontal()
 	buttons_row.spacing = footer_spacing
@@ -117,7 +117,7 @@ local function build_footer(th, footer_buttons, footer_widget)
 	})
 end
 
-local function build_frame(th, radius, border_w, border_color, stack)
+local function build_frame(theme, radius, border_w, border_color, stack)
 	local inner_radius = math.max(0, radius - border_w)
 
 	local inner_bg = wibox.widget({
@@ -129,7 +129,7 @@ local function build_frame(th, radius, border_w, border_color, stack)
 			gears.shape.rounded_rect(cr, w, h, inner_radius)
 		end,
 		shape_clip = true,
-		bg = th.panel_bg,
+		bg = theme.panel_bg,
 		widget = wibox.container.background,
 	})
 
@@ -157,34 +157,30 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
-
-function M.build(th, dims, w)
-	w = w or {}
+function M.build(theme, dims, opts)
+	opts = opts or {}
 
 	-- ---------------------------------------------------------------------
 	-- Config
 	-- ---------------------------------------------------------------------
 
-	local radius = assert(tonumber(th.panel_radius), "run.container: th.panel_radius fehlt/ungültig")
-	local border_w = assert(tonumber(th.panel_border_width), "run.container: th.panel_border_width fehlt/ungültig")
-	local border_color = assert(th.panel_border, "run.container: th.panel_border fehlt")
+	local radius = assert(tonumber(theme.panel_radius), "run.container: theme.panel_radius fehlt/ungültig")
+	local border_w =
+		assert(tonumber(theme.panel_border_width), "run.container: theme.panel_border_width fehlt/ungültig")
+	local border_color = assert(theme.panel_border, "run.container: theme.panel_border fehlt")
 
-	local header_h = assert(tonumber(th.header_h), "run.container: th.header_h fehlt/ungültig")
-	local footer_h = assert(tonumber(th.footer_h), "run.container: th.footer_h fehlt/ungültig")
+	local header_h = assert(tonumber(theme.header_h), "run.container: theme.header_h fehlt/ungültig")
+	local footer_h = assert(tonumber(theme.footer_h), "run.container: theme.footer_h fehlt/ungültig")
 
-	local title_text = w.title or th.title
-	local footer_widget = build_footer(th, w.footer_buttons, w.footer)
+	local title_text = opts.title or theme.title
+	local footer_widget = build_footer(theme, opts.footer_buttons, opts.footer)
 
 	-- ---------------------------------------------------------------------
 	-- Sections
 	-- ---------------------------------------------------------------------
 
-	local header = build_header(th, title_text)
-	local body = build_body(th, dims, w.body)
+	local header = build_header(theme, title_text)
+	local body = build_body(theme, dims, opts.body)
 
 	local final_footer_h = footer_widget and footer_h or 0
 	local final_body_h = math.max(0, dims.h - header_h - final_footer_h)
@@ -215,8 +211,8 @@ function M.build(th, dims, w)
 			{
 				{
 					footer_widget,
-					bg = th.footer_bg,
-					fg = th.footer_fg,
+					bg = theme.footer_bg,
+					fg = theme.footer_fg,
 					widget = wibox.container.background,
 				},
 				strategy = "exact",
@@ -231,7 +227,7 @@ function M.build(th, dims, w)
 	-- Frame
 	-- ---------------------------------------------------------------------
 
-	return build_frame(th, radius, border_w, border_color, stack)
+	return build_frame(theme, radius, border_w, border_color, stack)
 end
 
 return M

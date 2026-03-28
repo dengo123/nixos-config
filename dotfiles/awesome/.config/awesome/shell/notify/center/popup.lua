@@ -6,7 +6,6 @@ local wibox = require("wibox")
 local M = {}
 
 local runtime = {
-	ctx = {},
 	root_buttons = nil,
 	client_callback = nil,
 }
@@ -62,11 +61,6 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
-
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
 
 function M.ensure(popups, key_for_screen, s)
 	local key = key_for_screen(s)

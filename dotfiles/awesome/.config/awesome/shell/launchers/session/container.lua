@@ -4,25 +4,17 @@ local gears = require("gears")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- ============================================================================
 -- Helpers
 -- ============================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function escape(text)
 	return gears.string.xml_escape(tostring(text or ""))
 end
 
-local function resolve_icon_widget(th)
-	local size = assert(tonumber(th.header_icon_size), "power.container: header_icon_size fehlt/ungültig")
-	local path = th.header_icon_path
+local function resolve_icon_widget(theme)
+	local size = assert(tonumber(theme.header_icon_size), "session.container: header_icon_size fehlt/ungültig")
+	local path = theme.header_icon_path
 
 	if type(path) == "string" and #path > 0 then
 		if not path:match("^/") then
@@ -38,10 +30,10 @@ local function resolve_icon_widget(th)
 		})
 	end
 
-	local txt = th.header_icon_text
+	local txt = theme.header_icon_text
 	if type(txt) == "string" and #txt > 0 then
 		return wibox.widget({
-			markup = string.format("<span font='%s %d'>%s</span>", th.header_font, size, escape(txt)),
+			markup = string.format("<span font='%s %d'>%s</span>", theme.header_font, size, escape(txt)),
 			align = "center",
 			valign = "center",
 			widget = wibox.widget.textbox,
@@ -51,7 +43,7 @@ local function resolve_icon_widget(th)
 	return nil
 end
 
-local function resolve_title_widget(th, title_text)
+local function resolve_title_widget(theme, title_text)
 	if title_text == nil or tostring(title_text) == "" then
 		return nil
 	end
@@ -59,8 +51,8 @@ local function resolve_title_widget(th, title_text)
 	return wibox.widget({
 		markup = string.format(
 			"<span font='%s %d'><b>%s</b></span>",
-			th.header_font,
-			assert(tonumber(th.header_font_size), "power.container: header_font_size fehlt/ungültig"),
+			theme.header_font,
+			assert(tonumber(theme.header_font_size), "session.container: header_font_size fehlt/ungültig"),
 			escape(title_text)
 		),
 		align = "center",
@@ -73,32 +65,27 @@ end
 -- Public API
 -- ============================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
-
-function M.build(th, dims, slots)
+function M.build(theme, dims, slots)
 	slots = slots or {}
 
 	-- ------------------------------------------------------------------------
 	-- Config
 	-- ------------------------------------------------------------------------
 
-	local title_text = (slots.title ~= nil) and slots.title or th.header_title
+	local title_text = (slots.title ~= nil) and slots.title or theme.header_title
 	local body_core = slots.body
 	local cancel_btn = slots.cancel_btn
 
-	local header_pad_l = tonumber(th.header_pad_l) or tonumber(th.header_pad_h) or 0
-	local header_pad_r = tonumber(th.header_pad_r) or tonumber(th.header_pad_h) or 0
-	local header_pad_v = tonumber(th.header_pad_v) or 0
+	local header_pad_l = tonumber(theme.header_pad_l) or tonumber(theme.header_pad_h) or 0
+	local header_pad_r = tonumber(theme.header_pad_r) or tonumber(theme.header_pad_h) or 0
+	local header_pad_v = tonumber(theme.header_pad_v) or 0
 
 	-- ------------------------------------------------------------------------
 	-- Header
 	-- ------------------------------------------------------------------------
 
-	local title_w = resolve_title_widget(th, title_text)
-	local icon_w = resolve_icon_widget(th)
+	local title_w = resolve_title_widget(theme, title_text)
+	local icon_w = resolve_icon_widget(theme)
 
 	local header = wibox.widget({
 		{
@@ -124,8 +111,8 @@ function M.build(th, dims, slots)
 			bottom = header_pad_v,
 			widget = wibox.container.margin,
 		},
-		bg = th.header_bg,
-		fg = th.header_fg,
+		bg = theme.header_bg,
+		fg = theme.header_fg,
 		widget = wibox.container.background,
 	})
 
@@ -147,8 +134,8 @@ function M.build(th, dims, slots)
 			bottom = dims.pad_v,
 			widget = wibox.container.margin,
 		},
-		bg = th.body_bg,
-		fg = th.body_fg,
+		bg = theme.body_bg,
+		fg = theme.body_fg,
 		widget = wibox.container.background,
 	})
 
@@ -170,8 +157,8 @@ function M.build(th, dims, slots)
 			bottom = dims.pad_v,
 			widget = wibox.container.margin,
 		},
-		bg = th.footer_bg,
-		fg = th.footer_fg,
+		bg = theme.footer_bg,
+		fg = theme.footer_fg,
 		widget = wibox.container.background,
 	})
 
@@ -210,11 +197,11 @@ function M.build(th, dims, slots)
 		shape = gears.shape.rectangle,
 		shape_clip = true,
 		shape_border_width = assert(
-			tonumber(th.dialog_border_width),
-			"power.container: dialog_border_width fehlt/ungültig"
+			tonumber(theme.dialog_border_width),
+			"session.container: dialog_border_width fehlt/ungültig"
 		),
-		shape_border_color = th.dialog_border,
-		bg = th.dialog_bg,
+		shape_border_color = theme.dialog_border,
+		bg = theme.dialog_bg,
 		widget = wibox.container.background,
 	})
 end

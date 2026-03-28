@@ -4,26 +4,20 @@ local awful = require("awful")
 local M = {}
 
 local runtime = {
-	ctx = {},
-	api = {},
-	cfg = {},
-	ui = {},
+	categories = nil,
+	overrides = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
+local function categories_mod()
+	return runtime.categories
 end
 
-local function api()
-	return runtime.api or {}
-end
-
-local function mod(name)
-	return api()[name]
+local function overrides_mod()
+	return runtime.overrides
 end
 
 local function normalize_exec(cmd)
@@ -125,7 +119,7 @@ local function sort_items(items)
 end
 
 local function should_hide_entry(entry)
-	local Overrides = mod("overrides")
+	local Overrides = overrides_mod()
 
 	if Overrides and type(Overrides.hide) == "function" then
 		return Overrides.hide(entry) == true
@@ -135,8 +129,8 @@ local function should_hide_entry(entry)
 end
 
 local function category_for_entry(entry)
-	local Overrides = mod("overrides")
-	local Categories = mod("categories")
+	local Overrides = overrides_mod()
+	local Categories = categories_mod()
 
 	if Overrides and type(Overrides.category) == "function" then
 		local forced = Overrides.category(entry)
@@ -173,11 +167,10 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.api = (args and args.api) or {}
-	runtime.cfg = (args and args.cfg) or (runtime.ctx.cfg or {})
-	runtime.ui = (args and args.ui) or (runtime.ctx.ui or {})
+function M.init(opts)
+	opts = opts or {}
+	runtime.categories = opts.categories or runtime.categories
+	runtime.overrides = opts.overrides or runtime.overrides
 
 	return M
 end

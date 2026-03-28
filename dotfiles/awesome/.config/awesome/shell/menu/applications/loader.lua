@@ -4,20 +4,9 @@ local menubar_utils = require("menubar.utils")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-	api = {},
-	cfg = {},
-	ui = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function first_string(...)
 	for i = 1, select("#", ...) do
@@ -123,15 +112,6 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
-
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.api = (args and args.api) or {}
-	runtime.cfg = (args and args.cfg) or (runtime.ctx.cfg or {})
-	runtime.ui = (args and args.ui) or (runtime.ctx.ui or {})
-
-	return M
-end
 
 function M.load(callback)
 	menu_gen.generate(function(raw_entries)

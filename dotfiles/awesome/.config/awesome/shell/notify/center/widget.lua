@@ -23,36 +23,47 @@ local function resolve_theme()
 	local notify = notify_theme()
 	local center = center_theme()
 
+	local entry_radius = tonumber(center.entry_radius or notify.radius) or 10
+	local entry_border_w = tonumber(center.entry_border_w or notify.border_w) or 1
+	local entry_padding = tonumber(center.entry_padding or notify.margin or notify.padding) or 6
+
+	local text_inset_top = tonumber(center.text_inset_top) or 2
+	local text_inset_bottom = tonumber(center.text_inset_bottom) or 2
+
+	local action_spacing = tonumber(center.action_spacing) or 0
+	local action_row_spacing = tonumber(center.action_row_spacing or center.action_spacing) or 0
+
 	return {
-		entry_bg = center.entry_bg or notify.bg,
-		entry_fg = center.entry_fg or notify.fg,
-		entry_border = center.entry_border or notify.border,
+		entry_bg = center.entry_bg or notify.bg or "#222222",
+		entry_fg = center.entry_fg or notify.fg or "#ffffff",
+		entry_border = center.entry_border or notify.border or "#666666",
 
-		entry_bg_hover = center.entry_bg_hover or center.entry_bg or notify.bg,
-		entry_fg_hover = center.entry_fg_hover or center.entry_fg or notify.fg,
-		entry_border_hover = center.entry_border_hover or center.entry_border or notify.border,
+		entry_bg_hover = center.entry_bg_hover or center.entry_bg or notify.bg or "#222222",
+		entry_fg_hover = center.entry_fg_hover or center.entry_fg or notify.fg or "#ffffff",
+		entry_border_hover = center.entry_border_hover or center.entry_border or notify.border or "#666666",
 
-		entry_bg_focus = center.entry_bg_focus or center.entry_bg_hover or center.entry_bg or notify.bg,
-		entry_fg_focus = center.entry_fg_focus or center.entry_fg_hover or center.entry_fg or notify.fg,
+		entry_bg_focus = center.entry_bg_focus or center.entry_bg_hover or center.entry_bg or notify.bg or "#222222",
+		entry_fg_focus = center.entry_fg_focus or center.entry_fg_hover or center.entry_fg or notify.fg or "#ffffff",
 		entry_border_focus = center.entry_border_focus
 			or center.entry_border_hover
 			or center.entry_border
-			or notify.border,
+			or notify.border
+			or "#666666",
 
-		entry_radius = tonumber(center.entry_radius or notify.radius),
-		entry_border_w = tonumber(center.entry_border_w or notify.border_w),
-		entry_padding = tonumber(center.entry_padding or notify.margin),
+		entry_radius = entry_radius,
+		entry_border_w = entry_border_w,
+		entry_padding = entry_padding,
 
-		text_inset_top = tonumber(center.text_inset_top or 2),
-		text_inset_bottom = tonumber(center.text_inset_bottom or 2),
+		text_inset_top = text_inset_top,
+		text_inset_bottom = text_inset_bottom,
 
 		title_font = center.title_font,
 		message_font = center.message_font,
 
-		action_fg = center.action_fg or notify.fg,
-		action_fg_hover = center.action_fg_hover or center.action_fg or notify.fg,
-		action_spacing = tonumber(center.action_spacing) or 0,
-		action_row_spacing = tonumber(center.action_row_spacing or center.action_spacing) or 0,
+		action_fg = center.action_fg or notify.fg or "#ffffff",
+		action_fg_hover = center.action_fg_hover or center.action_fg or notify.fg or "#ffffff",
+		action_spacing = action_spacing,
+		action_row_spacing = action_row_spacing,
 		action_icon = center.action_icon or "▪",
 		action_icon_font = center.action_icon_font,
 		action_font = center.action_font,

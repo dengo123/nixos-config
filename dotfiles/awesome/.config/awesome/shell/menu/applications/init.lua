@@ -9,11 +9,16 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
+	loader = nil,
+	dedupe = nil,
+	builder = nil,
+	categories = nil,
+	overrides = nil,
 }
 
 local runtime = {
-	ctx = {},
+	cfg = {},
+	ui = {},
 	items = {},
 	loaded = false,
 }
@@ -22,31 +27,17 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
 local function cfg()
-	return ctx().cfg or {}
+	return runtime.cfg or {}
 end
 
 local function ui()
-	return ctx().ui or {}
+	return runtime.ui or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function mod(name)
-	return api()[name]
-end
-
-local function init_submodule(name, args)
-	local sub = mod(name)
-
-	if sub and type(sub.init) == "function" then
-		sub.init(args)
+local function init_submodule(mod, opts)
+	if mod and type(mod.init) == "function" then
+		mod.init(opts)
 	end
 end
 
@@ -54,29 +45,31 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+function M.init(opts)
+	opts = opts or {}
 
-	M.api = {
-		loader = safe_require("shell.menu.applications.loader"),
-		dedupe = safe_require("shell.menu.applications.dedupe"),
-		builder = safe_require("shell.menu.applications.builder"),
-		categories = safe_require("shell.menu.applications.categories"),
-		overrides = safe_require("shell.menu.applications.overrides"),
-	}
+	runtime.cfg = opts.cfg or runtime.cfg
+	runtime.ui = opts.ui or runtime.ui
 
-	local shared = {
-		ctx = ctx(),
-		api = api(),
+	M.loader = safe_require("shell.menu.applications.loader")
+	M.dedupe = safe_require("shell.menu.applications.dedupe")
+	M.builder = safe_require("shell.menu.applications.builder")
+	M.categories = safe_require("shell.menu.applications.categories")
+	M.overrides = safe_require("shell.menu.applications.overrides")
+
+	init_submodule(M.loader, {
 		cfg = cfg(),
 		ui = ui(),
-	}
+	})
 
-	init_submodule("loader", shared)
-	init_submodule("dedupe", shared)
-	init_submodule("builder", shared)
-	init_submodule("categories", shared)
-	init_submodule("overrides", shared)
+	init_submodule(M.dedupe, {
+		overrides = M.overrides,
+	})
+
+	init_submodule(M.builder, {
+		categories = M.categories,
+		overrides = M.overrides,
+	})
 
 	runtime.items = {}
 	runtime.loaded = false
@@ -85,9 +78,9 @@ function M.init(args)
 end
 
 function M.load(callback)
-	local Loader = mod("loader")
-	local Dedupe = mod("dedupe")
-	local Builder = mod("builder")
+	local Loader = M.loader
+	local Dedupe = M.dedupe
+	local Builder = M.builder
 
 	if not (Loader and type(Loader.load) == "function") then
 		runtime.items = {}

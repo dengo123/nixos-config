@@ -1,18 +1,9 @@
 -- ~/.config/awesome/shell/notify/center/signals.lua
 local M = {}
 
-local runtime = {
-	ctx = {},
-	registered = false,
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function center_cfg(cfg)
 	return ((cfg or {}).notify or {}).center or {}
@@ -22,15 +13,10 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
-
 function M.register(args)
 	args = args or {}
 
-	local cfg = args.cfg or ctx().cfg or {}
+	local cfg = args.cfg or {}
 	local center = center_cfg(cfg)
 
 	local is_ready = args.is_ready
@@ -57,8 +43,6 @@ function M.register(args)
 	if type(set_ready) == "function" then
 		set_ready(true)
 	end
-
-	runtime.registered = true
 
 	awesome.connect_signal("notify::center_state", function(open)
 		if type(set_visible) == "function" then

@@ -43,12 +43,31 @@ local function pick_lead(clients)
 	return clients[1]
 end
 
+local function entry_clients(entry)
+	if type(entry) ~= "table" then
+		return {}
+	end
+
+	return entry.clients or {}
+end
+
+local function entry_label(entry)
+	if type(entry) ~= "table" then
+		return "App"
+	end
+
+	return entry.label or "App"
+end
+
 -- =========================================================================
 -- Tab Builder
 -- =========================================================================
 
-local function build_group_tab(label, clients, theme, bar_height, fixed_width, menu_api)
-	local colors = theme.colors
+local function build_tab(entry, theme, bar_height, fixed_width, hooks)
+	hooks = hooks or {}
+
+	local clients = entry_clients(entry)
+	local colors = theme.colors or {}
 
 	local icon_size = tonumber(theme.icon_size)
 	local pad_h = tonumber(theme.pad_h)
@@ -85,7 +104,7 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 
 	local title_raw = wibox.widget({
 		widget = wibox.widget.textbox,
-		text = ellipsize(label or (lead and (lead.class or lead.name) or "App"), title_len),
+		text = ellipsize(entry_label(entry), title_len),
 	})
 
 	local title = wibox.widget({
@@ -166,55 +185,54 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 
 	bgw:buttons(gears.table.join(
 		awful.button({}, 1, function()
-			local focused = client.focus
-
-			if focused then
-				for _, c in ipairs(clients) do
-					if c == focused and c.valid then
-						c.minimized = true
-						return
-					end
-				end
-			end
-
-			local lead_now = (lead and lead.valid) and lead or pick_lead(clients)
-			if lead_now and lead_now.valid then
-				lead_now:emit_signal("request::activate", "group_tab", { raise = true })
+			if type(hooks.on_left_click) == "function" then
+				hooks.on_left_click({
+					widget = bgw,
+					entry = entry,
+					clients = clients,
+					lead = (lead and lead.valid) and lead or pick_lead(clients),
+				})
 			end
 		end),
 
 		awful.button({}, 4, function()
-			awful.client.focus.byidx(1)
+			if type(hooks.on_scroll_up) == "function" then
+				hooks.on_scroll_up({
+					widget = bgw,
+					entry = entry,
+					clients = clients,
+				})
+			end
 		end),
 
 		awful.button({}, 5, function()
-			awful.client.focus.byidx(-1)
+			if type(hooks.on_scroll_down) == "function" then
+				hooks.on_scroll_down({
+					widget = bgw,
+					entry = entry,
+					clients = clients,
+				})
+			end
 		end)
 	))
 
-	local has_menu = (type(menu_api) == "table" and type(menu_api.show_for_widget_with_clients_at) == "function")
-
 	bgw:connect_signal("button::press", function(_, lx, _, button)
-		if button ~= 3 or not has_menu then
+		if button ~= 3 then
 			return
 		end
 
-		if type(menu_api.is_open) == "function" and menu_api.is_open() then
-			if type(menu_api.hide) == "function" then
-				menu_api.hide()
-			end
-			return
+		if type(hooks.on_right_click) == "function" then
+			local mc = mouse.coords()
+			local x_left = mc.x - (lx or 0)
+
+			hooks.on_right_click({
+				widget = bgw,
+				entry = entry,
+				clients = clients,
+				lead = (lead and lead.valid) and lead or pick_lead(clients),
+				anchor = { x_left = x_left },
+			})
 		end
-
-		local target = (lead and lead.valid) and lead or pick_lead(clients)
-		if not (target and target.valid) then
-			return
-		end
-
-		local mc = mouse.coords()
-		local x_left = mc.x - (lx or 0)
-
-		menu_api.show_for_widget_with_clients_at(bgw, { target }, { x_left = x_left })
 	end)
 
 	client.connect_signal("focus", refresh_colors)
@@ -223,22 +241,14 @@ local function build_group_tab(label, clients, theme, bar_height, fixed_width, m
 	return bgw
 end
 
-local function build_single_taskbar(s, theme, bar_height, fixed_width, spacing, menu_api)
+local function build_taskbar(entries, theme, bar_height, fixed_width, spacing, hooks)
 	local container = wibox.widget({
 		layout = wibox.layout.fixed.horizontal,
 		spacing = spacing,
 	})
 
-	local tag = s.selected_tag
-	if not tag then
-		return container
-	end
-
-	for _, c in ipairs(tag:clients() or {}) do
-		if c.valid and not c.skip_taskbar and c.screen == s then
-			local label = c.name or c.class or "App"
-			container:add(build_group_tab(label, { c }, theme, bar_height, fixed_width, menu_api))
-		end
+	for _, entry in ipairs(entries or {}) do
+		container:add(build_tab(entry, theme, bar_height, fixed_width, hooks))
 	end
 
 	return container
@@ -248,35 +258,45 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(s, opts)
+function M.build(_s, opts)
 	opts = opts or {}
 
-	-- ---------------------------------------------------------------------
-	-- Config
-	-- ---------------------------------------------------------------------
-
-	local theme = opts.theme
-	local menu_api = opts.menu_api
+	local theme = opts.theme or {}
 	local bar_height = tonumber(opts.bar_height)
+	local entries_fn = opts.entries_fn
 
 	local width_factor = tonumber(theme.width_factor)
 	local spacing = tonumber(theme.spacing)
 
 	local fixed_width = math.floor(width_factor * bar_height)
 
-	-- ---------------------------------------------------------------------
-	-- Widget
-	-- ---------------------------------------------------------------------
+	local hooks = {
+		on_left_click = opts.on_left_click,
+		on_right_click = opts.on_right_click,
+		on_scroll_up = opts.on_scroll_up,
+		on_scroll_down = opts.on_scroll_down,
+	}
 
 	local box = wibox.widget({
 		layout = wibox.layout.fixed.horizontal,
 		spacing = spacing,
 	})
 
+	local function current_entries()
+		if type(entries_fn) == "function" then
+			local out = entries_fn()
+			if type(out) == "table" then
+				return out
+			end
+		end
+
+		return {}
+	end
+
 	local function refresh()
 		box:reset()
 
-		local built = build_single_taskbar(s, theme, bar_height, fixed_width, spacing, menu_api)
+		local built = build_taskbar(current_entries(), theme, bar_height, fixed_width, spacing, hooks)
 		for _, child in ipairs(built.children or {}) do
 			box:add(child)
 		end
@@ -285,10 +305,6 @@ function M.build(s, opts)
 	local function delayed_refresh()
 		gears.timer.delayed_call(refresh)
 	end
-
-	-- ---------------------------------------------------------------------
-	-- Signals
-	-- ---------------------------------------------------------------------
 
 	client.connect_signal("manage", delayed_refresh)
 	client.connect_signal("unmanage", delayed_refresh)
@@ -304,6 +320,7 @@ function M.build(s, opts)
 
 	return {
 		tasklist = box,
+		refresh = refresh,
 	}
 end
 

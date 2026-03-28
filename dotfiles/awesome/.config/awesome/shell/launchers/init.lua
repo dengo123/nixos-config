@@ -2,7 +2,9 @@
 local awful = require("awful")
 
 local L = {
-	api = {},
+	lib = {},
+	launchers = {},
+	ui = {},
 }
 
 local runtime = {
@@ -31,39 +33,16 @@ local function cfg()
 	return ctx().cfg or {}
 end
 
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
-end
-
-local function api()
-	return L.api or {}
-end
-
-local function lib_api()
-	return api().lib or {}
-end
-
-local function launcher_api()
-	return api().launchers or {}
-end
-
-local function ui_api()
-	return api().ui or {}
+local function ui_ctx()
+	return ctx().ui or {}
 end
 
 local function lib(name)
-	return lib_api()[name]
+	return L.lib[name]
 end
 
 local function launcher(name)
-	return launcher_api()[name]
+	return L.launchers[name]
 end
 
 local function launcher_modules()
@@ -79,59 +58,10 @@ local function launcher_modules()
 	}
 end
 
-local function merge_shallow(a, b)
-	local out = {}
-
-	for k, v in pairs(a or {}) do
-		out[k] = v
-	end
-
-	for k, v in pairs(b or {}) do
-		out[k] = v
-	end
-
-	return out
-end
-
-local function resolve_ui(args, conf)
-	local c = (args and (args.ctx or args)) or ctx()
-
-	local arg_ui = (args and args.ui) or {}
-	local ctx_ui = c.ui or {}
-	local cfg_ui = (conf and conf.ui) or {}
-	local api_ui = (conf and conf.api and conf.api.ui) or {}
-
-	local ui = merge_shallow(cfg_ui, api_ui)
-	ui = merge_shallow(ui, ctx_ui)
-	ui = merge_shallow(ui, arg_ui)
-
-	if not (ui.theme and ui.theme.colors and ui.theme.fonts) then
-		local UI = require("ui")
-		local ui_mod = UI.init({ cfg = conf or {} })
-		ui = ui_mod.get()
-	end
-
-	if ui.colors == nil then
-		local ok, mod = pcall(require, "ui.colors")
-		if ok and mod then
-			ui.colors = mod
-		end
-	end
-
-	if ui.helpers == nil then
-		local ok, mod = pcall(require, "ui.helpers")
-		if ok and mod then
-			ui.helpers = mod
-		end
-	end
-
-	return ui
-end
-
 local function resolve_theme(area, overrides)
 	overrides = overrides or {}
 
-	local ui = ui_api()
+	local ui = ui_ctx()
 	local theme_root = ui.theme or {}
 	local theme = theme_root[area]
 
@@ -209,6 +139,19 @@ local function each_launcher(fn)
 	end
 end
 
+local function open_session_variant(opts, variant)
+	ensure_init()
+
+	opts = opts or {}
+	opts.cfg = opts.cfg or L.cfg or {}
+	opts.variant = variant
+
+	local Session = launcher("session")
+	if Session and type(Session.open) == "function" then
+		return Session.open(opts, L)
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -219,38 +162,29 @@ function L.init(args)
 	end
 
 	runtime.ctx = args or {}
-	ensure_ctx_roots()
 
-	local c = ctx()
 	local conf = cfg()
-	local resolved_ui = resolve_ui(c, conf)
+	local ui = ui_ctx()
 
 	L.cfg = conf
 
-	L.api = {
-		lib = {
-			actions = safe_require("shell.launchers.lib.actions"),
-			button = safe_require("shell.launchers.lib.button"),
-			popup = safe_require("shell.launchers.lib.popup"),
-		},
-		launchers = {
-			session = safe_require("shell.launchers.session"),
-			run = safe_require("shell.launchers.run"),
-		},
-		ui = resolved_ui,
+	L.lib = {
+		actions = safe_require("shell.launchers.lib.actions"),
+		button = safe_require("shell.launchers.lib.button"),
+		popup = safe_require("shell.launchers.lib.popup"),
 	}
 
-	c.shell.launchers = L
-	c.features.launchers = L
-	c.api.launchers = L
-	c.external.launchers = L
-	c.cfg.api.launchers = L
+	L.launchers = {
+		session = safe_require("shell.launchers.session"),
+		run = safe_require("shell.launchers.run"),
+	}
+
+	L.ui = build_ui_bridge()
 
 	local Button = lib("button")
 	if Button and type(Button.init) == "function" then
 		Button.init({
-			ctx = c,
-			ui = api().ui or {},
+			ui = ui,
 			cfg = conf,
 		})
 	end
@@ -258,22 +192,20 @@ function L.init(args)
 	local Session = launcher("session")
 	if Session and type(Session.init) == "function" then
 		Session.init({
-			ctx = c,
-			ui = api().ui or {},
+			ui = ui,
 			cfg = conf,
+			launchers = L,
 		})
 	end
 
 	local Run = launcher("run")
 	if Run and type(Run.init) == "function" then
 		Run.init({
-			ctx = c,
-			ui = api().ui or {},
+			ui = ui,
 			cfg = conf,
+			launchers = L,
 		})
 	end
-
-	L.ui_api = build_ui_bridge()
 
 	runtime.initialized = true
 	return L
@@ -322,37 +254,17 @@ end
 
 L.open = {
 	power = function(opts)
-		ensure_init()
-		opts = opts or {}
-		opts.ctx = opts.ctx or ctx()
-		opts.cfg = opts.cfg or L.cfg or {}
-
-		opts.variant = "power"
-
-		local Session = launcher("session")
-		if Session and type(Session.open) == "function" then
-			return Session.open(opts, L)
-		end
+		return open_session_variant(opts, "power")
 	end,
 
 	logoff = function(opts)
-		ensure_init()
-		opts = opts or {}
-		opts.ctx = opts.ctx or ctx()
-		opts.cfg = opts.cfg or L.cfg or {}
-
-		opts.variant = "logoff"
-
-		local Session = launcher("session")
-		if Session and type(Session.open) == "function" then
-			return Session.open(opts, L)
-		end
+		return open_session_variant(opts, "logoff")
 	end,
 
 	session = function(opts)
 		ensure_init()
+
 		opts = opts or {}
-		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
 
 		local Session = launcher("session")
@@ -363,8 +275,8 @@ L.open = {
 
 	run = function(opts)
 		ensure_init()
+
 		opts = opts or {}
-		opts.ctx = opts.ctx or ctx()
 		opts.cfg = opts.cfg or L.cfg or {}
 
 		local Run = launcher("run")

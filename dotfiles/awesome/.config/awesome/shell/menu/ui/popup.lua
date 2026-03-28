@@ -1,11 +1,10 @@
--- ~/.config/awesome/shell/menu/lib/popup.lua
+-- ~/.config/awesome/shell/menu/ui/popup.lua
 local awful = require("awful")
 local gears = require("gears")
 
 local M = {}
 
 local runtime = {
-	ctx = {},
 	menu = nil,
 	root_buttons = nil,
 	client_callback = nil,
@@ -14,10 +13,6 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function current_menu()
 	return runtime.menu
@@ -107,24 +102,19 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
+function M.show(opts)
+	opts = opts or {}
 
-function M.show(args)
-	args = args or {}
+	local items = opts.items
+	assert(type(items) == "table" and #items > 0, "menu.ui.popup: items fehlen/leer")
 
-	assert(type(args.items) == "table" and #args.items > 0, "menu.popup: items fehlen/leer")
-	local items = args.items
+	local theme = opts.theme
+	assert(type(theme) == "table", "menu.ui.popup: theme fehlt/ungueltig")
 
-	assert(type(args.theme) == "table", "menu.popup: theme fehlt/ungueltig")
-	local theme = args.theme
+	local coords = opts.coords
+	assert(type(coords) == "table", "menu.ui.popup: coords fehlen/ungueltig")
 
-	assert(type(args.coords) == "table", "menu.popup: coords fehlen/ungueltig")
-	local coords = args.coords
-
-	local on_closed = args.on_closed
+	local on_closed = opts.on_closed
 
 	M.hide()
 

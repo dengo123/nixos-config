@@ -4,12 +4,6 @@ local gears = require("gears")
 
 local M = {}
 
-local COMMANDS = {
-	lock = { "dm-tool", "lock" },
-	logout = { "pkill", "-KILL", "-u", os.getenv("USER") or "" },
-	switch_user = { "dm-tool", "switch-to-greeter" },
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
@@ -41,8 +35,24 @@ local function show_switch_user(cfg)
 	return logoff_cfg(cfg).show_switch_user == true
 end
 
+local function command_for(key)
+	if key == "lock" then
+		return { "dm-tool", "lock" }
+	end
+
+	if key == "switch_user" then
+		return { "dm-tool", "switch-to-greeter" }
+	end
+
+	if key == "logout" then
+		return { "pkill", "-KILL", "-u", os.getenv("USER") or "" }
+	end
+
+	error("session.logoff: unbekannter command key: " .. tostring(key))
+end
+
 local function make_action(key, label, assets)
-	local cmd = assert(COMMANDS[key], "session.logoff: unbekannter command key: " .. tostring(key))
+	local cmd = command_for(key)
 
 	return {
 		key = key,
@@ -58,12 +68,13 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(_th, cfg)
+function M.build(_, cfg)
 	local assets = {
 		-- lock = "ui/assets/Lock_Session.png",
 		-- logout = "ui/assets/Log_Off.png",
 		-- switch_user = "ui/assets/users.png",
 	}
+
 	local actions = {
 		make_action("lock", "Lock Session", assets),
 		make_action("logout", "Log Off", assets),

@@ -6,17 +6,12 @@ local wibox = require("wibox")
 local Popup = {}
 
 local runtime = {
-	ctx = {},
 	open_handles = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function open_handles()
 	return runtime.open_handles
@@ -59,11 +54,6 @@ end
 -- Public API
 -- =========================================================================
 
-function Popup.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return Popup
-end
-
 function Popup.close_all()
 	for i = #open_handles(), 1, -1 do
 		local handle = open_handles()[i]
@@ -73,9 +63,9 @@ function Popup.close_all()
 	end
 end
 
-function Popup.show(form_widget, th, opts)
+function Popup.show(form_widget, theme, opts)
 	opts = opts or {}
-	th = th or {}
+	theme = theme or {}
 
 	local s = opts.screen or awful.screen.focused()
 	local width = assert(opts.width, "popup.show: width required")
@@ -103,7 +93,7 @@ function Popup.show(form_widget, th, opts)
 			visible = true,
 			ontop = true,
 			type = "splash",
-			bg = nz(th.backdrop, "#00000066"),
+			bg = nz(theme.backdrop, "#00000066"),
 		})
 
 		backdrop.input_passthrough = false
@@ -138,6 +128,8 @@ function Popup.show(form_widget, th, opts)
 		}),
 	})
 
+	local close_listeners = {}
+
 	local handle = {
 		popup = popup,
 		backdrop = backdrop,
@@ -150,6 +142,12 @@ function Popup.show(form_widget, th, opts)
 		return handle._is_open == true
 	end
 
+	function handle.on_close(fn)
+		if type(fn) == "function" then
+			table.insert(close_listeners, fn)
+		end
+	end
+
 	local on_tag_selected
 	local on_screen_removed
 	local on_screen_added
@@ -160,21 +158,34 @@ function Popup.show(form_widget, th, opts)
 			pcall(function()
 				tag.disconnect_signal("property::selected", on_tag_selected)
 			end)
+			on_tag_selected = nil
 		end
+
 		if on_screen_removed then
 			pcall(function()
 				screen.disconnect_signal("removed", on_screen_removed)
 			end)
+			on_screen_removed = nil
 		end
+
 		if on_screen_added then
 			pcall(function()
 				screen.disconnect_signal("added", on_screen_added)
 			end)
+			on_screen_added = nil
 		end
+
 		if on_primary_changed then
 			pcall(function()
 				screen.disconnect_signal("primary_changed", on_primary_changed)
 			end)
+			on_primary_changed = nil
+		end
+	end
+
+	local function fire_close_listeners()
+		for _, fn in ipairs(close_listeners) do
+			pcall(fn, handle)
 		end
 	end
 
@@ -203,15 +214,14 @@ function Popup.show(form_widget, th, opts)
 		end
 
 		remove_handle(handle)
+		fire_close_listeners()
 		awesome.emit_signal("ui::overlays_changed")
 	end
 
-	local function close()
+	function handle.close()
 		disconnect_signals()
 		really_close()
 	end
-
-	handle.close = close
 
 	if hide_clients then
 		set_clients_visible(s, false)
@@ -229,7 +239,7 @@ function Popup.show(form_widget, th, opts)
 	if backdrop then
 		if close_on_backdrop then
 			backdrop:buttons(gears.table.join(awful.button({}, 1, function()
-				close()
+				handle.close()
 			end)))
 		else
 			backdrop:buttons(
@@ -243,19 +253,19 @@ function Popup.show(form_widget, th, opts)
 	end
 
 	on_tag_selected = function()
-		close()
+		handle.close()
 	end
 
 	on_screen_removed = function()
-		close()
+		handle.close()
 	end
 
 	on_screen_added = function()
-		close()
+		handle.close()
 	end
 
 	on_primary_changed = function()
-		close()
+		handle.close()
 	end
 
 	tag.connect_signal("property::selected", on_tag_selected)

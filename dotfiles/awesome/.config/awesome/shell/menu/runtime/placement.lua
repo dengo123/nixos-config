@@ -1,30 +1,26 @@
--- ~/.config/awesome/shell/menu/lib/placement.lua
+-- ~/.config/awesome/shell/menu/runtime/placement.lua
 local P = {}
 
 local runtime = {
-	ctx = {},
-	api = {},
+	layout = nil,
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function api()
-	return runtime.api or {}
-end
-
-local function layout_api()
-	return api().layout
+local function layout_mod()
+	return runtime.layout
 end
 
 local function get_layout()
-	local Layout = layout_api()
-	local out = Layout and Layout.get and Layout.get() or {}
+	local Layout = layout_mod()
+	local out = (Layout and type(Layout.get) == "function" and Layout.get()) or {}
+
+	if type(out) ~= "table" then
+		return {}
+	end
+
 	return out
 end
 
@@ -86,17 +82,26 @@ local function has_bar(s)
 	return wibar._menu_anchor == true
 end
 
+local function total_height(item_count)
+	local Layout = layout_mod()
+	if Layout and type(Layout.total_height) == "function" then
+		return Layout.total_height(item_count)
+	end
+
+	return 0
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
-function P.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.api = (args and args.api) or {}
+function P.init(opts)
+	opts = opts or {}
+	runtime.layout = opts.layout or runtime.layout
 	return P
 end
 
-function P.y_over_bar(s, total_height)
+function P.y_over_bar(s, menu_height)
 	local layout = get_layout()
 	local gap = tonumber(layout.gap) or 4
 
@@ -105,16 +110,16 @@ function P.y_over_bar(s, total_height)
 
 	if bar then
 		if position == "bottom" then
-			return bar.y - total_height - gap
+			return bar.y - menu_height - gap
 		end
 
 		return bar.y + bar.height + gap
 	end
 
-	local screen = screen_geometry(s)
+	local sg = screen_geometry(s)
 	local fallback_bar_height = 28
 
-	return screen.y + math.max(0, screen.height - total_height - (fallback_bar_height + gap))
+	return sg.y + math.max(0, sg.height - menu_height - (fallback_bar_height + gap))
 end
 
 function P.x_left_from_anchor(_s, x_left)
@@ -137,32 +142,27 @@ function P.x_left_on_bar(s)
 end
 
 function P.coords_for_tabs(s, anchor_left_x, item_count)
-	local Layout = layout_api()
-	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
 	local x = P.x_left_from_anchor(s, anchor_left_x)
-	local y = P.y_over_bar(s, total_height)
+	local y = P.y_over_bar(s, total_height(item_count))
 
 	return x, y
 end
 
 function P.coords_for_start(s, item_count)
-	local Layout = layout_api()
-	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
 	local x = P.x_left_on_bar(s)
-	local y = P.y_over_bar(s, total_height)
+	local y = P.y_over_bar(s, total_height(item_count))
 
 	return x, y
 end
 
 function P.coords_centered(s, item_count)
-	local Layout = layout_api()
 	local wa = screen_workarea(s)
 
 	local width = layout_width()
-	local total_height = (Layout and Layout.total_height and Layout.total_height(item_count)) or 0
+	local menu_height = total_height(item_count)
 
 	local x = wa.x + math.floor((wa.width - width) / 2)
-	local y = wa.y + math.floor((wa.height - total_height) / 2)
+	local y = wa.y + math.floor((wa.height - menu_height) / 2)
 
 	if x < wa.x then
 		x = wa.x

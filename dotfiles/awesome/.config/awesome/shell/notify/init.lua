@@ -11,7 +11,11 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
+	ui = {},
+	runtime = {},
+	policy = {},
+	center = nil,
+	theme = {},
 }
 
 local runtime = {
@@ -29,31 +33,16 @@ local function ctx()
 	return runtime.ctx or {}
 end
 
-local function ensure_ctx_roots()
-	local c = ctx()
-
-	c.shell = c.shell or {}
-	c.features = c.features or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
-	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
-end
-
 local function cfg()
 	return ctx().cfg or {}
 end
 
-local function ui()
+local function ui_ctx()
 	return ctx().ui or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function mod(name)
-	return api()[name]
+local function shell()
+	return ctx().shell or {}
 end
 
 local function notify_cfg(conf)
@@ -66,7 +55,6 @@ end
 
 local function emit_center_state()
 	awesome.emit_signal("notify::center_state", runtime.center_open)
-	awesome.emit_signal("ui::overlays_changed")
 end
 
 local function open_center()
@@ -104,7 +92,36 @@ local function register_center_signals()
 	awesome.connect_signal("notify::close_center", close_center)
 end
 
-local function require_notify_theme()
+local function build_notify_theme(Theme)
+	if not Theme then
+		return {}
+	end
+
+	if type(Theme.build) == "function" then
+		local built = Theme.build({
+			cfg = cfg(),
+			ui = ui_ctx(),
+		})
+
+		if type(Theme.apply_to_beautiful) == "function" then
+			Theme.apply_to_beautiful(built or {})
+		elseif type(Theme.init) == "function" then
+			Theme.init({
+				cfg = cfg(),
+				ui = ui_ctx(),
+			})
+		end
+
+		return (built and built.notify) or {}
+	end
+
+	if type(Theme.init) == "function" then
+		Theme.init({
+			cfg = cfg(),
+			ui = ui_ctx(),
+		})
+	end
+
 	return beautiful.notify or {}
 end
 
@@ -114,53 +131,45 @@ end
 
 function M.init(args)
 	runtime.ctx = args or {}
-	ensure_ctx_roots()
-
-	local c = ctx()
 
 	if runtime.initialized then
 		return M
 	end
 
-	M.api = {
-		ui = c.ui or {},
+	M.ui = {
 		theme = safe_require("shell.notify.ui.theme"),
 		naughty = safe_require("shell.notify.ui.naughty"),
-		pipeline = safe_require("shell.notify.runtime.pipeline"),
-		center = safe_require("shell.notify.center"),
-		history = safe_require("shell.notify.runtime.history"),
-		rules = safe_require("shell.notify.policy.rules"),
 		shape = safe_require("shell.notify.ui.shape"),
 	}
 
-	c.shell.notify = M
-	c.features.notify = M
-	c.api.notify = M
-	c.external.notify = M
-	c.cfg.api.notify = M
+	M.runtime = {
+		pipeline = safe_require("shell.notify.runtime.pipeline"),
+		history = safe_require("shell.notify.runtime.history"),
+	}
 
-	local Theme = mod("theme")
-	local NaughtyConfig = mod("naughty")
-	local Pipeline = mod("pipeline")
-	local Center = mod("center")
-	local History = mod("history")
-	local Rules = mod("rules")
-	local Shape = mod("shape")
+	M.policy = {
+		rules = safe_require("shell.notify.policy.rules"),
+	}
 
-	if Theme and type(Theme.init) == "function" then
-		Theme.init({
-			ctx = c,
-			cfg = cfg(),
-			ui = ui(),
-		})
-	end
+	M.center = safe_require("shell.notify.center")
+
+	local Theme = M.ui.theme
+	local NaughtyConfig = M.ui.naughty
+	local Shape = M.ui.shape
+
+	local Pipeline = M.runtime.pipeline
+	local History = M.runtime.history
+
+	local Rules = M.policy.rules
+	local Center = M.center
+
+	M.theme = build_notify_theme(Theme)
 
 	if NaughtyConfig and type(NaughtyConfig.init) == "function" then
 		NaughtyConfig.init({
-			ctx = c,
 			cfg = cfg(),
 			shape = Shape,
-			notify_theme = require_notify_theme(),
+			notify_theme = M.theme or {},
 		})
 	end
 
@@ -174,22 +183,17 @@ function M.init(args)
 
 	if Center and type(Center.init) == "function" then
 		Center.init({
-			ctx = c,
 			cfg = cfg(),
-			ui = ui(),
+			ui = ui_ctx(),
 			history = History,
-		})
-	end
-
-	if Pipeline and type(Pipeline.init) == "function" then
-		Pipeline.init({
-			ctx = c,
+			notify = M,
+			notify_theme = M.theme or {},
+			shell = shell(),
 		})
 	end
 
 	if Pipeline and type(Pipeline.register) == "function" then
 		Pipeline.register({
-			ctx = c,
 			cfg = cfg(),
 			history = History,
 		})

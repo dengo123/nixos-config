@@ -3,17 +3,9 @@ local wibox = require("wibox")
 
 local L = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- ============================================================================
 -- Helpers
 -- ============================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function fixed_cell(widget, width)
 	return wibox.widget({
@@ -29,15 +21,15 @@ local function fixed_cell(widget, width)
 	})
 end
 
-local function compute_cell_geom(th, body_h)
-	local pad_h = assert(tonumber(th.pad_h), "session.layout: pad_h fehlt/ungültig")
-	local pad_v = assert(tonumber(th.pad_v), "session.layout: pad_v fehlt/ungültig")
-	local icon_ratio = assert(tonumber(th.icon_ratio), "session.layout: icon_ratio fehlt/ungültig")
+local function compute_cell_geom(theme, body_h)
+	local pad_h = assert(tonumber(theme.pad_h), "session.layout: pad_h fehlt/ungültig")
+	local pad_v = assert(tonumber(theme.pad_v), "session.layout: pad_v fehlt/ungültig")
+	local icon_ratio = assert(tonumber(theme.icon_ratio), "session.layout: icon_ratio fehlt/ungültig")
 
-	local icon_pad = assert(tonumber(th.icon_pad), "session.layout: icon_pad fehlt/ungültig")
-	local cell_pad = assert(tonumber(th.icon_cell_pad), "session.layout: icon_cell_pad fehlt/ungültig")
-	local extra_w = assert(tonumber(th.icon_cell_extra_w), "session.layout: icon_cell_extra_w fehlt/ungültig")
-	local spacing = assert(tonumber(th.icon_spacing), "session.layout: icon_spacing fehlt/ungültig")
+	local icon_pad = assert(tonumber(theme.icon_pad), "session.layout: icon_pad fehlt/ungültig")
+	local cell_pad = assert(tonumber(theme.icon_cell_pad), "session.layout: icon_cell_pad fehlt/ungültig")
+	local extra_w = assert(tonumber(theme.icon_cell_extra_w), "session.layout: icon_cell_extra_w fehlt/ungültig")
+	local spacing = assert(tonumber(theme.icon_spacing), "session.layout: icon_spacing fehlt/ungültig")
 
 	local base_side = math.max(1, body_h + pad_v * 2)
 	local icon_size0 = math.floor(base_side * icon_ratio)
@@ -75,12 +67,7 @@ end
 -- Public API
 -- ============================================================================
 
-function L.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return L
-end
-
-function L.build_row(actions, th, dims, deps, get_close_ref)
+function L.build_row(actions, theme, dims, deps, get_close_ref)
 	actions = actions or {}
 	deps = deps or {}
 
@@ -92,12 +79,12 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 	-- ------------------------------------------------------------------------
 
 	local count = #actions
-	local geom = compute_cell_geom(th, dims.body_h)
+	local geom = compute_cell_geom(theme, dims.body_h)
 
-	local label_size = tonumber(th.icon_label_size) or 0
-	local label_leading = tonumber(th.icon_label_leading) or 1
-	local label_pad_top = tonumber(th.icon_label_pad_top) or 0
-	local label_pad_bottom = tonumber(th.icon_label_pad_bottom) or 0
+	local label_size = tonumber(theme.icon_label_size) or 0
+	local label_leading = tonumber(theme.icon_label_leading) or 1
+	local label_pad_top = tonumber(theme.icon_label_pad_top) or 0
+	local label_pad_bottom = tonumber(theme.icon_label_pad_bottom) or 0
 	local label_h = math.ceil(label_size * label_leading) + label_pad_top + label_pad_bottom
 	local visual_offset_y = math.floor((label_h + geom.spacing) / 2) + 16
 
@@ -115,7 +102,7 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 			emoji_font = action.emoji_font,
 			size = geom.icon_size,
 			label = action.label,
-			th = th,
+			th = theme,
 			on_press = function()
 				local close_fn = resolve_close_fn(get_close_ref)
 
@@ -136,21 +123,21 @@ function L.build_row(actions, th, dims, deps, get_close_ref)
 	-- ------------------------------------------------------------------------
 
 	local slot_count = math.max(3, count)
-	local row_w = required_row_width(slot_count, geom.cell_w, geom.spacing)
 
-	local row_spacing = geom.spacing
-	if count == 2 then
-		row_spacing = geom.spacing * 7
-	end
+	local base_row_spacing = geom.spacing
+	local row_w = required_row_width(slot_count, geom.cell_w, base_row_spacing)
 
 	local inner_row = wibox.widget({
 		layout = wibox.layout.fixed.horizontal,
-		spacing = row_spacing,
+		spacing = base_row_spacing,
 	})
 
 	if count == 2 then
+		local target_gap = geom.spacing * 7
+		local center_spacer_w = math.max(0, target_gap - (base_row_spacing * 2))
+
 		inner_row:add(cells[1])
-		inner_row:add(fixed_cell(wibox.widget({}), geom.cell_w))
+		inner_row:add(fixed_cell(wibox.widget({}), center_spacer_w))
 		inner_row:add(cells[2])
 	else
 		for i = 1, #cells do

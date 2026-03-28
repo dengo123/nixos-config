@@ -3,17 +3,9 @@ local awful = require("awful")
 
 local P = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function urlencode(s)
 	if not s then
@@ -41,6 +33,7 @@ local function resolve_home(home)
 	if type(home) == "string" and #home > 0 then
 		return home
 	end
+
 	return nil
 end
 
@@ -234,15 +227,6 @@ local function resolve_web_engine(engine)
 	}
 
 	return WEB_ENGINES[key] or WEB_ENGINES.google
-end
-
--- =========================================================================
--- Init
--- =========================================================================
-
-function P.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return P
 end
 
 -- =========================================================================

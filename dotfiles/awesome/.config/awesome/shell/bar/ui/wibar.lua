@@ -7,20 +7,15 @@ local dpi = xr.apply_dpi
 local M = {}
 
 local runtime = {
-	ctx = {},
+	ui = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+local function resolved_theme()
+	local ui = runtime.ui or {}
 	return ui.theme or {}
 end
 
@@ -28,21 +23,21 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	args = args or {}
+function M.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 
-	local theme = resolved_theme(args)
-	local C = theme.colors or {}
-	local F = theme.fonts or {}
+	local theme = resolved_theme()
+	local colors = theme.colors or {}
+	local fonts = theme.fonts or {}
 
 	-- ---------------------------------------------------------------------
 	-- Wibar
 	-- ---------------------------------------------------------------------
 
 	beautiful.wibar_height = dpi(32)
-	beautiful.wibar_bg = C.primary
-	beautiful.wibar_fg = C.text_invert
+	beautiful.wibar_bg = colors.primary
+	beautiful.wibar_fg = colors.text_invert
 	beautiful.wibar_on_top = false
 	beautiful.wibar_opacity = 1.0
 	beautiful.wibar_shape = nil
@@ -60,7 +55,7 @@ function M.init(args)
 	-- Systray
 	-- ---------------------------------------------------------------------
 
-	beautiful.systray_bg = C.secondary
+	beautiful.systray_bg = colors.secondary
 	beautiful.systray_fg = beautiful.wibar_fg
 	beautiful.systray_pad_h = dpi(6)
 	beautiful.systray_pad_v = 0
@@ -80,9 +75,9 @@ function M.init(args)
 	-- Calendar
 	-- ---------------------------------------------------------------------
 
-	beautiful.clock_calendar_bg = C.surface
-	beautiful.clock_calendar_fg = C.text
-	beautiful.clock_calendar_border_color = C.surface_focus
+	beautiful.clock_calendar_bg = colors.surface
+	beautiful.clock_calendar_fg = colors.text
+	beautiful.clock_calendar_border_color = colors.surface_focus
 	beautiful.clock_calendar_border_width = 0
 
 	-- ---------------------------------------------------------------------
@@ -101,7 +96,7 @@ function M.init(args)
 		pad_v = dpi(0),
 		collapsed_pad_h = dpi(6),
 		fmt = "%d",
-		font = F.ui,
+		font = fonts.ui,
 	}
 
 	-- ---------------------------------------------------------------------
@@ -116,14 +111,14 @@ function M.init(args)
 	beautiful.notify_button_offset_y = dpi(1)
 
 	beautiful.notify_button_bg = beautiful.systray_bg
-	beautiful.notify_button_bg_hover = C.primary
+	beautiful.notify_button_bg_hover = colors.primary
 	beautiful.notify_button_fg = beautiful.wibar_fg
 
-	beautiful.notify_button_border_color = C.tertiary
+	beautiful.notify_button_border_color = colors.tertiary
 	beautiful.notify_button_border_width = dpi(1)
 
-	beautiful.notify_button_font = F.ui_bold
-	beautiful.notify_button_badge_font = F.ui_bold
+	beautiful.notify_button_font = fonts.ui_bold
+	beautiful.notify_button_badge_font = fonts.ui_bold
 
 	beautiful.notify_button_glyph_closed = "⮜"
 	beautiful.notify_button_glyph_open = "⮝"
@@ -132,6 +127,8 @@ function M.init(args)
 	beautiful.notify_button_gap_left = dpi(16)
 	beautiful.notify_button_zone_width = dpi(12)
 	beautiful.notify_button_seam_offset = dpi(11)
+
+	return M
 end
 
 function M.props()

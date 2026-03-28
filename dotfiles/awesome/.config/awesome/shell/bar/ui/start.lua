@@ -8,7 +8,7 @@ local dpi = xr.apply_dpi
 local S = {}
 
 local runtime = {
-	ctx = {},
+	ui = {},
 }
 
 local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
@@ -17,13 +17,8 @@ local DEFAULT_SYSTEM_ICON = gfs.get_configuration_dir() .. "ui/assets/flake.png"
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+local function resolved_theme()
+	local ui = runtime.ui or {}
 	return ui.theme or {}
 end
 
@@ -35,9 +30,9 @@ local function with_size(font, size)
 	return base .. " " .. tostring(size)
 end
 
-local function right_big_cap_factory(args)
-	local right_radius = args.right_radius
-	local left_radius = args.left_radius or 0
+local function right_big_cap_factory(opts)
+	local right_radius = opts.right_radius
+	local left_radius = opts.left_radius or 0
 
 	return function(cr, w, h)
 		local right_r = right_radius or math.max(h, (beautiful.border_radius or 16) * 2)
@@ -73,18 +68,18 @@ end
 -- Public API
 -- =========================================================================
 
-function S.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	args = args or {}
+function S.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 
-	local theme = resolved_theme(args)
-	local C = theme.colors or {}
-	local F = theme.fonts or {}
-	local I = theme.icons or {}
+	local theme = resolved_theme()
+	local colors = theme.colors or {}
+	local fonts = theme.fonts or {}
+	local icons = theme.icons or {}
 
 	local system_icon = DEFAULT_SYSTEM_ICON
-	if type(I.system) == "string" and I.system ~= "" then
-		system_icon = I.system
+	if type(icons.system) == "string" and icons.system ~= "" then
+		system_icon = icons.system
 	end
 
 	local wibar_height = tonumber(beautiful.wibar_height) or dpi(28)
@@ -103,7 +98,7 @@ function S.init(args)
 			bottom = dpi(0),
 		},
 
-		font = with_size(F.ui_bold_italic, 15),
+		font = with_size(fonts.ui_bold_italic, 15),
 
 		width_factor = 4,
 		fixed_height = true,
@@ -118,37 +113,39 @@ function S.init(args)
 	})
 
 	beautiful.start_colors = {
-		bg = C.start,
-		bg_hover = C.start_focus,
-		fg = C.text_invert,
+		bg = colors.start,
+		bg_hover = colors.start_focus,
+		fg = colors.text_invert,
 	}
+
+	return S
 end
 
 function S.get()
-	local ST = beautiful.start or {}
-	local C = beautiful.start_colors or {}
+	local start_theme = beautiful.start or {}
+	local colors = beautiful.start_colors or {}
 
 	return {
-		label = ST.label,
+		label = start_theme.label,
 
-		icon = ST.system_icon,
-		system_icon = ST.system_icon,
-		icon_size = ST.icon_size,
-		spacing = ST.spacing,
-		margin = ST.margin,
+		icon = start_theme.system_icon,
+		system_icon = start_theme.system_icon,
+		icon_size = start_theme.icon_size,
+		spacing = start_theme.spacing,
+		margin = start_theme.margin,
 
-		font = ST.font,
+		font = start_theme.font,
 
-		width_factor = ST.width_factor,
-		fixed_height = ST.fixed_height,
+		width_factor = start_theme.width_factor,
+		fixed_height = start_theme.fixed_height,
 
-		right_radius = ST.right_radius,
-		left_radius = ST.left_radius,
-		shape = ST.shape,
+		right_radius = start_theme.right_radius,
+		left_radius = start_theme.left_radius,
+		shape = start_theme.shape,
 
-		bg = C.bg,
-		bg_hover = C.bg_hover,
-		fg = C.fg,
+		bg = colors.bg,
+		bg_hover = colors.bg_hover,
+		fg = colors.fg,
 	}
 end
 

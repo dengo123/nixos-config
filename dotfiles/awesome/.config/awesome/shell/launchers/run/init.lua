@@ -196,21 +196,19 @@ local function build_controller_ctx(args)
 end
 
 local function resolve_lib(Lib)
-	return (Lib and Lib.api and Lib.api.lib) or {}
+	return (Lib and Lib.lib) or {}
 end
 
 local function resolve_open_panel(Lib)
-	if Lib and Lib.ui_api and type(Lib.ui_api.open_panel) == "function" then
-		return Lib.ui_api.open_panel
+	if Lib and Lib.ui and type(Lib.ui.open_panel) == "function" then
+		return Lib.ui.open_panel
 	end
 
 	local c = ctx()
-	local launchers = (c.features and c.features.launchers)
-		or (c.shell and c.shell.launchers)
-		or (c.api and c.api.launchers)
+	local launchers = (c.shell and c.shell.launchers) or nil
 
-	if launchers and launchers.ui_api and type(launchers.ui_api.open_panel) == "function" then
-		return launchers.ui_api.open_panel
+	if launchers and launchers.ui and type(launchers.ui.open_panel) == "function" then
+		return launchers.ui.open_panel
 	end
 
 	return nil
@@ -371,12 +369,24 @@ function M.open(opts, Lib)
 	end
 
 	if handle and type(handle.on_close) == "function" then
-		handle.on_close(cleanup_api)
+		handle.on_close(function()
+			if ctrl and type(ctrl.cancel) == "function" then
+				pcall(function()
+					ctrl.cancel()
+				end)
+			end
+			cleanup_api()
+		end)
 	end
 
 	if handle and type(handle.close) == "function" then
 		local old_close = handle.close
 		handle.close = function(...)
+			if ctrl and type(ctrl.cancel) == "function" then
+				pcall(function()
+					ctrl.cancel()
+				end)
+			end
 			cleanup_api()
 			return old_close(...)
 		end

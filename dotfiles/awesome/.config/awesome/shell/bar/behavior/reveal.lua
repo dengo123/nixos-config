@@ -1,11 +1,10 @@
--- ~/.config/awesome/shell/bar/reveal.lua
+-- ~/.config/awesome/shell/bar/behavior/reveal.lua
 local gears = require("gears")
 local wibox = require("wibox")
 
 local M = {}
 
 local runtime = {
-	ctx = {},
 	triggers = {},
 	bars = {},
 	opts_by_screen = {},
@@ -18,10 +17,6 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function triggers()
 	return runtime.triggers
@@ -357,11 +352,6 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
-
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
 
 function M.attach(s, bar, opts)
 	opts = opts or {}

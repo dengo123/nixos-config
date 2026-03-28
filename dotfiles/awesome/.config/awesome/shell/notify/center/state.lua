@@ -2,7 +2,6 @@
 local M = {}
 
 local runtime = {
-	ctx = {},
 	popup_state = {},
 }
 
@@ -40,11 +39,6 @@ end
 -- =========================================================================
 -- Public API
 -- =========================================================================
-
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
 
 function M.state_for_screen(s)
 	local key = key_for_screen(s)

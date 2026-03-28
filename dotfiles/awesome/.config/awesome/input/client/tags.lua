@@ -16,7 +16,7 @@ end
 -- =========================================================================
 
 function M.build(modkey, actions)
-	assert(type(actions) == "table", "input.client.tags: actions fehlt/ungueltig")
+	-- assert(type(actions) == "table", "input.client.tags: actions fehlt/ungueltig")
 
 	return awful.util.table.join(
 		awful.key({ modkey, "Control", "Shift" }, "Right", function()

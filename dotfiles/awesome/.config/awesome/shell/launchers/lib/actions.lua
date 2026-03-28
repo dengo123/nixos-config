@@ -1,10 +1,6 @@
 -- ~/.config/awesome/shell/launchers/lib/actions.lua
 local A = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
@@ -25,17 +21,12 @@ end
 -- Public API
 -- =========================================================================
 
-function A.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return A
-end
+function A.bind(opts)
+	opts = opts or {}
 
-function A.bind(ctx)
-	ctx = ctx or {}
-
-	local ctrl = ctx.ctrl
-	local handle = ctx.handle
-	local gears = ctx.gears
+	local ctrl = opts.ctrl
+	local handle = opts.handle
+	local gears = opts.gears
 
 	return {
 		cancel = function()

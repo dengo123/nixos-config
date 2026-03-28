@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/menu/theme.lua
+-- ~/.config/awesome/shell/menu/ui/theme.lua
 local beautiful = require("beautiful")
 local gears = require("gears")
 local xr = require("beautiful.xresources")
@@ -8,20 +8,15 @@ local dpi = xr.apply_dpi
 local M = {}
 
 local runtime = {
-	ctx = {},
+	ui = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+local function resolved_theme()
+	local ui = runtime.ui or {}
 	return ui.theme or {}
 end
 
@@ -29,23 +24,23 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	args = args or {}
+function M.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 
-	local theme = resolved_theme(args)
-	local C = theme.colors or {}
-	local F = theme.fonts or {}
+	local theme = resolved_theme()
+	local colors = theme.colors or {}
+	local fonts = theme.fonts or {}
 
 	-- ---------------------------------------------------------------------
 	-- Menu
 	-- ---------------------------------------------------------------------
 
-	beautiful.menu_bg_normal = C.text_invert
-	beautiful.menu_fg_normal = C.text or C.foreground
-	beautiful.menu_bg_focus = C.text_invert_focus
-	beautiful.menu_fg_focus = C.text or C.foreground
-	beautiful.menu_border_color = C.text_invert_focus
+	beautiful.menu_bg_normal = colors.text_invert
+	beautiful.menu_fg_normal = colors.text or colors.foreground
+	beautiful.menu_bg_focus = colors.text_invert_focus
+	beautiful.menu_fg_focus = colors.text or colors.foreground
+	beautiful.menu_border_color = colors.text_invert_focus
 	beautiful.menu_border_width = dpi(1)
 
 	beautiful.menu_height = dpi(28)
@@ -61,18 +56,18 @@ function M.init(args)
 	-- Hotkeys
 	-- ---------------------------------------------------------------------
 
-	beautiful.hotkeys_bg = C.surface
+	beautiful.hotkeys_bg = colors.surface
 	beautiful.hotkeys_fg = beautiful.menu_fg_normal
 	beautiful.hotkeys_border_width = beautiful.menu_border_width
-	beautiful.hotkeys_border_color = C.surface_focus
+	beautiful.hotkeys_border_color = colors.surface_focus
 	beautiful.hotkeys_shape = beautiful.menu_shape
 
 	beautiful.hotkeys_label_bg = beautiful.menu_bg_focus
 	beautiful.hotkeys_label_fg = beautiful.menu_fg_focus
 	beautiful.hotkeys_modifiers_fg = beautiful.menu_fg_focus
 
-	beautiful.hotkeys_font = F.ui
-	beautiful.hotkeys_description_font = F.ui
+	beautiful.hotkeys_font = fonts.ui
+	beautiful.hotkeys_description_font = fonts.ui
 	beautiful.hotkeys_group_margin = dpi(12)
 
 	return M

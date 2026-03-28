@@ -97,7 +97,7 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(_th, cfg)
+function M.build(_, cfg)
 	local assets = {
 		hibernate = "ui/assets/hibernate.png",
 		suspend = "ui/assets/hibernate.png",

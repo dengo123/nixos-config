@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/notify/theme.lua
 -- ~/.config/awesome/shell/notify/ui/theme.lua
 local beautiful = require("beautiful")
 local xr = require("beautiful.xresources")
@@ -7,21 +6,12 @@ local dpi = xr.apply_dpi
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
 local function resolved_theme(args)
-	local c = (args and (args.ctx or args)) or ctx()
-	local ui = (args and args.ui) or c.ui or {}
+	local ui = (args and args.ui) or {}
 	return ui.theme or {}
 end
 
@@ -30,7 +20,6 @@ end
 -- =========================================================================
 
 function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
 	args = args or {}
 
 	local theme = resolved_theme(args)
@@ -104,7 +93,7 @@ function M.init(args)
 		action_fg_hover = C.text_focus,
 		action_spacing = dpi(8),
 		action_row_spacing = dpi(6),
-		action_icon = "▪",
+		action_icon = "☛",
 		action_icon_font = F.ui_bold or F.ui,
 		action_font = F.ui,
 	}

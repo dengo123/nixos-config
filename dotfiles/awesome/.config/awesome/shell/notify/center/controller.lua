@@ -1,6 +1,5 @@
 -- ~/.config/awesome/shell/notify/center/controller.lua
 local awful = require("awful")
-local beautiful = require("beautiful")
 
 local M = {}
 
@@ -39,8 +38,8 @@ local function key_for_screen(s)
 	return tostring(tonumber(s.index) or 0)
 end
 
-local function center_list_theme()
-	local center = (beautiful.notify or {}).center or {}
+local function center_list_theme(notify_theme)
+	local center = (notify_theme or {}).center or {}
 
 	return {
 		entry_spacing = tonumber(center.entry_spacing) or 0,
@@ -59,8 +58,9 @@ end
 function M.new(args)
 	args = args or {}
 
-	local ctx = args.ctx or {}
-	local cfg = args.cfg or ctx.cfg or {}
+	local cfg = args.cfg or {}
+	local ui = args.ui or {}
+	local notify_theme = args.notify_theme or {}
 
 	local Popup = args.popup
 	local Layout = args.layout
@@ -102,9 +102,9 @@ function M.new(args)
 		end
 
 		return Layout.resolve_geometry({
-			ctx = ctx,
 			popup = popup,
 			cfg = cfg,
+			ui = ui,
 			height_override = height_override,
 		})
 	end
@@ -142,7 +142,7 @@ function M.new(args)
 		return Popup.rebuild(popup, function()
 			local entries = (History and History.list and History.list()) or {}
 			local state = State.state_for_screen(popup.screen)
-			local theme = center_list_theme()
+			local list_theme = center_list_theme(notify_theme)
 
 			local list_width = base_geo.width
 			if Layout and type(Layout.resolve_list_width) == "function" then
@@ -150,16 +150,17 @@ function M.new(args)
 			end
 
 			local built = List.build({
-				ctx = ctx,
-				theme = theme,
+				theme = list_theme,
 				entries = entries,
 				cfg = cfg,
+				ui = ui,
 				state = state,
 				max_height = base_geo.height,
 				list_width = list_width,
 				widget = Widget,
 				deps = {
 					actions = Actions,
+					theme = notify_theme,
 				},
 			})
 
@@ -180,15 +181,16 @@ function M.new(args)
 
 			if View and type(View.build) == "function" then
 				panel = View.build({
-					ctx = ctx,
 					widget = built.widget,
+					cfg = cfg,
+					ui = ui,
 					popup_width = base_geo.width,
 					popup_height = base_geo.height,
-					pad_top = theme.list_pad_top,
-					pad_right = theme.list_pad_right,
-					pad_bottom = theme.list_pad_bottom,
-					pad_left = theme.list_pad_left,
-					bg = theme.panel_bg,
+					pad_top = list_theme.list_pad_top,
+					pad_right = list_theme.list_pad_right,
+					pad_bottom = list_theme.list_pad_bottom,
+					pad_left = list_theme.list_pad_left,
+					bg = list_theme.panel_bg,
 				})
 			end
 

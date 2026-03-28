@@ -5,25 +5,17 @@ local wibox = require("wibox")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- ============================================================================
 -- Helpers
 -- ============================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function escape(text)
 	return gears.string.xml_escape(tostring(text or ""))
 end
 
-local function build_square_shape(th)
-	if th.icon_shape == "rounded" then
-		local rounding = assert(tonumber(th.icon_rounding), "power.icons: icon_rounding fehlt/ungültig")
+local function build_square_shape(theme)
+	if theme.icon_shape == "rounded" then
+		local rounding = assert(tonumber(theme.icon_rounding), "session.icons: icon_rounding fehlt/ungültig")
 		return function(cr, w, h)
 			gears.shape.rounded_rect(cr, w, h, rounding)
 		end
@@ -36,27 +28,22 @@ end
 -- Public API
 -- ============================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	return M
-end
-
-function M.mk_icon_button(args)
-	args = args or {}
+function M.mk_icon_button(opts)
+	opts = opts or {}
 
 	-- ------------------------------------------------------------------------
 	-- Config
 	-- ------------------------------------------------------------------------
 
-	local th = args.th or {}
-	local size = assert(tonumber(args.size), "power.icons: size fehlt/ungültig")
+	local theme = opts.th or {}
+	local size = assert(tonumber(opts.size), "session.icons: size fehlt/ungültig")
 
-	local pad_icon = assert(tonumber(th.icon_pad), "power.icons: icon_pad fehlt/ungültig")
-	local pad_cell = assert(tonumber(th.icon_cell_pad), "power.icons: icon_cell_pad fehlt/ungültig")
-	local spacing = assert(tonumber(th.icon_spacing), "power.icons: icon_spacing fehlt/ungültig")
+	local pad_icon = assert(tonumber(theme.icon_pad), "session.icons: icon_pad fehlt/ungültig")
+	local pad_cell = assert(tonumber(theme.icon_cell_pad), "session.icons: icon_cell_pad fehlt/ungültig")
+	local spacing = assert(tonumber(theme.icon_spacing), "session.icons: icon_spacing fehlt/ungültig")
 
 	local box_side = size + pad_icon * 2
-	local square_shape = build_square_shape(th)
+	local square_shape = build_square_shape(theme)
 
 	-- ------------------------------------------------------------------------
 	-- Icon
@@ -64,17 +51,17 @@ function M.mk_icon_button(args)
 
 	local icon_inner
 
-	if type(args.icon) == "string" and #args.icon > 0 then
+	if type(opts.icon) == "string" and #opts.icon > 0 then
 		icon_inner = wibox.widget({
-			image = args.icon,
+			image = opts.icon,
 			resize = true,
 			forced_width = size,
 			forced_height = size,
 			widget = wibox.widget.imagebox,
 		})
 	else
-		local emoji_char = args.emoji or "…"
-		local emoji_font = args.emoji_font or ("sans " .. math.floor(size * 0.66))
+		local emoji_char = opts.emoji or "…"
+		local emoji_font = opts.emoji_font or ("sans " .. math.floor(size * 0.66))
 
 		icon_inner = wibox.widget({
 			markup = string.format("<span font='%s'>%s</span>", emoji_font, escape(emoji_char)),
@@ -110,25 +97,25 @@ function M.mk_icon_button(args)
 	-- ------------------------------------------------------------------------
 
 	local label_block = nil
-	local label_h = 0
 
-	if type(args.label) == "string" and #args.label > 0 then
-		local label_size = assert(tonumber(th.icon_label_size), "power.icons: icon_label_size fehlt/ungültig")
-		local label_leading = assert(tonumber(th.icon_label_leading), "power.icons: icon_label_leading fehlt/ungültig")
-		local extra_w = assert(tonumber(th.icon_cell_extra_w), "power.icons: icon_cell_extra_w fehlt/ungültig")
+	if type(opts.label) == "string" and #opts.label > 0 then
+		local label_size = assert(tonumber(theme.icon_label_size), "session.icons: icon_label_size fehlt/ungültig")
+		local label_leading =
+			assert(tonumber(theme.icon_label_leading), "session.icons: icon_label_leading fehlt/ungültig")
+		local extra_w = assert(tonumber(theme.icon_cell_extra_w), "session.icons: icon_cell_extra_w fehlt/ungültig")
 		local label_w = box_side + extra_w
 
-		local label_pad_top = tonumber(th.icon_label_pad_top) or 0
-		local label_pad_bottom = tonumber(th.icon_label_pad_bottom) or 0
+		local label_pad_top = tonumber(theme.icon_label_pad_top) or 0
+		local label_pad_bottom = tonumber(theme.icon_label_pad_bottom) or 0
 
-		label_h = math.ceil(label_size * label_leading) + label_pad_top + label_pad_bottom
+		local label_h = math.ceil(label_size * label_leading) + label_pad_top + label_pad_bottom
 
 		local label_widget = wibox.widget({
 			markup = string.format(
 				"<span font='sans %d' color='%s'>%s</span>",
 				label_size,
-				th.icon_label_color,
-				escape(args.label)
+				theme.icon_label_color,
+				escape(opts.label)
 			),
 			align = "center",
 			valign = "center",
@@ -146,6 +133,7 @@ function M.mk_icon_button(args)
 			},
 			strategy = "exact",
 			width = label_w,
+			height = label_h,
 			widget = wibox.container.constraint,
 		})
 	end
@@ -180,10 +168,10 @@ function M.mk_icon_button(args)
 	-- ------------------------------------------------------------------------
 
 	hover_square:connect_signal("mouse::enter", function()
-		hover_square.bg = th.icon_hover_bg
+		hover_square.bg = theme.icon_hover_bg
 		hover_square.shape_border_width =
-			assert(tonumber(th.icon_hover_bw), "power.icons: icon_hover_bw fehlt/ungültig")
-		hover_square.shape_border_color = th.icon_hover_border
+			assert(tonumber(theme.icon_hover_bw), "session.icons: icon_hover_bw fehlt/ungültig")
+		hover_square.shape_border_color = theme.icon_hover_border
 	end)
 
 	hover_square:connect_signal("mouse::leave", function()
@@ -192,9 +180,9 @@ function M.mk_icon_button(args)
 		hover_square.shape_border_color = nil
 	end)
 
-	if args.on_press then
+	if opts.on_press then
 		clickable:buttons(gears.table.join(awful.button({}, 1, function()
-			args.on_press()
+			opts.on_press()
 		end)))
 	end
 
@@ -203,16 +191,16 @@ function M.mk_icon_button(args)
 	-- ------------------------------------------------------------------------
 
 	clickable._hover_square = hover_square
-	clickable._th = th
-	clickable._on_press = args.on_press
+	clickable._theme = theme
+	clickable._on_press = opts.on_press
 
-	function clickable:set_focus(on, th2)
-		local t = th2 or self._th or {}
+	function clickable:set_focus(on, theme_override)
+		local t = theme_override or self._theme or {}
 		local sq = self._hover_square
 
 		if on then
 			sq.bg = t.icon_focus_bg
-			sq.shape_border_width = assert(tonumber(t.icon_focus_bw), "power.icons: icon_focus_bw fehlt/ungültig")
+			sq.shape_border_width = assert(tonumber(t.icon_focus_bw), "session.icons: icon_focus_bw fehlt/ungültig")
 			sq.shape_border_color = t.icon_focus_border
 		else
 			sq.bg = "#00000000"

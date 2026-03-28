@@ -1,4 +1,3 @@
--- ~/.config/awesome/shell/notify/center/init.lua
 local awful = require("awful")
 
 local function safe_require(path)
@@ -11,19 +10,33 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
 	controller = nil,
+
+	popup = nil,
+	layout = nil,
+	signals = nil,
+	widget = nil,
+	view = nil,
+	actions = nil,
+	list = nil,
+	state = nil,
+	controller_mod = nil,
 }
 
 local runtime = {
 	ctx = {},
 	signals_ready = false,
 	history = nil,
+	notify_theme = {},
 }
 
 -- =========================================================================
 -- Helpers
 -- =========================================================================
+
+local function controller()
+	return M.controller
+end
 
 local function ctx()
 	return runtime.ctx or {}
@@ -37,20 +50,8 @@ local function ui()
 	return ctx().ui or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function mod(name)
-	return api()[name]
-end
-
-local function notify_cfg()
-	return cfg().notify or {}
-end
-
-local function center_cfg()
-	return notify_cfg().center or {}
+local function notify_theme()
+	return runtime.notify_theme or {}
 end
 
 local function is_signals_ready()
@@ -65,38 +66,32 @@ local function current_screen(s)
 	return s or screen.primary or awful.screen.focused()
 end
 
-local function register_escape_signal()
-	if center_cfg().close_on_escape ~= true then
-		return
-	end
-end
-
 local function register_signals()
-	local Signals = mod("signals")
-	local State = mod("state")
-	local List = mod("list")
-	local controller = M.controller
+	local Signals = M.signals
+	local State = M.state
+	local List = M.list
+	local Controller = M.controller
 
-	if not (Signals and type(Signals.register) == "function" and controller) then
+	if not (Signals and type(Signals.register) == "function" and Controller) then
 		return
 	end
 
 	Signals.register({
-		ctx = ctx(),
 		cfg = cfg(),
+		ui = ui(),
 		is_ready = is_signals_ready,
 		set_ready = set_signals_ready,
-		set_visible = controller.set_visible,
-		each_popup = controller.each_popup,
-		rebuild_popup = controller.rebuild_popup,
-		apply_geometry = controller.apply_geometry,
-		sync_popups = controller.sync_popups,
+		set_visible = Controller.set_visible,
+		each_popup = Controller.each_popup,
+		rebuild_popup = Controller.rebuild_popup,
+		apply_geometry = Controller.apply_geometry,
+		sync_popups = Controller.sync_popups,
 
 		scroll_up = function()
-			controller.scroll_up(current_screen())
+			Controller.scroll_up(current_screen())
 		end,
 		scroll_down = function()
-			controller.scroll_down(current_screen())
+			Controller.scroll_down(current_screen())
 		end,
 
 		select_prev = function()
@@ -108,18 +103,18 @@ local function register_signals()
 		end,
 
 		activate_selected = function()
-			if type(controller.activate_selected) == "function" then
-				controller.activate_selected(current_screen())
+			if type(Controller.activate_selected) == "function" then
+				Controller.activate_selected(current_screen())
 			end
 		end,
 		dismiss_selected = function()
-			if type(controller.dismiss_selected) == "function" then
-				controller.dismiss_selected(current_screen())
+			if type(Controller.dismiss_selected) == "function" then
+				Controller.dismiss_selected(current_screen())
 			end
 		end,
 		clear_history = function()
-			if type(controller.clear_history) == "function" then
-				controller.clear_history()
+			if type(Controller.clear_history) == "function" then
+				Controller.clear_history()
 			end
 		end,
 
@@ -141,43 +136,41 @@ end
 -- =========================================================================
 
 function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.history = (args and args.history) or runtime.history
+	args = args or {}
 
-	M.api = {
-		ui = ui(),
-		popup = safe_require("shell.notify.center.popup"),
-		layout = safe_require("shell.notify.center.layout"),
-		signals = safe_require("shell.notify.center.signals"),
-		widget = safe_require("shell.notify.center.widget"),
-		view = safe_require("shell.notify.center.view"),
-		actions = safe_require("shell.notify.center.actions"),
-		list = safe_require("shell.notify.center.list"),
-		state = safe_require("shell.notify.center.state"),
-		controller = safe_require("shell.notify.center.controller"),
-	}
+	runtime.ctx = args
+	runtime.history = args.history or runtime.history
+	runtime.notify_theme = args.notify_theme or {}
 
-	local Actions = mod("actions")
-	if Actions and type(Actions.init) == "function" then
-		Actions.init({
-			ctx = ctx(),
+	M.popup = safe_require("shell.notify.center.popup")
+	M.layout = safe_require("shell.notify.center.layout")
+	M.signals = safe_require("shell.notify.center.signals")
+	M.widget = safe_require("shell.notify.center.widget")
+	M.view = safe_require("shell.notify.center.view")
+	M.actions = safe_require("shell.notify.center.actions")
+	M.list = safe_require("shell.notify.center.list")
+	M.state = safe_require("shell.notify.center.state")
+	M.controller_mod = safe_require("shell.notify.center.controller")
+
+	if M.actions and type(M.actions.init) == "function" then
+		M.actions.init({
 			history = runtime.history,
 		})
 	end
 
-	local ControllerMod = mod("controller")
-	if ControllerMod and type(ControllerMod.new) == "function" then
-		M.controller = ControllerMod.new({
-			ctx = ctx(),
+	if M.controller_mod and type(M.controller_mod.new) == "function" then
+		M.controller = M.controller_mod.new({
 			cfg = cfg(),
-			popup = mod("popup"),
-			layout = mod("layout"),
-			widget = mod("widget"),
-			view = mod("view"),
-			actions = mod("actions"),
+			ui = ui(),
+			notify_theme = notify_theme(),
+			popup = M.popup,
+			layout = M.layout,
+			widget = M.widget,
+			view = M.view,
+			actions = M.actions,
 			history = runtime.history,
-			list = mod("list"),
-			state = mod("state"),
+			list = M.list,
+			state = M.state,
 		})
 	end
 
@@ -185,14 +178,13 @@ function M.init(args)
 		M.controller.sync_popups()
 	end
 
-	register_escape_signal()
 	register_signals()
 
 	return M
 end
 
 function M.selected_index(s)
-	local State = mod("state")
+	local State = M.state
 	if not State then
 		return nil
 	end
@@ -202,7 +194,7 @@ function M.selected_index(s)
 end
 
 function M.select_next(s)
-	local State = mod("state")
+	local State = M.state
 	if not State then
 		return
 	end
@@ -214,7 +206,7 @@ function M.select_next(s)
 end
 
 function M.select_prev(s)
-	local State = mod("state")
+	local State = M.state
 	if not State then
 		return
 	end
@@ -231,32 +223,37 @@ function M.select_prev(s)
 end
 
 function M.activate_selected(s)
-	if M.controller and type(M.controller.activate_selected) == "function" then
-		M.controller.activate_selected(current_screen(s))
+	local Controller = controller()
+	if Controller and type(Controller.activate_selected) == "function" then
+		Controller.activate_selected(current_screen(s))
 	end
 end
 
 function M.dismiss_selected(s)
-	if M.controller and type(M.controller.dismiss_selected) == "function" then
-		M.controller.dismiss_selected(current_screen(s))
+	local Controller = controller()
+	if Controller and type(Controller.dismiss_selected) == "function" then
+		Controller.dismiss_selected(current_screen(s))
 	end
 end
 
 function M.clear_history()
-	if M.controller and type(M.controller.clear_history) == "function" then
-		M.controller.clear_history()
+	local Controller = controller()
+	if Controller and type(Controller.clear_history) == "function" then
+		Controller.clear_history()
 	end
 end
 
 function M.scroll_up(s)
-	if M.controller then
-		M.controller.scroll_up(current_screen(s))
+	local Controller = controller()
+	if Controller and type(Controller.scroll_up) == "function" then
+		Controller.scroll_up(current_screen(s))
 	end
 end
 
 function M.scroll_down(s)
-	if M.controller then
-		M.controller.scroll_down(current_screen(s))
+	local Controller = controller()
+	if Controller and type(Controller.scroll_down) == "function" then
+		Controller.scroll_down(current_screen(s))
 	end
 end
 

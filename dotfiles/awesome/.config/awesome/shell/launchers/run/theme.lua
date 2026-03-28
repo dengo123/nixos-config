@@ -8,7 +8,6 @@ local DEFAULT_RUN_ICON = gfs.get_configuration_dir() .. "ui/assets/Run_2001.png"
 local M = {}
 
 local runtime = {
-	ctx = {},
 	ui = {},
 }
 
@@ -16,12 +15,8 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
-local function ui_api()
-	return runtime.ui or ctx().ui or {}
+local function ui_theme()
+	return runtime.ui or {}
 end
 
 local function merge(a, b)
@@ -60,16 +55,16 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
-	runtime.ui = (args and args.ui) or ctx().ui or {}
+function M.init(opts)
+	opts = opts or {}
+	runtime.ui = opts.ui or runtime.ui or {}
 	return M
 end
 
 function M.get(overrides)
 	overrides = overrides or {}
 
-	local ui = ui_api()
+	local ui = ui_theme()
 	local theme = ui.theme or {}
 
 	local C = theme.colors or {}

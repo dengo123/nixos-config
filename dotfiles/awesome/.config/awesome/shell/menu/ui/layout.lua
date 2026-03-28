@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/menu/layout.lua
+-- ~/.config/awesome/shell/menu/ui/layout.lua
 local xr = require("beautiful.xresources")
 
 local dpi = xr.apply_dpi
@@ -6,7 +6,6 @@ local dpi = xr.apply_dpi
 local M = {}
 
 local runtime = {
-	ctx = {},
 	layout = nil,
 }
 
@@ -26,7 +25,7 @@ local function default_layout()
 end
 
 local function ensure_layout()
-	if not runtime.layout then
+	if type(runtime.layout) ~= "table" then
 		runtime.layout = default_layout()
 	end
 
@@ -37,8 +36,7 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+function M.init()
 	runtime.layout = default_layout()
 	return M
 end
@@ -48,8 +46,13 @@ function M.get()
 end
 
 function M.item_height()
-	local layout = M.get()
-	return assert(tonumber(layout.item_height), "shell.menu: layout.item_height ungültig")
+	local layout = ensure_layout()
+	assert(layout ~= nil, "menu.ui: layout ungültig")
+
+	local item_height = tonumber(layout.item_height)
+	assert(item_height ~= nil, "menu.ui.layout: item_height ungültig")
+
+	return item_height
 end
 
 function M.total_height(item_count)

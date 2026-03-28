@@ -13,7 +13,11 @@ local M = {}
 function M.build(_s, opts)
 	opts = opts or {}
 
-	local notify_api = opts.notify_api or {}
+	local notify_api = opts.notify_api
+	assert(type(notify_api) == "table", "bar.widgets.notify: opts.notify_api fehlt")
+	assert(type(notify_api.toggle_center) == "function", "bar.widgets.notify: notify_api.toggle_center fehlt")
+	assert(type(notify_api.close_center) == "function", "bar.widgets.notify: notify_api.close_center fehlt")
+
 	local size = tonumber(beautiful.notify_button_size)
 	local bg = beautiful.notify_button_bg
 	local bg_hover = beautiful.notify_button_bg_hover
@@ -77,10 +81,17 @@ function M.build(_s, opts)
 		glyph.text = is_open and glyph_open or glyph_closed
 	end
 
-	awesome.connect_signal("notify::center_state", function(open)
-		is_open = (open == true)
-		refresh_glyph()
-	end)
+	if type(notify_api.subscribe_center_state) == "function" then
+		notify_api.subscribe_center_state(function(open)
+			is_open = (open == true)
+			refresh_glyph()
+		end)
+	else
+		awesome.connect_signal("notify::center_state", function(open)
+			is_open = (open == true)
+			refresh_glyph()
+		end)
+	end
 
 	button:connect_signal("mouse::enter", function()
 		face.bg = bg_hover
@@ -92,22 +103,14 @@ function M.build(_s, opts)
 
 	button:buttons(gears.table.join(
 		awful.button({}, 1, function()
-			if type(notify_api.toggle_center) == "function" then
-				notify_api.toggle_center()
-			else
-				awesome.emit_signal("notify::toggle_center")
-			end
+			notify_api.toggle_center()
 		end),
 		awful.button({}, 3, function()
 			if type(notify_api.clear_history) == "function" then
 				notify_api.clear_history()
 			end
 
-			if type(notify_api.close_center) == "function" then
-				notify_api.close_center()
-			else
-				awesome.emit_signal("notify::close_center")
-			end
+			notify_api.close_center()
 		end)
 	))
 
