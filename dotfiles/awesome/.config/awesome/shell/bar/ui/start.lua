@@ -98,7 +98,7 @@ function S.init(opts)
 			bottom = dpi(0),
 		},
 
-		font = with_size(fonts.ui_bold_italic, 15),
+		font = with_size(fonts.ui_bold_italic, 16),
 
 		width_factor = 4,
 		fixed_height = true,

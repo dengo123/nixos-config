@@ -128,6 +128,21 @@ function M.init(overrides)
 	end
 
 	-- ---------------------------------------------------------------------
+	-- Theme State
+	-- ---------------------------------------------------------------------
+
+	local ThemeState = require("system.theme_state")
+	ctx.system.theme_state = ThemeState.init({
+		cfg = ctx.cfg,
+		ui = ctx.ui,
+		system = ctx.system,
+	})
+
+	if ctx.system.theme_state and type(ctx.system.theme_state.export) == "function" and ctx.ui and ctx.ui.theme then
+		ctx.system.theme_state.export(ctx.ui.theme)
+	end
+
+	-- ---------------------------------------------------------------------
 	-- Apply Input
 	-- ---------------------------------------------------------------------
 

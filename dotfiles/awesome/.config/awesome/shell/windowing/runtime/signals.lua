@@ -7,6 +7,8 @@ local M = {}
 local runtime = {
 	windowing = {},
 	signals_ready = false,
+	default_mousebindings_ready = false,
+	default_mousebindings_retry_timer = nil,
 }
 
 -- =========================================================================
@@ -31,6 +33,21 @@ end
 
 local function attach_titlebar_fn()
 	return windowing().attach_titlebar
+end
+
+local function input_public()
+	local input = windowing().input or {}
+	return input.public or {}
+end
+
+local function client_mouse_mod()
+	local public = input_public()
+	local client = public.client or {}
+	return client.mouse or nil
+end
+
+local function current_modkey()
+	return windowing().modkey
 end
 
 local function restyle(c)
@@ -73,12 +90,57 @@ local function sync_titlebar(c)
 	awful.titlebar.hide(c)
 end
 
+local function stop_default_mousebindings_retry()
+	if runtime.default_mousebindings_retry_timer then
+		runtime.default_mousebindings_retry_timer:stop()
+		runtime.default_mousebindings_retry_timer = nil
+	end
+end
+
+local function try_register_default_mousebindings()
+	if runtime.default_mousebindings_ready then
+		stop_default_mousebindings_retry()
+		return true
+	end
+
+	local Mouse = client_mouse_mod()
+	if not (Mouse and type(Mouse.default_mousebindings) == "function") then
+		return false
+	end
+
+	awful.mouse.append_client_mousebindings(Mouse.default_mousebindings(current_modkey()))
+	runtime.default_mousebindings_ready = true
+	stop_default_mousebindings_retry()
+	return true
+end
+
+local function ensure_default_mousebindings_registered()
+	if try_register_default_mousebindings() then
+		return
+	end
+
+	if runtime.default_mousebindings_retry_timer then
+		return
+	end
+
+	runtime.default_mousebindings_retry_timer = gears.timer({
+		timeout = 0.25,
+		autostart = true,
+		call_now = false,
+		callback = function()
+			try_register_default_mousebindings()
+		end,
+	})
+end
+
 local function register_signals()
 	if runtime.signals_ready then
 		return
 	end
 
 	runtime.signals_ready = true
+
+	ensure_default_mousebindings_registered()
 
 	client.connect_signal("request::titlebars", function(c)
 		local attach_titlebar = attach_titlebar_fn()
@@ -90,6 +152,7 @@ local function register_signals()
 
 	client.connect_signal("manage", function(c)
 		gears.timer.delayed_call(function()
+			ensure_default_mousebindings_registered()
 			sync_titlebar(c)
 		end)
 	end)
@@ -161,6 +224,7 @@ function M.apply(args)
 		runtime.windowing = args.windowing
 	end
 
+	ensure_default_mousebindings_registered()
 	register_signals()
 	return M
 end

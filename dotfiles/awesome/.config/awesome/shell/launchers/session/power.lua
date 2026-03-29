@@ -84,12 +84,12 @@ local function sleep_actions(cfg, assets)
 
 	if first == "suspend" then
 		return {
-			make_action("suspend", "Stand By", assets),
+			make_action("suspend", "Stand By (u)", assets),
 		}
 	end
 
 	return {
-		make_action("hibernate", "Sleep", assets),
+		make_action("hibernate", "Sleep (h)", assets),
 	}
 end
 
@@ -111,8 +111,8 @@ function M.build(_, cfg)
 		table.insert(actions, action)
 	end
 
-	table.insert(actions, make_action("poweroff", "Turn Off", assets))
-	table.insert(actions, make_action("reboot", "Restart", assets))
+	table.insert(actions, make_action("poweroff", "Turn Off (p)", assets))
+	table.insert(actions, make_action("reboot", "Restart (r)", assets))
 
 	return {
 		header_title = "Turn off Computer",

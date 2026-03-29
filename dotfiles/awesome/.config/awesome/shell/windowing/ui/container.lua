@@ -21,7 +21,8 @@ end
 
 local function client_mouse_mod(opts)
 	local input = (opts and opts.input) or {}
-	local client = input.client or {}
+	local public = input.public or {}
+	local client = public.client or {}
 	return client.mouse or {}
 end
 

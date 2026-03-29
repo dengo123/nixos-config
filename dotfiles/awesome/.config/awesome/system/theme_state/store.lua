@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/lib/theme_state.lua
+-- ~/.config/awesome/system/theme_state/store.lua
 local gfs = require("gears.filesystem")
 
 local M = {}

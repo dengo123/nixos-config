@@ -9,7 +9,10 @@ local function safe_require(path)
 end
 
 local M = {
-	api = {},
+	store = nil,
+	snapshot_mod = nil,
+	restore_mod = nil,
+	signals = nil,
 }
 
 local runtime = {
@@ -27,27 +30,37 @@ end
 
 local function ensure_ctx_roots()
 	local c = ctx()
-
 	c.system = c.system or {}
-	c.api = c.api or {}
-	c.external = c.external or {}
 	c.cfg = c.cfg or {}
-	c.cfg.api = c.cfg.api or {}
 end
 
-local function api()
-	return M.api or {}
-end
-
-local function mod(name)
-	return api()[name]
-end
-
-local function init_module(name, args)
-	local sub = mod(name)
-	if sub and type(sub.init) == "function" then
-		sub.init(args)
+local function init_module(mod, args)
+	if mod and type(mod.init) == "function" then
+		mod.init(args)
 	end
+end
+
+local function session_state_cfg()
+	return ((ctx().cfg or {}).system or {}).session_state or {}
+end
+
+local function restore_cfg()
+	return session_state_cfg().restore or {}
+end
+
+local function restore_on_start_enabled()
+	return restore_cfg().on_start ~= false
+end
+
+local function restore_opts_from_cfg()
+	local rcfg = restore_cfg()
+
+	return {
+		restore_screen = (rcfg.screen == true),
+		restore_tag = (rcfg.tag == true),
+		restore_state = (rcfg.state ~= false),
+		restore_layout = (rcfg.layout ~= false),
+	}
 end
 
 -- =========================================================================
@@ -58,39 +71,33 @@ function M.init(args)
 	runtime.ctx = args or {}
 	ensure_ctx_roots()
 
-	M.api = {
-		store = safe_require("system.session_state.store"),
-		snapshot = safe_require("system.session_state.snapshot"),
-		restore = safe_require("system.session_state.restore"),
-		signals = safe_require("system.session_state.signals"),
-	}
+	M.store = safe_require("system.session_state.store")
+	M.snapshot_mod = safe_require("system.session_state.snapshot")
+	M.restore_mod = safe_require("system.session_state.restore")
+	M.signals = safe_require("system.session_state.signals")
 
 	local c = ctx()
-
 	c.system.session_state = M
-	c.api.session_state = M
-	c.external.session_state = M
-	c.cfg.api.session_state = M
 
 	local shared = {
 		ctx = c,
-		api = api(),
 		cfg = c.cfg or {},
 		ui = c.ui or {},
 		system = c.system or {},
+		session_state = M,
 	}
 
-	init_module("store", shared)
-	init_module("snapshot", shared)
-	init_module("restore", shared)
-	init_module("signals", shared)
+	init_module(M.store, shared)
+	init_module(M.snapshot_mod, shared)
+	init_module(M.restore_mod, shared)
+	init_module(M.signals, shared)
 
 	return M
 end
 
 function M.snapshot()
-	local Store = mod("store")
-	local Snapshot = mod("snapshot")
+	local Store = M.store
+	local Snapshot = M.snapshot_mod
 
 	if not (Store and type(Store.write) == "function") then
 		return false
@@ -104,8 +111,8 @@ function M.snapshot()
 end
 
 function M.restore(opts)
-	local Store = mod("store")
-	local Restore = mod("restore")
+	local Store = M.store
+	local Restore = M.restore_mod
 
 	if not (Store and type(Store.read) == "function") then
 		return false
@@ -120,11 +127,20 @@ function M.restore(opts)
 		return false
 	end
 
-	return Restore.run(data, opts)
+	local merged_opts = restore_opts_from_cfg()
+	for k, v in pairs(opts or {}) do
+		merged_opts[k] = v
+	end
+
+	return Restore.run(data, merged_opts)
 end
 
 function M.restore_on_start()
-	local Restore = mod("restore")
+	local Restore = M.restore_mod
+
+	if not restore_on_start_enabled() then
+		return
+	end
 
 	if runtime.restore_scheduled then
 		return
@@ -135,12 +151,7 @@ function M.restore_on_start()
 	if Restore and type(Restore.restore_on_start) == "function" then
 		Restore.restore_on_start(function()
 			runtime.restore_scheduled = false
-			M.restore({
-				restore_screen = false,
-				restore_tag = false,
-				restore_floating = false,
-				restore_state = true,
-			})
+			M.restore()
 		end)
 	else
 		runtime.restore_scheduled = false
@@ -148,7 +159,7 @@ function M.restore_on_start()
 end
 
 function M.attach_signals()
-	local Signals = mod("signals")
+	local Signals = M.signals
 
 	if Signals and type(Signals.attach) == "function" then
 		Signals.attach({

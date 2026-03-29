@@ -3,17 +3,9 @@ local awful = require("awful")
 
 local M = {}
 
-local runtime = {
-	ctx = {},
-}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function screen_key(s)
 	if s and type(s.outputs) == "table" then
@@ -76,8 +68,8 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+-- optional: bleibt für konsistente API, macht aber nichts
+function M.init(_)
 	return M
 end
 
@@ -89,6 +81,7 @@ function M.current_state()
 		clients = {},
 	}
 
+	-- Screens
 	for s in screen do
 		local t = selected_tag(s)
 
@@ -99,6 +92,7 @@ function M.current_state()
 		}
 	end
 
+	-- Clients
 	for _, c in ipairs(client.get()) do
 		local t = first_tag(c)
 

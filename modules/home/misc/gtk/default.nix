@@ -17,7 +17,11 @@ with lib.${namespace}; let
     else null;
 
   sansFont =
-    if systemFonts != null
+    if
+      systemFonts
+      != null
+      && systemFonts.fontconfig.enable
+      && systemFonts.fontconfig.defaults.sansSerif != []
     then builtins.head systemFonts.fontconfig.defaults.sansSerif
     else "Inter";
 

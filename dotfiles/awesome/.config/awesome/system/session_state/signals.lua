@@ -4,7 +4,6 @@ local gears = require("gears")
 local M = {}
 
 local runtime = {
-	ctx = {},
 	attached = false,
 	save_timer = nil,
 }
@@ -12,10 +11,6 @@ local runtime = {
 -- =========================================================================
 -- Helpers
 -- =========================================================================
-
-local function ctx()
-	return runtime.ctx or {}
-end
 
 local function schedule_save(snapshot_fn)
 	if runtime.save_timer then
@@ -40,20 +35,21 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+function M.init(_)
 	return M
 end
 
 function M.attach(args)
+	args = args or {}
+
 	if runtime.attached then
-		return
+		return M
 	end
 
 	runtime.attached = true
 
-	local snapshot = args and args.snapshot
-	local restore = args and args.restore
+	local snapshot = args.snapshot
+	local restore = args.restore
 
 	awesome.connect_signal("autorandr::pre", function()
 		if type(snapshot) == "function" then
@@ -66,8 +62,8 @@ function M.attach(args)
 			restore({
 				restore_screen = true,
 				restore_tag = true,
-				restore_floating = false,
 				restore_state = true,
+				restore_layout = true,
 			})
 		end
 	end)
@@ -83,8 +79,8 @@ function M.attach(args)
 			restore({
 				restore_screen = false,
 				restore_tag = false,
-				restore_floating = false,
 				restore_state = true,
+				restore_layout = true,
 			})
 		end
 	end)
@@ -136,6 +132,8 @@ function M.attach(args)
 	screen.connect_signal("property::geometry", function()
 		schedule_save(snapshot)
 	end)
+
+	return M
 end
 
 return M

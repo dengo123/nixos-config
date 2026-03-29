@@ -9,6 +9,23 @@ return {
 			copyq_enable = true,
 			picom_enable = true,
 		},
+
+		session_state = {
+			path = nil,
+			restore = {
+				-- on_start = false,
+				-- state = false,
+				-- layout = false,
+				screen = true,
+				tag = true,
+			},
+			preserve_rule_floating = {
+				-- dialog = false,
+				-- utility = false,
+				portrait_autosize = false,
+				centered_autosize = false,
+			},
+		},
 	},
 
 	-- =========================================================================
@@ -29,7 +46,7 @@ return {
 
 	input = {
 		modkey = "Mod4",
-		return_app = "editor",
+		return_app = "editor", -- or terminal
 
 		media = {
 			volume_step = 3,
@@ -125,7 +142,7 @@ return {
 
 		max = {
 			padding = true,
-			solo = false,
+			-- solo = true,
 		},
 
 		delete = {
@@ -148,10 +165,10 @@ return {
 
 		focus = {
 			raise_on_mouse = false,
-			block_ms = 150,
+			-- block_ms = 150,
 
 			center_mouse = {
-				-- enable = true,
+				enable = true,
 				exclude_layouts = { "max" },
 				exclude_states = { "fullscreen" },
 			},
@@ -159,7 +176,7 @@ return {
 
 		floating = {
 			files = true,
-			terminals = false,
+			terminals = true,
 		},
 
 		fullscreen_dim = {

@@ -1,6 +1,5 @@
 -- ~/.config/awesome/shell/notify/center/widget.lua
 local awful = require("awful")
-local beautiful = require("beautiful")
 local gears = require("gears")
 local wibox = require("wibox")
 
@@ -10,18 +9,11 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function notify_theme()
-	return beautiful.notify or {}
-end
+local function resolve_theme(deps)
+	deps = deps or {}
 
-local function center_theme()
-	local notify = notify_theme()
-	return notify.center or {}
-end
-
-local function resolve_theme()
-	local notify = notify_theme()
-	local center = center_theme()
+	local notify = deps.theme or {}
+	local center = notify.center or {}
 
 	local entry_radius = tonumber(center.entry_radius or notify.radius) or 10
 	local entry_border_w = tonumber(center.entry_border_w or notify.border_w) or 1
@@ -93,12 +85,11 @@ end
 local function make_textbox(theme, args)
 	args = args or {}
 
-	local tb = wibox.widget({
-		align = "left",
-		valign = args.valign or "top",
-		wrap = "word_char",
-		widget = wibox.widget.textbox,
-	})
+	local tb = wibox.widget.textbox()
+
+	tb.align = "left"
+	tb.valign = args.valign or "top"
+	tb.wrap = "word_char"
 
 	if args.markup then
 		tb.markup = args.markup
@@ -120,21 +111,21 @@ end
 local function build_action(theme, entry, item, cfg, deps)
 	local Actions = deps.actions
 
-	local icon = wibox.widget({
-		text = theme.action_icon or "▪",
-		align = "left",
-		valign = "center",
-		font = theme.action_icon_font,
-		widget = wibox.widget.textbox,
-	})
+	local icon = wibox.widget.textbox()
+	icon.text = theme.action_icon or "▪"
+	icon.align = "left"
+	icon.valign = "center"
+	if theme.action_icon_font then
+		icon.font = theme.action_icon_font
+	end
 
-	local label = wibox.widget({
-		markup = "<u>" .. gears.string.xml_escape(item.label or "Action") .. "</u>",
-		align = "left",
-		valign = "center",
-		font = theme.action_font,
-		widget = wibox.widget.textbox,
-	})
+	local label = wibox.widget.textbox()
+	label.markup = "<u>" .. gears.string.xml_escape(item.label or "Action") .. "</u>"
+	label.align = "left"
+	label.valign = "center"
+	if theme.action_font then
+		label.font = theme.action_font
+	end
 
 	local row = wibox.widget({
 		icon,
@@ -194,9 +185,10 @@ end
 function M.build(entry, cfg, deps)
 	deps = deps or {}
 	cfg = cfg or {}
+	entry = entry or {}
 
 	local Actions = deps.actions
-	local theme = resolve_theme()
+	local theme = resolve_theme(deps)
 
 	local text_column = wibox.layout.fixed.vertical()
 	text_column.spacing = 4
@@ -218,6 +210,7 @@ function M.build(entry, cfg, deps)
 
 	local actions = build_actions(theme, entry, cfg, {
 		actions = Actions,
+		theme = deps.theme,
 	})
 
 	if actions then

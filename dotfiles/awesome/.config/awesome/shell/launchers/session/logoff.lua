@@ -76,8 +76,8 @@ function M.build(_, cfg)
 	}
 
 	local actions = {
-		make_action("lock", "Lock Session", assets),
-		make_action("logout", "Log Off", assets),
+		make_action("lock", "Lock Session (l)", assets),
+		make_action("logout", "Log Off (o)", assets),
 	}
 
 	if show_switch_user(cfg) then

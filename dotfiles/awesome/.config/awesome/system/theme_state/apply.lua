@@ -1,4 +1,4 @@
--- ~/.config/awesome/ui/lib/theme_apply.lua
+-- ~/.config/awesome/system/theme_state/apply.lua
 local awful = require("awful")
 local gears = require("gears")
 

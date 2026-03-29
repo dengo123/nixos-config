@@ -5,7 +5,6 @@
       display-line-numbers-type 'relative)
 
 ;; Fonts
-(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
-      doom-variable-pitch-font (font-spec :family "JetBrainsMono Nerd Font" :size 14)
-      doom-symbol-font (font-spec :family "Symbols Nerd Font Mono" :size 14))
-
+(setq doom-font (font-spec :family "JetBrainsMono Nerd Font" :size 16)
+      doom-variable-pitch-font (font-spec :family "JetBrainsMono Nerd Font" :size 16)
+      doom-symbol-font (font-spec :family "Symbols Nerd Font Mono" :size 16))

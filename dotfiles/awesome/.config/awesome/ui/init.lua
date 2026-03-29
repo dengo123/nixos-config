@@ -80,17 +80,14 @@ local function materialize_theme(colors_lib, resolved_theme, helpers)
 	}
 end
 
-local function maybe_export_theme_state(theme_state_mod, theme)
-	if not (theme_state_mod and type(theme_state_mod.available) == "function") then
+local function maybe_export_theme_state(system_ctx, theme)
+	local theme_state = system_ctx and system_ctx.theme_state or nil
+	if not theme_state then
 		return
 	end
 
-	if not theme_state_mod.available() then
-		return
-	end
-
-	if type(theme_state_mod.export) == "function" then
-		theme_state_mod.export(theme)
+	if type(theme_state.export) == "function" then
+		theme_state.export(theme)
 	end
 end
 
@@ -101,24 +98,21 @@ end
 function M.init(args)
 	args = args or {}
 	runtime.cfg = args.cfg or args or {}
+	local system_ctx = args.system or {}
 
 	local Helpers = safe_require("ui.lib.helpers")
 	local ColorLib = safe_require("ui.lib.colors")
-	local ThemeState = safe_require("ui.lib.theme_state")
-	local ThemeApply = safe_require("ui.lib.theme_apply")
 	local Themes = safe_require("ui.themes")
 	local Wallpaper = safe_require("ui.wallpaper")
 
 	local resolved = resolve_theme(Themes, runtime.cfg)
-	local theme = materialize_theme(ColorLib, resolved, Helpers)
+	local theme = materialize_theme(ColorLib, resolved)
 
 	M.cfg = runtime.cfg
 
 	M.lib = {
 		helpers = Helpers or {},
 		colors = ColorLib or {},
-		theme_state = ThemeState or {},
-		theme_apply = ThemeApply or {},
 	}
 
 	M.theme = theme
@@ -128,20 +122,8 @@ function M.init(args)
 	M.fonts = theme.fonts or {}
 	M.icons = theme.icons or {}
 	M.utils = theme.utils or {}
-	M.dpi = theme.dpi
 
-	M.assets = {
-		icons = theme.icons or {},
-		wallpaper = theme.wallpaper or {},
-	}
-
-	if ThemeApply and type(ThemeApply.init) == "function" then
-		ThemeApply.init({
-			apply_on_init = true,
-		})
-	end
-
-	maybe_export_theme_state(ThemeState, theme)
+	maybe_export_theme_state(system_ctx, theme)
 
 	if Wallpaper and type(Wallpaper.init) == "function" then
 		Wallpaper.init({

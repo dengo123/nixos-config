@@ -9,7 +9,7 @@ local function safe_require(path)
 end
 
 local M = {
-	input = nil,
+	input = {},
 	behavior = {},
 	policy = {},
 	runtime = {},
@@ -109,14 +109,17 @@ end
 local function build_input(windowing)
 	return {
 		clients = {
+			scr_in_dir = windowing.actions and windowing.actions.scr_in_dir or nil,
+			move_client_dir = windowing.actions and windowing.actions.move_client_dir or nil,
+			move_client_to_screen = windowing.actions and windowing.actions.move_client_to_screen or nil,
+			layout_state_mode = windowing.actions and windowing.actions.layout_state_mode or nil,
+			is_layout_state_active = windowing.actions and windowing.actions.is_layout_state_active or nil,
+			toggle_layout_state = windowing.actions and windowing.actions.toggle_layout_state or nil,
+
 			focus_client = windowing.navigation and windowing.navigation.focus_client or nil,
 			swap_client = windowing.navigation and windowing.navigation.swap_client or nil,
 			is_max_layout = windowing.navigation and windowing.navigation.is_max_layout or nil,
 			current_screen = windowing.navigation and windowing.navigation.current_screen or nil,
-
-			layout_state_mode = windowing.actions and windowing.actions.layout_state_mode or nil,
-			is_layout_state_active = windowing.actions and windowing.actions.is_layout_state_active or nil,
-			toggle_layout_state = windowing.actions and windowing.actions.toggle_layout_state or nil,
 
 			minimize_focused = windowing.actions and windowing.actions.minimize_focused or nil,
 			minimize_visible_tag_on_screen = windowing.actions and windowing.actions.minimize_visible_tag_on_screen
@@ -185,7 +188,7 @@ function M.init(args)
 	apply_module(windowing.rules, {
 		cfg = conf,
 		modkey = windowing.modkey,
-		input = windowing.input,
+		input = M.input or {},
 		clients = windowing.clients,
 		floating = windowing.floating,
 		titlebars = windowing.titlebars,
@@ -257,7 +260,7 @@ function M.init(args)
 		if windowing.container and type(windowing.container.attach_titlebar) == "function" then
 			windowing.container.attach_titlebar(client_, button_style, windowing.actions, conf, {
 				titlebar_buttons = windowing.titlebar_buttons,
-				input = windowing.input,
+				input = ctx().input or {},
 			})
 		end
 	end

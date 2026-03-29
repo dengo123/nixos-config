@@ -122,7 +122,7 @@ function M.init(opts)
 
 	beautiful.notify_button_glyph_closed = "⮜"
 	beautiful.notify_button_glyph_open = "⮝"
-	beautiful.notify_button_glyph_offset_y = 1
+	beautiful.notify_button_glyph_offset_y = 4
 
 	beautiful.notify_button_gap_left = dpi(16)
 	beautiful.notify_button_zone_width = dpi(12)

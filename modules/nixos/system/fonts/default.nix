@@ -50,7 +50,7 @@ in {
           pkgs.noto-fonts
           pkgs.noto-fonts-cjk-sans
           pkgs.noto-fonts-color-emoji
-          pkgs.noto-fonts-extra
+          pkgs.noto-fonts
           pkgs.inter
           pkgs.intel-one-mono
           pkgs.nerd-fonts.fira-code

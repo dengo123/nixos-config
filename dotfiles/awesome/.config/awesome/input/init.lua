@@ -14,10 +14,12 @@ local M = {
 	globalkeys = nil,
 	global = {},
 	client = {},
+	public = {},
 }
 
 local runtime = {
 	ctx = {},
+	input = {},
 }
 
 -- =========================================================================
@@ -38,6 +40,14 @@ end
 
 local function shell()
 	return ctx().shell or {}
+end
+
+local function ensure_ctx_roots()
+	local c = ctx()
+	c.cfg = c.cfg or {}
+	c.ui = c.ui or {}
+	c.shell = c.shell or {}
+	return c
 end
 
 local function init_module(mod, args)
@@ -85,12 +95,53 @@ local function tag_actions()
 	return workspaces_input().tags or {}
 end
 
+local function build_input()
+	return {
+		cfg = cfg(),
+		ui = ui(),
+		shell = shell(),
+
+		launchers = {
+			open = launchers_open(),
+		},
+
+		windowing = windowing_input(),
+		workspaces = workspaces_input(),
+
+		global = M.global,
+		client = M.client,
+	}
+end
+
+local function build_public()
+	local mouse = M.client.mouse or {}
+
+	return {
+		global = {
+			launchers = {
+				open = launchers_open(),
+			},
+		},
+
+		client = {
+			mouse = {
+				default_mousebindings = mouse.default_mousebindings,
+				titlebar_buttons = mouse.titlebar_buttons,
+			},
+		},
+	}
+end
+
+local function input_runtime()
+	return runtime.input or {}
+end
+
 local function build_globalkeys()
 	local conf = cfg()
 	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
-	local open = launchers_open()
+	local open = input_runtime().launchers and input_runtime().launchers.open or {}
 
 	return join(
 		call_key_factory(M.global.apps, modkey, conf),
@@ -120,7 +171,6 @@ local function build_clientkeys()
 
 	return join(
 		call_key_factory(M.client.kill, modkey),
-		call_key_factory(M.client.mouse, modkey),
 		call_key_factory(M.client.navigation, modkey, clients),
 		call_key_factory(M.client.screens, modkey, screens),
 		call_key_factory(M.client.state, modkey, conf, clients),
@@ -134,6 +184,7 @@ end
 
 function M.init(args)
 	runtime.ctx = args or {}
+	ensure_ctx_roots()
 
 	M.global = {
 		apps = safe_require("input.global.apps"),
@@ -161,16 +212,20 @@ function M.init(args)
 	}
 
 	init_module(M.client.mouse, {
-		ui = ui(),
 		cfg = cfg(),
-		input = M,
-		shell = shell(),
+		ui = ui(),
 	})
+
+	runtime.input = build_input()
+	M.public = build_public()
 
 	return M
 end
 
 function M.apply(_cfg)
+	runtime.input = build_input()
+	M.public = build_public()
+
 	local globalkeys = build_globalkeys()
 	local clientkeys = build_clientkeys()
 	local rootkeys = gears.table.join(globalkeys, clientkeys)
@@ -179,10 +234,6 @@ function M.apply(_cfg)
 	root.keys(rootkeys)
 
 	return M
-end
-
-function M.client_mouse()
-	return M.client.mouse
 end
 
 return M

@@ -29,6 +29,7 @@ in {
 
       system = {
         fonts = {
+          enable = mkDefault true;
           fontconfig = mkDefault enabled;
         };
       };

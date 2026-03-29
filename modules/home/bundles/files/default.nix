@@ -41,7 +41,7 @@ in {
         ]));
     }
 
-    (mkIf (cfg.app == "nemo") {
+    (mkIf (cfg.manager == "nemo") {
       ${namespace}.programs.nemo.enable = true;
     })
   ]);

@@ -149,7 +149,7 @@ function L.build_row(actions, theme, dims, deps, get_close_ref)
 		end
 	end
 
-	local inner_h = math.max(1, dims.body_h - 2 * dims.pad_v)
+	local inner_h = math.max(1, dims.body_h - 2 * dims.pad_v + visual_offset_y)
 
 	local row = wibox.widget({
 		{
@@ -159,7 +159,7 @@ function L.build_row(actions, theme, dims, deps, get_close_ref)
 				valign = "center",
 				widget = wibox.container.place,
 			},
-			top = visual_offset_y,
+			-- top = visual_offset_y,
 			widget = wibox.container.margin,
 		},
 		strategy = "exact",

@@ -4,7 +4,7 @@ local gfs = require("gears.filesystem")
 local M = {}
 
 local runtime = {
-	ctx = {},
+	cfg = {},
 	state_path = nil,
 }
 
@@ -12,12 +12,8 @@ local runtime = {
 -- Helpers
 -- =========================================================================
 
-local function ctx()
-	return runtime.ctx or {}
-end
-
 local function cfg()
-	return ctx().cfg or {}
+	return runtime.cfg or {}
 end
 
 local function resolve_state_path(conf)
@@ -133,7 +129,9 @@ end
 -- =========================================================================
 
 function M.init(args)
-	runtime.ctx = (args and (args.ctx or args)) or {}
+	args = args or {}
+
+	runtime.cfg = args.cfg or runtime.cfg or {}
 	runtime.state_path = resolve_state_path(cfg())
 
 	return M

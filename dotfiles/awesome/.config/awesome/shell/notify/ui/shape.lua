@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/notify/shape.lua
+-- ~/.config/awesome/shell/notify/ui/shape.lua
 local gears = require("gears")
 
 local M = {}

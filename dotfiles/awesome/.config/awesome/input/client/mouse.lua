@@ -4,14 +4,16 @@ local gears = require("gears")
 
 local M = {}
 
-local runtime_api = {}
-
 -- =========================================================================
 -- Helpers
 -- =========================================================================
 
-local function current_api(args)
-	return (args and args.api) or runtime_api
+local function modset(modkey)
+	if type(modkey) == "string" and modkey ~= "" then
+		return { modkey }
+	end
+
+	return {}
 end
 
 local function activate_client(c, context, raise)
@@ -28,31 +30,31 @@ end
 -- Public API
 -- =========================================================================
 
-function M.init(args)
-	args = args or {}
-	runtime_api = args.api or args or {}
+function M.init(_)
 	return M
 end
 
-function M.client_buttons(modkey)
-	local mods = type(modkey) == "string" and modkey ~= "" and { modkey } or {}
-	return gears.table.join(
+function M.default_mousebindings(modkey)
+	local mods = modset(modkey)
+
+	return {
 		awful.button({}, 1, function(c)
 			activate_client(c, "mouse_click", true)
 		end),
-		awful.button({ modkey }, 1, function(c)
+
+		awful.button(mods, 1, function(c)
 			activate_client(c, "mouse_click", true)
 			awful.mouse.client.move(c)
 		end),
-		awful.button({ modkey }, 3, function(c)
+
+		awful.button(mods, 3, function(c)
 			activate_client(c, "mouse_click", true)
 			awful.mouse.client.resize(c)
-		end)
-	)
+		end),
+	}
 end
 
 function M.titlebar_buttons(c, activate_fn)
-	local _api = current_api()
 	local activate = activate_fn or activate_client
 
 	return gears.table.join(
@@ -60,6 +62,7 @@ function M.titlebar_buttons(c, activate_fn)
 			activate(c, "titlebar_drag", true)
 			awful.mouse.client.move(c)
 		end),
+
 		awful.button({}, 3, function()
 			activate(c, "titlebar_resize", true)
 			awful.mouse.client.resize(c)

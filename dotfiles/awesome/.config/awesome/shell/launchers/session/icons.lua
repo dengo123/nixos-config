@@ -131,9 +131,9 @@ function M.mk_icon_button(opts)
 				bottom = label_pad_bottom,
 				widget = wibox.container.margin,
 			},
-			strategy = "exact",
+			strategy = "max",
 			width = label_w,
-			height = label_h,
+			height = label_h + 4,
 			widget = wibox.container.constraint,
 		})
 	end
