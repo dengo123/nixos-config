@@ -14,12 +14,10 @@ local M = {
 	globalkeys = nil,
 	global = {},
 	client = {},
-	public = {},
 }
 
 local runtime = {
 	ctx = {},
-	input = {},
 }
 
 -- =========================================================================
@@ -95,53 +93,12 @@ local function tag_actions()
 	return workspaces_input().tags or {}
 end
 
-local function build_input()
-	return {
-		cfg = cfg(),
-		ui = ui(),
-		shell = shell(),
-
-		launchers = {
-			open = launchers_open(),
-		},
-
-		windowing = windowing_input(),
-		workspaces = workspaces_input(),
-
-		global = M.global,
-		client = M.client,
-	}
-end
-
-local function build_public()
-	local mouse = M.client.mouse or {}
-
-	return {
-		global = {
-			launchers = {
-				open = launchers_open(),
-			},
-		},
-
-		client = {
-			mouse = {
-				default_mousebindings = mouse.default_mousebindings,
-				titlebar_buttons = mouse.titlebar_buttons,
-			},
-		},
-	}
-end
-
-local function input_runtime()
-	return runtime.input or {}
-end
-
 local function build_globalkeys()
 	local conf = cfg()
 	local modkey = conf.input and conf.input.modkey
 	local join = gears.table.join
 
-	local open = input_runtime().launchers and input_runtime().launchers.open or {}
+	local open = launchers_open()
 
 	return join(
 		call_key_factory(M.global.apps, modkey, conf),
@@ -204,28 +161,16 @@ function M.init(args)
 
 	M.client = {
 		kill = safe_require("input.client.kill"),
-		mouse = safe_require("input.client.mouse"),
 		navigation = safe_require("input.client.navigation"),
 		screens = safe_require("input.client.screens"),
 		state = safe_require("input.client.state"),
 		tags = safe_require("input.client.tags"),
 	}
 
-	init_module(M.client.mouse, {
-		cfg = cfg(),
-		ui = ui(),
-	})
-
-	runtime.input = build_input()
-	M.public = build_public()
-
 	return M
 end
 
 function M.apply(_cfg)
-	runtime.input = build_input()
-	M.public = build_public()
-
 	local globalkeys = build_globalkeys()
 	local clientkeys = build_clientkeys()
 	local rootkeys = gears.table.join(globalkeys, clientkeys)

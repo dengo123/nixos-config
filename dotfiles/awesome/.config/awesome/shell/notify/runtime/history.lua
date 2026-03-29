@@ -136,6 +136,48 @@ local function remove_at(index)
 	return removed
 end
 
+local function serializable_icon(icon)
+	if type(icon) == "string" and icon ~= "" then
+		return icon
+	end
+
+	return nil
+end
+
+local function normalize_loaded_entry(entry)
+	if type(entry) ~= "table" then
+		return nil
+	end
+
+	return {
+		app_name = entry.app_name,
+		title = normalize_text(entry.title),
+		message = normalize_text(entry.message),
+		icon = serializable_icon(entry.icon),
+		urgency = entry.urgency or "normal",
+		timestamp = tonumber(entry.timestamp) or os.time(),
+		read = entry.read == true,
+		raw = nil,
+		actions = {},
+	}
+end
+
+local function exportable_entry(entry)
+	if type(entry) ~= "table" then
+		return nil
+	end
+
+	return {
+		app_name = entry.app_name,
+		title = normalize_text(entry.title),
+		message = normalize_text(entry.message),
+		icon = serializable_icon(entry.icon),
+		urgency = entry.urgency or "normal",
+		timestamp = tonumber(entry.timestamp) or os.time(),
+		read = entry.read == true,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -251,6 +293,49 @@ function M.set_max_entries(value)
 	runtime.max_entries = math.max(1, math.floor(n))
 	clamp_history()
 	emit_changed()
+end
+
+function M.replace_all(entries)
+	local out = {}
+
+	for _, entry in ipairs(entries or {}) do
+		local item = normalize_loaded_entry(entry)
+		if item then
+			table.insert(out, item)
+		end
+	end
+
+	runtime.entries = out
+	set_unread_count(0)
+
+	for _, entry in ipairs(runtime.entries) do
+		if entry.read ~= true then
+			set_unread_count(runtime.unread_count + 1)
+		end
+	end
+
+	clamp_history()
+	emit_changed()
+
+	return runtime.entries
+end
+
+function M.export_state()
+	local entries = {}
+
+	for _, entry in ipairs(runtime.entries) do
+		local item = exportable_entry(entry)
+		if item then
+			table.insert(entries, item)
+		end
+	end
+
+	return {
+		version = 1,
+		max_entries = runtime.max_entries,
+		unread_count = runtime.unread_count,
+		entries = entries,
+	}
 end
 
 return M

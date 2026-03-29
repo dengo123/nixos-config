@@ -19,13 +19,6 @@ local function titlebar_buttons_mod(opts)
 	return opts and opts.titlebar_buttons or nil
 end
 
-local function client_mouse_mod(opts)
-	local input = (opts and opts.input) or {}
-	local public = input.public or {}
-	local client = public.client or {}
-	return client.mouse or {}
-end
-
 local function activate_client(c, context, raise)
 	if not (c and c.valid) then
 		return
@@ -34,6 +27,22 @@ local function activate_client(c, context, raise)
 	c:emit_signal("request::activate", context or "titlebar", {
 		raise = (raise ~= false),
 	})
+end
+
+local function titlebar_mouse_buttons(c, activate_fn)
+	local activate = activate_fn or activate_client
+
+	return gears.table.join(
+		awful.button({}, 1, function()
+			activate(c, "titlebar_drag", true)
+			awful.mouse.client.move(c)
+		end),
+
+		awful.button({}, 3, function()
+			activate(c, "titlebar_resize", true)
+			awful.mouse.client.resize(c)
+		end)
+	)
 end
 
 -- =========================================================================
@@ -90,12 +99,10 @@ function C.attach_titlebar(c, style, actions, cfg, opts)
 	local Buttons = titlebar_buttons_mod(opts)
 	assert(Buttons and type(Buttons.build) == "function", "windowing.container: titlebar_buttons.build fehlt")
 
-	local ClientMouse = client_mouse_mod(opts)
-
 	local pos = beautiful.titlebar_position
 	local size = tonumber(beautiful.titlebar_height)
 
-	local buttons = ClientMouse.titlebar_buttons and ClientMouse.titlebar_buttons(c, activate_client) or nil
+	local buttons = titlebar_mouse_buttons(c, activate_client)
 
 	local title = awful.titlebar.widget.titlewidget(c)
 	if title.set_align then

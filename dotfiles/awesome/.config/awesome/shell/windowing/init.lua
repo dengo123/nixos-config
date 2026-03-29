@@ -71,7 +71,6 @@ local function build_windowing()
 		cfg = conf,
 		ui = ui(),
 		shell = shell(),
-		input = c.input or {},
 		modkey = c.modkey,
 		mouse = c.mouse,
 
@@ -260,7 +259,6 @@ function M.init(args)
 		if windowing.container and type(windowing.container.attach_titlebar) == "function" then
 			windowing.container.attach_titlebar(client_, button_style, windowing.actions, conf, {
 				titlebar_buttons = windowing.titlebar_buttons,
-				input = ctx().input or {},
 			})
 		end
 	end

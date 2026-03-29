@@ -8,7 +8,6 @@ local runtime = {
 	windowing = {},
 	signals_ready = false,
 	default_mousebindings_ready = false,
-	default_mousebindings_retry_timer = nil,
 }
 
 -- =========================================================================
@@ -35,15 +34,42 @@ local function attach_titlebar_fn()
 	return windowing().attach_titlebar
 end
 
-local function input_public()
-	local input = windowing().input or {}
-	return input.public or {}
+local function modset(modkey)
+	if type(modkey) == "string" and modkey ~= "" then
+		return { modkey }
+	end
+
+	return {}
 end
 
-local function client_mouse_mod()
-	local public = input_public()
-	local client = public.client or {}
-	return client.mouse or nil
+local function activate_client(c, context, raise)
+	if not (c and c.valid) then
+		return
+	end
+
+	c:emit_signal("request::activate", context or "mouse_click", {
+		raise = (raise ~= false),
+	})
+end
+
+local function default_mousebindings(modkey)
+	local mods = modset(modkey)
+
+	return {
+		awful.button({}, 1, function(c)
+			activate_client(c, "mouse_click", true)
+		end),
+
+		awful.button(mods, 1, function(c)
+			activate_client(c, "mouse_click", true)
+			awful.mouse.client.move(c)
+		end),
+
+		awful.button(mods, 3, function(c)
+			activate_client(c, "mouse_click", true)
+			awful.mouse.client.resize(c)
+		end),
+	}
 end
 
 local function current_modkey()
@@ -90,47 +116,14 @@ local function sync_titlebar(c)
 	awful.titlebar.hide(c)
 end
 
-local function stop_default_mousebindings_retry()
-	if runtime.default_mousebindings_retry_timer then
-		runtime.default_mousebindings_retry_timer:stop()
-		runtime.default_mousebindings_retry_timer = nil
-	end
-end
-
-local function try_register_default_mousebindings()
+local function register_default_mousebindings()
 	if runtime.default_mousebindings_ready then
-		stop_default_mousebindings_retry()
 		return true
 	end
 
-	local Mouse = client_mouse_mod()
-	if not (Mouse and type(Mouse.default_mousebindings) == "function") then
-		return false
-	end
-
-	awful.mouse.append_client_mousebindings(Mouse.default_mousebindings(current_modkey()))
+	awful.mouse.append_client_mousebindings(default_mousebindings(current_modkey()))
 	runtime.default_mousebindings_ready = true
-	stop_default_mousebindings_retry()
 	return true
-end
-
-local function ensure_default_mousebindings_registered()
-	if try_register_default_mousebindings() then
-		return
-	end
-
-	if runtime.default_mousebindings_retry_timer then
-		return
-	end
-
-	runtime.default_mousebindings_retry_timer = gears.timer({
-		timeout = 0.25,
-		autostart = true,
-		call_now = false,
-		callback = function()
-			try_register_default_mousebindings()
-		end,
-	})
 end
 
 local function register_signals()
@@ -140,7 +133,7 @@ local function register_signals()
 
 	runtime.signals_ready = true
 
-	ensure_default_mousebindings_registered()
+	register_default_mousebindings()
 
 	client.connect_signal("request::titlebars", function(c)
 		local attach_titlebar = attach_titlebar_fn()
@@ -152,7 +145,7 @@ local function register_signals()
 
 	client.connect_signal("manage", function(c)
 		gears.timer.delayed_call(function()
-			ensure_default_mousebindings_registered()
+			register_default_mousebindings()
 			sync_titlebar(c)
 		end)
 	end)
@@ -224,7 +217,7 @@ function M.apply(args)
 		runtime.windowing = args.windowing
 	end
 
-	ensure_default_mousebindings_registered()
+	register_default_mousebindings()
 	register_signals()
 	return M
 end

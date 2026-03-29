@@ -12,7 +12,7 @@ end
 
 local M = {
 	ui = {},
-	runtime = {},
+	runtime = nil,
 	policy = {},
 	center = nil,
 	theme = {},
@@ -43,14 +43,6 @@ end
 
 local function shell()
 	return ctx().shell or {}
-end
-
-local function notify_cfg(conf)
-	return (conf and conf.notify) or {}
-end
-
-local function history_cfg(conf)
-	return notify_cfg(conf).history or {}
 end
 
 local function emit_center_state()
@@ -142,10 +134,7 @@ function M.init(args)
 		shape = safe_require("shell.notify.ui.shape"),
 	}
 
-	M.runtime = {
-		pipeline = safe_require("shell.notify.runtime.pipeline"),
-		history = safe_require("shell.notify.runtime.history"),
-	}
+	M.runtime = safe_require("shell.notify.runtime.init")
 
 	M.policy = {
 		rules = safe_require("shell.notify.policy.rules"),
@@ -157,9 +146,7 @@ function M.init(args)
 	local NaughtyConfig = M.ui.naughty
 	local Shape = M.ui.shape
 
-	local Pipeline = M.runtime.pipeline
-	local History = M.runtime.history
-
+	local NotifyRuntime = M.runtime
 	local Rules = M.policy.rules
 	local Center = M.center
 
@@ -173,30 +160,37 @@ function M.init(args)
 		})
 	end
 
-	if History and type(History.init) == "function" then
-		History.init(history_cfg(cfg()))
-	end
-
 	if Rules and type(Rules.apply) == "function" then
 		Rules.apply()
+	end
+
+	if NotifyRuntime and type(NotifyRuntime.init) == "function" then
+		NotifyRuntime.init({
+			cfg = cfg(),
+			ui = ui_ctx(),
+			shell = shell(),
+			notify = M,
+			notify_theme = M.theme or {},
+		})
+	end
+
+	if NotifyRuntime and type(NotifyRuntime.restore) == "function" then
+		NotifyRuntime.restore()
 	end
 
 	if Center and type(Center.init) == "function" then
 		Center.init({
 			cfg = cfg(),
 			ui = ui_ctx(),
-			history = History,
+			history = NotifyRuntime and NotifyRuntime.history or nil,
 			notify = M,
 			notify_theme = M.theme or {},
 			shell = shell(),
 		})
 	end
 
-	if Pipeline and type(Pipeline.register) == "function" then
-		Pipeline.register({
-			cfg = cfg(),
-			history = History,
-		})
+	if NotifyRuntime and type(NotifyRuntime.attach_signals) == "function" then
+		NotifyRuntime.attach_signals()
 	end
 
 	register_center_signals()
