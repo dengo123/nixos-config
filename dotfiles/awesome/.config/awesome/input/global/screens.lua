@@ -6,6 +6,38 @@ local function kbd_intent(ms)
 	awesome.emit_signal("focus_policy::keyboard_intent", ms or 250)
 end
 
+local function current_screen(actions)
+	if actions and type(actions.current_screen) == "function" then
+		local s = actions.current_screen()
+		if s and s.valid then
+			return s
+		end
+	end
+
+	local s = awful.screen.focused()
+	if s and s.valid then
+		return s
+	end
+
+	return screen.primary
+end
+
+local function resolve_target_screen(actions, dir)
+	if actions and type(actions.scr_in_dir) == "function" then
+		local ok, target = pcall(actions.scr_in_dir, dir)
+		if ok and target and target.valid then
+			return target
+		end
+	end
+
+	local s = current_screen(actions)
+	if not (s and s.valid and type(s.get_next_in_direction) == "function") then
+		return nil
+	end
+
+	return s:get_next_in_direction(dir)
+end
+
 local function call_move(actions, dir)
 	if not (actions and type(actions.move_client_to_screen) == "function") then
 		return
@@ -16,20 +48,22 @@ local function call_move(actions, dir)
 end
 
 local function focus_screen(actions, dir)
-	if not (actions and type(actions.scr_in_dir) == "function") then
+	local target = resolve_target_screen(actions, dir)
+	if not (target and target.valid) then
 		return
 	end
 
-	local target = actions.scr_in_dir(dir)
-	if target then
-		kbd_intent()
-		awful.screen.focus(target)
-	end
+	kbd_intent()
+	awful.screen.focus(target)
 end
 
 local function has_screen_actions(actions)
 	return type(actions) == "table"
-		and (type(actions.scr_in_dir) == "function" or type(actions.move_client_to_screen) == "function")
+		and (
+			type(actions.scr_in_dir) == "function"
+			or type(actions.move_client_to_screen) == "function"
+			or type(actions.current_screen) == "function"
+		)
 end
 
 return function(modkey, actions)

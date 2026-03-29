@@ -12,9 +12,9 @@ local function current_screen()
 	return (mouse and mouse.screen) or nil
 end
 
-local function open_run(launchers)
-	if launchers and launchers.open and launchers.open.run then
-		launchers.open.run({
+local function open_run(launchers_open)
+	if launchers_open and type(launchers_open.run) == "function" then
+		launchers_open.run({
 			screen = current_screen(),
 			mode = "run",
 		})

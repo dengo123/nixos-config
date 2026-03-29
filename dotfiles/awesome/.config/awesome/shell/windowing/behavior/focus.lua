@@ -10,7 +10,7 @@ local runtime = {
 	raise_on_mouse = false,
 	block_ms = 150,
 
-	center_mouse_enable = true,
+	center_mouse_enable = false,
 	center_mouse_exclude_layouts = {},
 	center_mouse_exclude_states = {},
 
@@ -82,8 +82,8 @@ local function client_has_excluded_state(c)
 	return false
 end
 
-local function should_center_mouse(c)
-	if not runtime.center_mouse_enable then
+local function should_restore_mouse(c)
+	if not (c and c.valid) then
 		return false
 	end
 
@@ -97,6 +97,14 @@ local function should_center_mouse(c)
 	end
 
 	return true
+end
+
+local function should_center_mouse(c)
+	if not runtime.center_mouse_enable then
+		return false
+	end
+
+	return should_restore_mouse(c)
 end
 
 local function clamp(v, lo, hi)
@@ -198,7 +206,7 @@ local function should_follow_geometry(c)
 		return false
 	end
 
-	return should_center_mouse(c)
+	return should_restore_mouse(c)
 end
 
 local function hook_geometry_follow()
@@ -225,6 +233,18 @@ local function hook_geometry_follow()
 	runtime.geometry_follow_ready = true
 end
 
+local function resolve_focus_cfg(args)
+	args = args or {}
+
+	local fallback = (windowing().focus_cfg or {})
+
+	return {
+		raise_on_mouse = (args.raise_on_mouse ~= nil) and args.raise_on_mouse or fallback.raise_on_mouse,
+		block_ms = (args.block_ms ~= nil) and args.block_ms or fallback.block_ms,
+		center_mouse = (args.center_mouse ~= nil) and args.center_mouse or fallback.center_mouse,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -233,18 +253,22 @@ function F.init(args)
 	args = args or {}
 	runtime.windowing = args.windowing or runtime.windowing
 
-	local focus_cfg = (windowing().focus_cfg or {})
+	local focus_cfg = resolve_focus_cfg(args)
 	local center_cfg = focus_cfg.center_mouse
 
 	runtime.raise_on_mouse = (focus_cfg.raise_on_mouse == true)
 	runtime.block_ms = tonumber(focus_cfg.block_ms) or 150
 
 	if type(center_cfg) == "table" then
-		runtime.center_mouse_enable = (center_cfg.enable ~= false)
+		runtime.center_mouse_enable = (center_cfg.enable == true)
 		runtime.center_mouse_exclude_layouts = list_to_set(center_cfg.exclude_layouts)
 		runtime.center_mouse_exclude_states = list_to_set(center_cfg.exclude_states)
+	elseif type(center_cfg) == "boolean" then
+		runtime.center_mouse_enable = center_cfg
+		runtime.center_mouse_exclude_layouts = {}
+		runtime.center_mouse_exclude_states = {}
 	else
-		runtime.center_mouse_enable = (center_cfg ~= false)
+		runtime.center_mouse_enable = false
 		runtime.center_mouse_exclude_layouts = {}
 		runtime.center_mouse_exclude_states = {}
 	end
@@ -306,6 +330,10 @@ function F:on_focus(c)
 	runtime.last_focused_client = c
 
 	if not runtime.kbd_recent or runtime.suppress_center then
+		return
+	end
+
+	if not should_restore_mouse(c) then
 		return
 	end
 

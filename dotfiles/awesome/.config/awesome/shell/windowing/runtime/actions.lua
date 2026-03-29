@@ -1,5 +1,6 @@
 -- ~/.config/awesome/shell/windowing/runtime/actions.lua
 local awful = require("awful")
+local gears = require("gears")
 
 local M = {}
 
@@ -83,11 +84,24 @@ end
 
 function M.move_client_dir(dir)
 	local c = client.focus
-	if not c then
+	if not (c and c.valid) then
 		return
 	end
 
 	awful.client.swap.bydirection(dir, c, nil)
+
+	gears.timer.delayed_call(function()
+		if not (c and c.valid) then
+			return
+		end
+
+		if c.screen and c.screen.valid then
+			awful.screen.focus(c.screen)
+		end
+
+		client.focus = c
+		c:raise()
+	end)
 end
 
 function M.move_client_to_screen(dir)

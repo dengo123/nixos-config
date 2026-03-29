@@ -151,7 +151,7 @@ return {
 			block_ms = 150,
 
 			center_mouse = {
-				enable = false,
+				-- enable = true,
 				exclude_layouts = { "max" },
 				exclude_states = { "fullscreen" },
 			},
@@ -159,7 +159,7 @@ return {
 
 		floating = {
 			files = true,
-			terminals = true,
+			terminals = false,
 		},
 
 		fullscreen_dim = {
@@ -175,13 +175,11 @@ return {
 	launchers = {
 		session = {
 			power = {
-				backdrop = true,
 				first_action = "hibernate",
 				show_both_sleep_actions = false,
 			},
 
 			logoff = {
-				backdrop = true,
 				show_switch_user = false,
 			},
 		},

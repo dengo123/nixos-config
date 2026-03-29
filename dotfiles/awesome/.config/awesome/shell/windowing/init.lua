@@ -9,7 +9,7 @@ local function safe_require(path)
 end
 
 local M = {
-	actions = nil,
+	input = nil,
 	behavior = {},
 	policy = {},
 	runtime = {},
@@ -106,28 +106,34 @@ local function build_windowing()
 	}
 end
 
-local function build_actions(windowing)
+local function build_input(windowing)
 	return {
-		scr_in_dir = windowing.actions and windowing.actions.scr_in_dir or nil,
-		move_client_dir = windowing.actions and windowing.actions.move_client_dir or nil,
-		move_client_to_screen = windowing.actions and windowing.actions.move_client_to_screen or nil,
-		layout_state_mode = windowing.actions and windowing.actions.layout_state_mode or nil,
-		is_layout_state_active = windowing.actions and windowing.actions.is_layout_state_active or nil,
-		toggle_layout_state = windowing.actions and windowing.actions.toggle_layout_state or nil,
+		clients = {
+			focus_client = windowing.navigation and windowing.navigation.focus_client or nil,
+			swap_client = windowing.navigation and windowing.navigation.swap_client or nil,
+			is_max_layout = windowing.navigation and windowing.navigation.is_max_layout or nil,
+			current_screen = windowing.navigation and windowing.navigation.current_screen or nil,
 
-		focus_client = windowing.navigation and windowing.navigation.focus_client or nil,
-		swap_client = windowing.navigation and windowing.navigation.swap_client or nil,
-		is_max_layout = windowing.navigation and windowing.navigation.is_max_layout or nil,
-		current_screen = windowing.navigation and windowing.navigation.current_screen or nil,
+			layout_state_mode = windowing.actions and windowing.actions.layout_state_mode or nil,
+			is_layout_state_active = windowing.actions and windowing.actions.is_layout_state_active or nil,
+			toggle_layout_state = windowing.actions and windowing.actions.toggle_layout_state or nil,
 
-		minimize_focused = windowing.actions and windowing.actions.minimize_focused or nil,
-		minimize_visible_tag_on_screen = windowing.actions and windowing.actions.minimize_visible_tag_on_screen or nil,
-		minimize_all_tags_on_screen = windowing.actions and windowing.actions.minimize_all_tags_on_screen or nil,
-		minimize_visible_tags_on_all_screens = windowing.actions
-				and windowing.actions.minimize_visible_tags_on_all_screens
-			or nil,
-		minimize_all_tags_on_all_screens = windowing.actions and windowing.actions.minimize_all_tags_on_all_screens
-			or nil,
+			minimize_focused = windowing.actions and windowing.actions.minimize_focused or nil,
+			minimize_visible_tag_on_screen = windowing.actions and windowing.actions.minimize_visible_tag_on_screen
+				or nil,
+			minimize_all_tags_on_screen = windowing.actions and windowing.actions.minimize_all_tags_on_screen or nil,
+			minimize_visible_tags_on_all_screens = windowing.actions
+					and windowing.actions.minimize_visible_tags_on_all_screens
+				or nil,
+			minimize_all_tags_on_all_screens = windowing.actions and windowing.actions.minimize_all_tags_on_all_screens
+				or nil,
+		},
+
+		screens = {
+			scr_in_dir = windowing.actions and windowing.actions.scr_in_dir or nil,
+			move_client_to_screen = windowing.actions and windowing.actions.move_client_to_screen or nil,
+			current_screen = windowing.navigation and windowing.navigation.current_screen or nil,
+		},
 	}
 end
 
@@ -280,7 +286,7 @@ function M.init(args)
 		end
 	end
 
-	M.actions = build_actions(windowing)
+	M.input = build_input(windowing)
 
 	return M
 end

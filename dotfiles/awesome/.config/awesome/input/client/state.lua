@@ -7,10 +7,6 @@ local M = {}
 -- Helpers
 -- =========================================================================
 
-local function windowing_actions(cfg)
-	return (((cfg or {}).actions or {}).windowing or {}).clients or {}
-end
-
 local function focused_client()
 	return client.focus
 end
@@ -36,7 +32,7 @@ local function toggle_native_fullscreen(dim_other_screens)
 end
 
 local function restore_local(actions)
-	if type(actions.current_screen) == "function" then
+	if actions and type(actions.current_screen) == "function" then
 		awesome.emit_signal("windowing::restore_request", actions.current_screen())
 		return
 	end
@@ -44,14 +40,13 @@ local function restore_local(actions)
 	awesome.emit_signal("windowing::restore_request", focused_screen())
 end
 
-local function toggle_minimized(cfg)
+local function toggle_minimized(actions)
 	local c = focused_client()
-	local actions = windowing_actions(cfg)
 
 	if c and not c.minimized then
 		awesome.emit_signal("ui::suppress_center", 0.2)
 
-		if type(actions.minimize_focused) == "function" then
+		if actions and type(actions.minimize_focused) == "function" then
 			actions.minimize_focused()
 		else
 			c.minimized = true
@@ -62,9 +57,7 @@ local function toggle_minimized(cfg)
 	restore_local(actions)
 end
 
-local function toggle_scope_minimize(cfg, minimize_fn)
-	local actions = windowing_actions(cfg)
-
+local function toggle_scope_minimize(actions, minimize_fn)
 	local ok = false
 	if type(minimize_fn) == "function" then
 		ok = (minimize_fn(actions) == true)
@@ -77,55 +70,53 @@ local function toggle_scope_minimize(cfg, minimize_fn)
 	restore_local(actions)
 end
 
-local function toggle_visible_tag_on_screen(cfg)
-	toggle_scope_minimize(cfg, function(actions)
-		if type(actions.minimize_visible_tag_on_screen) == "function" then
-			return actions.minimize_visible_tag_on_screen(focused_screen())
+local function toggle_visible_tag_on_screen(actions)
+	toggle_scope_minimize(actions, function(a)
+		if a and type(a.minimize_visible_tag_on_screen) == "function" then
+			return a.minimize_visible_tag_on_screen(focused_screen())
 		end
 
 		return false
 	end)
 end
 
-local function toggle_all_tags_on_screen(cfg)
-	toggle_scope_minimize(cfg, function(actions)
-		if type(actions.minimize_all_tags_on_screen) == "function" then
-			return actions.minimize_all_tags_on_screen(focused_screen())
+local function toggle_all_tags_on_screen(actions)
+	toggle_scope_minimize(actions, function(a)
+		if a and type(a.minimize_all_tags_on_screen) == "function" then
+			return a.minimize_all_tags_on_screen(focused_screen())
 		end
 
 		return false
 	end)
 end
 
-local function toggle_visible_tags_on_all_screens(cfg)
-	toggle_scope_minimize(cfg, function(actions)
-		if type(actions.minimize_visible_tags_on_all_screens) == "function" then
-			return actions.minimize_visible_tags_on_all_screens()
+local function toggle_visible_tags_on_all_screens(actions)
+	toggle_scope_minimize(actions, function(a)
+		if a and type(a.minimize_visible_tags_on_all_screens) == "function" then
+			return a.minimize_visible_tags_on_all_screens()
 		end
 
 		return false
 	end)
 end
 
-local function toggle_all_tags_on_all_screens(cfg)
-	toggle_scope_minimize(cfg, function(actions)
-		if type(actions.minimize_all_tags_on_all_screens) == "function" then
-			return actions.minimize_all_tags_on_all_screens()
+local function toggle_all_tags_on_all_screens(actions)
+	toggle_scope_minimize(actions, function(a)
+		if a and type(a.minimize_all_tags_on_all_screens) == "function" then
+			return a.minimize_all_tags_on_all_screens()
 		end
 
 		return false
 	end)
 end
 
-local function toggle_layout_state(cfg)
+local function toggle_layout_state(actions, cfg)
 	local c = focused_client()
 	if not c then
 		return
 	end
 
-	local actions = windowing_actions(cfg)
-
-	if type(actions.toggle_layout_state) == "function" then
+	if actions and type(actions.toggle_layout_state) == "function" then
 		actions.toggle_layout_state(c, cfg)
 		return
 	end
@@ -134,10 +125,8 @@ local function toggle_layout_state(cfg)
 	c:raise()
 end
 
-local function layout_state_desc(cfg)
-	local actions = windowing_actions(cfg)
-
-	if type(actions.layout_state_mode) == "function" then
+local function layout_state_desc(actions, cfg)
+	if actions and type(actions.layout_state_mode) == "function" then
 		return (actions.layout_state_mode(cfg) == "maximized") and "Toggle Maximized" or "Toggle Floating"
 	end
 
@@ -148,7 +137,9 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(modkey, cfg)
+function M.build(modkey, cfg, actions)
+	actions = actions or {}
+
 	return awful.util.table.join(
 		awful.key({ modkey }, "f", function()
 			toggle_native_fullscreen(false)
@@ -165,49 +156,49 @@ function M.build(modkey, cfg)
 		}),
 
 		awful.key({ modkey }, "m", function()
-			toggle_minimized(cfg)
+			toggle_minimized(actions)
 		end, {
 			description = "Minimize Or Restore",
 			group = "Client",
 		}),
 
 		awful.key({ modkey, "Shift" }, "m", function()
-			toggle_visible_tag_on_screen(cfg)
+			toggle_visible_tag_on_screen(actions)
 		end, {
 			description = "Minimize Visible Tag Or Restore",
 			group = "Client",
 		}),
 
 		awful.key({ modkey, "Control" }, "m", function()
-			toggle_all_tags_on_screen(cfg)
+			toggle_all_tags_on_screen(actions)
 		end, {
 			description = "Minimize Screen Or Restore",
 			group = "Client",
 		}),
 
 		awful.key({ modkey, "Shift", "Mod1" }, "m", function()
-			toggle_visible_tags_on_all_screens(cfg)
+			toggle_visible_tags_on_all_screens(actions)
 		end, {
 			description = "Minimize Visible Tags On All Screens Or Restore",
 			group = "Client",
 		}),
 
 		awful.key({ modkey, "Control", "Mod1" }, "m", function()
-			toggle_all_tags_on_all_screens(cfg)
+			toggle_all_tags_on_all_screens(actions)
 		end, {
 			description = "Minimize All Screens Or Restore",
 			group = "Client",
 		}),
 
 		awful.key({ modkey }, "t", function()
-			toggle_layout_state(cfg)
+			toggle_layout_state(actions, cfg)
 		end, {
-			description = layout_state_desc(cfg),
+			description = layout_state_desc(actions, cfg),
 			group = "Client",
 		})
 	)
 end
 
-return function(modkey, cfg)
-	return M.build(modkey, cfg)
+return function(modkey, cfg, actions)
+	return M.build(modkey, cfg, actions)
 end

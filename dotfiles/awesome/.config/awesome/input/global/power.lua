@@ -19,8 +19,8 @@ local function spawn_shell(cmd)
 	awful.spawn.with_shell(cmd)
 end
 
-local function can_open_power(launchers_api)
-	return launchers_api and launchers_api.open and type(launchers_api.open.power) == "function"
+local function can_open_power(launchers_open)
+	return launchers_open and type(launchers_open.power) == "function"
 end
 
 local function install_modal_keys(modkey, handle)
@@ -97,12 +97,12 @@ local function install_modal_keys(modkey, handle)
 	end
 end
 
-local function open_power_dialog(modkey, launchers_api)
-	if not can_open_power(launchers_api) then
+local function open_power_dialog(modkey, launchers_open)
+	if not can_open_power(launchers_open) then
 		return
 	end
 
-	local handle = launchers_api.open.power({})
+	local handle = launchers_open.power({})
 
 	if handle then
 		install_modal_keys(modkey, handle)
@@ -113,12 +113,12 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(modkey, launchers_api)
+function M.build(modkey, launchers_open)
 	return gears.table.join(bind({ modkey }, "End", function()
-		open_power_dialog(modkey, launchers_api)
+		open_power_dialog(modkey, launchers_open)
 	end, "Open Power Dialog"))
 end
 
-return function(modkey, launchers_api)
-	return M.build(modkey, launchers_api)
+return function(modkey, launchers_open)
+	return M.build(modkey, launchers_open)
 end

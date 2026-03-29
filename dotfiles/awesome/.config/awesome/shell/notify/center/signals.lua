@@ -1,5 +1,11 @@
 -- ~/.config/awesome/shell/notify/center/signals.lua
+local awful = require("awful")
+
 local M = {}
+
+local runtime = {
+	keygrabber = nil,
+}
 
 -- =========================================================================
 -- Helpers
@@ -7,6 +13,96 @@ local M = {}
 
 local function center_cfg(cfg)
 	return ((cfg or {}).notify or {}).center or {}
+end
+
+local function stop_modal_keys()
+	local kg = runtime.keygrabber
+	runtime.keygrabber = nil
+
+	if kg and type(kg.stop) == "function" then
+		pcall(function()
+			kg:stop()
+		end)
+	end
+end
+
+local function has_modifier(mods)
+	return mods and #mods > 0
+end
+
+local function start_modal_keys(args)
+	stop_modal_keys()
+
+	runtime.keygrabber = awful.keygrabber({
+		autostart = true,
+		stop_event = "release",
+
+		keypressed_callback = function(_, mods, key)
+			mods = mods or {}
+
+			local ctrl = false
+			for _, m in ipairs(mods) do
+				if m == "Control" then
+					ctrl = true
+					break
+				end
+			end
+
+			if not has_modifier(mods) and key == "Escape" then
+				awesome.emit_signal("notify::close_center")
+				return
+			end
+
+			if not has_modifier(mods) and key == "Up" then
+				if type(args.select_prev) == "function" then
+					args.select_prev()
+				end
+				return
+			end
+
+			if not has_modifier(mods) and key == "Down" then
+				if type(args.select_next) == "function" then
+					args.select_next()
+				end
+				return
+			end
+
+			if not has_modifier(mods) and key == "Prior" then
+				if type(args.scroll_up) == "function" then
+					args.scroll_up()
+				end
+				return
+			end
+
+			if not has_modifier(mods) and key == "Next" then
+				if type(args.scroll_down) == "function" then
+					args.scroll_down()
+				end
+				return
+			end
+
+			if not has_modifier(mods) and key == "Return" then
+				if type(args.activate_selected) == "function" then
+					args.activate_selected()
+				end
+				return
+			end
+
+			if not has_modifier(mods) and key == "BackSpace" then
+				if type(args.dismiss_selected) == "function" then
+					args.dismiss_selected()
+				end
+				return
+			end
+
+			if ctrl and key == "Delete" then
+				if type(args.clear_history) == "function" then
+					args.clear_history()
+				end
+				return
+			end
+		end,
+	})
 end
 
 -- =========================================================================
@@ -47,6 +143,20 @@ function M.register(args)
 	awesome.connect_signal("notify::center_state", function(open)
 		if type(set_visible) == "function" then
 			set_visible(open == true)
+		end
+
+		if open == true then
+			start_modal_keys({
+				select_prev = select_prev,
+				select_next = select_next,
+				scroll_up = scroll_up,
+				scroll_down = scroll_down,
+				activate_selected = activate_selected,
+				dismiss_selected = dismiss_selected,
+				clear_history = clear_history,
+			})
+		else
+			stop_modal_keys()
 		end
 	end)
 

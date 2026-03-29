@@ -1,5 +1,6 @@
 -- ~/.config/awesome/input/global/tags.lua
 local awful = require("awful")
+local gears = require("gears")
 
 local M = {}
 
@@ -34,25 +35,46 @@ local function move_current_tag_in_list(delta)
 	awful.tag.viewonly(t)
 end
 
+local function has_tag_actions(actions)
+	return type(actions) == "table"
+		and (
+			type(actions.view_tag_idx) == "function"
+			or type(actions.move_tag_to_screen) == "function"
+			or type(actions.add) == "function"
+			or type(actions.add_silent) == "function"
+			or type(actions.delete_current) == "function"
+			or type(actions.delete_current_force) == "function"
+		)
+end
+
+local function call(actions, name, ...)
+	if not (actions and type(actions[name]) == "function") then
+		return
+	end
+
+	kbd_intent()
+	actions[name](...)
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
 
 function M.build(modkey, actions)
-	-- assert(type(actions) == "table", "input.global.tags: actions fehlt/ungueltig")
+	if not has_tag_actions(actions) then
+		return gears.table.join()
+	end
 
-	return awful.util.table.join(
+	return gears.table.join(
 		awful.key({ modkey, "Control" }, "Right", function()
-			kbd_intent()
-			actions.view_tag_idx(1)
+			call(actions, "view_tag_idx", 1)
 		end, {
 			description = "View Next Tag",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Control" }, "Left", function()
-			kbd_intent()
-			actions.view_tag_idx(-1)
+			call(actions, "view_tag_idx", -1)
 		end, {
 			description = "View Previous Tag",
 			group = "Tags",
@@ -75,64 +97,56 @@ function M.build(modkey, actions)
 		}),
 
 		awful.key({ modkey, "Control", "Mod1" }, "Left", function()
-			kbd_intent()
-			actions.move_tag_to_screen("left")
+			call(actions, "move_tag_to_screen", "left")
 		end, {
 			description = "Move Tag To Screen Left",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Control", "Mod1" }, "Right", function()
-			kbd_intent()
-			actions.move_tag_to_screen("right")
+			call(actions, "move_tag_to_screen", "right")
 		end, {
 			description = "Move Tag To Screen Right",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Control", "Mod1" }, "Up", function()
-			kbd_intent()
-			actions.move_tag_to_screen("up")
+			call(actions, "move_tag_to_screen", "up")
 		end, {
 			description = "Move Tag To Screen Up",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Control", "Mod1" }, "Down", function()
-			kbd_intent()
-			actions.move_tag_to_screen("down")
+			call(actions, "move_tag_to_screen", "down")
 		end, {
 			description = "Move Tag To Screen Down",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey }, "n", function()
-			kbd_intent()
-			actions.add()
+			call(actions, "add")
 		end, {
 			description = "Create New Tag",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Shift" }, "n", function()
-			kbd_intent()
-			actions.add_silent()
+			call(actions, "add_silent")
 		end, {
 			description = "Create New Tag Silently",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey }, "c", function()
-			kbd_intent()
-			actions.delete_current()
+			call(actions, "delete_current")
 		end, {
 			description = "Close Current Tag",
 			group = "Tags",
 		}),
 
 		awful.key({ modkey, "Shift" }, "c", function()
-			kbd_intent()
-			actions.delete_current_force()
+			call(actions, "delete_current_force")
 		end, {
 			description = "Force Close Current Tag",
 			group = "Tags",

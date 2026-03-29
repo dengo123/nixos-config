@@ -13,7 +13,7 @@ end
 local M = {
 	runtime = {},
 	policies = {},
-	actions = nil,
+	input = nil,
 }
 
 local runtime = {
@@ -116,6 +116,20 @@ local function configure_controller_hooks(workspaces)
 			apply_layout_policy = LayoutPolicy and LayoutPolicy.apply_layout_policy or function(_) end,
 		})
 	end
+end
+
+local function build_input(RuntimeActions, Mref)
+	return {
+		tags = {
+			view_tag_idx = RuntimeActions and RuntimeActions.view_tag_idx or nil,
+			move_tag_to_screen = RuntimeActions and RuntimeActions.move_tag_to_screen or nil,
+			move_client_to_neighbor_tag = RuntimeActions and RuntimeActions.move_client_to_neighbor_tag or nil,
+			add = Mref.add,
+			add_silent = Mref.add_silent,
+			delete_current = Mref.delete_current,
+			delete_current_force = Mref.delete_current_force,
+		},
+	}
 end
 
 -- =========================================================================
@@ -276,15 +290,7 @@ function M.init(args)
 	M.ensure = RuntimeController.ensure
 	M.renumber = RuntimeController.renumber
 
-	M.actions = {
-		view_tag_idx = RuntimeActions and RuntimeActions.view_tag_idx or nil,
-		move_tag_to_screen = RuntimeActions and RuntimeActions.move_tag_to_screen or nil,
-		move_client_to_neighbor_tag = RuntimeActions and RuntimeActions.move_client_to_neighbor_tag or nil,
-		add = M.add,
-		add_silent = M.add_silent,
-		delete_current = M.delete_current,
-		delete_current_force = M.delete_current_force,
-	}
+	M.input = build_input(RuntimeActions, M)
 
 	return M
 end

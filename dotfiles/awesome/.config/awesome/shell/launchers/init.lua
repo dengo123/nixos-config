@@ -5,6 +5,7 @@ local L = {
 	lib = {},
 	launchers = {},
 	ui = {},
+	input = {},
 }
 
 local runtime = {
@@ -152,6 +153,12 @@ local function open_session_variant(opts, variant)
 	end
 end
 
+local function build_input()
+	return {
+		open = L.open,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -206,6 +213,8 @@ function L.init(args)
 			launchers = L,
 		})
 	end
+
+	L.input = build_input()
 
 	runtime.initialized = true
 	return L

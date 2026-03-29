@@ -26,8 +26,8 @@ local function spawn_cmd(cmd)
 	end
 end
 
-local function can_open_logoff(launchers_api)
-	return launchers_api and launchers_api.open and type(launchers_api.open.logoff) == "function"
+local function can_open_logoff(launchers_open)
+	return launchers_open and type(launchers_open.logoff) == "function"
 end
 
 local function install_modal_keys(modkey, handle)
@@ -99,12 +99,12 @@ local function install_modal_keys(modkey, handle)
 	end
 end
 
-local function open_logoff_dialog(modkey, launchers_api)
-	if not can_open_logoff(launchers_api) then
+local function open_logoff_dialog(modkey, launchers_open)
+	if not can_open_logoff(launchers_open) then
 		return
 	end
 
-	local handle = launchers_api.open.logoff({})
+	local handle = launchers_open.logoff({})
 
 	if handle then
 		install_modal_keys(modkey, handle)
@@ -115,12 +115,12 @@ end
 -- Public API
 -- =========================================================================
 
-function M.build(modkey, launchers_api)
+function M.build(modkey, launchers_open)
 	return gears.table.join(bind({ modkey }, "Pause", function()
-		open_logoff_dialog(modkey, launchers_api)
+		open_logoff_dialog(modkey, launchers_open)
 	end, "Open Logoff Dialog"))
 end
 
-return function(modkey, launchers_api)
-	return M.build(modkey, launchers_api)
+return function(modkey, launchers_open)
+	return M.build(modkey, launchers_open)
 end
