@@ -1,3 +1,4 @@
+-- ~/.config/awesome/input/client/kill.lua
 local awful = require("awful")
 
 local M = {}
@@ -10,22 +11,46 @@ local function focused_client()
 	return client.focus
 end
 
-local function close_focused_client()
-	local c = focused_client()
-	if c then
-		c:kill()
+local function window_id(c)
+	if not c or not c.window then
+		return nil
 	end
+
+	return tostring(c.window)
 end
 
-local function hard_kill_focused_client()
+local function request_close_focused_client()
 	local c = focused_client()
 	if not c then
 		return
 	end
 
-	local pid = c.pid
+	local wid = window_id(c)
+	if wid then
+		awful.spawn({ "xdotool", "windowclose", wid }, false)
+		return
+	end
 
-	if pid and tonumber(pid) then
+	c:kill()
+end
+
+local function kill_focused_client()
+	local c = focused_client()
+	if not c then
+		return
+	end
+
+	c:kill()
+end
+
+local function sigkill_focused_client()
+	local c = focused_client()
+	if not c then
+		return
+	end
+
+	local pid = tonumber(c.pid)
+	if pid then
 		awful.spawn({ "kill", "-KILL", tostring(pid) }, false)
 		return
 	end
@@ -40,16 +65,23 @@ end
 function M.build(modkey)
 	return awful.util.table.join(
 		awful.key({ modkey }, "q", function()
-			close_focused_client()
+			request_close_focused_client()
 		end, {
-			description = "Close Focused Window",
+			description = "Request Close Focused Window",
 			group = "Client",
 		}),
 
 		awful.key({ modkey, "Shift" }, "q", function()
-			hard_kill_focused_client()
+			kill_focused_client()
 		end, {
-			description = "Force Kill Focused Window",
+			description = "Kill Focused Window",
+			group = "Client",
+		}),
+
+		awful.key({ "Mod1" }, "F4", function()
+			sigkill_focused_client()
+		end, {
+			description = "SIGKILL Focused Window",
 			group = "Client",
 		})
 	)

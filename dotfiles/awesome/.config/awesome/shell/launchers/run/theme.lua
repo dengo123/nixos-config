@@ -113,7 +113,7 @@ function M.get(overrides)
 
 	local search_defaults = {
 		sizes = {
-			height = dpi(64),
+			height = dpi(28),
 			width_expanded = dpi(320),
 		},
 
