@@ -18,7 +18,7 @@ in {
       mkOpt (types.nullOr (
         types.enum [
           "doom"
-          "nvim"
+          # "nvim"
         ]
       ))
       null "Choose a text editor. If null, only vanilla vim is installed (no dev stack).";
@@ -95,11 +95,11 @@ in {
       };
     })
 
-    (mkIf (cfg.editor == "nvim") {
-      ${namespace}.programs.nixvim = {
-        enable = true;
-        mode = mkDefault "full";
-      };
-    })
+    # (mkIf (cfg.editor == "nvim") {
+    #   ${namespace}.programs.nixvim = {
+    #     enable = true;
+    #     mode = mkDefault "full";
+    #   };
+    # })
   ]);
 }

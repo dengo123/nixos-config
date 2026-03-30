@@ -9,8 +9,10 @@ $directory\
 $git_branch$git_status\
 [](fg:{{primary}} bg:{{primary}})\
 $c$rust$golang$nodejs$php$java$kotlin$haskell$python\
+[](fg:{{primary}} bg:{{primary}})\
+$docker_context$nix_shell$direnv\
 [](fg:{{primary}} bg:{{secondary}})\
-$docker_context\
+$cmd_duration\
 [](fg:{{secondary}} bg:{{secondary}})\
 $time\
 [ ](fg:{{secondary}})\
@@ -24,6 +26,8 @@ style = "bg:{{start}} fg:{{close}}"
 
 [os.symbols]
 NixOS = "󱄅"
+Macos = "󰀵"
+Linux = "󰌽"
 
 [username]
 show_always = true
@@ -34,7 +38,7 @@ format = "[ $user ]($style)"
 [directory]
 style = "bg:{{tertiary}} fg:{{text_invert}}"
 format = "[ $path ]($style)"
-truncation_length = 3
+truncation_length = 2
 truncation_symbol = "…/"
 
 [directory.substitutions]
@@ -61,44 +65,65 @@ format = "[[ $symbol( $version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 [c]
 symbol = " "
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [rust]
 symbol = ""
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [golang]
 symbol = " "
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [php]
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [java]
 symbol = " "
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [kotlin]
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [haskell]
 symbol = " "
 style = "bg:{{primary}}"
-format = "[ $symbol ($version) ]($style)"
+format = "[[ $symbol ($version) ](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [python]
 style = "bg:{{primary}}"
-format = "[(\\($virtualenv\\) )]($style)"
+format = "[[(\\($virtualenv\\) )](fg:{{text_invert}} bg:{{primary}})]($style)"
 
 [docker_context]
 symbol = " "
+style = "bg:{{primary}}"
+format = "[[ $symbol $context ](fg:{{text_invert}} bg:{{primary}})]($style)"
+
+[nix_shell]
+symbol = "󱄅 "
+style = "bg:{{primary}}"
+format = "[[ $symbol $name ](fg:{{text_invert}} bg:{{primary}})]($style)"
+impure_msg = "impure"
+pure_msg = "pure"
+unknown_msg = ""
+
+[direnv]
+disabled = false
+style = "bg:{{primary}}"
+format = "[[ direnv ](fg:{{text_invert}} bg:{{primary}})]($style)"
+
+[cmd_duration]
+min_time = 500
+show_milliseconds = true
 style = "bg:{{secondary}}"
-format = "[ $symbol $context ]($style) $path"
+format = "[[  $duration ](fg:{{text_invert}} bg:{{secondary}})]($style)"
+show_notifications = false
+min_time_to_notify = 45000
 
 [time]
 disabled = false

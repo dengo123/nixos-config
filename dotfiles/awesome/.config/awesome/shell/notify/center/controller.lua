@@ -51,6 +51,24 @@ local function center_list_theme(notify_theme)
 	}
 end
 
+local function is_portrait_screen(s)
+	if not (s and s.geometry) then
+		return false
+	end
+
+	return (tonumber(s.geometry.height) or 0) > (tonumber(s.geometry.width) or 0)
+end
+
+local function visible_cards_for_screen(cfg, s)
+	local center = center_cfg(cfg)
+
+	if is_portrait_screen(s) then
+		return math.max(1, tonumber(center.visible_cards_portrait) or tonumber(center.visible_cards) or 5)
+	end
+
+	return math.max(1, tonumber(center.visible_cards) or 5)
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -143,6 +161,7 @@ function M.new(args)
 			local entries = (History and History.list and History.list()) or {}
 			local state = State.state_for_screen(popup.screen)
 			local list_theme = center_list_theme(notify_theme)
+			local visible_limit = visible_cards_for_screen(cfg, popup.screen)
 
 			local list_width = base_geo.width
 			if Layout and type(Layout.resolve_list_width) == "function" then
@@ -157,6 +176,7 @@ function M.new(args)
 				state = state,
 				max_height = base_geo.height,
 				list_width = list_width,
+				visible_limit = visible_limit,
 				widget = Widget,
 				deps = {
 					actions = Actions,
@@ -175,6 +195,14 @@ function M.new(args)
 
 			if List and type(List.clamp_scroll_offset) == "function" then
 				List.clamp_scroll_offset(state)
+			end
+
+			if type(State.set_selected_index) == "function" then
+				if state.selected_index ~= nil then
+					State.set_selected_index(popup.screen, state.selected_index)
+				else
+					State.ensure_selected(popup.screen)
+				end
 			end
 
 			local panel = built.widget
@@ -226,9 +254,17 @@ function M.new(args)
 		})
 	end
 
+	function controller.refresh_screen(s)
+		local popup = popups[key_for_screen(s)]
+		if popup then
+			controller.rebuild_popup(popup)
+			controller.apply_geometry(popup)
+		end
+	end
+
 	function controller.scroll_delta(s, delta)
 		if not (State and List and type(List.scroll_delta) == "function") then
-			return
+			return false
 		end
 
 		local state = State.state_for_screen(s)
@@ -236,13 +272,76 @@ function M.new(args)
 		local next_offset = List.scroll_delta(state, delta)
 
 		if next_offset == current then
+			return false
+		end
+
+		controller.refresh_screen(s)
+		return true
+	end
+
+	function controller.select_prev(s)
+		if not State then
 			return
 		end
 
-		local popup = popups[key_for_screen(s)]
-		if popup then
-			controller.rebuild_popup(popup)
-			controller.apply_geometry(popup)
+		s = s or screen.primary or awful.screen.focused()
+
+		local state = State.state_for_screen(s)
+		local visible = tonumber(state.last_visible) or #(state.items or {})
+		local current = tonumber(state.selected_index)
+
+		if visible < 1 then
+			return
+		end
+
+		if current == nil then
+			State.set_selected_index(s, visible)
+			return
+		end
+
+		if current > 1 then
+			State.set_selected_index(s, current - 1)
+			return
+		end
+
+		if controller.scroll_up(s) then
+			local new_state = State.state_for_screen(s)
+			local edge = math.min(1, tonumber(new_state.last_visible) or 1)
+			State.set_selected_index(s, edge)
+			controller.refresh_screen(s)
+		end
+	end
+
+	function controller.select_next(s)
+		if not State then
+			return
+		end
+
+		s = s or screen.primary or awful.screen.focused()
+
+		local state = State.state_for_screen(s)
+		local visible = tonumber(state.last_visible) or #(state.items or {})
+		local current = tonumber(state.selected_index)
+
+		if visible < 1 then
+			return
+		end
+
+		if current == nil then
+			State.set_selected_index(s, 1)
+			return
+		end
+
+		if current < visible then
+			State.set_selected_index(s, current + 1)
+			return
+		end
+
+		if controller.scroll_down(s) then
+			local new_state = State.state_for_screen(s)
+			local edge = math.max(1, tonumber(new_state.last_visible) or visible)
+			State.set_selected_index(s, edge)
+			controller.refresh_screen(s)
 		end
 	end
 
@@ -332,12 +431,12 @@ function M.new(args)
 
 	function controller.scroll_up(s)
 		s = s or screen.primary or awful.screen.focused()
-		controller.scroll_delta(s, 1)
+		return controller.scroll_delta(s, 1)
 	end
 
 	function controller.scroll_down(s)
 		s = s or screen.primary or awful.screen.focused()
-		controller.scroll_delta(s, -1)
+		return controller.scroll_delta(s, -1)
 	end
 
 	return controller

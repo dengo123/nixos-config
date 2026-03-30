@@ -16,7 +16,7 @@ in {
     enable = mkBoolOpt false "Enable starship.";
 
     template =
-      mkOpt types.str "default"
+      mkOpt types.str "powerline_wibar"
       "Starship template name from repository root /starship, without .toml suffix.";
   };
 

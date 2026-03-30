@@ -1,3 +1,4 @@
+-- ~/.config/awesome/shell/notify/center/init.lua
 local awful = require("awful")
 
 local function safe_require(path)
@@ -95,11 +96,15 @@ local function register_signals()
 		end,
 
 		select_prev = function()
-			M.select_prev(current_screen())
+			if type(Controller.select_prev) == "function" then
+				Controller.select_prev(current_screen())
+			end
 		end,
 
 		select_next = function()
-			M.select_next(current_screen())
+			if type(Controller.select_next) == "function" then
+				Controller.select_next(current_screen())
+			end
 		end,
 
 		activate_selected = function()

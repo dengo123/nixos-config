@@ -34,7 +34,7 @@ with lib.${namespace}; let
           exit 1
         fi
 
-        ${pkgs.python3}/bin/python3 <<'PY'
+    ${pkgs.python3}/bin/python3 <<'PY'
     import json
     import os
     from pathlib import Path
@@ -52,7 +52,7 @@ with lib.${namespace}; let
         palette_key = roles[name]
         return palette[palette_key]
 
-    mapping = {
+    role_mapping = {
         "background": role_color("background"),
         "surface": role_color("surface"),
         "surface_focus": role_color("surface_focus"),
@@ -68,6 +68,12 @@ with lib.${namespace}; let
         "close": role_color("close"),
         "close_focus": role_color("close_focus"),
     }
+
+    palette_mapping = dict(palette)
+
+    mapping = {}
+    mapping.update(role_mapping)
+    mapping.update(palette_mapping)
 
     template = template_file.read_text()
     rendered = template

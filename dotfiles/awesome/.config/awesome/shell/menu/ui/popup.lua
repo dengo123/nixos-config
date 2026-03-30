@@ -6,7 +6,8 @@ local M = {}
 
 local runtime = {
 	menu = nil,
-	mousegrabber_running = false,
+	root_buttons = nil,
+	client_callback = nil,
 }
 
 -- =========================================================================
@@ -21,71 +22,22 @@ local function clear_menu()
 	runtime.menu = nil
 end
 
-local function stop_close_guard()
-	if runtime.mousegrabber_running and mousegrabber and type(mousegrabber.stop) == "function" then
+local function disarm_close_guard()
+	if runtime.root_buttons then
 		pcall(function()
-			mousegrabber.stop()
+			root.buttons(runtime.root_buttons)
 		end)
 	end
 
-	runtime.mousegrabber_running = false
-end
+	runtime.root_buttons = nil
 
-local function menu_geometry(menu)
-	if not (menu and menu.wibox and menu.wibox.valid) then
-		return nil
+	if runtime.client_callback then
+		pcall(function()
+			client.disconnect_signal("button::press", runtime.client_callback)
+		end)
 	end
 
-	return menu.wibox:geometry()
-end
-
-local function point_in_rect(x, y, g)
-	if not g then
-		return false
-	end
-
-	return x >= g.x and x < (g.x + g.width) and y >= g.y and y < (g.y + g.height)
-end
-
-local function is_any_mouse_button_pressed(mouse_state)
-	local buttons = mouse_state and mouse_state.buttons or {}
-	return buttons[1] or buttons[2] or buttons[3]
-end
-
-local function start_close_guard()
-	stop_close_guard()
-
-	if not (mousegrabber and type(mousegrabber.run) == "function") then
-		return
-	end
-
-	local pressed_before = true
-	runtime.mousegrabber_running = true
-
-	mousegrabber.run(function(mouse_state)
-		local menu = current_menu()
-
-		if not (menu and menu.wibox and menu.wibox.valid and menu.wibox.visible) then
-			runtime.mousegrabber_running = false
-			return false
-		end
-
-		local pressed_now = is_any_mouse_button_pressed(mouse_state)
-
-		if pressed_now and not pressed_before then
-			local g = menu_geometry(menu)
-			local inside = point_in_rect(mouse_state.x, mouse_state.y, g)
-
-			if not inside then
-				M.hide()
-				runtime.mousegrabber_running = false
-				return false
-			end
-		end
-
-		pressed_before = pressed_now
-		return true
-	end, "left_ptr")
+	runtime.client_callback = nil
 end
 
 local function attach_cleanup(menu, on_closed)
@@ -98,7 +50,7 @@ local function attach_cleanup(menu, on_closed)
 			clear_menu()
 		end
 
-		stop_close_guard()
+		disarm_close_guard()
 
 		if type(on_closed) == "function" then
 			on_closed()
@@ -111,13 +63,39 @@ local function attach_cleanup(menu, on_closed)
 				clear_menu()
 			end
 
-			stop_close_guard()
+			disarm_close_guard()
 
 			if type(on_closed) == "function" then
 				on_closed()
 			end
 		end
 	end)
+end
+
+local function arm_close_guard(on_close)
+	local function closer()
+		if type(on_close) == "function" then
+			on_close()
+		end
+	end
+
+	runtime.root_buttons = root.buttons()
+
+	local tmp = gears.table.join(
+		runtime.root_buttons or {},
+		awful.button({}, 1, closer),
+		awful.button({}, 2, closer),
+		awful.button({}, 3, closer)
+	)
+
+	root.buttons(tmp)
+
+	local client_cb = function()
+		closer()
+	end
+
+	runtime.client_callback = client_cb
+	client.connect_signal("button::press", client_cb)
 end
 
 -- =========================================================================
@@ -155,11 +133,8 @@ function M.show(opts)
 	})
 
 	attach_cleanup(menu, on_closed)
-
-	gears.timer.delayed_call(function()
-		if current_menu() == menu and menu.wibox and menu.wibox.valid and menu.wibox.visible then
-			start_close_guard()
-		end
+	arm_close_guard(function()
+		M.hide()
 	end)
 
 	return menu
@@ -174,7 +149,7 @@ end
 function M.hide()
 	local menu = current_menu()
 
-	stop_close_guard()
+	disarm_close_guard()
 
 	if menu and menu.wibox and menu.wibox.valid then
 		pcall(function()

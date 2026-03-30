@@ -25,7 +25,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nixvim.url = "github:nix-community/nixvim";
     ghostty.url = "github:ghostty-org/ghostty";
 
     zen-browser = {
