@@ -1,6 +1,5 @@
 # modules/home/bundles/developer/default.nix
 {
-  inputs,
   config,
   lib,
   pkgs,
@@ -40,36 +39,67 @@ in {
         devenv
 
         # Essentials
-        ripgrep
-        fd
-        just
         codex
+        coreutils
+        editorconfig-core-c
+        fd
+        findutils
+        gcc
+        gnumake
+        gnugrep
+        gnutar
+        gzip
+        just
+        libtool
+        ripgrep
+        shellcheck
+        sqlite
+
+        # Writing / spellcheck
+        pkg-config
+        enchant
+        (lib.getDev pkgs.enchant)
+        hunspell
+        hunspellDicts.de_DE
+        hunspellDicts.en_US
 
         # Lua
         lua-language-server
         stylua
 
         # Nix
-        nixd
         alejandra
+        nixd
+        nixfmt-rfc-style
 
         # Python
-        python3
-        pyright
         black
+        isort
+        pipenv
+        python3Packages.pyflakes
+        pyright
+        python3Packages.pytest
+        python3
         ruff
 
-        # JSON/TOML/YAML
-        vscode-langservers-extracted
-        yaml-language-server
-        taplo
+        # JSON / TOML / YAML / XML
         jq
+        libxml2
+        taplo
+        vscode-langservers-extracted
         yamlfmt
+        yaml-language-server
 
-        # JS/TS
-        nodejs_22
-        nodePackages.prettier
+        # Shell / web
+        nodePackages.js-beautify
+        nodePackages.stylelint
+        shfmt
+        html-tidy
+
+        # JS / TS
         nodePackages.eslint
+        nodePackages.prettier
+        nodejs_22
         typescript
         typescript-language-server
       ];
@@ -83,14 +113,9 @@ in {
       };
     })
 
-    # 3) Editor-Auswahl
     (mkIf (cfg.editor == "doom") {
       ${namespace} = {
-        programs.doom = {
-          enable = true;
-          doomDir = inputs.self + /dotfiles/doom;
-        };
-
+        programs.doom.enable = true;
         bundles.shell.mode = mkDefault "emacs";
       };
     })

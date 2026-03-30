@@ -37,9 +37,5 @@ in {
     (mkIf (cfg.app == "librewolf") {
       ${namespace}.programs.librewolf.enable = true;
     })
-
-    (mkIf (cfg.app == "zen") {
-      ${namespace}.programs.zen.enable = true;
-    })
   ]);
 }

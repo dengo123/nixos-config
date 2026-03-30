@@ -16,7 +16,7 @@ with lib.${namespace}; {
       browser.app = "firefox";
       files.manager = "nemo";
       developer.editor = "doom";
-      office = enabled;
+      idle.service = "xscreensaver";
     };
 
     programs = {
@@ -36,6 +36,25 @@ with lib.${namespace}; {
         #   size = 26;
         # };
       };
+
+      scripts = {
+        # autorandr = {
+        #   workProfile = "";
+        #   tvProfile = "";
+        # };
+
+        xscreensaver-idle = {
+          # lock = {
+          #   delay = 300;
+          #   command = "";
+          # };
+
+          suspend = {
+            enable = true;
+            # delay = 900;
+          };
+        };
+      };
     };
 
     services = {
@@ -48,27 +67,6 @@ with lib.${namespace}; {
         provider = "manual";
         latitude = 50.1;
         longitude = 8.6;
-      };
-
-      xidlehook = {
-        # notWhenAudio = true;
-        timers = [
-          {
-            delay = 300;
-            command = "sh -c 'date >> /tmp/xidlehook-600.log'";
-            canceller = "";
-          }
-          {
-            delay = 1200;
-            command = "xset dpms force off";
-            canceller = "";
-          }
-          {
-            delay = 1800;
-            command = "systemctl suspend";
-            canceller = "";
-          }
-        ];
       };
     };
   };

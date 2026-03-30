@@ -5,6 +5,5 @@
 (map! :leader :desc "Toggle treemacs" "t t" #'+treemacs/toggle)
 
 (with-eval-after-load 'dired
-  (map! :map dired-mode-map
-        :n "h" #'dired-up-directory
-        :n "l" #'dired-find-file))
+  (define-key dired-mode-map (kbd "h") #'dired-up-directory)
+  (define-key dired-mode-map (kbd "l") #'dired-find-file))

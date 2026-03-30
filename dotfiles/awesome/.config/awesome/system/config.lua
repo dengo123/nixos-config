@@ -146,7 +146,7 @@ return {
 		},
 
 		delete = {
-			kill_clients = true,
+			kill_clients = false,
 			soft_mode = "exclusive",
 		},
 	},

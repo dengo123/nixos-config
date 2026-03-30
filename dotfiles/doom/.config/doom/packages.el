@@ -1,7 +1,7 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; $DOOMDIR/packages.el
 
-(package! jinx)
+;; (package! jinx)
 
 ;; To install a package:
 ;;

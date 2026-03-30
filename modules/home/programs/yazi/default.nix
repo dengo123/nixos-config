@@ -1,3 +1,4 @@
+# modules/home/programs/yazi/default.nix
 {
   config,
   lib,

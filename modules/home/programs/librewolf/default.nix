@@ -1,16 +1,13 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
 with lib;
-with lib.${namespace};
-let
+with lib.${namespace}; let
   cfg = config.${namespace}.programs.librewolf;
-in
-{
+in {
   options.${namespace}.programs.librewolf = {
     enable = mkBoolOpt false "${namespace}.programs.librewolf.enable";
   };

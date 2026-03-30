@@ -20,17 +20,12 @@
       flake = false;
     };
 
-    nix-doom-emacs-unstraightened = {
-      url = "github:marienz/nix-doom-emacs-unstraightened";
-      inputs.nixpkgs.follows = "nixpkgs";
+    doomemacs = {
+      url = "github:doomemacs/doomemacs";
+      flake = false;
     };
 
     ghostty.url = "github:ghostty-org/ghostty";
-
-    zen-browser = {
-      url = "github:0xc000022070/zen-browser-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     nix-ld = {
       url = "github:Mic92/nix-ld";

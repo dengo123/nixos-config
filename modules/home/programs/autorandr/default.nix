@@ -15,5 +15,7 @@ in {
 
   config = mkIf cfg.enable {
     programs.autorandr = enabled;
+
+    ${namespace}.misc.scripts.autorandr-toggle = mkDefault enabled;
   };
 }

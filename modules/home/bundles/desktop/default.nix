@@ -20,10 +20,11 @@ in {
         files = mkDefault enabled;
         browser = mkDefault enabled;
         terminal = mkDefault enabled;
+        idle = mkDefault enabled;
+        office = mkDefault enabled;
       };
       misc = {
         gtk = mkDefault enabled;
-        scripts = mkDefault enabled;
         xdg = mkDefault enabled;
       };
 
@@ -33,8 +34,6 @@ in {
 
       services = {
         polkit-agent = mkDefault enabled;
-        xscreensaver = mkDefault enabled;
-        xidlehook = mkDefault enabled;
         picom = mkDefault enabled;
         redshift = mkDefault enabled;
         udiskie = mkDefault enabled;
@@ -46,6 +45,7 @@ in {
     };
 
     home.packages = with pkgs; [
+      stow
       pavucontrol
       copyq
       gnome-calendar

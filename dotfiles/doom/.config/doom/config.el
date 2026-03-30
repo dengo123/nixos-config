@@ -12,5 +12,5 @@
 (load! "lisp/terminal")
 (load! "lisp/templates")
 (load! "lisp/completion")
-(load! "lisp/spell")
+;; (load! "lisp/spell")
 (load! "lisp/misc")

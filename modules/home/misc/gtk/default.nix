@@ -85,5 +85,7 @@ in {
       gtk-font-name=${sansFont} ${toString cfg.fontSize}
       gtk-application-prefer-dark-theme=0
     '';
+
+    ${namespace}.misc.scripts.apply-gtk-theme = mkDefault enabled;
   };
 }
