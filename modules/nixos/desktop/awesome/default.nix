@@ -9,7 +9,6 @@
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.desktop.awesome;
-  userName = config.${namespace}.config.user.name;
 
   awesomePkg =
     if cfg.package == "patched"
@@ -19,12 +18,10 @@ in {
   options.${namespace}.desktop.awesome = with types; {
     enable = mkBoolOpt false "Enable Awesome WM on X11.";
 
-    package = mkOpt (enum ["stable" "patched"]) "stable" "Which Awesome package to use.";
-
-    autoLogin = {
-      enable = mkBoolOpt false "Enable LightDM autologin into Awesome.";
-      user = mkStrOpt userName "Autologin user name.";
-    };
+    package = mkOpt (enum [
+      "stable"
+      "patched"
+    ]) "stable" "Which Awesome package to use.";
   };
 
   config = mkIf cfg.enable {
@@ -37,16 +34,5 @@ in {
     };
 
     services.displayManager.defaultSession = "none+awesome";
-
-    services.displayManager.autoLogin = {
-      enable = cfg.autoLogin.enable;
-      user = cfg.autoLogin.user;
-    };
-
-    services.xserver.displayManager.lightdm.enable = true;
-    services.xserver.displayManager.lightdm.greeters.gtk.enable = mkDefault true;
-    services.xserver.displayManager.lightdm.greeters.gtk.extraConfig = ''
-      active-monitor=DP-4
-    '';
   };
 }

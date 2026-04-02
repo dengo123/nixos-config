@@ -142,7 +142,7 @@ return {
 
 		max = {
 			padding = true,
-			-- solo = true,
+			solo = true,
 		},
 
 		delete = {
@@ -177,11 +177,6 @@ return {
 		floating = {
 			files = true,
 			terminals = true,
-		},
-
-		fullscreen_dim = {
-			enabled = true,
-			never_dim_primary = true,
 		},
 	},
 

@@ -37,10 +37,9 @@ with lib.${namespace}; {
       gaming = enabled;
     };
 
-    desktop.awesome = {
-      enable = true;
-      package = "patched";
-      autoLogin = enabled;
+    desktop.lightdm = {
+      autoLogin.enable = true;
+      gtkGreeter.activeMonitor = "DP-4";
     };
 
     hardware = {
@@ -49,7 +48,7 @@ with lib.${namespace}; {
       rgb = {
         enable = true;
         mode = "profile";
-        profile = mkForce "all_white.orp";
+        profile = mkForce "warm_light.orp";
       };
     };
 
@@ -76,6 +75,7 @@ with lib.${namespace}; {
         #   useOSProber = true;
         # };
       };
+
       keyboard = {
         layout = "us";
         variant = "intl";
@@ -96,6 +96,12 @@ with lib.${namespace}; {
       #     emoji = [];
       #   };
       #   gtk.fontSize = 12;
+      # };
+
+      # cursor = {
+      #   package = pkgs.bibata-cursors;
+      #   name = "Bibata-Original-Ice";
+      #   size = 24;
       # };
     };
   };

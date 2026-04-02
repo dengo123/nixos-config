@@ -33,7 +33,6 @@ with lib.${namespace}; let
       ${XR} --query | grep -q "^$1 connected"
     }
 
-    # Wait until X enumerated outputs
     for i in $(seq 1 30); do
       if ${XR} --query >/dev/null 2>&1 && ${XR} --query | grep -q " connected"; then
         break
@@ -41,10 +40,8 @@ with lib.${namespace}; let
       sleep 0.2
     done
 
-    # Big framebuffer to avoid "not large enough"
     ${XR} --fb 8192x4320 || true
 
-    # --- iGPU layout ---
     if connected "HDMI-A-0" || connected "DisplayPort-0"; then
       log "detected iGPU connectors -> applying iGPU layout"
 
@@ -56,14 +53,12 @@ with lib.${namespace}; let
         ${XR} --output DisplayPort-0 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
-      # best effort disable dGPU names if present
       ${XR} --output DP-2 --off 2>/dev/null || true
       ${XR} --output DP-4 --off 2>/dev/null || true
       ${XR} --output HDMI-0 --off 2>/dev/null || true
       exit 0
     fi
 
-    # --- dGPU layout ---
     if connected "DP-4" || connected "DP-2" || connected "HDMI-0"; then
       log "detected dGPU connectors -> applying dGPU-work baseline (HDMI off)"
 
@@ -77,7 +72,6 @@ with lib.${namespace}; let
         ${XR} --output DP-4 --primary --mode 1920x1080 --rate 60 --pos 1080x420 --rotate normal || true
       fi
 
-      # HDMI default OFF
       if connected "HDMI-0"; then
         ${XR} --output HDMI-0 --off 2>/dev/null || true
       fi
@@ -90,8 +84,8 @@ with lib.${namespace}; let
   '';
 in {
   options.${namespace}.hardware.xmonitors = {
-    enable = mkBoolOpt false "Apply X11 monitor layout via xrandr in displayManager.setupCommands (DM-agnostic).";
-    script = mkOpt types.package xsetup "The setup script to run (defaults to built-in xrandr layout).";
+    enable = mkBoolOpt false "Apply X11 monitor layout.";
+    script = mkOpt types.package xsetup "The setup script to run.";
   };
 
   config = mkIf cfg.enable {
@@ -99,6 +93,11 @@ in {
 
     services.xserver.displayManager.setupCommands = mkAfter ''
       ${cfg.script}
+    '';
+
+    services.xserver.displayManager.lightdm.extraConfig = mkAfter ''
+      [Seat:*]
+      display-setup-script=${cfg.script}
     '';
   };
 }

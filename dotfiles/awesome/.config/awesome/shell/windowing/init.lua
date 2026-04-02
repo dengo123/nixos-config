@@ -76,7 +76,7 @@ local function build_windowing()
 
 		windowing_cfg = windowing_cfg,
 		focus_cfg = windowing_cfg.focus or {},
-		fullscreen_dim_cfg = windowing_cfg.fullscreen_dim or {},
+		screen_dim_cfg = windowing_cfg.screen_dim or {},
 
 		behavior = Behavior,
 		policy = Policy,
@@ -84,7 +84,7 @@ local function build_windowing()
 		ui_mods = UI,
 
 		focus = Behavior.focus,
-		fullscreen_dim = Behavior.fullscreen_dim,
+		screen_dim = Behavior.screen_dim,
 		titlebars = Behavior.titlebars,
 
 		clients = Policy.clients,
@@ -135,6 +135,11 @@ local function build_input(windowing)
 			scr_in_dir = windowing.actions and windowing.actions.scr_in_dir or nil,
 			move_client_to_screen = windowing.actions and windowing.actions.move_client_to_screen or nil,
 			current_screen = windowing.navigation and windowing.navigation.current_screen or nil,
+
+			screen_dim_toggle = windowing.screen_dim and windowing.screen_dim.toggle or nil,
+			screen_dim_show = windowing.screen_dim and windowing.screen_dim.show or nil,
+			screen_dim_hide = windowing.screen_dim and windowing.screen_dim.hide or nil,
+			screen_dim_is_active = windowing.screen_dim and windowing.screen_dim.is_active or nil,
 		},
 	}
 end
@@ -148,7 +153,7 @@ function M.init(args)
 
 	M.behavior = {
 		focus = safe_require("shell.windowing.behavior.focus"),
-		fullscreen_dim = safe_require("shell.windowing.behavior.fullscreen_dim"),
+		screen_dim = safe_require("shell.windowing.behavior.screen_dim"),
 		titlebars = safe_require("shell.windowing.behavior.titlebars"),
 	}
 
@@ -275,15 +280,15 @@ function M.init(args)
 	-- Optional behavior
 	-- ---------------------------------------------------------------------
 
-	if windowing.fullscreen_dim and type(windowing.fullscreen_dim.init) == "function" then
-		local dim_cfg = windowing.fullscreen_dim_cfg
+	if windowing.screen_dim and type(windowing.screen_dim.init) == "function" then
+		local dim_cfg = windowing.screen_dim_cfg
 
 		if dim_cfg ~= false then
 			if type(dim_cfg) ~= "table" then
 				dim_cfg = { enabled = true }
 			end
 
-			windowing.fullscreen_dim.init(dim_cfg)
+			windowing.screen_dim.init(dim_cfg)
 		end
 	end
 

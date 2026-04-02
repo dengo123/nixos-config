@@ -32,10 +32,6 @@ local function cfg()
 	return ctx().cfg or {}
 end
 
-local function ui()
-	return ctx().ui or {}
-end
-
 local function shell()
 	return ctx().shell or {}
 end
@@ -46,12 +42,6 @@ local function ensure_ctx_roots()
 	c.ui = c.ui or {}
 	c.shell = c.shell or {}
 	return c
-end
-
-local function init_module(mod, args)
-	if type(mod) == "table" and type(mod.init) == "function" then
-		mod.init(args)
-	end
 end
 
 local function call_key_factory(mod, ...)
@@ -103,6 +93,7 @@ local function build_globalkeys()
 	return join(
 		call_key_factory(M.global.apps, modkey, conf),
 		call_key_factory(M.global.awesome, modkey),
+		call_key_factory(M.global.dim, modkey, screen_actions()),
 		call_key_factory(M.global.display, modkey, conf),
 		call_key_factory(M.global.layout, modkey),
 		call_key_factory(M.global.logoff, modkey, open),
@@ -146,6 +137,7 @@ function M.init(args)
 	M.global = {
 		apps = safe_require("input.global.apps"),
 		awesome = safe_require("input.global.awesome"),
+		dim = safe_require("input.global.dim"),
 		display = safe_require("input.global.display"),
 		layout = safe_require("input.global.layout"),
 		logoff = safe_require("input.global.logoff"),

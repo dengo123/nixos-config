@@ -15,20 +15,14 @@ local function focused_screen()
 	return awful.screen.focused()
 end
 
-local function toggle_native_fullscreen(dim_other_screens)
+local function toggle_native_fullscreen()
 	local c = focused_client()
 	if not c then
 		return
 	end
 
-	local entering = not c.fullscreen
-	c._fullscreen_dim = (dim_other_screens == true)
-	c.fullscreen = entering
+	c.fullscreen = not c.fullscreen
 	c:raise()
-
-	if not entering then
-		c._fullscreen_dim = nil
-	end
 end
 
 local function restore_local(actions)
@@ -142,16 +136,9 @@ function M.build(modkey, cfg, actions)
 
 	return awful.util.table.join(
 		awful.key({ modkey }, "f", function()
-			toggle_native_fullscreen(false)
+			toggle_native_fullscreen()
 		end, {
 			description = "Toggle Fullscreen",
-			group = "Client",
-		}),
-
-		awful.key({ modkey, "Shift" }, "f", function()
-			toggle_native_fullscreen(true)
-		end, {
-			description = "Toggle Fullscreen With Dim",
 			group = "Client",
 		}),
 

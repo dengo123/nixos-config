@@ -1,4 +1,4 @@
--- ~/.config/awesome/shell/windowing/behavior/fullscreen_dim.lua
+-- ~/.config/awesome/shell/windowing/behavior/screen_dim.lua
 local awful = require("awful")
 local beautiful = require("beautiful")
 local gears = require("gears")
@@ -8,9 +8,10 @@ local M = {}
 
 local ENABLED = true
 local DIM_BG = "#000000F2"
-local NEVER_DIM_PRIMARY = false
+local DIM_PRIMARY = false
 
 local overlays = {}
+local active = false
 local pending_update = nil
 local signals_ready = false
 
@@ -50,42 +51,32 @@ local function ensure_overlay(s)
 	return o
 end
 
-local function find_fullscreen_target()
-	local fc = client.focus
-
-	if fc and fc.valid and fc.fullscreen then
-		return fc.screen, (fc._fullscreen_dim == true)
+local function update_overlay_geometry(s)
+	local o = overlays[s]
+	if not (s and o and o.valid) then
+		return
 	end
 
-	for c in
-		awful.client.iterate(function(x)
-			return x and x.valid and x.fullscreen
-		end)
-	do
-		return c.screen, (c._fullscreen_dim == true)
-	end
-
-	return nil, false
+	local g = s.geometry
+	o.x = g.x
+	o.y = g.y
+	o.width = g.width
+	o.height = g.height
 end
 
 local function do_update()
-	if not ENABLED then
+	if not ENABLED or not active then
 		hide_all()
 		return
 	end
 
-	local fs_screen, active_dim = find_fullscreen_target()
-
-	if not fs_screen or not active_dim then
-		hide_all()
-		return
-	end
-
-	local primary = awful.screen.primary
+	local primary = screen.primary or awful.screen.primary
 
 	for s, o in pairs(overlays) do
 		if o and o.valid then
-			local should_dim = (s ~= fs_screen) and not (NEVER_DIM_PRIMARY and s == primary)
+			update_overlay_geometry(s)
+
+			local should_dim = (s ~= primary) or (DIM_PRIMARY == true)
 			o.bg = DIM_BG
 			o.visible = should_dim
 		end
@@ -114,17 +105,7 @@ local function setup_signals()
 		return
 	end
 
-	client.connect_signal("property::fullscreen", schedule_update)
-	client.connect_signal("focus", schedule_update)
-
-	client.connect_signal("unmanage", function(c)
-		if c then
-			c._fullscreen_dim = nil
-		end
-		schedule_update()
-	end)
-
-	tag.connect_signal("property::selected", schedule_update)
+	screen.connect_signal("property::geometry", schedule_update)
 
 	screen.connect_signal("added", function(s)
 		ensure_overlay(s)
@@ -161,8 +142,8 @@ function M.init(opts)
 
 	DIM_BG = opts.dim_bg or beautiful.dim_overlay_bg or DIM_BG
 
-	if opts.never_dim_primary ~= nil then
-		NEVER_DIM_PRIMARY = (opts.never_dim_primary == true)
+	if opts.dim_primary ~= nil then
+		DIM_PRIMARY = (opts.dim_primary == true)
 	end
 
 	setup_signals()
@@ -171,12 +152,31 @@ function M.init(opts)
 		ensure_overlay(s)
 	end
 
-	if not ENABLED then
-		hide_all()
-		return
-	end
-
 	gears.timer.delayed_call(schedule_update)
+
+	return M
+end
+
+function M.is_active()
+	return active == true
+end
+
+function M.set_active(value)
+	active = (value == true)
+	schedule_update()
+	return active
+end
+
+function M.toggle()
+	return M.set_active(not active)
+end
+
+function M.show()
+	return M.set_active(true)
+end
+
+function M.hide()
+	return M.set_active(false)
 end
 
 return M

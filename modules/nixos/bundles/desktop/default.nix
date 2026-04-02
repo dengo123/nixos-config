@@ -17,6 +17,15 @@ in {
     networking.networkmanager = mkDefault enabled;
 
     ${namespace} = {
+      desktop = {
+        awesome = {
+          enable = mkDefault true;
+          package = mkDefault "patched";
+        };
+
+        lightdm.enable = mkDefault true;
+      };
+
       hardware = {
         audio = mkDefault enabled;
         bluetooth = mkDefault enabled;
@@ -28,10 +37,8 @@ in {
       };
 
       system = {
-        fonts = {
-          enable = mkDefault true;
-          fontconfig = mkDefault enabled;
-        };
+        fonts.enable = mkDefault true;
+        cursor.enable = mkDefault true;
       };
     };
   };
