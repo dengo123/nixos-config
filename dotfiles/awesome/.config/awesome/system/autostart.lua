@@ -1,6 +1,5 @@
 -- ~/.config/awesome/system/autostart.lua
 local awful = require("awful")
-local naughty = require("naughty")
 
 local M = {}
 

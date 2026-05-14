@@ -30,6 +30,26 @@ with lib.${namespace}; let
     then systemFonts.gtk.fontSize
     else 11;
 
+  systemCursor =
+    if osConfig != null
+    then osConfig.${namespace}.system.cursor
+    else null;
+
+  defaultCursorPackage =
+    if systemCursor != null && systemCursor.enable
+    then systemCursor.package
+    else pkgs.bibata-cursors;
+
+  defaultCursorName =
+    if systemCursor != null && systemCursor.enable
+    then systemCursor.name
+    else "Bibata-Original-Ice";
+
+  defaultCursorSize =
+    if systemCursor != null && systemCursor.enable
+    then systemCursor.size
+    else 24;
+
   iconPkg = pkgs.papirus-icon-theme;
 
   gtk3Theme = "adw-gtk3";
@@ -46,9 +66,9 @@ in {
     fontSize = mkOpt types.int defaultFontSize "GTK application font size.";
 
     cursor = {
-      package = mkOpt types.package pkgs.bibata-cursors "Cursor package.";
-      name = mkOpt types.str "Bibata-Original-Ice" "Cursor theme name.";
-      size = mkOpt types.int 24 "Cursor size.";
+      package = mkOpt types.package defaultCursorPackage "Cursor package.";
+      name = mkOpt types.str defaultCursorName "Cursor theme name.";
+      size = mkOpt types.int defaultCursorSize "Cursor size.";
     };
   };
 

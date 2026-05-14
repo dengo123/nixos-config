@@ -47,9 +47,9 @@ with lib.${namespace}; let
   '';
 in {
   options.${namespace}.services.polkit = with types; {
-    enable = mkBoolOpt true "Enable polkit and rtkit integration.";
-    allowPowerActions = mkBoolOpt false "Allow reboot and poweroff without additional authentication.";
-    allowSleepActions = mkBoolOpt true "Allow suspend, hibernate, hybrid sleep, suspend-then-hibernate, and lock without additional authentication.";
+    enable = mkBoolOpt false "Enable polkit and rtkit integration.";
+    allowPowerActions = mkBoolOpt true "Allow reboot and poweroff without additional authentication.";
+    allowSleepActions = mkBoolOpt false "Allow suspend, hibernate, hybrid sleep, suspend-then-hibernate, and lock without additional authentication.";
   };
 
   config = mkIf cfg.enable {

@@ -22,54 +22,88 @@ with lib.${namespace}; let
     export HOME="${userHome}"
     export XDG_CONFIG_HOME="${userHome}/.config"
 
-    ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
-    ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
-    ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
+    for _ in $(seq 1 10); do
+      if ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}" >/dev/null 2>&1; then
+        exit 0
+      fi
+      sleep 1
+    done
 
-    ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}" || true
+    exit 0
   '';
 
   disableRgbScript = pkgs.writeShellScript "openrgb-disable-rgb" ''
     set -euo pipefail
 
-    ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
-    ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
-    ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
+    num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices 2>/dev/null | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l || true)"
 
-    num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l)"
-
-    if [ "$num_devices" -eq 0 ]; then
+    if [ -z "$num_devices" ] || [ "$num_devices" -eq 0 ]; then
       exit 0
     fi
 
     for i in $(${pkgs.coreutils}/bin/seq 0 "$((num_devices - 1))"); do
-      ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 || true
+      ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 >/dev/null 2>&1 || true
     done
   '';
 
-  resumeScript = pkgs.writeShellScript "openrgb-resume" ''
+  resumeHook = pkgs.writeShellScript "openrgb-resume-hook" ''
     set -euo pipefail
 
-    export HOME="${userHome}"
-    export XDG_CONFIG_HOME="${userHome}/.config"
+    case "$1/$2" in
+      post/*)
+        (
+          export HOME="${userHome}"
+          export XDG_CONFIG_HOME="${userHome}/.config"
+          export PATH=${lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.kmod
+      pkgs.systemd
+      openrgbPkg
+    ]}
 
-    ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
-    ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
-    ${pkgs.systemd}/bin/udevadm settle --timeout=30 || true
+          log_file="/tmp/openrgb-resume.log"
 
-    ${pkgs.coreutils}/bin/sleep 10
+          {
+            echo "==== $(date --iso-8601=seconds) openrgb resume start ($1/$2) ===="
 
-    if [ "${cfg.mode}" = "profile" ]; then
-      ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}" || true
-    else
-      num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l)"
+            # Erst mal dem kaputten USB-Resume etwas Zeit geben
+            sleep 8
 
-      if [ "$num_devices" -gt 0 ]; then
-        for i in $(${pkgs.coreutils}/bin/seq 0 "$((num_devices - 1))"); do
-          ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 || true
-        done
-      fi
-    fi
+            ${pkgs.kmod}/bin/modprobe i2c-dev 2>/dev/null || true
+            ${pkgs.kmod}/bin/modprobe i2c-piix4 2>/dev/null || true
+            ${pkgs.systemd}/bin/udevadm settle --timeout=10 || true
+
+            for _ in $(seq 1 10); do
+              if [ "${cfg.mode}" = "profile" ]; then
+                echo "trying profile: ${profilePath}"
+                if ${openrgbPkg}/bin/openrgb --noautoconnect --profile "${profilePath}"; then
+                  echo "profile applied successfully"
+                  exit 0
+                fi
+              else
+                num_devices="$(${openrgbPkg}/bin/openrgb --noautoconnect --list-devices 2>/dev/null | ${pkgs.gnugrep}/bin/grep -E '^[0-9]+: ' | ${pkgs.coreutils}/bin/wc -l || true)"
+                echo "devices detected: ''${num_devices:-0}"
+
+                if [ -n "$num_devices" ] && [ "$num_devices" -gt 0 ]; then
+                  for i in $(${pkgs.coreutils}/bin/seq 0 "$((num_devices - 1))"); do
+                    ${openrgbPkg}/bin/openrgb --noautoconnect --device "$i" --mode static --color 000000 || true
+                  done
+                  echo "off mode applied"
+                  exit 0
+                fi
+              fi
+
+              echo "retrying in 2s..."
+              sleep 2
+            done
+
+            echo "resume hook gave up after retries"
+            exit 0
+          } >> "$log_file" 2>&1
+        ) &
+        ;;
+    esac
   '';
 in {
   options.${namespace}.hardware.rgb = with types; {
@@ -121,8 +155,7 @@ in {
       systemd.services.openrgb-disable = {
         description = "Disable RGB via OpenRGB";
         wantedBy = ["multi-user.target"];
-        after = ["systemd-udev-settle.service"];
-        wants = ["systemd-udev-settle.service"];
+        before = ["getty@tty1.service" "display-manager.service"];
         serviceConfig = {
           Type = "oneshot";
           ExecStart = disableRgbScript;
@@ -131,25 +164,7 @@ in {
     })
 
     (mkIf cfg.applyOnResume {
-      systemd.services.openrgb-resume = {
-        description = "Restore OpenRGB state after resume";
-        wantedBy = [
-          "suspend.target"
-          "hibernate.target"
-        ];
-        after = [
-          "suspend.target"
-          "hibernate.target"
-          "systemd-udev-settle.service"
-        ];
-        wants = ["systemd-udev-settle.service"];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = resumeScript;
-          StandardOutput = "journal";
-          StandardError = "journal";
-        };
-      };
+      environment.etc."systemd/system-sleep/90-openrgb-resume".source = resumeHook;
     })
   ]);
 }

@@ -1,5 +1,5 @@
+# modules/nixos/services/virtualisation/default.nix
 {
-  options,
   config,
   lib,
   pkgs,
@@ -36,7 +36,7 @@ in {
       # Optional Distrobox tools
       boxbuddy
       distrobox
-      bottles
+      # bottles
       docker-compose
     ];
 

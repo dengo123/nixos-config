@@ -34,9 +34,18 @@ in {
       services = {
         printing = mkDefault enabled;
         udisks2 = mkDefault enabled;
+        wireplumber.enable = mkDefault true;
+      };
+
+      programs = {
+        screenshot = mkDefault enabled;
       };
 
       system = {
+        networking.networkmanager = {
+          enable = mkDefault true;
+        };
+
         fonts.enable = mkDefault true;
         cursor.enable = mkDefault true;
       };

@@ -6,6 +6,10 @@ local M = {}
 
 local runtime = {
 	cfg = {},
+	pending_clients = {},
+	last_opts = {},
+	manage_hook_ready = false,
+	run_id = 0,
 }
 
 -- =========================================================================
@@ -37,10 +41,18 @@ end
 
 local function screen_key(s)
 	if s and type(s.outputs) == "table" then
+		local names = {}
+
 		for name, active in pairs(s.outputs) do
 			if active then
-				return name
+				table.insert(names, tostring(name))
 			end
+		end
+
+		table.sort(names)
+
+		if #names > 0 then
+			return table.concat(names, "+")
 		end
 	end
 
@@ -104,6 +116,40 @@ local function layout_by_name(name)
 	return map[tostring(name or "")] or suit.tile
 end
 
+local function shallow_copy_clients(clients)
+	local out = {}
+
+	for _, cs in ipairs(clients or {}) do
+		table.insert(out, cs)
+	end
+
+	return out
+end
+
+local function should_preserve_rule_floating(c)
+	if not (c and c.valid) then
+		return false
+	end
+
+	if preserve_rule_floating_enabled("dialog", true) and c.type == "dialog" then
+		return true
+	end
+
+	if preserve_rule_floating_enabled("utility", true) and c.type == "utility" then
+		return true
+	end
+
+	if preserve_rule_floating_enabled("portrait_autosize", true) and c.portrait_autosize == true then
+		return true
+	end
+
+	if preserve_rule_floating_enabled("centered_autosize", true) and c.centered_autosize == true then
+		return true
+	end
+
+	return false
+end
+
 local function apply_selected_tag_state(data, opts)
 	if not (opts and opts.restore_tag == true) then
 		return
@@ -154,24 +200,118 @@ local function apply_layout_state(data, opts)
 	end
 end
 
-local function should_preserve_rule_floating(c)
-	if not (c and c.valid) then
+local function apply_client_state_to_client(c, cs, opts)
+	opts = opts or {}
+
+	if not (c and c.valid and cs) then
 		return false
 	end
 
-	if preserve_rule_floating_enabled("dialog", true) and c.type == "dialog" then
-		return true
+	local restore_screen = opts.restore_screen == true
+	local restore_tag = opts.restore_tag == true
+	local restore_state = (opts.restore_state ~= false)
+
+	if restore_screen then
+		local target_screen = cs.screen_key and screen_by_key(cs.screen_key) or nil
+		if target_screen and target_screen.valid and c.screen ~= target_screen then
+			c.screen = target_screen
+		end
 	end
 
-	if preserve_rule_floating_enabled("utility", true) and c.type == "utility" then
-		return true
+	if restore_tag and c.screen then
+		local t = cs.tag_name and safe_get_tag_by_name(c.screen, cs.tag_name) or nil
+
+		if not t and cs.tag_idx then
+			t = safe_get_tag_by_idx(c.screen, cs.tag_idx)
+		end
+
+		if t then
+			c:move_to_tag(t)
+		end
 	end
 
-	if preserve_rule_floating_enabled("portrait_autosize", true) and c.portrait_autosize == true then
-		return true
+	if restore_state then
+		c.minimized = cs.minimized == true
+		c.maximized = cs.maximized == true
+		c.fullscreen = cs.fullscreen == true
+
+		if not should_preserve_rule_floating(c) then
+			c.floating = cs.floating == true
+		end
 	end
 
-	if preserve_rule_floating_enabled("centered_autosize", true) and c.centered_autosize == true then
+	return true
+end
+
+local function client_match_score(c, cs)
+	local score = 0
+
+	if not (c and c.valid and cs) then
+		return score
+	end
+
+	if cs.window ~= nil and c.window == cs.window then
+		return 10000
+	end
+
+	if cs.startup_id and c.startup_id and cs.startup_id == c.startup_id then
+		score = score + 500
+	end
+
+	if cs.class and c.class == cs.class then
+		score = score + 200
+	end
+
+	if cs.instance and c.instance == cs.instance then
+		score = score + 120
+	end
+
+	if cs.role and c.role == cs.role then
+		score = score + 80
+	end
+
+	if cs.type and c.type == cs.type then
+		score = score + 40
+	end
+
+	if cs.name and c.name == cs.name then
+		score = score + 25
+	end
+
+	if cs.pid and c.pid and cs.pid == c.pid then
+		score = score + 10
+	end
+
+	return score
+end
+
+local function find_best_client_state(c, remaining)
+	local best_idx = nil
+	local best_score = 0
+
+	for i, cs in ipairs(remaining or {}) do
+		local score = client_match_score(c, cs)
+		if score > best_score then
+			best_score = score
+			best_idx = i
+		end
+	end
+
+	if not best_idx or best_score < 200 then
+		return nil, nil
+	end
+
+	return best_idx, remaining[best_idx]
+end
+
+local function apply_pending_to_client(c, opts)
+	local idx, cs = find_best_client_state(c, runtime.pending_clients)
+	if not (idx and cs) then
+		return false
+	end
+
+	if apply_client_state_to_client(c, cs, opts) then
+		table.remove(runtime.pending_clients, idx)
 		return true
 	end
 
@@ -179,53 +319,11 @@ local function should_preserve_rule_floating(c)
 end
 
 local function apply_client_state(data, opts)
-	opts = opts or {}
-
-	local restore_screen = opts.restore_screen == true
-	local restore_tag = opts.restore_tag == true
-	local restore_state = (opts.restore_state ~= false)
-
-	local by_window = {}
-
-	for _, cs in ipairs(data.clients or {}) do
-		if cs.window ~= nil then
-			by_window[cs.window] = cs
-		end
-	end
+	runtime.pending_clients = shallow_copy_clients(data.clients or {})
+	runtime.last_opts = opts or {}
 
 	for _, c in ipairs(client.get()) do
-		local cs = by_window[c.window]
-
-		if cs then
-			if restore_screen then
-				local target_screen = cs.screen_key and screen_by_key(cs.screen_key) or nil
-				if target_screen and target_screen.valid and c.screen ~= target_screen then
-					c.screen = target_screen
-				end
-			end
-
-			if restore_tag and c.screen then
-				local t = cs.tag_name and safe_get_tag_by_name(c.screen, cs.tag_name) or nil
-
-				if not t and cs.tag_idx then
-					t = safe_get_tag_by_idx(c.screen, cs.tag_idx)
-				end
-
-				if t then
-					c:move_to_tag(t)
-				end
-			end
-
-			if restore_state then
-				c.minimized = cs.minimized == true
-				c.maximized = cs.maximized == true
-				c.fullscreen = cs.fullscreen == true
-
-				if not should_preserve_rule_floating(c) then
-					c.floating = cs.floating == true
-				end
-			end
-		end
+		apply_pending_to_client(c, runtime.last_opts)
 	end
 end
 
@@ -235,6 +333,39 @@ local function restore_pass(data, opts)
 	apply_client_state(data, opts)
 end
 
+local function ensure_manage_hook()
+	if runtime.manage_hook_ready then
+		return
+	end
+
+	runtime.manage_hook_ready = true
+
+	client.connect_signal("manage", function(c)
+		if #(runtime.pending_clients or {}) <= 0 then
+			return
+		end
+
+		gears.timer.delayed_call(function()
+			if not (c and c.valid) then
+				return
+			end
+
+			apply_pending_to_client(c, runtime.last_opts or {})
+		end)
+	end)
+end
+
+local function schedule_restore_pass(run_id, delay, data, opts)
+	gears.timer.start_new(delay, function()
+		if run_id ~= runtime.run_id then
+			return false
+		end
+
+		restore_pass(data, opts)
+		return false
+	end)
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -242,6 +373,7 @@ end
 function M.init(args)
 	args = args or {}
 	runtime.cfg = args.cfg or runtime.cfg or {}
+	ensure_manage_hook()
 	return M
 end
 
@@ -251,23 +383,17 @@ function M.run(data, opts)
 	end
 
 	opts = opts or {}
+	runtime.run_id = runtime.run_id + 1
+	local run_id = runtime.run_id
 
 	restore_pass(data, opts)
 
-	gears.timer.start_new(0.30, function()
-		restore_pass(data, opts)
-		return false
-	end)
-
-	gears.timer.start_new(0.90, function()
-		restore_pass(data, opts)
-		return false
-	end)
-
-	gears.timer.start_new(1.80, function()
-		restore_pass(data, opts)
-		return false
-	end)
+	if opts.retry_passes ~= false then
+		schedule_restore_pass(run_id, 0.30, data, opts)
+		schedule_restore_pass(run_id, 0.90, data, opts)
+		schedule_restore_pass(run_id, 1.80, data, opts)
+		schedule_restore_pass(run_id, 3.00, data, opts)
+	end
 
 	awesome.emit_signal("ui::wallpaper_refresh")
 	return true

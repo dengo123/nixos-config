@@ -29,7 +29,6 @@ with lib.${namespace}; {
       };
     };
     bundles = {
-      common = enabled;
       desktop = enabled;
       security = enabled;
       gpu.vendor = "nvidia";
@@ -37,43 +36,104 @@ with lib.${namespace}; {
       gaming = enabled;
     };
 
-    desktop.lightdm = {
-      autoLogin.enable = true;
-      gtkGreeter.activeMonitor = "DP-4";
-    };
+    # desktop.lightdm = {
+    #   autoLogin.enable = true;
+    # };
 
     hardware = {
-      xmonitors = enabled;
+      xmonitors = {
+        enable = true;
+
+        # framebuffer = {
+        #   size = "3000x1920";
+        # };
+
+        outputs = {
+          DP-2 = {
+            enable = true;
+            mode = "1920x1080";
+            rate = 60;
+            pos = "0x0";
+            rotate = "left";
+          };
+
+          DP-4 = {
+            enable = true;
+            primary = true;
+            mode = "1920x1080";
+            rate = 60;
+            pos = "1080x420";
+            rotate = "normal";
+          };
+        };
+      };
+
+      audio = {
+        gamingBuffer = true;
+      };
 
       rgb = {
         enable = true;
         mode = "profile";
-        profile = mkForce "warm_light.orp";
+        profile = mkForce "off.orp";
       };
     };
 
     programs = {
-      nh = enabled;
-      nix-ld = enabled;
-      screenshot = enabled;
+      nix-ld = {
+        enable = true;
+        # libraries = with pkgs; [
+        # ];
+        # useSteamRunSet = true;
+      };
     };
 
     services = {
       virtualisation = enabled;
+      wireplumber = {
+        sinks = {
+          # headset = {
+          #   priority = 1400;
+          #   alsaNodeName = "alsa_output.usb-Logitech_G_series_G435_Wireless_Gaming_Headset_202105190004-00.analog-stereo";
+          #   bluezNodeName = null;
+          # };
+
+          tv = {
+            priority = 1300;
+            alsaNodeName = "alsa_output.pci-0000_01_00.1.hdmi-stereo";
+            bluezNodeName = null;
+          };
+
+          speakers = {
+            priority = 1200;
+            alsaNodeName = "alsa_output.usb-Generic_USB_Audio-00.HiFi__Speaker__sink";
+            bluezNodeName = null;
+          };
+        };
+      };
     };
 
     system = {
       boot = {
         loader = "grub";
         timeout = 7;
+        quietBoot = true;
 
         extraKernelParams = [
           "resume=UUID=5c987df5-d144-43ae-9db1-899a7d6f5424"
+          "usbcore.autosuspend=-1"
+          "mt7921e.disable_aspm=1"
+          "mt7921e.disable_pm=1"
+          "pcie_aspm=off"
         ];
 
         # grub = {
         #   useOSProber = true;
         # };
+      };
+
+      systemd = {
+        logLevel = "notice";
       };
 
       keyboard = {

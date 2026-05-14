@@ -25,7 +25,7 @@ in {
     environment.systemPackages = with pkgs; [
       protontricks
       lutris-unwrapped
-      superTuxKart
+      supertuxkart
     ];
   };
 }

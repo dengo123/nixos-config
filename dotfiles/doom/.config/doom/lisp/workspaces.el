@@ -103,4 +103,53 @@
         (unless (my/workspace-allowed-buffer-p buf persp)
           (persp-remove-buffer buf persp)))))
 
-  (add-hook 'persp-activated-hook #'my/workspace-prune-current))
+  (add-hook 'persp-activated-hook #'my/workspace-prune-current)
+
+  ;; ------------------------------
+  ;; Manual Buffer Workspace Actions
+  ;; ------------------------------
+
+  (defun my/workspace-names ()
+    "Return all non-nil workspace names."
+    (delq nil
+          (mapcar #'safe-persp-name (persp-persps))))
+
+  (defun my/read-workspace-name (prompt)
+    "Read a workspace name with completion."
+    (completing-read prompt (my/workspace-names) nil nil nil nil
+                     (safe-persp-name (get-current-persp))))
+
+  (defun my/workspace-remove-buffer ()
+    "Remove current buffer from current workspace without killing it."
+    (interactive)
+    (persp-remove-buffer (current-buffer) (get-current-persp) nil)
+    (message "Removed buffer from workspace: %s"
+             (safe-persp-name (get-current-persp))))
+
+  (defun my/workspace-add-buffer-to-workspace (name)
+    "Add current buffer to workspace NAME."
+    (interactive
+     (list (my/read-workspace-name "Add buffer to workspace: ")))
+    (let ((buf (current-buffer)))
+      (unless (+workspace-get name)
+        (+workspace/new name))
+      (persp-add-buffer buf (+workspace-get name) nil nil)
+      (message "Added %s to workspace %s" (buffer-name buf) name)))
+
+  (defun my/workspace-move-buffer-to-workspace (name)
+    "Move current buffer from current workspace to workspace NAME."
+    (interactive
+     (list (my/read-workspace-name "Move buffer to workspace: ")))
+    (let ((buf (current-buffer))
+          (current (get-current-persp)))
+      (unless (+workspace-get name)
+        (+workspace/new name))
+      (persp-remove-buffer buf current nil)
+      (persp-add-buffer buf (+workspace-get name) nil nil)
+      (message "Moved %s to workspace %s" (buffer-name buf) name)))
+
+  (map! :leader
+        :prefix ("TAB" . "workspace")
+        :desc "Remove buffer from workspace" "c" #'my/workspace-remove-buffer
+        :desc "Add buffer to workspace" "a" #'my/workspace-add-buffer-to-workspace
+        :desc "Move buffer to workspace" "m" #'my/workspace-move-buffer-to-workspace))

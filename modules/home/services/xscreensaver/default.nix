@@ -2,7 +2,6 @@
 {
   config,
   lib,
-  pkgs,
   namespace,
   ...
 }:
@@ -17,11 +16,19 @@ in {
   config = mkIf cfg.enable {
     services.xscreensaver = {
       enable = true;
-      package = pkgs.xscreensaver;
     };
 
-    home.packages = [
-      pkgs.xscreensaver
-    ];
+    systemd.user.services.xscreensaver = {
+      Service = {
+        Environment = [
+          "DISPLAY=:0"
+          "XAUTHORITY=%h/.Xauthority"
+          "XDG_RUNTIME_DIR=/run/user/%U"
+          "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus"
+        ];
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
+    };
   };
 }

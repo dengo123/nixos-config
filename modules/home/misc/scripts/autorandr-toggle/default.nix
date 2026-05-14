@@ -116,7 +116,7 @@ in {
   config = mkIf cfg.enable {
     home.packages = [
       pkgs.autorandr
-      pkgs.xorg.xrandr
+      pkgs.xrandr
       autorandrToggle
     ];
   };

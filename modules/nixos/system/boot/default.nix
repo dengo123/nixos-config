@@ -8,6 +8,14 @@
 with lib;
 with lib.${namespace}; let
   cfg = config.${namespace}.system.boot;
+
+  quietKernelParams = [
+    "quiet"
+    "loglevel=0"
+    "rd.systemd.show_status=false"
+    "systemd.show_status=false"
+    "udev.log_level=0"
+  ];
 in {
   options.${namespace}.system.boot = with types; {
     enable = mkBoolOpt true "Whether or not to enable bootloader configuration.";
@@ -19,6 +27,8 @@ in {
     ]) "systemd-boot" "Which bootloader to configure.";
 
     timeout = mkOpt int 5 "Bootloader timeout in seconds.";
+
+    quietBoot = mkBoolOpt false "Whether or not to reduce visible boot console output.";
 
     efi = {
       canTouchEfiVariables = mkBoolOpt true "Whether the bootloader may modify EFI variables.";
@@ -77,7 +87,11 @@ in {
         })
       ];
 
-      kernelParams = cfg.extraKernelParams;
+      consoleLogLevel = mkIf cfg.quietBoot 0;
+      initrd.verbose = !cfg.quietBoot;
+      kernelParams =
+        (optionals cfg.quietBoot quietKernelParams)
+        ++ cfg.extraKernelParams;
     };
   };
 }

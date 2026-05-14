@@ -34,13 +34,13 @@ in {
       "vulkan_beta"
     ]) "stable" "NVIDIA driver package to use";
     open = mkBoolOpt false "Use the NVIDIA open kernel module (experimental)";
-    display = mkBoolOpt false "Allow NVIDIA to drive displays (KMS + Xorg)";
+    display = mkBoolOpt true "Allow NVIDIA to drive displays (KMS + Xorg)";
   };
 
   config = mkIf cfg.enable {
     # --- Kernel / CUDA / DRM layer ---
     hardware = {
-      graphics.enable = true;
+      graphics.enable = cfg.display;
 
       nvidia = {
         open = cfg.open;

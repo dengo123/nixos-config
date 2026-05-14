@@ -44,10 +44,11 @@ with lib.${namespace}; {
         # };
 
         xscreensaver-idle = {
-          # lock = {
-          #   delay = 300;
-          #   command = "";
-          # };
+          lock = {
+            enable = false;
+            #   delay = 300;
+            #   command = "";
+          };
 
           suspend = {
             enable = true;

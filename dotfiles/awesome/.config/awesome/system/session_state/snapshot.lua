@@ -9,10 +9,18 @@ local M = {}
 
 local function screen_key(s)
 	if s and type(s.outputs) == "table" then
+		local names = {}
+
 		for name, active in pairs(s.outputs) do
 			if active then
-				return name
+				table.insert(names, tostring(name))
 			end
+		end
+
+		table.sort(names)
+
+		if #names > 0 then
+			return table.concat(names, "+")
 		end
 	end
 
@@ -68,20 +76,18 @@ end
 -- Public API
 -- =========================================================================
 
--- optional: bleibt für konsistente API, macht aber nichts
 function M.init(_)
 	return M
 end
 
 function M.current_state()
 	local data = {
-		version = 1,
+		version = 2,
 		ts = os.time(),
 		screens = {},
 		clients = {},
 	}
 
-	-- Screens
 	for s in screen do
 		local t = selected_tag(s)
 
@@ -92,12 +98,18 @@ function M.current_state()
 		}
 	end
 
-	-- Clients
 	for _, c in ipairs(client.get()) do
 		local t = first_tag(c)
 
 		table.insert(data.clients, {
 			window = c.window,
+			pid = c.pid,
+			class = c.class,
+			instance = c.instance,
+			role = c.role,
+			name = c.name,
+			type = c.type,
+			startup_id = c.startup_id,
 			screen_key = c.screen and screen_key(c.screen) or nil,
 			tag_name = tag_name(t),
 			tag_idx = t and t.index or nil,

@@ -46,8 +46,8 @@ in {
 
     home.packages = with pkgs; [
       stow
-      pavucontrol
       copyq
+      pwvucontrol
       gnome-calendar
       celluloid
       loupe

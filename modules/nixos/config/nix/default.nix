@@ -1,4 +1,4 @@
-# module/nixos/config/nix/default.nix
+# modules/nixos/config/nix/default.nix
 {
   config,
   lib,
@@ -42,9 +42,10 @@ in {
     in {
       gc = {
         options = "--delete-older-than 30d";
-        dates = "daily";
+        dates = "weekly";
         automatic = true;
       };
+
       settings = {
         trusted-users = users;
         sandbox = true;
@@ -57,9 +58,15 @@ in {
         warn-dirty = false;
         log-lines = 50;
       };
+
       generateRegistryFromInputs = true;
       generateNixPathFromInputs = true;
       linkInputs = true;
+    };
+
+    systemd.timers.nix-gc.timerConfig = {
+      Persistent = mkForce false;
+      RandomizedDelaySec = "0";
     };
 
     systemd.services.rotate-system-generations = mkIf cfg.rotateGenerations.enable {
@@ -74,7 +81,7 @@ in {
       wantedBy = ["timers.target"];
       timerConfig = {
         OnCalendar = cfg.rotateGenerations.schedule;
-        Persistent = true;
+        Persistent = false;
       };
     };
   };

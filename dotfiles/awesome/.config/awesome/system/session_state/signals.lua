@@ -31,6 +31,17 @@ local function schedule_save(snapshot_fn)
 	})
 end
 
+local function flush_save(snapshot_fn)
+	if runtime.save_timer then
+		runtime.save_timer:stop()
+		runtime.save_timer = nil
+	end
+
+	if type(snapshot_fn) == "function" then
+		snapshot_fn()
+	end
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -50,6 +61,15 @@ function M.attach(args)
 
 	local snapshot = args.snapshot
 	local restore = args.restore
+	local on_exit = args.on_exit
+
+	awesome.connect_signal("exit", function(reason_restart)
+		flush_save(snapshot)
+
+		if type(on_exit) == "function" then
+			on_exit(reason_restart == true)
+		end
+	end)
 
 	awesome.connect_signal("autorandr::pre", function()
 		if type(snapshot) == "function" then

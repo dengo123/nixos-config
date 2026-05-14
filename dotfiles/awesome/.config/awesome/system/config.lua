@@ -13,15 +13,11 @@ return {
 		session_state = {
 			path = nil,
 			restore = {
-				-- on_start = false,
-				-- state = false,
-				-- layout = false,
 				screen = true,
 				tag = true,
+				apps = true,
 			},
 			preserve_rule_floating = {
-				-- dialog = false,
-				-- utility = false,
 				portrait_autosize = false,
 				centered_autosize = false,
 			},
@@ -142,7 +138,7 @@ return {
 
 		max = {
 			padding = true,
-			solo = true,
+			-- solo = true,
 		},
 
 		delete = {

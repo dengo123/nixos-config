@@ -91,21 +91,24 @@ in {
         yaml-language-server
 
         # Shell / web
-        nodePackages.js-beautify
-        nodePackages.stylelint
+        js-beautify
+        stylelint
         shfmt
         html-tidy
 
         # JS / TS
-        nodePackages.eslint
-        nodePackages.prettier
+        eslint
+        prettier
         nodejs_22
         typescript
         typescript-language-server
       ];
 
-      ${namespace}.programs.git = enabled;
+      ${namespace}.programs = {
+        git = enabled;
 
+        aider-chat = mkDefault enabled;
+      };
       programs.direnv = {
         enable = true;
         enableZshIntegration = true;

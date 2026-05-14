@@ -1,4 +1,4 @@
-# modules/nixos/hardware/networking/default.nix
+# modules/nixos/system/networking/default.nix
 {
   config,
   lib,
@@ -7,10 +7,15 @@
 }:
 with lib;
 with lib.${namespace}; let
-  cfg = config.${namespace}.hardware.networking;
+  cfg = config.${namespace}.system.networking;
 in {
-  options.${namespace}.hardware.networking = with types; {
+  options.${namespace}.system.networking = with types; {
     enable = mkBoolOpt true "Enable base networking configuration.";
+
+    networkmanager = {
+      enable = mkBoolOpt false "Enable NetworkManager.";
+      waitOnline = mkBoolOpt false "Whether NetworkManager should wait for full network connectivity during boot.";
+    };
 
     firewall = {
       enable = mkBoolOpt true "Enable the firewall.";
@@ -34,14 +39,22 @@ in {
   };
 
   config = mkIf cfg.enable {
-    networking.firewall = {
-      enable = cfg.firewall.enable;
-      allowedTCPPorts = cfg.firewall.allowedTCPPorts;
-      allowedUDPPorts = cfg.firewall.allowedUDPPorts;
-      trustedInterfaces = cfg.firewall.trustedInterfaces;
-      allowPing = cfg.firewall.allowPing;
-      logReversePathDrops = cfg.firewall.logReversePathDrops;
+    networking = {
+      networkmanager = mkIf cfg.networkmanager.enable {
+        enable = true;
+      };
+
+      firewall = {
+        enable = cfg.firewall.enable;
+        allowedTCPPorts = cfg.firewall.allowedTCPPorts;
+        allowedUDPPorts = cfg.firewall.allowedUDPPorts;
+        trustedInterfaces = cfg.firewall.trustedInterfaces;
+        allowPing = cfg.firewall.allowPing;
+        logReversePathDrops = cfg.firewall.logReversePathDrops;
+      };
     };
+
+    systemd.services.NetworkManager-wait-online.enable = mkIf cfg.networkmanager.enable cfg.networkmanager.waitOnline;
 
     boot.kernel.sysctl = mkIf cfg.hardening.enable (
       {}

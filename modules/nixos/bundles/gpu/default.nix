@@ -18,14 +18,13 @@ in {
         types.enum [
           "nvidia"
           "amd"
-          "dual"
+          "nvidia-headless"
         ]
       ))
-      null "GPU vendor. If null, the bundle won't toggle vendor driver modules.";
+      null "GPU vendor/profile.";
   };
 
   config = mkIf cfg.enable (mkMerge [
-    # --- Shared / GPU-agnostic tooling (system-wide) ---
     {
       environment.systemPackages = with pkgs; [
         pciutils
@@ -36,16 +35,13 @@ in {
         mesa-demos
       ];
 
-      # optional: sensors nutzbar machen (wenn du das eh willst)
       hardware.sensor.iio.enable = mkDefault true;
 
       ${namespace}.services.lact = enabled;
     }
 
-    # --- Vendor routing (nur toggles; Details im jeweiligen Modul) ---
-
     (mkIf (cfg.vendor == null) {
-      hardware.graphics = enabled;
+      hardware.graphics.enable = mkDefault true;
       services.xserver.videoDrivers = mkDefault ["modesetting"];
     })
 
@@ -54,43 +50,21 @@ in {
         enable = mkDefault true;
         open = true;
         package = "production";
-        display = true;
       };
     })
 
     (mkIf (cfg.vendor == "amd") {
       ${namespace}.hardware.amd = {
         enable = mkDefault true;
-        display = true;
       };
     })
 
-    (mkIf (cfg.vendor == "dual") {
-      # ===== Default Boot: dGPU Display =====
-      ${namespace} = {
-        hardware.nvidia = {
-          enable = true;
-          open = true;
-          package = "production";
-          display = mkDefault true;
-        };
-      };
-
-      # ===== Specialisation: iGPU Display =====
-      specialisation.igpu.configuration = {
-        ${namespace} = {
-          hardware.amd = {
-            enable = true;
-            display = mkForce true;
-          };
-
-          hardware.nvidia = {
-            enable = true;
-            open = true;
-            package = "production";
-            display = mkForce false;
-          };
-        };
+    (mkIf (cfg.vendor == "nvidia-headless") {
+      ${namespace}.hardware.nvidia = {
+        enable = mkDefault true;
+        open = true;
+        package = "production";
+        display = mkForce false;
       };
     })
   ]);

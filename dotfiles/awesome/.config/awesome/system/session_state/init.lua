@@ -13,6 +13,8 @@ local M = {
 	snapshot_mod = nil,
 	restore_mod = nil,
 	signals = nil,
+	app_restore = nil,
+	startup = nil,
 }
 
 local runtime = {
@@ -63,6 +65,22 @@ local function restore_opts_from_cfg()
 	}
 end
 
+local function shared_args()
+	local c = ctx()
+
+	return {
+		ctx = c,
+		cfg = c.cfg or {},
+		ui = c.ui or {},
+		shell = c.shell or {},
+		input = c.input or {},
+		system = c.system or {},
+		modkey = c.modkey,
+		session_state = M,
+		store = M.store,
+	}
+end
+
 -- =========================================================================
 -- Public API
 -- =========================================================================
@@ -75,22 +93,20 @@ function M.init(args)
 	M.snapshot_mod = safe_require("system.session_state.snapshot")
 	M.restore_mod = safe_require("system.session_state.restore")
 	M.signals = safe_require("system.session_state.signals")
+	M.app_restore = safe_require("system.session_state.app_restore")
+	M.startup = safe_require("system.session_state.startup")
 
 	local c = ctx()
 	c.system.session_state = M
 
-	local shared = {
-		ctx = c,
-		cfg = c.cfg or {},
-		ui = c.ui or {},
-		system = c.system or {},
-		session_state = M,
-	}
+	local shared = shared_args()
 
 	init_module(M.store, shared)
 	init_module(M.snapshot_mod, shared)
 	init_module(M.restore_mod, shared)
 	init_module(M.signals, shared)
+	init_module(M.app_restore, shared)
+	init_module(M.startup, shared)
 
 	return M
 end
@@ -136,7 +152,8 @@ function M.restore(opts)
 end
 
 function M.restore_on_start()
-	local Restore = M.restore_mod
+	local Startup = M.startup
+	local AppRestore = M.app_restore
 
 	if not restore_on_start_enabled() then
 		return
@@ -148,18 +165,45 @@ function M.restore_on_start()
 
 	runtime.restore_scheduled = true
 
-	if Restore and type(Restore.restore_on_start) == "function" then
-		Restore.restore_on_start(function()
-			runtime.restore_scheduled = false
-			M.restore()
-		end)
-	else
+	local finalize = function()
 		runtime.restore_scheduled = false
+
+		if Startup and type(Startup.run) == "function" then
+			Startup.run({
+				restore = function(opts)
+					return M.restore(opts)
+				end,
+				app_restore = function()
+					if AppRestore and type(AppRestore.run) == "function" then
+						return AppRestore.run()
+					end
+
+					return false
+				end,
+			})
+			return
+		end
+
+		M.restore({
+			retry_passes = true,
+		})
+
+		if AppRestore and type(AppRestore.run) == "function" then
+			AppRestore.run()
+		end
+	end
+
+	if M.restore_mod and type(M.restore_mod.restore_on_start) == "function" then
+		M.restore_mod.restore_on_start(finalize)
+	else
+		finalize()
 	end
 end
 
 function M.attach_signals()
 	local Signals = M.signals
+	local AppRestore = M.app_restore
+	local Startup = M.startup
 
 	if Signals and type(Signals.attach) == "function" then
 		Signals.attach({
@@ -168,6 +212,15 @@ function M.attach_signals()
 			end,
 			restore = function(opts)
 				return M.restore(opts)
+			end,
+			on_exit = function(is_restart)
+				if Startup and type(Startup.note_exit) == "function" then
+					Startup.note_exit(is_restart)
+				end
+
+				if AppRestore and type(AppRestore.note_exit) == "function" then
+					AppRestore.note_exit(is_restart)
+				end
 			end,
 		})
 	end
